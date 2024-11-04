@@ -1,3 +1,3 @@
-# RaporDigtialSDITAl-Hidayah
+# RaporDigitalSDITAl-Hidayah
 
 
