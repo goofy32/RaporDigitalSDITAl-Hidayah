@@ -9,14 +9,26 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-        Schema::create('profile_sekolahs', function (Blueprint $table) {
+        Schema::create('profil_sekolah', function (Blueprint $table) {
             $table->id();
+            $table->string('logo')->nullable();
+            $table->string('nama_instansi');
+            $table->string('nama_sekolah');
+            $table->string('tahun_pelajaran');
+            $table->integer('semester');
+            $table->string('npsn');
+            $table->string('kepala_sekolah');
+            $table->text('alamat');
+            $table->integer('guru_kelas');
+            $table->string('kode_pos');
+            $table->integer('kelas');
+            $table->string('telepon');
+            $table->integer('jumlah_siswa');
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      */

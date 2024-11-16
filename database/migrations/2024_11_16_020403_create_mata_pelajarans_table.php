@@ -11,24 +11,21 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('gurus', function (Blueprint $table) {
+        Schema::create('mata_pelajarans', function (Blueprint $table) {
             $table->id();
-            $table->string('nuptk')->unique();
-            $table->string('nama');
-            $table->enum('jenis_kelamin', ['Laki-laki', 'Perempuan']);
-            $table->date('tanggal_lahir');
-            $table->string('no_handphone');
-            $table->string('email')->unique();
-            $table->text('alamat');
-            $table->string('jabatan');
-            $table->unsignedBigInteger('kelas_pengajar_id');
-            $table->string('username')->unique();
-            $table->string('password');
+            $table->string('nama_pelajaran');
+            $table->unsignedBigInteger('kelas_id');
+            $table->integer('semester');
+            $table->unsignedBigInteger('guru_id');
+            $table->json('lingkup_materi')->nullable();
             $table->timestamps();
     
-            $table->foreign('kelas_pengajar_id')->references('id')->on('kelas')->onDelete('cascade');
+            $table->foreign('kelas_id')->references('id')->on('kelas')->onDelete('cascade');
+            $table->foreign('guru_id')->references('id')->on('gurus')->onDelete('cascade');
         });
     }
+    
+
     /**
      * Reverse the migrations.
      */

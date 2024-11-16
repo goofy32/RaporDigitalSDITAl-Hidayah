@@ -30,6 +30,6 @@ class MataPelajaran extends Model
 
     public function guru()
     {
-        return $this->belongsTo(Pengajar::class, 'guru_id');
+        return $this->belongsTo(Guru::class, 'guru_id');
     }
 }
