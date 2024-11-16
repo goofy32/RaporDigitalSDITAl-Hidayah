@@ -14,7 +14,11 @@
 
     <x-admin.topbar></x-admin.topbar>
     <x-admin.sidebar></x-admin.sidebar>
-
+    @if(session('success'))
+    <div class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50" role="alert">
+        {{ session('success') }}
+    </div>
+    @endif
     <div class="p-4 sm:ml-64">
         <div class="p-4 bg-white mt-14">
             <!-- Header -->
@@ -24,11 +28,12 @@
 
             <!-- Tombol Tambah Data -->
             <div class="flex justify-start mb-4">
-                <a href="#" class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
-                    <svg class="h-3.5 w-3.5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
-                    </svg>
-                    Tambah Data
+                <a href="{{ route('teacher.create') }}" 
+                class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
+                 <svg class="h-3.5 w-3.5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                     <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+                 </svg>
+                 Tambah Data
                 </a>
             </div>
 
@@ -50,29 +55,37 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="px-6 py-4">1234567890</td>
-                            <td class="px-6 py-4">Tes</td>
-                            <td class="px-6 py-4">1 A</td>
-                            <td class="px-6 py-4">01/01/2000</td>
-                            <td class="px-6 py-4">Laki-laki</td>
-                            <td class="px-6 py-4">Islam</td>
-                            <td class="px-6 py-4">Jl. Mawar No. 10</td>
-                            <td class="px-6 py-4">Jl. Mawar No. 10</td>
-                            <td class="px-6 py-4">Jl. Mawar No. 10</td>
-                            <td class="px-6 py-4 text-center flex justify-around">
-                                <a href="#" class="text-blue-600 hover:underline">
-                                    <img src="https://via.placeholder.com/20?text=👁" alt="View" title="View">
-                                </a>
-                                <a href="#" class="text-green-600 hover:underline">
-                                    <img src="https://via.placeholder.com/20?text=✏" alt="Edit" title="Edit">
-                                </a>
-                                <a href="#" class="text-red-600 hover:underline">
-                                    <img src="https://via.placeholder.com/20?text=🗑" alt="Hapus" title="Hapus">
-                                </a>
-                            </td>
-                        </tr>
-                        
+                        @php
+                            $teachers = session('teachers', []);
+                        @endphp
+                        @forelse($teachers as $teacher)
+                            <tr class="bg-white border-b hover:bg-gray-50">
+                                <td class="px-6 py-4">{{ $teacher['nip'] }}</td>
+                                <td class="px-6 py-4">{{ $teacher['nama'] }}</td>
+                                <td class="px-6 py-4">{{ $teacher['jenis_kelamin'] }}</td>
+                                <td class="px-6 py-4">{{ $teacher['email'] }}</td>
+                                <td class="px-6 py-4">{{ $teacher['no_handphone'] }}</td>
+                                <td class="px-6 py-4">-</td>
+                                <td class="px-6 py-4">{{ $teacher['alamat'] }}</td>
+                                <td class="px-6 py-4">{{ $teacher['jabatan'] }}</td>
+                                <td class="px-6 py-4">{{ $teacher['kelas_mengajar'] }}</td>
+                                <td class="px-6 py-4 text-center flex justify-around">
+                                    <a href="{{ route('teacher.show', $teacher['id']) }}" class="text-blue-600 hover:underline">
+                                        <img src="https://via.placeholder.com/20?text=👁" alt="View" title="View">
+                                    </a>
+                                    <a href="#" class="text-green-600 hover:underline">
+                                        <img src="https://via.placeholder.com/20?text=✏" alt="Edit" title="Edit">
+                                    </a>
+                                    <a href="#" class="text-red-600 hover:underline">
+                                        <img src="https://via.placeholder.com/20?text=🗑" alt="Hapus" title="Hapus">
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="10" class="px-6 py-4 text-center">Tidak ada data pengajar</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SchoolProfileController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TeacherController;
 
 Route::get('/', function () {
     return view('admin.dashboard');
@@ -33,6 +34,12 @@ Route::prefix('admin')->group(function () {
     Route::get('/students/{id}', [StudentController::class, 'show'])->name('student.show');
 });
 
+Route::prefix('pengajar')->group(function () {
+    Route::get('/', [TeacherController::class, 'index'])->name('teacher');
+    Route::get('/create', [TeacherController::class, 'create'])->name('teacher.create');
+    Route::post('/store', [TeacherController::class, 'store'])->name('teacher.store');
+    Route::get('/{id}', [TeacherController::class, 'show'])->name('teacher.show');
+});
 
 Route::get('pelajaran', function () {
     return view('admin.subject');
@@ -46,10 +53,7 @@ Route::get('ekstrakulikuler', function () {
     return view('admin.ekstrakulikuler');
 })->name('ekstra');
 
-Route::get('pengajar', function () {
-    return view('admin.teacher');
-})->name('teacher');
 
-Route::get('format-rapot', function () {
-    return view('admin.report_format');
+Route::get('format-rapot/{type?}', function ($type = 'UTS') {
+    return view('admin.report_format', ['type' => $type]);
 })->name('report_format');
