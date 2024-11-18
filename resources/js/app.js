@@ -2,10 +2,9 @@ import './bootstrap';
 
 import 'flowbite';
 
-import Turbolinks from 'turbolinks';
-Turbolinks.start();
+import '@hotwired/turbo';
 
-document.addEventListener('turbolinks:load', () => {
+document.addEventListener('turbo:load', () => {
     // Inisialisasi ulang dropdown menu
 
     // Seleksi tombol toggle dropdown

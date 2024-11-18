@@ -10,7 +10,7 @@
 </head>
 <body>
     <x-admin.topbar data-turbolinks-permanent></x-admin.topbar>
-    <x-admin.sidebar data-turbolinks-permanent></x-admin.sidebar>
+    <x-admin.sidebar></x-admin.sidebar>
 
     <div class="p-4 sm:ml-64">
         @yield('content')
