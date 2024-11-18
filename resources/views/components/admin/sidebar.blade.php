@@ -64,18 +64,26 @@
             <li>
                 <button type="button"
                     class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    aria-controls="dropdown-rapor" data-collapse-toggle="dropdown-rapor">
+                    data-collapse-toggle="dropdown-rapor" aria-controls="dropdown-rapor" aria-expanded="false">
                     <img src="{{ asset('images/icons/report-icon.png') }}" alt="Achievement Icon" class="w-5 h-5">
                     <span class="ml-3">Format Rapot</span>
+                    <!-- Ikon Panah untuk Menunjukkan Dropdown -->
+                    <svg class="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.25 4a.75.75 0 01-1.04 0l-4.25-4a.75.75 0 01-.02-1.06z"
+                            clip-rule="evenodd" />
+                    </svg>
                 </button>
                 <ul id="dropdown-rapor" class="hidden py-2 space-y-2">
                     <li>
-                        <a href="{{ route('report_format', ['type' => 'UTS']) }}" class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <a href="{{ route('report_format', ['type' => 'UTS']) }}"
+                            class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700">
                             UTS
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('report_format', ['type' => 'UAS']) }}" class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <a href="{{ route('report_format', ['type' => 'UAS']) }}"
+                            class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700">
                             UAS
                         </a>
                     </li>
