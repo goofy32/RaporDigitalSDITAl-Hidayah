@@ -17,16 +17,13 @@ Route::get('profile/edit', [SchoolProfileController::class, 'edit'])->name('prof
 // Route untuk menyimpan data profil sekolah
 Route::post('profile', [SchoolProfileController::class, 'store'])->name('profile.submit');
 
-Route::get('kelas', function () {
-    return view('admin.class');
-})->name('class');
-
-
-// Menampilkan form tambah data kelas
-Route::get('class/create', [ClassController::class, 'create'])->name('class.create');
-
-// Menyimpan data kelas baru
-Route::post('class/store', [ClassController::class, 'store'])->name('class.store');
+Route::get('kelas', [ClassController::class, 'index'])->name('kelas.index');
+Route::get('kelas/create', [ClassController::class, 'create'])->name('kelas.create');
+Route::post('kelas', [ClassController::class, 'store'])->name('kelas.store');
+Route::get('kelas/{id}', [ClassController::class, 'show'])->name('kelas.show');
+Route::get('kelas/{id}/edit', [ClassController::class, 'edit'])->name('kelas.edit');
+Route::put('kelas/{id}', [ClassController::class, 'update'])->name('kelas.update');
+Route::delete('kelas/{id}', [ClassController::class, 'destroy'])->name('kelas.destroy');
 
 Route::prefix('admin')->group(function () {
     Route::get('/siswa', [StudentController::class, 'index'])->name('student');
