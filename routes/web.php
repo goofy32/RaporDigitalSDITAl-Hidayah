@@ -10,12 +10,12 @@ Route::get('/', function () {
     return view('admin.dashboard');
 })->name('dashboard');
 
-Route::get('profile', function () {
-    return view('admin.profile');
-})->name('profile');
-
-Route::post('profile/submit', [SchoolProfileController::class, 'submit'])->name('profile.submit');
-Route::get('profile/data', [SchoolProfileController::class, 'showData'])->name('profile.data');
+// Route untuk menampilkan data profil sekolah
+Route::get('profile', [SchoolProfileController::class, 'show'])->name('profile');
+// Route untuk menampilkan form profil sekolah (tambah/edit)
+Route::get('profile/edit', [SchoolProfileController::class, 'edit'])->name('profile.edit');
+// Route untuk menyimpan data profil sekolah
+Route::post('profile', [SchoolProfileController::class, 'store'])->name('profile.submit');
 
 Route::get('kelas', function () {
     return view('admin.class');

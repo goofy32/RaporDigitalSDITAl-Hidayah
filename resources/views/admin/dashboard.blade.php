@@ -20,7 +20,7 @@
             <!-- Box TAHUN AJARAN -->
             <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">
                 <p class="text-sm font-semibold text-gray-600">TAHUN AJARAN</p>
-                <p class="text-lg font-bold text-green-600">2023/2024</p>
+                <p class="text-lg font-bold text-green-600">{{ $schoolProfile->tahun_pelajaran ?? '-' }}</p>
             </div>
             <!-- Box GURU -->
             <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 class ProfilSekolah extends Model
 {
     use HasFactory;
@@ -25,6 +26,9 @@ class ProfilSekolah extends Model
         'kelas',
         'telepon',
         'jumlah_siswa',
+        'email_sekolah',
+        'tempat_terbit',
+        'tanggal_terbit',
+        'website',
     ];
 }
-
