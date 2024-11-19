@@ -27,8 +27,15 @@ Route::delete('kelas/{id}', [ClassController::class, 'destroy'])->name('kelas.de
 
 Route::prefix('admin')->group(function () {
     Route::get('/siswa', [StudentController::class, 'index'])->name('student');
+    Route::get('/students/template', [StudentController::class, 'downloadTemplate'])->name('student.template');
     Route::get('/students/create', [StudentController::class, 'create'])->name('student.create');
+    Route::post('/students', [StudentController::class, 'store'])->name('student.store');
     Route::get('/students/{id}', [StudentController::class, 'show'])->name('student.show');
+    Route::get('/students/{id}/edit', [StudentController::class, 'edit'])->name('student.edit');
+    Route::put('/students/{id}', [StudentController::class, 'update'])->name('student.update');
+    Route::delete('/students/{id}', [StudentController::class, 'destroy'])->name('student.destroy');
+    Route::get('/students/upload', [StudentController::class, 'uploadPage'])->name('student.upload');
+    Route::post('/students/import', [StudentController::class, 'importExcel'])->name('student.import');
 });
 
 Route::prefix('pengajar')->group(function () {

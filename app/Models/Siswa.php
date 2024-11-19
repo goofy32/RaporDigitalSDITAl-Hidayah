@@ -24,12 +24,9 @@ class Siswa extends Model
         'nama_ibu',
         'pekerjaan_ayah',
         'pekerjaan_ibu',
-        'wali_siswa',
-        'pekerjaan_wali',
         'alamat_orangtua',
         'photo',
     ];
-
     public function kelas()
     {
         return $this->belongsTo(Kelas::class);

@@ -62,8 +62,8 @@
             
             
             <li>
-                <button type="button"
-                    class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                <button type="button" 
+                data-turbo-permanent="falses" class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                     data-collapse-toggle="dropdown-rapor" aria-controls="dropdown-rapor" aria-expanded="false">
                     <img src="{{ asset('images/icons/report-icon.png') }}" alt="Achievement Icon" class="w-5 h-5">
                     <span class="ml-3">Format Rapot</span>
