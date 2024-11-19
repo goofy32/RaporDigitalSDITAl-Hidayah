@@ -23,6 +23,7 @@ class Guru extends Authenticatable
         'kelas_pengajar_id',
         'username',
         'password',
+        'photo',
     ];
 
     protected $hidden = [

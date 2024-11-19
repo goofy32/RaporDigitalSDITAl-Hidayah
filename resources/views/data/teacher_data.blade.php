@@ -21,17 +21,28 @@
                 <h2 class="text-2xl font-bold text-green-700">Detail Data Pengajar</h2>
                 <div class="flex space-x-2">
                     <button class="bg-green-600 text-white font-medium py-2 px-4 rounded hover:bg-green-700" onclick="window.history.back()">Kembali</button>
-                    <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700">Edit</button>
+                    <button onclick="window.location.href='{{ route('teacher.edit', $teacher->id) }}'" 
+                        class="bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700">
+                        Edit
+                    </button>
                 </div>
             </div>
 
             <!-- Detail Pengajar -->
             <div class="flex space-x-8">
                 <!-- Foto Placeholder -->
-                <div class="flex items-center justify-center w-32 h-32 bg-gray-200 rounded-full shadow-md">
-                    <svg class="w-16 h-16 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM8 10a4 4 0 118 0 4 4 0 01-8 0zm12 9a8 8 0 00-16 0h16z" />
-                    </svg>
+                <div class="flex items-start justify-center w-48 h-full bg-gray-200 rounded-lg shadow-md">
+                    @if($teacher->photo)
+                        <img src="{{ asset('storage/' . $teacher->photo) }}" 
+                             alt="Foto Pengajar" 
+                             class="w-full h-auto object-cover rounded-lg">
+                    @else
+                        <div class="flex items-center justify-center w-full h-full bg-gray-200">
+                            <svg class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Informasi Detail -->
@@ -40,39 +51,49 @@
                         <tbody>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">NIP</th>
-                                <td class="px-4 py-2">{{ $teacher['nip'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->nuptk ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Nama</th>
-                                <td class="px-4 py-2">{{ $teacher['nama'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->nama ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Jenis Kelamin</th>
-                                <td class="px-4 py-2">{{ $teacher['jenis_kelamin'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->jenis_kelamin ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Tanggal Lahir</th>
-                                <td class="px-4 py-2">{{ $teacher['tanggal_lahir'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->tanggal_lahir ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">No Handphone</th>
-                                <td class="px-4 py-2">{{ $teacher['no_handphone'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->no_handphone ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Email</th>
-                                <td class="px-4 py-2">{{ $teacher['email'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->email ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Alamat</th>
-                                <td class="px-4 py-2">{{ $teacher['alamat'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->alamat ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Jabatan</th>
-                                <td class="px-4 py-2">{{ $teacher['jabatan'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">{{ $teacher->jabatan ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
-                                <td class="px-4 py-2">{{ $teacher['kelas_mengajar'] ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">
+                                    {{ $teacher->kelasPengajar->nomor_kelas ?? '-' }} - {{ $teacher->kelasPengajar->nama_kelas ?? 'Belum Diisi' }}
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Username</th>
+                                <td class="px-4 py-2">{{ $teacher->username ?? 'Belum Diisi' }}</td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Password</th>
+                                <td class="px-4 py-2">••••••••</td>
                             </tr>
                         </tbody>
                     </table>

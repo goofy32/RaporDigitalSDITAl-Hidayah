@@ -36,11 +36,19 @@ Route::prefix('pengajar')->group(function () {
     Route::get('/create', [TeacherController::class, 'create'])->name('teacher.create');
     Route::post('/store', [TeacherController::class, 'store'])->name('teacher.store');
     Route::get('/{id}', [TeacherController::class, 'show'])->name('teacher.show');
+    Route::get('/{id}/edit', [TeacherController::class, 'edit'])->name('teacher.edit');
+    Route::put('/{id}', [TeacherController::class, 'update'])->name('teacher.update');
+    Route::delete('/{id}', [TeacherController::class, 'destroy'])->name('teacher.destroy');
 });
+
 
 Route::get('pelajaran', function () {
     return view('admin.subject');
 })->name('subject');
+
+Route::get('login', function () {
+    return view('login');
+})->name('login');
 
 Route::get('prestasi', function () {
     return view('admin.achievement');
