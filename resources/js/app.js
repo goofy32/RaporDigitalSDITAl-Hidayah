@@ -11,6 +11,12 @@ document.addEventListener('turbo:load', () => {
     const toggle = document.querySelector('[data-collapse-toggle="dropdown-rapor"]');
     const target = document.getElementById('dropdown-rapor');
 
+
+    if (window.initFlowbite) {
+        window.initFlowbite();
+    }
+
+    
     if (toggle && target) {
         // Hapus event listener sebelumnya
         toggle.removeEventListener('click', handleToggle);

@@ -34,8 +34,18 @@
                 class="w-32 h-32 object-contain mb-4">
         </div>
 
+        @if ($errors->any())
+        <div class="mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50">
+            <ul class="list-disc list-inside">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+
         <!-- Form -->
-        <form action="#" method="POST">
+        <form action="{{ route('login.post') }}" method="POST">
             @csrf
             <!-- Username -->
             <div class="mb-4">
@@ -59,7 +69,7 @@
                     <option value="" disabled selected>Pilih Role</option>
                     <option value="admin">Admin</option>
                     <option value="guru">Guru</option>
-                    <option value="siswa">Pengajar</option>
+                    <option value="wali_kelas">Wali Kelas</option>
                 </select>
             </div>
 
