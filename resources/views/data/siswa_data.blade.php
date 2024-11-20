@@ -26,10 +26,18 @@
             </div>
 
             <div class="flex space-x-8">
-                <div class="flex items-center justify-center w-32 h-32 bg-gray-200 rounded-full shadow-md">
-                    <svg class="w-16 h-16 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM8 10a4 4 0 118 0 4 4 0 01-8 0zm12 9a8 8 0 00-16 0h16z" />
-                    </svg>
+                <div class="w-full md:w-1/4">
+                    <div class="bg-gray-200 rounded-lg shadow-md p-4">
+                        @if($student->photo)
+                            <img src="{{ asset('storage/' . $student->photo) }}" alt="{{ $student->nama }}" class="w-full h-auto rounded-lg">
+                        @else
+                            <div class="flex items-center justify-center w-full h-48 bg-gray-300 rounded-lg">
+                                <svg class="w-16 h-16 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM8 10a4 4 0 118 0 4 4 0 01-8 0zm12 9a8 8 0 00-16 0h16z" />
+                                </svg>
+                            </div>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="w-full">
@@ -44,8 +52,8 @@
                                 <td class="px-4 py-2">{{ $student['nama'] }}</td>
                             </tr>
                             <tr class="border-b">
-                                <th class="px-4 py-2 font-medium text-gray-900">Nama Kelas</th>
-                                <td class="px-4 py-2">{{ $student['kelas'] }}</td>
+                                <th class="px-4 py-2 font-medium text-gray-900">Kelas</th>
+                                <td class="px-4 py-2">{{ $student->kelas->nomor_kelas }} - {{ $student->kelas->nama_kelas }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Tanggal Lahir</th>
@@ -62,6 +70,26 @@
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Alamat</th>
                                 <td class="px-4 py-2">{{ $student['alamat'] }}</td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Nama Ayah</th>
+                                <td class="px-4 py-2">{{ $student->nama_ayah }}</td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Pekerjaan Ayah</th>
+                                <td class="px-4 py-2">{{ $student->pekerjaan_ayah }}</td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Nama Ibu</th>
+                                <td class="px-4 py-2">{{ $student->nama_ibu }}</td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Pekerjaan Ibu</th>
+                                <td class="px-4 py-2">{{ $student->pekerjaan_ibu }}</td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Alamat Orang Tua</th>
+                                <td class="px-4 py-2">{{ $student->alamat_orangtua }}</td>
                             </tr>
                         </tbody>
                     </table>

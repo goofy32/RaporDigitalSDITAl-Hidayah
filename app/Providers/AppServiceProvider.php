@@ -25,5 +25,11 @@ class AppServiceProvider extends ServiceProvider
             $schoolProfile = ProfilSekolah::first();
             $view->with('schoolProfile', $schoolProfile);
         });
+
+        /**
+         * if(config('app.env') === 'production') {
+         * URL::forceScheme('https'); }
+        */      
+        
     }
 }

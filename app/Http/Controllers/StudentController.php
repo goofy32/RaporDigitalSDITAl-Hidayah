@@ -8,15 +8,29 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Siswa;
 use App\Models\Kelas;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Validators\ValidationException;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Storage;
 
 class StudentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $students = Siswa::with('kelas')->paginate(10);
+        $query = Siswa::with('kelas');
+        
+        // Handle search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'LIKE', "%{$search}%")
+                  ->orWhere('nis', 'LIKE', "%{$search}%")
+                  ->orWhere('nisn', 'LIKE', "%{$search}%")
+                  ->orWhereHas('kelas', function($q) use ($search) {
+                      $q->where('nama_kelas', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        $students = $query->paginate(10);
         return view('admin.student', compact('students'));
     }
 
@@ -33,8 +47,13 @@ class StudentController extends Controller
             'nisn' => 'required|unique:siswas',
             'nama' => 'required',
             'kelas_id' => 'required|exists:kelas,id',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             // tambahkan validasi lainnya sesuai kebutuhan
         ]);
+
+        if ($request->hasFile('photo')) {
+            $validated['photo'] = $request->file('photo')->store('photos', 'public');
+        }
 
         Siswa::create($validated);
         return redirect()->route('student')->with('success', 'Data siswa berhasil ditambahkan!');
@@ -42,15 +61,14 @@ class StudentController extends Controller
 
     public function show($id)
     {
-        $student = Siswa::findOrFail($id);
-        return view('admin.student_show', compact('student'));
+        $student = Siswa::with('kelas')->findOrFail($id);
+        return view('data.siswa_data', compact('student'));
     }
-
     public function edit($id)
     {
         $student = Siswa::findOrFail($id);
         $kelas = Kelas::all();
-        return view('admin.student_edit', compact('student', 'kelas'));
+        return view('data.edit_student', compact('student', 'kelas'));
     }
 
     public function update(Request $request, $id)
@@ -60,10 +78,27 @@ class StudentController extends Controller
             'nis' => 'required|unique:siswas,nis,' . $id,
             'nisn' => 'required|unique:siswas,nisn,' . $id,
             'nama' => 'required',
+            'tanggal_lahir' => 'required|date',
+            'jenis_kelamin' => 'required',
+            'agama' => 'required',
+            'alamat' => 'required',
             'kelas_id' => 'required|exists:kelas,id',
-            // tambahkan validasi lainnya sesuai kebutuhan
+            'nama_ayah' => 'nullable',
+            'nama_ibu' => 'nullable',
+            'pekerjaan_ayah' => 'nullable',
+            'pekerjaan_ibu' => 'nullable',
+            'alamat_orangtua' => 'nullable',
+            'photo' => 'nullable|image|max:2048'
         ]);
-
+    
+        if ($request->hasFile('photo')) {
+            // Hapus foto lama jika ada
+            if ($student->photo) {
+                Storage::delete($student->photo);
+            }
+            $validated['photo'] = $request->file('photo')->store('photos', 'public');
+        }
+    
         $student->update($validated);
         return redirect()->route('student')->with('success', 'Data siswa berhasil diperbarui!');
     }
@@ -71,6 +106,12 @@ class StudentController extends Controller
     public function destroy($id)
     {
         $student = Siswa::findOrFail($id);
+        
+        // Hapus foto jika ada
+        if ($student->photo) {
+            Storage::delete($student->photo);
+        }
+        
         $student->delete();
         return redirect()->route('student')->with('success', 'Data siswa berhasil dihapus!');
     }
