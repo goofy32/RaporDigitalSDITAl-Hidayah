@@ -46,9 +46,17 @@ class StudentController extends Controller
             'nis' => 'required|unique:siswas',
             'nisn' => 'required|unique:siswas',
             'nama' => 'required',
+            'tanggal_lahir' => 'required|date', // Tambahkan validasi tanggal lahir
+            'jenis_kelamin' => 'required',
+            'agama' => 'required',
+            'alamat' => 'required',
             'kelas_id' => 'required|exists:kelas,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            // tambahkan validasi lainnya sesuai kebutuhan
+            'nama_ayah' => 'required|string',
+            'nama_ibu' => 'required|string',
+            'pekerjaan_ayah' => 'nullable|string',
+            'pekerjaan_ibu' => 'nullable|string',
+            'alamat_orangtua' => 'nullable|string',
         ]);
 
         if ($request->hasFile('photo')) {

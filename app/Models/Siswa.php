@@ -26,6 +26,8 @@ class Siswa extends Model
         'pekerjaan_ibu',
         'alamat_orangtua',
         'photo',
+        'wali_siswa',
+        'pekerjaan_wali',
     ];
     public function kelas()
     {

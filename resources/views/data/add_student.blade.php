@@ -129,7 +129,7 @@
                         </div>
 
                         <div>
-                            <label for="pekerjaan_ayah" class="block font-semibold">Pekerjaan Ayah</label>
+                            <label for="pekerjaan_ayah" class="block font-semibold">Pekerjaan Ayah (Opsional)</label>
                             <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah" class="w-full p-2 border rounded @error('pekerjaan_ayah') border-red-500 @enderror" value="{{ old('pekerjaan_ayah') }}">
                             @error('pekerjaan_ayah')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -137,7 +137,7 @@
                         </div>
 
                         <div>
-                            <label for="pekerjaan_ibu" class="block font-semibold">Pekerjaan Ibu</label>
+                            <label for="pekerjaan_ibu" class="block font-semibold">Pekerjaan Ibu (Opsional)</label>
                             <input type="text" id="pekerjaan_ibu" name="pekerjaan_ibu" class="w-full p-2 border rounded @error('pekerjaan_ibu') border-red-500 @enderror" value="{{ old('pekerjaan_ibu') }}">
                             @error('pekerjaan_ibu')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -145,14 +145,41 @@
                         </div>
 
                         <div>
-                            <label for="alamat_orangtua" class="block font-semibold">Alamat Orang Tua</label>
+                            <label for="alamat_orangtua" class="block font-semibold">Alamat Orang Tua (Opsional)</label>
                             <textarea id="alamat_orangtua" name="alamat_orangtua" class="w-full p-2 border rounded @error('alamat_orangtua') border-red-500 @enderror">{{ old('alamat_orangtua') }}</textarea>
                             @error('alamat_orangtua')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
+
+                    <div>
+                        <h3 class="bg-green-700 text-white px-4 py-2 rounded-t">Data Wali (Opsional)</h3>
+                        <div class="border p-4 space-y-4 rounded-b">
+                            <div>
+                                <label for="wali_siswa" class="block font-semibold">Nama Wali</label>
+                                <input type="text" id="wali_siswa" name="wali_siswa" 
+                                    class="w-full p-2 border rounded @error('wali_siswa') border-red-500 @enderror" 
+                                    value="{{ old('wali_siswa') }}">
+                                @error('wali_siswa')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+    
+                            <div>
+                                <label for="pekerjaan_wali" class="block font-semibold">Pekerjaan Wali</label>
+                                <input type="text" id="pekerjaan_wali" name="pekerjaan_wali" 
+                                    class="w-full p-2 border rounded @error('pekerjaan_wali') border-red-500 @enderror" 
+                                    value="{{ old('pekerjaan_wali') }}">
+                                @error('pekerjaan_wali')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+    
+                        </div>
+                    </div>    
                 </div>
+
 
                 <!-- Tombol Submit -->
                 <div class="col-span-2 flex justify-end space-x-2 mt-4">
