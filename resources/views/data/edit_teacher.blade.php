@@ -13,8 +13,26 @@
     <x-admin.topbar></x-admin.topbar>
     <x-admin.sidebar></x-admin.sidebar>
 
+
+
     <div class="p-4 sm:ml-64">
         <div class="p-4 bg-white mt-14 rounded-lg shadow">
+            @if ($errors->any())
+            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                <strong class="font-bold">Terjadi kesalahan!</strong>
+                <ul class="mt-2">
+                    @foreach ($errors->all() as $error)
+                        <li class="list-disc ml-4">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+            <!-- Success Message -->
+            @if (session('success'))
+            <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+                {{ session('success') }}
+            </div>
+            @endif
             <!-- Header -->
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-green-700">Form Edit Data Pengajar</h2>
@@ -29,16 +47,13 @@
             </div>
 
             <!-- Form -->
-            <form id="editTeacherForm" action="{{ route('teacher.update', $teacher->id) }}" method="POST" enctype="multipart/form-data">
+            <form id="editTeacherForm" action="{{ route('teacher.update', $teacher->id) }}" data-turbo="false" method="POST" enctype="multipart/form-data">
                 @csrf
-                @method('PUT')
-                
-                <!-- Ganti name="nip" menjadi name="nuptk" -->
-                
+                @method('PUT')                
 
                 <!-- Kolom Kiri -->
                 <div>
-                    <label for="nip" class="block text-sm font-medium text-gray-700">NIP</label>
+                    <label for="nip" class="block text-sm font-medium text-gray-700">nuptk</label>
                     <input type="text" id="nip" name="nuptk" value="{{ $teacher->nuptk }}" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required>
 
                     <label for="nama" class="block mt-4 text-sm font-medium text-gray-700">Nama</label>
@@ -101,6 +116,43 @@
             this.value = this.value.replace(/[^0-9]/g, '').slice(0, 15); // Maksimal 15 angka
         });
     </script>
+
+<script>document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const requiredFields = form.querySelectorAll('[required]');
+
+    form.addEventListener('submit', function(e) {
+        let hasError = false;
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                hasError = true;
+                // Tambahkan class error
+                field.classList.add('border-red-500');
+                // Tambahkan pesan error di bawah field
+                let errorDiv = field.parentElement.querySelector('.error-message');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('p');
+                    errorDiv.className = 'error-message text-red-500 text-xs mt-1';
+                    field.parentElement.appendChild(errorDiv);
+                }
+                errorDiv.textContent = `${field.getAttribute('placeholder') || field.getAttribute('name')} wajib diisi`;
+            } else {
+                field.classList.remove('border-red-500');
+                const errorDiv = field.parentElement.querySelector('.error-message');
+                if (errorDiv) errorDiv.remove();
+            }
+        });
+
+        if (hasError) {
+            e.preventDefault();
+            // Scroll ke error pertama
+            const firstError = form.querySelector('.border-red-500');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+});</script>
 </body>
 
 </html>

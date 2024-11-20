@@ -5,6 +5,8 @@ use App\Http\Controllers\SchoolProfileController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\SubjectController;
+
 
 Route::get('/', function () {
     return view('admin.dashboard');
@@ -42,6 +44,16 @@ Route::prefix('admin')->group(function () {
         ->name('student.upload');
     Route::post('students/import', [StudentController::class, 'importExcel'])
         ->name('student.import');
+
+    Route::resource('subject', SubjectController::class)->names([
+    'index' => 'subject.index',
+    'create' => 'subject.create',
+    'store' => 'subject.store',
+    'show' => 'subject.show',
+    'edit' => 'subject.edit',
+    'update' => 'subject.update',
+    'destroy' => 'subject.destroy',
+    ]);
 });
 
 Route::prefix('pengajar')->group(function () {

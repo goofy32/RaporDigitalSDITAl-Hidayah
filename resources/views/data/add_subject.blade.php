@@ -45,21 +45,19 @@
                         <option value="">Pilih Kelas</option>
                         <!-- Loop through classes -->
                         @foreach($classes as $class)
-                            <option value="{{ $class->id }}">{{ $class->name }}</option>
+                        <option value="{{ $class->id }}">{{ $class->nama_kelas }}</option> // Menggunakan nama_kelas
                         @endforeach
                     </select>
                 </div>
 
                 <!-- Siswa Dropdown -->
                 <div>
-                    <label for="siswa" class="block mb-2 text-sm font-medium text-gray-900">Siswa</label>
-                    <select id="siswa" name="siswa" required
+                    <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
+                    <select id="semester" name="semester" required
                         class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                        <option value="">Pilih Siswa</option>
-                        <!-- Loop through students -->
-                        @foreach($students as $student)
-                            <option value="{{ $student->id }}">{{ $student->name }}</option>
-                        @endforeach
+                        <option value="">Pilih Semester</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
                     </select>
                 </div>
 
@@ -71,8 +69,8 @@
                         <option value="">Pilih Guru</option>
                         <!-- Loop through teachers -->
                         @foreach($teachers as $teacher)
-                            <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
-                        @endforeach
+                        <option value="{{ $teacher->id }}">{{ $teacher->nama }}</option> // Menggunakan nama bukan name
+                    @endforeach
                     </select>
                 </div>
 
@@ -80,12 +78,10 @@
                 <div>
                     <label class="block mb-2 text-sm font-medium text-gray-900">Lingkup Materi</label>
                     <div id="lingkupMateriContainer">
-                        <!-- First input field -->
                         <div class="flex items-center mb-2">
                             <input type="text" name="lingkup_materi[]" required
                                 class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                            <button type="button" id="addLingkupMateri" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                <!-- Plus Icon -->
+                            <button type="button" onclick="addLingkupMateri()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
                                 </svg>
@@ -99,46 +95,32 @@
     </div>
 
     <!-- Flowbite JS (if needed) -->
-    <script src="../path/to/flowbite/dist/flowbite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+
 
     <!-- JavaScript for dynamic Lingkup Materi -->
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const lingkupMateriContainer = document.getElementById('lingkupMateriContainer');
-            const addLingkupMateriButton = document.getElementById('addLingkupMateri');
+    function addLingkupMateri() {
+        const container = document.getElementById('lingkupMateriContainer');
+        const div = document.createElement('div');
+        div.className = 'flex items-center mb-2';
+        
+        div.innerHTML = `
+            <input type="text" name="lingkup_materi[]" required
+                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+            <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+        `;
+        
+        container.appendChild(div);
+    }
 
-            addLingkupMateriButton.addEventListener('click', function () {
-                const newField = document.createElement('div');
-                newField.classList.add('flex', 'items-center', 'mb-2');
-
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'lingkup_materi[]';
-                input.required = true;
-                input.classList.add('block', 'w-full', 'p-2.5', 'bg-gray-50', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-green-500', 'focus:border-green-500');
-
-                const removeButton = document.createElement('button');
-                removeButton.type = 'button';
-                removeButton.classList.add('ml-2', 'p-2', 'bg-red-600', 'text-white', 'rounded-lg', 'hover:bg-red-700');
-
-                // Trash Icon
-                removeButton.innerHTML = `
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M6 3a1 1 0 00-.894.553L4.382 5H2a1 1 0 100 2h1.293l1.614 9.447A2 2 0 007.862 18h4.276a2 2 0 001.955-1.553L15.707 7H17a1 1 0 100-2h-2.382l-.724-1.447A1 1 0 0011 3H6zm1.236 5h5.528l-.614 7H7.85l-.614-7z" clip-rule="evenodd"/>
-                    </svg>
-                `;
-
-                // Remove field on click
-                removeButton.addEventListener('click', function () {
-                    lingkupMateriContainer.removeChild(newField);
-                });
-
-                newField.appendChild(input);
-                newField.appendChild(removeButton);
-
-                lingkupMateriContainer.appendChild(newField);
-            });
-        });
+    function removeLingkupMateri(button) {
+        button.parentElement.remove();
+    }
     </script>
 </body>
 </html>

@@ -26,7 +26,6 @@
                 </ul>
             </div>
             @endif
-
             <!-- Success Message -->
             @if (session('success'))
             <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
@@ -38,14 +37,14 @@
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Pengajar</h2>
                 <div class="flex space-x-2">
-                    <button onclick="window.history.back()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    <button  onclick="window.history.back()" data-turbo="false" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                         Kembali
                     </button>
                 </div>
             </div>
 
             <!-- Form -->
-            <form action="{{ route('teacher.store') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-2 gap-6">
+            <form action="{{ route('teacher.store') }}" method="POST" enctype="multipart/form-data" data-turbo="false" class="grid grid-cols-2 gap-6">
                 @csrf
             
                 <!-- Kolom Kiri -->
@@ -195,7 +194,45 @@
         document.getElementById('no_handphone').addEventListener('input', function (e) {
             this.value = this.value.replace(/[^0-9]/g, '').slice(0, 15); // Maksimal 15 angka
         });
+        
     </script>
+
+    <script>document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const requiredFields = form.querySelectorAll('[required]');
+    
+        form.addEventListener('submit', function(e) {
+            let hasError = false;
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    hasError = true;
+                    // Tambahkan class error
+                    field.classList.add('border-red-500');
+                    // Tambahkan pesan error di bawah field
+                    let errorDiv = field.parentElement.querySelector('.error-message');
+                    if (!errorDiv) {
+                        errorDiv = document.createElement('p');
+                        errorDiv.className = 'error-message text-red-500 text-xs mt-1';
+                        field.parentElement.appendChild(errorDiv);
+                    }
+                    errorDiv.textContent = `${field.getAttribute('placeholder') || field.getAttribute('name')} wajib diisi`;
+                } else {
+                    field.classList.remove('border-red-500');
+                    const errorDiv = field.parentElement.querySelector('.error-message');
+                    if (errorDiv) errorDiv.remove();
+                }
+            });
+    
+            if (hasError) {
+                e.preventDefault();
+                // Scroll ke error pertama
+                const firstError = form.querySelector('.border-red-500');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    });</script>
 </body>
 
 </html>

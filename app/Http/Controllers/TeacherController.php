@@ -7,6 +7,8 @@ use App\Models\Kelas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+
 
 class TeacherController extends Controller
 {
@@ -38,33 +40,63 @@ class TeacherController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,' . ($teacher->id ?? 'NULL'),
-            'nama' => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
-            'tanggal_lahir' => 'required|date',
-            'no_handphone' => 'required|numeric|digits_between:10,15',
-            'email' => 'required|email|max:255|unique:gurus,email,' . ($teacher->id ?? 'NULL'),
-            'alamat' => 'required|string|max:500',
-            'jabatan' => 'required|string|max:100',
-            'kelas_pengajar_id' => 'required|exists:kelas,id',
-            'username' => 'required|string|max:255|unique:gurus,username,' . ($teacher->id ?? 'NULL'),
-            'password' => 'required|nullable|string|min:6|confirmed',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        // Handle password
-        $validated['password'] = Hash::make($request->password);
-
-        // Handle photo upload
-        if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('teacher-photos', 'public');
-            $validated['photo'] = $path;
+        try {
+            $validated = $request->validate([
+                'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk',
+                'nama' => 'required|string|max:255',
+                'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+                'tanggal_lahir' => 'required|date',
+                'no_handphone' => 'required|numeric|digits_between:10,15',
+                'email' => 'required|email|max:255|unique:gurus,email',
+                'alamat' => 'required|string|max:500',
+                'jabatan' => 'required|string|max:100',
+                'kelas_pengajar_id' => 'required|exists:kelas,id',
+                'username' => 'required|string|max:255|unique:gurus,username',
+                'password' => 'required|string|min:6|confirmed',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            ], [
+                // Custom error messages
+                'nuptk.required' => 'NIP wajib diisi',
+                'nuptk.numeric' => 'NIP harus berupa angka',
+                'nuptk.digits_between' => 'NIP harus antara 9-15 digit',
+                'nama.required' => 'Nama wajib diisi',
+                'jenis_kelamin.required' => 'Jenis kelamin wajib diisi',
+                'tanggal_lahir.required' => 'Tanggal lahir wajib diisi',
+                'no_handphone.required' => 'Nomor handphone wajib diisi',
+                'email.required' => 'Email wajib diisi',
+                'email.email' => 'Format email tidak valid',
+                'alamat.required' => 'Alamat wajib diisi',
+                'jabatan.required' => 'Jabatan wajib diisi',
+                'kelas_pengajar_id.required' => 'Kelas mengajar wajib diisi',
+                'username.required' => 'Username wajib diisi',
+                'password.required' => 'Password wajib diisi',
+                'password.min' => 'Password minimal 6 karakter',
+                'password.confirmed' => 'Konfirmasi password tidak cocok',
+            ]);
+    
+            // Handle password
+            $validated['password'] = Hash::make($request->password);
+    
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                $path = $request->file('photo')->store('teacher-photos', 'public');
+                $validated['photo'] = $path;
+            }
+    
+            Guru::create($validated);
+    
+            return redirect()->route('teacher')
+                ->with('success', 'Data guru berhasil ditambahkan');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()
+                ->withErrors($e->validator)
+                ->withInput();
+        } catch (\Exception $e) {
+            Log::error('Error creating teacher: ' . $e->getMessage());
+            return back()
+                ->with('error', 'Terjadi kesalahan sistem')
+                ->withInput();
         }
-
-        Guru::create($validated);
-
-        return redirect()->route('teacher')->with('success', 'Data guru berhasil ditambahkan');
     }
 
     public function show($id)
@@ -82,43 +114,76 @@ class TeacherController extends Controller
 
     public function update(Request $request, $id)
     {
-        $teacher = Guru::findOrFail($id);
+        try {
+            $teacher = Guru::findOrFail($id);
 
-        $validated = $request->validate([
-            'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,' . ($teacher->id ?? 'NULL'),
-            'nama' => 'required|string|max:255',
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
-            'tanggal_lahir' => 'required|date',
-            'no_handphone' => 'required|numeric|digits_between:10,15',
-            'email' => 'required|email|max:255|unique:gurus,email,' . ($teacher->id ?? 'NULL'),
-            'alamat' => 'required|string|max:500',
-            'jabatan' => 'required|string|max:100',
-            'kelas_pengajar_id' => 'required|exists:kelas,id',
-            'username' => 'required|string|max:255|unique:gurus,username,' . ($teacher->id ?? 'NULL'),
-            'password' => 'nullable|string|min:6|confirmed',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        // Handle password update
-        if ($request->filled('password')) {
-            $validated['password'] = Hash::make($request->password);
-        } else {
-            unset($validated['password']);
-        }
-
-        // Handle photo upload
-        if ($request->hasFile('photo')) {
-            // Delete old photo
-            if ($teacher->photo) {
-                Storage::disk('public')->delete($teacher->photo);
+            $validated = $request->validate([
+                'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,'.$id,
+                'nama' => 'required|string|max:255',
+                'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+                'tanggal_lahir' => 'required|date',
+                'no_handphone' => 'required|numeric|digits_between:10,15',
+                'email' => 'required|email|max:255|unique:gurus,email,'.$id,
+                'alamat' => 'required|string|max:500',
+                'jabatan' => 'required|string|max:100',
+                'kelas_pengajar_id' => 'required|exists:kelas,id',
+                'username' => 'required|string|max:255|unique:gurus,username,'.$id,
+                'password' => 'nullable|string|min:6|confirmed',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            ], [
+                // Custom error messages
+                'nuptk.required' => 'NIP wajib diisi',
+                'nuptk.numeric' => 'NIP harus berupa angka',
+                'nuptk.digits_between' => 'NIP harus antara 9-15 digit',
+                'nama.required' => 'Nama wajib diisi',
+                'jenis_kelamin.required' => 'Jenis kelamin wajib diisi',
+                'tanggal_lahir.required' => 'Tanggal lahir wajib diisi',
+                'no_handphone.required' => 'Nomor handphone wajib diisi',
+                'email.required' => 'Email wajib diisi',
+                'email.email' => 'Format email tidak valid',
+                'alamat.required' => 'Alamat wajib diisi',
+                'jabatan.required' => 'Jabatan wajib diisi',
+                'kelas_pengajar_id.required' => 'Kelas mengajar wajib diisi',
+                'username.required' => 'Username wajib diisi',
+                'password.required' => 'Password wajib diisi',
+                'password.min' => 'Password minimal 6 karakter',
+                'password.confirmed' => 'Konfirmasi password tidak cocok',
+            ]);
+    
+            // Handle password
+            if ($request->filled('password')) {
+                $validated['password'] = Hash::make($request->password);
+            } else {
+                unset($validated['password']);
             }
-            $path = $request->file('photo')->store('teacher-photos', 'public');
-            $validated['photo'] = $path;
+        
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                // Delete old photo
+                if ($teacher->photo) {
+                    Storage::disk('public')->delete($teacher->photo);
+                }
+                $path = $request->file('photo')->store('teacher-photos', 'public');
+                $validated['photo'] = $path;
+            }
+    
+    
+            $teacher->update($validated);
+
+    
+            return redirect()->route('teacher')->with('success', 'Data guru berhasil diperbarui');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()
+                ->withErrors($e->validator)
+                ->withInput()
+                ->with('error', 'Mohon periksa kembali input Anda');
+        } catch (\Exception $e) {
+            Log::error('Error updating teacher: ' . $e->getMessage());
+            return back()
+                ->with('error', 'Terjadi kesalahan sistem')
+                ->withInput();
         }
-
-        $teacher->update($validated);
-
-        return redirect()->route('teacher')->with('success', 'Data guru berhasil diperbarui');
     }
 
     public function destroy($id)
