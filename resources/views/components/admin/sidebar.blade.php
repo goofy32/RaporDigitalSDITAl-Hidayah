@@ -60,7 +60,7 @@
                 </a>
             </li>
             <li>
-                <a href="{{ route('achievement') }}"
+                <a href="{{ route('achievement.index') }}"
                     class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group 
                     {{ Request::routeIs('achievement') ? 'bg-green-100 shadow-md' : '' }}">
                     <img src="{{ asset('images/icons/achievement-icon.png') }}" alt="Achievement Icon" class="w-5 h-5">

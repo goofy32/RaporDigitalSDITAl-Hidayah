@@ -1,52 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('layouts.pengajar.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    <title>Dashboard</title>
-</head>
+@section('title', 'Dashboard Pengajar')
 
-<body>
+@section('content')
+<div class="p-4">
+    <!-- Statistik Utama -->
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-3 mt-14">
+        <!-- Box KELAS -->
+        <div class="p-4 bg-white rounded-lg shadow-md border">
+            <p class="text-sm font-semibold text-gray-600">KELAS</p>
+            <p class="text-xl font-bold text-green-600">4 Kelas</p>
+        </div>
+        <!-- Box SISWA -->
+        <div class="p-4 bg-white rounded-lg shadow-md border">
+            <p class="text-sm font-semibold text-gray-600">SISWA</p>
+            <p class="text-xl font-bold text-green-600">80 Siswa</p>
+        </div>
+        <!-- Box MATA PELAJARAN -->
+        <div class="p-4 bg-white rounded-lg shadow-md border">
+            <p class="text-sm font-semibold text-gray-600">MATA PELAJARAN</p>
+            <p class="text-xl font-bold text-green-600">5 Mata Pelajaran</p>
+        </div>
+    </div>
 
-    <x-admin.topbar></x-admin.topbar>
-    <x-pengajar.sidebar></x-pengajar.sidebar>
+    <!-- Dropdown Pilih Kelas -->
+    <div class="mt-8">
+        <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
+        <select id="kelas" name="kelas" class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
+            <option value="">Pilih kelas...</option>
+            <option value="1">Kelas 1</option>
+            <option value="2">Kelas 2</option>
+            <option value="3">Kelas 3</option>
+        </select>
+    </div>
 
-    <div class="p-4 sm:ml-64">
-        <div class="p-4 grid grid-cols-3 gap-4 mt-14">
-            <!-- Box TAHUN AJARAN -->
-            <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">
-                <p class="text-sm font-semibold text-gray-600">TAHUN AJARAN</p>
-                <p class="text-lg font-bold text-green-600">{{ $schoolProfile->tahun_pelajaran ?? '-' }}</p>
-            </div>
-            <!-- Box GURU -->
-            <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">
-                <p class="text-sm font-semibold text-gray-600">GURU</p>
-                <p class="text-lg font-bold text-green-600">15 Guru</p>
-            </div>
-            <!-- Box SISWA -->
-            <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">
-                <p class="text-sm font-semibold text-gray-600">SISWA</p>
-                <p class="text-lg font-bold text-green-600">240 Siswa</p>
-            </div>
-            <!-- Box MATA PELAJARAN -->
-            <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">
-                <p class="text-sm font-semibold text-gray-600">MATA PELAJARAN</p>
-                <p class="text-lg font-bold text-green-600">10 Mata Pelajaran</p>
-            </div>
-            <!-- Box KELAS -->
-            <div class="flex flex-col justify-center h-24 rounded-lg shadow bg-white border border-gray-200 p-4">
-                <p class="text-sm font-semibold text-gray-600">KELAS</p>
-                <p class="text-lg font-bold text-green-600">12 Kelas</p>
+    <!-- Progres Input Nilai -->
+    <div class="mt-8">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Progres Input Nilai</h3>
+        <div class="flex items-center justify-center">
+            <div class="relative">
+                <div class="w-32 h-32 rounded-full bg-green-100 flex items-center justify-center">
+                    <p class="text-2xl font-bold text-green-600">75%</p>
+                </div>
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
-
-
-</body>
-
-</html>
+</div>
+@endsection

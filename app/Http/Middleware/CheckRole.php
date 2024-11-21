@@ -35,4 +35,3 @@ class CheckRole
         return redirect('login')->with('error', 'Unauthorized access');
     }
 }
-

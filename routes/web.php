@@ -7,10 +7,28 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\AchievementController;
+use Illuminate\Support\Facades\Auth; // Tambahkan baris ini
+
+
+Route::get('/', function () {
+    if (Auth::guard('web')->check()) {
+        return redirect()->route('admin.dashboard');
+    } elseif (Auth::guard('guru')->check()) {
+        $guru = Auth::guard('guru')->user();
+        if ($guru->jabatan === 'wali_kelas') {
+            return redirect()->route('wali_kelas.dashboard');
+        } else {
+            return redirect()->route('pengajar.dashboard');
+        }
+    }
+    
+    return redirect()->route('login');
+});
 
 Route::get('login', function () {
     return view('login');
-})->name('login');
+})->name('login')->middleware('guest');
 
 Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 
@@ -65,9 +83,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         return view('admin.subject');
     })->name('subject');
     
-    Route::get('prestasi', function () {
-        return view('admin.achievement');
-    })->name('achievement');
+    Route::resource('achievement', AchievementController::class)->names([
+        'index' => 'achievement.index',
+        'create' => 'achievement.create',
+        'store' => 'achievement.store',
+        'edit' => 'achievement.edit',
+        'update' => 'achievement.update',
+        'destroy' => 'achievement.destroy',
+    ]);
     
     Route::get('ekstrakulikuler', function () {
         return view('admin.ekstrakulikuler');
