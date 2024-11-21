@@ -100,27 +100,27 @@
 
     <!-- JavaScript for dynamic Lingkup Materi -->
     <script>
-    function addLingkupMateri() {
-        const container = document.getElementById('lingkupMateriContainer');
-        const div = document.createElement('div');
-        div.className = 'flex items-center mb-2';
+        function addLingkupMateri() {
+            const container = document.getElementById('lingkupMateriContainer');
+            const div = document.createElement('div');
+            div.className = 'flex items-center mb-2';
+            
+            div.innerHTML = `
+                <input type="text" name="lingkup_materi[]" required
+                    class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            `;
+            
+            container.appendChild(div);
+        }
         
-        div.innerHTML = `
-            <input type="text" name="lingkup_materi[]" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-            <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-            </button>
-        `;
-        
-        container.appendChild(div);
-    }
-
-    function removeLingkupMateri(button) {
-        button.parentElement.remove();
-    }
+        function removeLingkupMateri(button) {
+            button.parentElement.remove();
+        }
     </script>
 </body>
 </html>

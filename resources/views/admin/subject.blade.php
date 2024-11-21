@@ -42,33 +42,38 @@
                         <td class="px-6 py-4">Semester {{ $subject->semester }}</td>
                         <td class="px-6 py-4">{{ $subject->guru->nama }}</td>
                         <td class="px-6 py-4">
-                            @if(is_array($subject->lingkup_materi))
+                            @if($subject->lingkupMateris->isNotEmpty())
                                 <ul class="list-disc list-inside">
-                                    @foreach($subject->lingkup_materi as $materi)
-                                        <li>{{ $materi }}</li>
+                                    @foreach($subject->lingkupMateris as $lm)
+                                        <li>{{ $lm->judul_lingkup_materi }}</li>
                                     @endforeach
                                 </ul>
+                            @else
+                                Tidak ada Lingkup Materi
                             @endif
                         </td>
                         <td class="px-6 py-4 text-center flex justify-around">
-                            <a href="{{ route('subject.show', $subject->id) }}" class="text-blue-600 hover:underline">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
+                            <!-- Lihat TP -->
+                            <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
+                                <!-- Ikon Lihat TP -->
+                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+
                             </a>
+                        
+                            <!-- Edit Data Mata Pelajaran -->
                             <a href="{{ route('subject.edit', $subject->id) }}" class="text-green-600 hover:underline">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
+                                <!-- Ikon Edit -->
+                                <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+
                             </a>
+                        
+                            <!-- Hapus Mata Pelajaran dan Lingkup Materi terkait -->
                             <form action="{{ route('subject.destroy', $subject->id) }}" method="POST" class="inline">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
+                                    <!-- Ikon Hapus -->
+                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
                                 </button>
                             </form>
                         </td>

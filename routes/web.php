@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\AchievementController;
+use App\Http\Controllers\TujuanPembelajaranController;
 use Illuminate\Support\Facades\Auth; // Tambahkan baris ini
 
 
@@ -91,6 +92,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         'update' => 'achievement.update',
         'destroy' => 'achievement.destroy',
     ]);
+
+    Route::get('tujuan-pembelajaran/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'create'])
+    ->name('tujuan_pembelajaran.create');
+    Route::post('tujuan-pembelajaran/store', [TujuanPembelajaranController::class, 'store'])->name('tujuan_pembelajaran.store');
+    Route::get('tujuan-pembelajaran/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])
+    ->name('tujuan_pembelajaran.view');
+    
     
     Route::get('ekstrakulikuler', function () {
         return view('admin.ekstrakulikuler');

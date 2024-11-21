@@ -4,32 +4,44 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MataPelajaran extends Model
 {
     use HasFactory;
-    
-    protected $table = 'mata_pelajarans'; // Menentukan nama tabel
+
+    protected $table = 'mata_pelajarans';
 
     protected $fillable = [
-        'nama_pelajaran', // Sesuaikan dengan kolom di database
+        'nama_pelajaran',
         'kelas_id',
-        'semester',
         'guru_id',
-        'lingkup_materi'
-    ];
-
-    protected $casts = [
-        'lingkup_materi' => 'json'
+        'semester',
     ];
 
     public function kelas()
     {
         return $this->belongsTo(Kelas::class, 'kelas_id');
     }
-    
+
     public function guru()
     {
         return $this->belongsTo(Guru::class, 'guru_id');
     }
+
+    public function lingkupMateris()
+    {
+        return $this->hasMany(LingkupMateri::class, 'mata_pelajaran_id');
+    }
+
+    protected static function booted()
+    {
+        static::deleting(function ($mataPelajaran) {
+            // Hapus Lingkup Materi terkait
+            $mataPelajaran->lingkupMateris()->each(function ($lingkupMateri) {
+                $lingkupMateri->delete();
+            });
+        });
+    }
+
 }
