@@ -15,6 +15,7 @@
     },
     "dependencies": {
         "@hotwired/turbo": "^8.0.12",
+        "alpinejs": "^3.14.3",
         "flowbite": "^2.5.1",
         "turbolinks": "^5.2.0"
     }

@@ -4,7 +4,7 @@
 
 @section('content')
 
-<div class="p-4 mt-16 bg-white shadow-md rounded-lg">
+<div class="p-4 bg-white mt-14 shadow-md rounded-lg">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">Data Pembelajaran</h2>
@@ -66,12 +66,6 @@
         </table>
     </div>
 </div>
-
-@if(app()->environment('local'))
-    <div class="p-4 bg-gray-100 mb-4">
-        <pre>{{ print_r($kelasData->toArray(), true) }}</pre>
-    </div>
-@endif
 
 <script>
 function searchTable() {

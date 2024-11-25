@@ -10,6 +10,7 @@ use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\TujuanPembelajaranController;
+use App\Http\Controllers\EkstrakurikulerController;
 use Illuminate\Support\Facades\Auth; // Tambahkan baris ini
 
 
@@ -103,10 +104,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     ->name('tujuan_pembelajaran.view');
     
     
-    Route::get('ekstrakulikuler', function () {
-        return view('admin.ekstrakulikuler');
-    })->name('ekstra');
-    
+    Route::resource('ekstrakulikuler', EkstrakurikulerController::class)->names([
+        'index' => 'ekstra.index',
+        'create' => 'ekstra.create',
+        'store' => 'ekstra.store',
+        'edit' => 'ekstra.edit',
+        'update' => 'ekstra.update',
+        'destroy' => 'ekstra.destroy',
+    ]);
     
     Route::get('format-rapot/{type?}', function ($type = 'UTS') {
         return view('admin.report_format', ['type' => $type]);
