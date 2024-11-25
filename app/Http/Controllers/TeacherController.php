@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 
 class TeacherController extends Controller
@@ -184,6 +185,13 @@ class TeacherController extends Controller
                 ->with('error', 'Terjadi kesalahan sistem')
                 ->withInput();
         }
+    }
+
+    public function showProfile()
+    {
+        // Karena kita menggunakan auth guard 'guru',
+        // data guru yang login sudah tersedia di view melalui Auth::guard('guru')->user()
+        return view('pengajar.profile_show');
     }
 
     public function destroy($id)

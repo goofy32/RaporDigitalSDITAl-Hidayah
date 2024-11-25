@@ -11,6 +11,8 @@
 <body>
     <x-admin.topbar data-turbolinks-permanent></x-admin.topbar>
     <x-admin.sidebar></x-admin.sidebar>
+    <x-session-timeout-alert></x-session-timeout-alert>
+
 
     <div class="p-4 sm:ml-64">
         @if(session('success'))

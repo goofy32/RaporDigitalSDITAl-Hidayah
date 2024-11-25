@@ -40,7 +40,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         return view('admin.dashboard');
     })->name('admin.dashboard');
     
+    
     // Existing admin routes...
+    
     Route::get('profile', [SchoolProfileController::class, 'show'])->name('profile');
     Route::get('profile/edit', [SchoolProfileController::class, 'edit'])->name('profile.edit');
     Route::post('profile', [SchoolProfileController::class, 'store'])->name('profile.submit');
@@ -117,12 +119,13 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
         return view('pengajar.dashboard');
     })->name('pengajar.dashboard');
     
+    // Profile route - hanya untuk menampilkan
+    Route::get('/profile', [TeacherController::class, 'showProfile'])->name('pengajar.profile');
+    
     Route::get('/score', [ScoreController::class, 'index'])->name('pengajar.score');
     Route::get('/score/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');
     Route::post('/score/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');
-    // Tambahkan route pengajar lainnya
 });
-
 // Wali Kelas routes
 Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->group(function () {
     Route::get('/dashboard', function () {
