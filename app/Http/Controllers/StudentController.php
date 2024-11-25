@@ -46,7 +46,7 @@ class StudentController extends Controller
             'nis' => 'required|unique:siswas',
             'nisn' => 'required|unique:siswas',
             'nama' => 'required',
-            'tanggal_lahir' => 'required|date', // Tambahkan validasi tanggal lahir
+            'tanggal_lahir' => 'required|date',
             'jenis_kelamin' => 'required',
             'agama' => 'required',
             'alamat' => 'required',
@@ -57,14 +57,28 @@ class StudentController extends Controller
             'pekerjaan_ayah' => 'nullable|string',
             'pekerjaan_ibu' => 'nullable|string',
             'alamat_orangtua' => 'nullable|string',
+            'wali_siswa' => 'nullable|string',
+            'pekerjaan_wali' => 'nullable|string',
         ]);
-
+    
+        // Set default empty string untuk field nullable
+        $validated['alamat_orangtua'] = $validated['alamat_orangtua'] ?? '';
+        $validated['pekerjaan_ayah'] = $validated['pekerjaan_ayah'] ?? '';
+        $validated['pekerjaan_ibu'] = $validated['pekerjaan_ibu'] ?? '';
+        $validated['wali_siswa'] = $validated['wali_siswa'] ?? '';
+        $validated['pekerjaan_wali'] = $validated['pekerjaan_wali'] ?? '';
+    
         if ($request->hasFile('photo')) {
             $validated['photo'] = $request->file('photo')->store('photos', 'public');
         }
-
-        Siswa::create($validated);
-        return redirect()->route('student')->with('success', 'Data siswa berhasil ditambahkan!');
+    
+        try {
+            Siswa::create($validated);
+            return redirect()->route('student')->with('success', 'Data siswa berhasil ditambahkan!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                        ->withInput();
+        }
     }
 
     public function show($id)

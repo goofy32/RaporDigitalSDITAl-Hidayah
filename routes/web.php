@@ -117,8 +117,6 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
         return view('pengajar.dashboard');
     })->name('pengajar.dashboard');
     
-    Route::delete('/pengajar/subject/{id}', [ScoreController::class, 'deleteSubject'])
-    ->name('pengajar.delete_subject');
     Route::get('/score', [ScoreController::class, 'index'])->name('pengajar.score');
     Route::get('/score/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');
     Route::post('/score/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');

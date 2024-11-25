@@ -24,6 +24,14 @@ class Kelas extends Model
 
     public function mataPelajarans()
     {
-        return $this->hasMany(MataPelajaran::class);
+        return $this->hasMany(MataPelajaran::class, 'kelas_id');
+    }
+    
+    // Tambahkan method untuk debugging
+    public function toArray()
+    {
+        $array = parent::toArray();
+        $array['mata_pelajarans'] = $this->mataPelajarans;
+        return $array;
     }
 }

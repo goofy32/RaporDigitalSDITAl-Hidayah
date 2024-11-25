@@ -6,16 +6,32 @@
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700">{{ $subject['class'] }} - {{ $subject['name'] }}</h2>
+        <h2 class="text-2xl font-bold text-green-700 flex items-center gap-2">
+            <span>{{ $subject['class'] }} - </span>      
+            <!-- Dropdown Mata Pelajaran -->
+            <span class="flex items-center gap-4">
+                <select class="border border-gray-300 rounded-lg px-4 py-2" 
+                        onchange="window.location.href=this.value">
+                    @foreach($mataPelajaranList as $mapel)
+                        <option value="{{ route('pengajar.input_score', $mapel->id) }}" 
+                                {{ $mapel->id == $mataPelajaran->id ? 'selected' : '' }}>
+                            {{ $mapel->nama_pelajaran }}
+                        </option>
+                    @endforeach
+                </select>
+            </span>
+        </h2>
+        
+
+
         <div class="flex gap-4">
-            <input 
-                type="text" 
-                id="search-bar" 
-                placeholder="Cari nama siswa..." 
-                class="border border-gray-300 rounded-lg px-4 py-2 focus:ring focus:ring-green-200 focus:outline-none"
-                onkeyup="filterTable()"
-            >
-            <button class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800" onclick="document.getElementById('saveForm').submit()">
+            <input type="text" 
+                   id="search-bar" 
+                   placeholder="Cari nama siswa..." 
+                   class="border border-gray-300 rounded-lg px-4 py-2 focus:ring focus:ring-green-200 focus:outline-none"
+                   onkeyup="filterTable()">
+            <button class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800" 
+                    onclick="document.getElementById('saveForm').submit()">
                 Simpan
             </button>
         </div>
@@ -24,87 +40,99 @@
     <!-- Tabel Input Nilai -->
     <form id="saveForm" method="POST" action="{{ route('pengajar.save_scores', $subject['id']) }}">
         @csrf
-        <div class="overflow-x-auto p-4">
+        <div class="overflow-x-auto">
             <table id="students-table" class="min-w-full text-sm text-left text-gray-500 border-collapse">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                        <th rowspan="2" class="px-6 py-3">No</th>
-                        <th rowspan="2" class="px-6 py-3">Nama Siswa</th>
-                        <th colspan="6" class="px-6 py-3 text-center">Sumatif Tujuan Pembelajaran</th>
-                        <th colspan="3" class="px-6 py-3 text-center">Sumatif Lingkup Materi</th>
-                        <th rowspan="2" class="px-6 py-3">NA Sumatif TP</th>
-                        <th rowspan="2" class="px-6 py-3">NA Sumatif LM</th>
-                        <th rowspan="2" class="px-6 py-3">NA Sumatif Akhir Semester</th>
-                        <th rowspan="2" class="px-6 py-3">Aksi</th>
+                        <th rowspan="2" class="px-4 py-2 border">No</th>
+                        <th rowspan="2" class="px-4 py-2 border">Nama Siswa</th>
+                        <th colspan="{{ $mataPelajaran->lingkupMateris->sum(function($lm) { 
+                            return $lm->tujuanPembelajarans->count(); 
+                        }) }}" class="px-4 py-2 border text-center">
+                            Sumatif Tujuan Pembelajaran
+                        </th>
+                        <th colspan="{{ $mataPelajaran->lingkupMateris->count() }}" 
+                            class="px-4 py-2 border text-center">Sumatif Lingkup Materi</th>
+                        <th rowspan="2" class="px-4 py-2 border">NA Sumatif TP</th>
+                        <th rowspan="2" class="px-4 py-2 border">NA Sumatif LM</th>
+                        <th rowspan="2" class="px-4 py-2 border">NA Sumatif Akhir Semester</th>
+                        <th rowspan="2" class="px-4 py-2 border">Aksi</th>
                     </tr>
                     <tr>
-                        @for ($i = 1; $i <= 6; $i++)
-                        <th class="px-6 py-3 text-sm lowercase font-normal">tp {{ $i }}</th>
-                        @endfor
-                        @for ($j = 1; $j <= 3; $j++)
-                        <th class="px-6 py-3 text-sm lowercase font-normal">materi {{ $j }}</th>
-                        @endfor
+                        @foreach($mataPelajaran->lingkupMateris as $lm)
+                            @foreach($lm->tujuanPembelajarans as $tp)
+                                <th class="px-4 py-2 border">TP {{ $tp->kode_tp }}</th>
+                            @endforeach
+                        @endforeach
+                        @foreach($mataPelajaran->lingkupMateris as $lm)
+                            <th class="px-4 py-2 border">{{ $lm->judul_lingkup_materi }}</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($students as $key => $student)
-                    <tr class="bg-white border-b hover:bg-gray-50">
-                        <td class="px-6 py-4">{{ $key + 1 }}</td>
-                        <td class="px-6 py-4 student-name">{{ $student['name'] }}</td>
-                        @for ($i = 1; $i <= 6; $i++)
-                        <td class="px-6 py-4">
-                            <input 
-                                type="number" 
-                                name="tp{{ $i }}[{{ $student['id'] }}]" 
-                                class="w-full border border-gray-300 rounded-lg px-2 py-1"
-                                value="{{ old('tp' . $i . '.' . $student['id'], '') }}"
-                            >
-                        </td>
-                        @endfor
-                        @for ($j = 1; $j <= 3; $j++)
-                        <td class="px-6 py-4">
-                            <input 
-                                type="number" 
-                                name="materi{{ $j }}[{{ $student['id'] }}]" 
-                                class="w-full border border-gray-300 rounded-lg px-2 py-1"
-                                value="{{ old('materi' . $j . '.' . $student['id'], '') }}"
-                            >
-                        </td>
-                        @endfor
-                        <td class="px-6 py-4">
-                            <input 
-                                type="number" 
-                                name="na_sumatif_tp[{{ $student['id'] }}]" 
-                                class="w-full border border-gray-300 rounded-lg px-2 py-1"
-                                value="{{ old('na_sumatif_tp.' . $student['id'], '') }}"
-                            >
-                        </td>
-                        <td class="px-6 py-4">
-                            <input 
-                                type="number" 
-                                name="na_sumatif_lm[{{ $student['id'] }}]" 
-                                class="w-full border border-gray-300 rounded-lg px-2 py-1"
-                                value="{{ old('na_sumatif_lm.' . $student['id'], '') }}"
-                            >
-                        </td>
-                        <td class="px-6 py-4">
-                            <input 
-                                type="number" 
-                                name="na_sumatif_semester[{{ $student['id'] }}]" 
-                                class="w-full border border-gray-300 rounded-lg px-2 py-1"
-                                value="{{ old('na_sumatif_semester.' . $student['id'], '') }}"
-                            >
-                        </td>
-                        <td class="px-6 py-4">
-                            <button 
-                                type="button" 
-                                class="text-red-600 hover:text-red-800"
-                                onclick="deleteRow(this)"
-                            >
-                                Hapus
-                            </button>
-                        </td>
-                    </tr>
+                    @foreach($students as $index => $student)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 border">{{ $index + 1 }}</td>
+                            <td class="px-4 py-2 border student-name">{{ $student['name'] }}</td>
+                            @foreach($mataPelajaran->lingkupMateris as $lm)
+                                @foreach($lm->tujuanPembelajarans as $tp)
+                                    <td class="px-4 py-2 border">
+                                        <input type="number" 
+                                               name="scores[{{ $student['id'] }}][tp][{{ $lm->id }}][{{ $tp->id }}]"
+                                               class="w-20 border border-gray-300 rounded px-2 py-1 tp-score"
+                                               data-lm="{{ $lm->id }}"
+                                               value="{{ $existingScores[$student['id']][$lm->id][$tp->id]['nilai_tp'] ?? '' }}"
+                                               min="0"
+                                               max="100">
+                                    </td>
+                                @endforeach
+                            @endforeach
+                            @foreach($mataPelajaran->lingkupMateris as $lm)
+                                <td class="px-4 py-2 border">
+                                    <input type="number" 
+                                           name="scores[{{ $student['id'] }}][lm][{{ $lm->id }}]"
+                                           class="w-20 border border-gray-300 rounded px-2 py-1 lm-score"
+                                           value="{{ $existingScores[$student['id']][$lm->id]['nilai_lm'] ?? '' }}"
+                                           min="0"
+                                           max="100">
+                                </td>
+                            @endforeach
+                            <td class="px-4 py-2 border">
+                                <input type="number" 
+                                       name="scores[{{ $student['id'] }}][na_tp]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 na-tp"
+                                       value="{{ $existingScores[$student['id']]['na_tp'] ?? '' }}"
+                                       min="0"
+                                       max="100"
+                                       readonly>
+                            </td>
+                            <td class="px-4 py-2 border">
+                                <input type="number" 
+                                       name="scores[{{ $student['id'] }}][na_lm]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 na-lm"
+                                       value="{{ $existingScores[$student['id']]['na_lm'] ?? '' }}"
+                                       min="0"
+                                       max="100"
+                                       readonly>
+                            </td>
+                            <td class="px-4 py-2 border">
+                                <input type="number" 
+                                       name="scores[{{ $student['id'] }}][nilai_akhir]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir"
+                                       value="{{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '' }}"
+                                       min="0"
+                                       max="100"
+                                       readonly>
+                            </td>
+                            <td class="px-4 py-2 border">
+                                <button type="button" 
+                                        class="text-red-600 hover:text-red-800"
+                                        onclick="deleteRow(this)">
+                                        <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
@@ -113,27 +141,106 @@
 </div>
 
 <script>
-    function deleteRow(button) {
-        const row = button.closest('tr');
-        row.remove();
+    function updateEntriesShown(value) {
+        // Implementation for showing specified number of entries
     }
-
+    
     function filterTable() {
         const searchInput = document.getElementById("search-bar").value.toLowerCase();
         const table = document.getElementById("students-table");
         const rows = table.getElementsByTagName("tr");
-
-        for (let i = 1; i < rows.length; i++) { // Start from 1 to skip the header
+    
+        for (let i = 2; i < rows.length; i++) {
             const nameCell = rows[i].getElementsByClassName("student-name")[0];
             if (nameCell) {
                 const name = nameCell.textContent || nameCell.innerText;
-                if (name.toLowerCase().indexOf(searchInput) > -1) {
-                    rows[i].style.display = "";
-                } else {
-                    rows[i].style.display = "none";
-                }
+                rows[i].style.display = name.toLowerCase().includes(searchInput) ? "" : "none";
             }
         }
     }
-</script>
+    
+    document.addEventListener('input', function(e) {
+    if (e.target.matches('.tp-score, .lm-score')) {
+        calculateAverages(e.target.closest('tr'));
+    }
+});
+
+function calculateAverages(row) {
+    // Hitung NA TP
+    let tpInputs = row.querySelectorAll('.tp-score');
+    let tpSum = 0;
+    let tpCount = 0;
+    let tpByLM = {};
+
+    // Mengelompokkan nilai TP berdasarkan LM
+    tpInputs.forEach(input => {
+        let value = parseFloat(input.value) || 0;
+        let lmId = input.dataset.lm;
+        
+        if (!tpByLM[lmId]) {
+            tpByLM[lmId] = {
+                sum: 0,
+                count: 0
+            };
+        }
+        
+        if (value > 0) {
+            tpByLM[lmId].sum += value;
+            tpByLM[lmId].count++;
+            tpSum += value;
+            tpCount++;
+        }
+    });
+
+    // Hitung rata-rata TP untuk setiap LM
+    let tpAveragesByLM = {};
+    for (let lmId in tpByLM) {
+        if (tpByLM[lmId].count > 0) {
+            tpAveragesByLM[lmId] = tpByLM[lmId].sum / tpByLM[lmId].count;
+        }
+    }
+
+    // Hitung NA TP keseluruhan
+    let naTP = tpCount > 0 ? (tpSum / tpCount) : 0;
+    row.querySelector('.na-tp').value = naTP.toFixed(2);
+
+    // Hitung NA LM
+    let lmInputs = row.querySelectorAll('.lm-score');
+    let lmSum = 0;
+    let lmCount = 0;
+
+    lmInputs.forEach(input => {
+        let value = parseFloat(input.value) || 0;
+        if (value > 0) {
+            lmSum += value;
+            lmCount++;
+        }
+    });
+
+    let naLM = lmCount > 0 ? (lmSum / lmCount) : 0;
+    row.querySelector('.na-lm').value = naLM.toFixed(2);
+
+    // Hitung Nilai Akhir (60% NA TP + 40% NA LM)
+    if (naTP > 0 || naLM > 0) {
+        let nilaiAkhir = (naTP * 0.6) + (naLM * 0.4);
+        row.querySelector('.nilai-akhir').value = nilaiAkhir.toFixed(2);
+    }
+}
+
+function deleteRow(button) {
+    if (confirm('Apakah Anda yakin ingin menghapus nilai ini?')) {
+        const row = button.closest('tr');
+        row.remove();
+    }
+}
+
+// Inisialisasi kalkulasi untuk semua baris saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#students-table tbody tr').forEach(row => {
+        calculateAverages(row);
+    });
+});
+    </script>
 @endsection
+
+
