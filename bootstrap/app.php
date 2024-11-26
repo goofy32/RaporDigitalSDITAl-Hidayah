@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SessionTimeout;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,17 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Konfigurasi global middleware
         $middleware->web(append: [
-            // Tambahkan middleware web global
-            // Contoh:
-            // \App\Http\Middleware\YourCustomMiddleware::class,
+            SessionTimeout::class,
         ]);
 
+
         $middleware->alias([
-            // Definisikan alias middleware
             'auth' => \App\Http\Middleware\Authenticate::class,
             'auth.guru' => \App\Http\Middleware\AuthenticateGuru::class,
             'role' => \App\Http\Middleware\CheckRole::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'session.timeout' => SessionTimeout::class, // Optional: jika ingin digunakan sebagai alias
         ]);
 
         // Konfigurasi CSRF
