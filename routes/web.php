@@ -11,6 +11,7 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\TujuanPembelajaranController;
 use App\Http\Controllers\EkstrakurikulerController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth; // Tambahkan baris ini
 
 
@@ -126,6 +127,9 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
     
     // Profile route - hanya untuk menampilkan
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('pengajar.profile');
+    Route::get('profile/{id}', [UserController::class, 'show'])->name('profile.show');
+
+
     
     Route::get('/score', [ScoreController::class, 'index'])->name('pengajar.score');
     Route::get('/score/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');

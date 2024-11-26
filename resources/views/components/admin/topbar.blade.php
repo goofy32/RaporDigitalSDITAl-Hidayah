@@ -1,6 +1,9 @@
+
+
 <div class="fixed top-0 z-50 w-full bg-white border-b border-gray-200">
     <div class="px-3 py-3 lg:px-5 lg:pl-3">
         <div class="flex items-center justify-between">
+            <!-- Logo dan Toggle Sidebar -->
             <div class="flex items-center justify-start">
                 <button data-drawer-target="logo-sidebar" data-drawer-toggle="logo-sidebar" aria-controls="logo-sidebar" type="button" class="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200">
                     <span class="sr-only">Open sidebar</span>
@@ -19,23 +22,21 @@
                     </span>
                 </a>
             </div>
-            <div class="flex items-center">
-                <!-- Profile dropdown -->
-                <div class="relative ml-3">
-                    <button type="button" 
-                            class="relative flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800" 
-                            id="user-menu-button" 
-                            aria-expanded="false" 
-                            data-dropdown-toggle="user-dropdown" 
-                            data-dropdown-placement="bottom-end">
+
+            <!-- User Menu -->
+            <div class="flex items-center" x-data="{ open: false }">
+                <div class="relative">
+                    <button @click="open = !open" 
+                            @click.away="open = false"
+                            class="flex items-center text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300">
                         <span class="sr-only">Open user menu</span>
                         @if(Auth::guard('guru')->check() && Auth::guard('guru')->user()->photo)
-                            <img class="h-8 w-8 rounded-full" 
+                            <img class="w-8 h-8 rounded-full" 
                                  src="{{ asset('storage/' . Auth::guard('guru')->user()->photo) }}" 
-                                 alt="User photo">
+                                 alt="user photo">
                         @else
-                            <div class="relative h-8 w-8 overflow-hidden rounded-full bg-gray-100">
-                                <svg class="absolute h-10 w-10 text-gray-400 -left-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <div class="relative w-8 h-8 overflow-hidden bg-gray-100 rounded-full">
+                                <svg class="absolute w-10 h-10 text-gray-400 -left-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                     <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
                                 </svg>
                             </div>
@@ -43,12 +44,20 @@
                     </button>
 
                     <!-- Dropdown menu -->
-                    <div class="hidden absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" 
-                         id="user-dropdown" 
-                         role="menu" 
-                         aria-orientation="vertical" 
-                         aria-labelledby="user-menu-button" 
-                         tabindex="-1">
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                         role="menu"
+                         aria-orientation="vertical"
+                         aria-labelledby="user-menu-button"
+                         tabindex="-1"
+                         style="display: none;">
+                        <!-- User Info -->
                         <div class="px-4 py-3">
                             @if(Auth::guard('guru')->check())
                                 <p class="text-sm font-medium text-gray-900">{{ Auth::guard('guru')->user()->nama }}</p>
@@ -58,18 +67,13 @@
                                 <p class="text-sm text-gray-500 truncate">{{ Auth::user()->email }}</p>
                             @endif
                         </div>
-                        
+                        <!-- Menu Items -->
                         <div class="border-t border-gray-100">
-                            @if(Auth::guard('web')->check())
-                                <a href="{{ route('profile.show', Auth::guard('web')->user()->id) }}" 
-                                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
-                                   role="menuitem">Profile</a>
-                            @elseif(Auth::guard('guru')->check())
+                            @if(Auth::guard('guru')->check())
                                 <a href="{{ route('pengajar.profile') }}" 
                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
                                    role="menuitem">Profile</a>
                             @endif
-
                             <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100">
                                 @csrf
                                 <button type="submit" 
