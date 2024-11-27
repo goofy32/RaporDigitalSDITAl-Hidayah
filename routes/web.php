@@ -11,7 +11,9 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\TujuanPembelajaranController;
 use App\Http\Controllers\EkstrakurikulerController;
+use App\Http\Controllers\ReportFormatController;
 use App\Http\Controllers\UserController;
+use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth; // Tambahkan baris ini
 
 
@@ -113,10 +115,39 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         'update' => 'ekstra.update',
         'destroy' => 'ekstra.destroy',
     ]);
+
+    Route::get('template-preview/{format}', function (FormatRapor $format) {
+        $path = storage_path('app/public/' . $format->template_path);
+        
+        if (!file_exists($path)) {
+            abort(404);
+        }
+        
+        return response()->file($path, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'inline; filename="' . basename($format->template_path) . '"'
+        ]);
+    })->name('template.preview')->middleware(['auth', 'role:admin']);
+
+    Route::get('/preview-doc/{id}', function($id) {
+        $format = \App\Models\FormatRapor::findOrFail($id);
+        $path = storage_path('app/public/' . $format->template_path);
+        
+        return response()->file($path, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ]);
+    })->name('preview.doc')->middleware(['auth', 'role:admin']);
     
-    Route::get('format-rapot/{type?}', function ($type = 'UTS') {
-        return view('admin.report_format', ['type' => $type]);
-    })->name('report_format');
+    Route::prefix('format-rapor')->name('report_format.')->group(function () {
+        Route::get('/{type?}', [ReportFormatController::class, 'index'])->name('index');
+        Route::post('/upload', [ReportFormatController::class, 'upload'])->name('upload');
+        Route::post('/{format}/activate', [ReportFormatController::class, 'activate'])->name('activate');
+        Route::delete('/{format}', [ReportFormatController::class, 'destroy'])->name('destroy');
+        Route::post('/validate-placeholders', [ReportFormatController::class, 'validatePlaceholders'])
+             ->name('validate_placeholders');
+        Route::get('/preview/{format}', [ReportFormatController::class, 'preview'])->name('preview');
+
+    });
 });
 
 // Pengajar routes

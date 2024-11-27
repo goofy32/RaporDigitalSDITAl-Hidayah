@@ -5,6 +5,10 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 use App\Models\ProfilSekolah;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
+
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +34,11 @@ class AppServiceProvider extends ServiceProvider
          * if(config('app.env') === 'production') {
          * URL::forceScheme('https'); }
         */      
-        
+        if (!file_exists(public_path('storage'))) {
+            Artisan::call('storage:link');
+        }
+        if (!Storage::exists('public/previews')) {
+            Storage::makeDirectory('public/previews');
+        }
     }
 }

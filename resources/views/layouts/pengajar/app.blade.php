@@ -18,7 +18,8 @@
     
     <!-- Use data-turbo-permanent instead of data-turbolinks-permanent -->
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
-    <x-admin.sidebar data-turbo-permanent id="sidebar"></x-admin.sidebar>
+    <x-pengajar.sidebar data-turbo-permanent id="sidebar"></x-pengajar.sidebar>
+
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />
 
     <div class="p-4 sm:ml-64">

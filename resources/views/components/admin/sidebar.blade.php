@@ -96,10 +96,17 @@
             </li>
             <li>
                 <button type="button"
-                    data-collapse-toggle="dropdown-rapor"
-                    class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700
-                    {{ Request::routeIs('report_format') ? 'bg-green-100 shadow-md' : '' }}">
-                    <img src="{{ asset('images/icons/report-icon.png') }}" alt="Report Icon" class="w-5 h-5">
+                data-collapse-toggle="dropdown-rapor"
+                x-data="{ open: {{ Request::routeIs('report_format.*') ? 'true' : 'false' }} }"
+                x-init="$watch('open', value => {
+                    if (value) {
+                        document.getElementById('dropdown-rapor').classList.remove('hidden');
+                    } else {
+                        document.getElementById('dropdown-rapor').classList.add('hidden');
+                    }
+                })"
+                class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700
+                {{ Request::routeIs('report_format.*') ? 'bg-green-100 shadow-md' : '' }}">
                     <span class="ml-3">Format Rapot</span>
                     <svg class="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.25 4a.75.75 0 01-1.04 0l-4.25-4a.75.75 0 01-.02-1.06z" clip-rule="evenodd" />
@@ -107,13 +114,13 @@
                 </button>
                 <ul id="dropdown-rapor" class="hidden py-2 space-y-2">
                     <li>
-                        <a href="{{ route('report_format', ['type' => 'UTS']) }}"
+                        <a href="{{ route('report_format.index', ['type' => 'UTS']) }}"
                             class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700">
                             UTS
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('report_format', ['type' => 'UAS']) }}"
+                        <a href="{{ route('report_format.index', ['type' => 'UAS']) }}"
                             class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700">
                             UAS
                         </a>

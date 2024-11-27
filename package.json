@@ -17,6 +17,8 @@
         "@hotwired/turbo": "^8.0.12",
         "alpinejs": "^3.14.3",
         "flowbite": "^2.5.1",
+        "libreoffice-convert": "^1.6.0",
+        "mammoth": "^1.8.0",
         "turbolinks": "^5.2.0"
     }
 }

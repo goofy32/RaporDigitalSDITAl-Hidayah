@@ -16,4 +16,7 @@ export default defineConfig({
             '@': '/resources/js',
         },
     },
+    optimizeDeps: {
+        include: ['mammoth']
+    }
 });
