@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\AchievementController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\TujuanPembelajaranController;
 use App\Http\Controllers\EkstrakurikulerController;
@@ -99,7 +100,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         'update' => 'achievement.update',
         'destroy' => 'achievement.destroy',
     ]);
-
+    
     Route::get('tujuan-pembelajaran/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'create'])
     ->name('tujuan_pembelajaran.create');
     Route::post('tujuan-pembelajaran/store', [TujuanPembelajaranController::class, 'store'])->name('tujuan_pembelajaran.store');
@@ -160,11 +161,14 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('pengajar.profile');
     Route::get('profile/{id}', [UserController::class, 'show'])->name('profile.show');
 
-
+    Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('pengajar.dashboard');
+    Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgress'])->name('pengajar.kelas.progress');
     
     Route::get('/score', [ScoreController::class, 'index'])->name('pengajar.score');
     Route::get('/score/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');
     Route::post('/score/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');
+    Route::get('/score/{id}/preview', [ScoreController::class, 'previewScore'])->name('pengajar.preview_score');
+    Route::post('/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.nilai.delete');
 });
 // Wali Kelas routes
 Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->group(function () {

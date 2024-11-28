@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Guru extends Authenticatable
 {
@@ -42,10 +42,5 @@ class Guru extends Authenticatable
     public function kelasPengajar()
     {
         return $this->belongsTo(Kelas::class, 'kelas_pengajar_id');
-    }
-
-    public function mataPelajarans()
-    {
-        return $this->hasMany(MataPelajaran::class, 'guru_id');
     }
 }

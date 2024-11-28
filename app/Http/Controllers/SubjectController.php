@@ -13,7 +13,7 @@ class SubjectController extends Controller
 {
     public function index()
     {
-        $subjects = MataPelajaran::with(['kelas', 'guru'])->get(); 
+        $subjects = MataPelajaran::with(['kelas', 'guru'])->paginate(10);
         return view('admin.subject', compact('subjects'));
     }
 

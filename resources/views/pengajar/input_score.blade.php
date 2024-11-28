@@ -8,36 +8,32 @@
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700 flex items-center gap-2">
             <span>{{ $subject['class'] }} - </span>      
-            <!-- Dropdown Mata Pelajaran -->
-            <span class="flex items-center gap-4">
-                <select class="border border-gray-300 rounded-lg px-4 py-2" 
-                        onchange="window.location.href=this.value">
-                    @foreach($mataPelajaranList as $mapel)
-                        <option value="{{ route('pengajar.input_score', $mapel->id) }}" 
-                                {{ $mapel->id == $mataPelajaran->id ? 'selected' : '' }}>
-                            {{ $mapel->nama_pelajaran }}
-                        </option>
-                    @endforeach
-                </select>
-            </span>
+            <select class="border border-gray-300 rounded-lg px-4 py-2" 
+                    onchange="window.location.href=this.value">
+                @foreach($mataPelajaranList as $mapel)
+                    <option value="{{ route('pengajar.input_score', $mapel->id) }}" 
+                            {{ $mapel->id == $mataPelajaran->id ? 'selected' : '' }}>
+                        {{ $mapel->nama_pelajaran }}
+                    </option>
+                @endforeach
+            </select>
         </h2>
         
 
 
         <div class="flex gap-4">
-            <input type="text" 
-                   id="search-bar" 
-                   placeholder="Cari nama siswa..." 
-                   class="border border-gray-300 rounded-lg px-4 py-2 focus:ring focus:ring-green-200 focus:outline-none"
-                   onkeyup="filterTable()">
-            <button class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800" 
-                    onclick="document.getElementById('saveForm').submit()">
-                Simpan
+            <!-- Tombol Simpan -->
+            <button form="saveForm" 
+                    type="submit" 
+                    name="preview" 
+                    value="true"
+                    class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
+                Simpan & Preview
             </button>
         </div>
     </div>
 
-    <!-- Tabel Input Nilai -->
+
     <form id="saveForm" method="POST" action="{{ route('pengajar.save_scores', $subject['id']) }}">
         @csrf
         <div class="overflow-x-auto">
@@ -137,7 +133,11 @@
                 </tbody>
             </table>
         </div>
+            <!-- Table content sama seperti sebelumnya -->
+            <!-- Pastikan menggunakan $existingScores untuk menampilkan nilai yang sudah ada -->
+        </div>
     </form>
+
 </div>
 
 <script>
@@ -227,10 +227,33 @@ function calculateAverages(row) {
     }
 }
 
-function deleteRow(button) {
+function deleteNilai(siswaId, mapelId, tpId, lmId, button) {
     if (confirm('Apakah Anda yakin ingin menghapus nilai ini?')) {
-        const row = button.closest('tr');
-        row.remove();
+        fetch('/pengajar/nilai/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                siswa_id: siswaId,
+                mata_pelajaran_id: mapelId,
+                tp_id: tpId,
+                lm_id: lmId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const input = button.closest('tr').querySelector(`input[name="scores[${siswaId}][tp][${lmId}][${tpId}]"]`);
+                if (input) {
+                    input.value = '';
+                    calculateAverages(input.closest('tr'));
+                }
+            } else {
+                alert('Gagal menghapus nilai');
+            }
+        });
     }
 }
 
@@ -239,6 +262,25 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('#students-table tbody tr').forEach(row => {
         calculateAverages(row);
     });
+});
+
+
+let formChanged = false;
+
+document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('change', () => {
+        formChanged = true;
+    });
+});
+
+window.onbeforeunload = function() {
+    if (formChanged) {
+        return "Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?";
+    }
+};
+
+document.getElementById('saveForm').addEventListener('submit', () => {
+    formChanged = false;
 });
     </script>
 @endsection

@@ -52,11 +52,20 @@
                                 <td class="px-6 py-4">{{ $kelas->nama_kelas }}</td>
                                 <td class="px-6 py-4">{{ $mapel->nama_pelajaran }}</td>
                                 <td class="px-6 py-4">
-                                    <a href="{{ route('pengajar.input_score', $mapel->id) }}" 
-                                       class="text-green-600 hover:text-green-800 flex items-center gap-2">
-                                        <i class="fas fa-edit"></i>
-                                        <span>Input Nilai</span>
-                                    </a>
+                                    <div class="flex gap-2">
+                                        <a href="{{ route('pengajar.input_score', $mapel->id) }}" 
+                                           class="text-green-600 hover:text-green-800 flex items-center gap-2">
+                                            <i class="fas fa-edit"></i>
+                                            <span>Input Nilai</span>
+                                        </a>
+                                        @if($mapel->nilais()->exists())
+                                        <a href="{{ route('pengajar.preview_score', $mapel->id) }}" 
+                                           class="text-blue-600 hover:text-blue-800 flex items-center gap-2">
+                                            <i class="fas fa-eye"></i>
+                                            <span>Lihat Nilai</span>
+                                        </a>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

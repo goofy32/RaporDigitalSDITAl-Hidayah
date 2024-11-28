@@ -13,6 +13,7 @@ class EkstrakurikulerController extends Controller
         $ekstrakurikulers = Ekstrakurikuler::paginate(10);
         return view('admin.ekstrakulikuler', compact('ekstrakurikulers'));
     }
+    
 
     public function create()
     {

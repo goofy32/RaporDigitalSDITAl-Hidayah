@@ -19,6 +19,9 @@ class Nilai extends Model
         'nilai_tp',
         'nilai_lm',
         'nilai_akhir_semester',
+        'na_tp',
+        'na_lm',
+        'tp_number'
     ];
 
     // Menambahkan casting untuk memastikan tipe data
@@ -57,5 +60,15 @@ class Nilai extends Model
     public function lingkupMateri()
     {
         return $this->belongsTo(LingkupMateri::class, 'lingkup_materi_id');
+    }
+
+    public function scopeForMataKuliah($query, $mataPelajaranId)
+    {
+        return $query->where('mata_pelajaran_id', $mataPelajaranId);
+    }
+
+    public function scopeForSiswa($query, $siswaId)
+    {
+        return $query->where('siswa_id', $siswaId);
     }
 }
