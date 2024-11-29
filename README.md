@@ -51,7 +51,7 @@ Pastikan Anda sudah menginstal:
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/username/rapot-digital-sdit-alhidayah.git
+   git clone (https://github.com/username/rapot-digital-sdit-alhidayah.git)
    cd rapot-digital-sdit-alhidayah
 
 2. **Install Dependencies**
@@ -100,12 +100,12 @@ Migrasi Database Jalankan migrasi dan seeder untuk membuat tabel dan data awal:
     php artisan migrate --seed
     Build Frontend Jalankan perintah untuk membangun file frontend:
 
-     ```bash
+
     Copy code
     npm run dev
     Menjalankan Server Jalankan server lokal dengan perintah berikut:
 
-     ```bash
+
     Copy code
     php artisan serve
     Akses aplikasi di browser pada http://localhost:8000.
