@@ -195,6 +195,8 @@ Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->group
     })->name('wali_kelas.dashboard');
     
     // Tambahkan route wali kelas lainnya
+    Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])
+    ->name('wali_kelas.profile');
 });
 
 // Logout route

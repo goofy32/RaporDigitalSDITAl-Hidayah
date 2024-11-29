@@ -70,10 +70,16 @@
                         <!-- Menu Items -->
                         <div class="border-t border-gray-100">
                             @if(Auth::guard('guru')->check())
+                            @if(session('selected_role') === 'wali_kelas')
+                                <a href="{{ route('wali_kelas.profile') }}" 
+                                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
+                                   role="menuitem">Profile</a>
+                            @else
                                 <a href="{{ route('pengajar.profile') }}" 
                                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
                                    role="menuitem">Profile</a>
                             @endif
+                        @endif
                             <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100">
                                 @csrf
                                 <button type="submit" 

@@ -25,18 +25,16 @@ class LoginController extends Controller
         switch ($request->role) {
             case 'guru':
             case 'wali_kelas':
-                $guru = Guru::where('username', $request->username)
-                          ->whereIn('jabatan', ['guru', 'wali_kelas'])
-                          ->first();
+                $guru = Guru::where('username', $request->username)->first();
                 
                 if ($guru && Hash::check($request->password, $guru->password)) {
                     Auth::guard('guru')->login($guru);
+                    session(['selected_role' => $request->role]);
                     
-                    if ($guru->jabatan === 'wali_kelas') {
-                        return redirect()->route('wali_kelas.dashboard');
-                    }
-                    
-                    return redirect()->route('pengajar.dashboard');
+                    // Redirect berdasarkan pilihan role saat login
+                    return $request->role === 'wali_kelas' 
+                        ? redirect()->route('wali_kelas.dashboard')
+                        : redirect()->route('pengajar.dashboard');
                 }
                 break;
     
@@ -55,7 +53,6 @@ class LoginController extends Controller
             ->withInput($request->only('username', 'role'))
             ->withErrors(['login' => 'Username atau password salah']);
     }
-
     public function logout(Request $request)
     {
         // Logout from all guards

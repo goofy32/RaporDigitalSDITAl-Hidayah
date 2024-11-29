@@ -193,6 +193,10 @@ class TeacherController extends Controller
         // data guru yang login sudah tersedia di view melalui Auth::guard('guru')->user()
         return view('pengajar.profile_show');
     }
+    public function showWaliKelasProfile()
+    {
+        return view('wali_kelas.profile_show');
+    }
 
     public function destroy($id)
     {
