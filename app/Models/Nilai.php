@@ -18,10 +18,13 @@ class Nilai extends Model
         'lingkup_materi_id',
         'nilai_tp',
         'nilai_lm',
-        'nilai_akhir_semester',
+        'nilai_akhir_semester', // ini yang sudah ada untuk NA Sumatif Akhir Semester
         'na_tp',
         'na_lm',
-        'tp_number'
+        'tp_number',
+        'nilai_tes',
+        'nilai_non_tes',
+        'nilai_akhir_rapor'
     ];
 
     // Menambahkan casting untuk memastikan tipe data

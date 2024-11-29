@@ -51,7 +51,10 @@
                             class="px-4 py-2 border text-center">Sumatif Lingkup Materi</th>
                         <th rowspan="2" class="px-4 py-2 border">NA Sumatif TP</th>
                         <th rowspan="2" class="px-4 py-2 border">NA Sumatif LM</th>
+                        <!-- Tambah kolom baru -->
+                        <th colspan="2" class="px-4 py-2 border text-center">Sumatif Akhir Semester</th>
                         <th rowspan="2" class="px-4 py-2 border">NA Sumatif Akhir Semester</th>
+                        <th rowspan="2" class="px-4 py-2 border">Nilai Akhir (Rapor)</th>
                         <th rowspan="2" class="px-4 py-2 border">Aksi</th>
                     </tr>
                     <tr>
@@ -63,6 +66,9 @@
                         @foreach($mataPelajaran->lingkupMateris as $lm)
                             <th class="px-4 py-2 border">{{ $lm->judul_lingkup_materi }}</th>
                         @endforeach
+                        <!-- Tambah sub-header untuk Sumatif Akhir Semester -->
+                        <th class="px-4 py-2 border">Nilai Tes</th>
+                        <th class="px-4 py-2 border">Nilai Non-Tes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -110,15 +116,38 @@
                                        min="0"
                                        max="100"
                                        readonly>
+                                                        </td>
+                            <td class="px-4 py-2 border">
+                                <input type="number" 
+                                    name="scores[{{ $student['id'] }}][nilai_tes]"
+                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
+                                    value="{{ $existingScores[$student['id']]['nilai_tes'] ?? '' }}"
+                                    min="0"
+                                    max="100">
                             </td>
                             <td class="px-4 py-2 border">
                                 <input type="number" 
-                                       name="scores[{{ $student['id'] }}][nilai_akhir]"
-                                       class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir"
-                                       value="{{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '' }}"
-                                       min="0"
-                                       max="100"
-                                       readonly>
+                                    name="scores[{{ $student['id'] }}][nilai_non_tes]"
+                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
+                                    value="{{ $existingScores[$student['id']]['nilai_non_tes'] ?? '' }}"
+                                    min="0"
+                                    max="100">
+                            </td>
+                            <td class="px-4 py-2 border">
+                                <input type="number" 
+                                    name="scores[{{ $student['id'] }}][nilai_akhir]"
+                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir"
+                                    value="{{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '' }}"
+                                    min="0"
+                                    max="100"
+                                    readonly>
+                            </td>
+                            <td class="px-4 py-2 border">
+                                <input type="number" 
+                                    name="scores[{{ $student['id'] }}][nilai_akhir_rapor]"
+                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir-rapor"
+                                    value="{{ $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '' }}"
+                                    readonly>
                             </td>
                             <td class="px-4 py-2 border">
                                 <button type="button" 
@@ -141,148 +170,124 @@
 </div>
 
 <script>
-    function updateEntriesShown(value) {
-        // Implementation for showing specified number of entries
-    }
+    let formChanged = false;
     
-    function filterTable() {
-        const searchInput = document.getElementById("search-bar").value.toLowerCase();
-        const table = document.getElementById("students-table");
-        const rows = table.getElementsByTagName("tr");
+    // Initialize form change tracking
+    document.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', () => {
+            formChanged = true;
+        });
+    });
     
-        for (let i = 2; i < rows.length; i++) {
-            const nameCell = rows[i].getElementsByClassName("student-name")[0];
-            if (nameCell) {
-                const name = nameCell.textContent || nameCell.innerText;
-                rows[i].style.display = name.toLowerCase().includes(searchInput) ? "" : "none";
-            }
+    // Handle page leave
+    window.onbeforeunload = function(e) {
+        if (formChanged) {
+            e.preventDefault();
+            return "Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?";
         }
-    }
+    };
     
+    // Handle form submission
+    document.getElementById('saveForm').addEventListener('submit', () => {
+        formChanged = false;
+    });
+    
+    // Calculate averages when input changes
     document.addEventListener('input', function(e) {
-    if (e.target.matches('.tp-score, .lm-score')) {
-        calculateAverages(e.target.closest('tr'));
-    }
-});
-
-function calculateAverages(row) {
-    // Hitung NA TP
-    let tpInputs = row.querySelectorAll('.tp-score');
-    let tpSum = 0;
-    let tpCount = 0;
-    let tpByLM = {};
-
-    // Mengelompokkan nilai TP berdasarkan LM
-    tpInputs.forEach(input => {
-        let value = parseFloat(input.value) || 0;
-        let lmId = input.dataset.lm;
-        
-        if (!tpByLM[lmId]) {
-            tpByLM[lmId] = {
-                sum: 0,
-                count: 0
-            };
-        }
-        
-        if (value > 0) {
-            tpByLM[lmId].sum += value;
-            tpByLM[lmId].count++;
-            tpSum += value;
-            tpCount++;
+        if (e.target.matches('.tp-score, .lm-score, .nilai-semester')) {
+            calculateAverages(e.target.closest('tr'));
+            formChanged = true;
         }
     });
-
-    // Hitung rata-rata TP untuk setiap LM
-    let tpAveragesByLM = {};
-    for (let lmId in tpByLM) {
-        if (tpByLM[lmId].count > 0) {
-            tpAveragesByLM[lmId] = tpByLM[lmId].sum / tpByLM[lmId].count;
-        }
-    }
-
-    // Hitung NA TP keseluruhan
-    let naTP = tpCount > 0 ? (tpSum / tpCount) : 0;
-    row.querySelector('.na-tp').value = naTP.toFixed(2);
-
-    // Hitung NA LM
-    let lmInputs = row.querySelectorAll('.lm-score');
-    let lmSum = 0;
-    let lmCount = 0;
-
-    lmInputs.forEach(input => {
-        let value = parseFloat(input.value) || 0;
-        if (value > 0) {
-            lmSum += value;
-            lmCount++;
-        }
-    });
-
-    let naLM = lmCount > 0 ? (lmSum / lmCount) : 0;
-    row.querySelector('.na-lm').value = naLM.toFixed(2);
-
-    // Hitung Nilai Akhir (60% NA TP + 40% NA LM)
-    if (naTP > 0 || naLM > 0) {
-        let nilaiAkhir = (naTP * 0.6) + (naLM * 0.4);
-        row.querySelector('.nilai-akhir').value = nilaiAkhir.toFixed(2);
-    }
-}
-
-function deleteNilai(siswaId, mapelId, tpId, lmId, button) {
-    if (confirm('Apakah Anda yakin ingin menghapus nilai ini?')) {
-        fetch('/pengajar/nilai/delete', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({
-                siswa_id: siswaId,
-                mata_pelajaran_id: mapelId,
-                tp_id: tpId,
-                lm_id: lmId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const input = button.closest('tr').querySelector(`input[name="scores[${siswaId}][tp][${lmId}][${tpId}]"]`);
-                if (input) {
-                    input.value = '';
-                    calculateAverages(input.closest('tr'));
-                }
-            } else {
-                alert('Gagal menghapus nilai');
+    
+    function calculateAverages(row) {
+        // Calculate NA TP
+        let tpInputs = row.querySelectorAll('.tp-score');
+        let tpSum = 0;
+        let tpCount = 0;
+    
+        tpInputs.forEach(input => {
+            let value = parseFloat(input.value) || 0;
+            if (value > 0) {
+                tpSum += value;
+                tpCount++;
             }
         });
+    
+        let naTP = tpCount > 0 ? (tpSum / tpCount) : 0;
+        row.querySelector('.na-tp').value = naTP.toFixed(2);
+    
+        // Calculate NA LM
+        let lmInputs = row.querySelectorAll('.lm-score');
+        let lmSum = 0;
+        let lmCount = 0;
+    
+        lmInputs.forEach(input => {
+            let value = parseFloat(input.value) || 0;
+            if (value > 0) {
+                lmSum += value;
+                lmCount++;
+            }
+        });
+    
+        let naLM = lmCount > 0 ? (lmSum / lmCount) : 0;
+        row.querySelector('.na-lm').value = naLM.toFixed(2);
+    
+        // Calculate NA Sumatif Akhir Semester
+        let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
+        let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
+        
+        let naAkhirSemester = 0;
+        if (nilaiTes > 0 || nilaiNonTes > 0) {
+            naAkhirSemester = (nilaiTes + nilaiNonTes) / 2;
+            row.querySelector('input[name*="[nilai_akhir]"]').value = naAkhirSemester.toFixed(2);
+        }
+    
+        // Calculate Nilai Akhir Rapor
+        if (naTP > 0 || naLM > 0 || naAkhirSemester > 0) {
+            let nilaiAkhirRapor = (naTP + naLM + naAkhirSemester) / 3;
+            row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = nilaiAkhirRapor.toFixed(2);
+        }
     }
-}
-
-// Inisialisasi kalkulasi untuk semua baris saat halaman dimuat
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('#students-table tbody tr').forEach(row => {
-        calculateAverages(row);
-    });
-});
-
-
-let formChanged = false;
-
-document.querySelectorAll('input').forEach(input => {
-    input.addEventListener('change', () => {
-        formChanged = true;
-    });
-});
-
-window.onbeforeunload = function() {
-    if (formChanged) {
-        return "Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?";
+    
+    function deleteNilai(siswaId, mapelId) {
+        if (confirm('Apakah Anda yakin ingin menghapus nilai ini?')) {
+            fetch('/pengajar/nilai/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    siswa_id: siswaId,
+                    mata_pelajaran_id: mapelId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
+                    // Reset all inputs
+                    row.querySelectorAll('input[type="number"]').forEach(input => {
+                        input.value = '';
+                    });
+                    calculateAverages(row);
+                    formChanged = true;
+                } else {
+                    alert('Gagal menghapus nilai');
+                }
+            });
+        }
     }
-};
-
-document.getElementById('saveForm').addEventListener('submit', () => {
-    formChanged = false;
-});
+    
+    // Initialize calculations on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('#students-table tbody tr').forEach(row => {
+            calculateAverages(row);
+        });
+    });
     </script>
+
 @endsection
 
 

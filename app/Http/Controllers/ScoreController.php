@@ -84,6 +84,15 @@ class ScoreController extends Controller
                 if ($nilai->nilai_akhir_semester !== null) {
                     $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
                 }
+                if ($nilai->nilai_tes !== null) {
+                    $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
+                }
+                if ($nilai->nilai_non_tes !== null) {
+                    $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
+                }
+                if ($nilai->nilai_akhir_rapor !== null) {
+                    $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
+                }
             }
     
             $mataPelajaranList = MataPelajaran::where('kelas_id', $mataPelajaran->kelas_id)
@@ -105,96 +114,84 @@ class ScoreController extends Controller
         }
     }
     
+    private function compareScores($existingNilai, $newScoreData)
+    {
+        if (!$existingNilai) return false;
+    
+        // Bandingkan nilai-nilai
+        return $existingNilai->nilai_tp == ($newScoreData['tp'] ?? null) &&
+               $existingNilai->nilai_lm == ($newScoreData['lm'] ?? null) &&
+               $existingNilai->nilai_tes == ($newScoreData['nilai_tes'] ?? null) &&
+               $existingNilai->nilai_non_tes == ($newScoreData['nilai_non_tes'] ?? null);
+    }
 
     public function saveScore(Request $request, $id)
     {
         try {
             DB::beginTransaction();
-            
-            $mataPelajaran = MataPelajaran::findOrFail($id);
-            $guru = Auth::guard('guru')->user();
-            
-            if ($mataPelajaran->guru_id !== $guru->id) {
-                return back()->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
-            }
+
+            // Cek apakah ada perubahan
+            $oldScores = Nilai::where('mata_pelajaran_id', $id)->get();
+            $hasChanges = false;
     
             foreach($request->scores as $siswaId => $scoreData) {
-                // Simpan nilai TP
-                if (isset($scoreData['tp'])) {
+                $existingNilai = $oldScores->where('siswa_id', $siswaId)->first();
+                if (!$this->compareScores($existingNilai, $scoreData)) {
+                    $hasChanges = true;
+                    break;
+                }
+            }
+    
+            if (!$hasChanges) {
+                return back()->with('warning', 'Tidak ada perubahan nilai yang dilakukan');
+            }
+            foreach($request->scores as $siswaId => $scoreData) {
+                // Save TP scores
+                if (isset($scoreData['tp']) && is_array($scoreData['tp'])) {
                     foreach($scoreData['tp'] as $lmId => $tpScores) {
                         foreach($tpScores as $tpId => $nilai) {
-                            // Cari nilai yang sudah ada
-                            $existingNilai = Nilai::where([
-                                'siswa_id' => $siswaId,
-                                'mata_pelajaran_id' => $id,
-                                'lingkup_materi_id' => $lmId,
-                                'tujuan_pembelajaran_id' => $tpId,
-                            ])->first();
-    
-                            if ($existingNilai) {
-                                // Update nilai yang sudah ada
-                                $existingNilai->nilai_tp = $nilai;
-                                $existingNilai->save();
-                            } else if ($nilai !== null && $nilai !== '') {
-                                // Buat nilai baru jika belum ada
-                                Nilai::create([
-                                    'siswa_id' => $siswaId,
-                                    'mata_pelajaran_id' => $id,
-                                    'lingkup_materi_id' => $lmId,
-                                    'tujuan_pembelajaran_id' => $tpId,
-                                    'nilai_tp' => $nilai,
-                                ]);
+                            if ($nilai !== null && $nilai !== '') {
+                                $nilai = Nilai::updateOrCreate(
+                                    [
+                                        'siswa_id' => $siswaId,
+                                        'mata_pelajaran_id' => $id,
+                                        'lingkup_materi_id' => $lmId,
+                                        'tujuan_pembelajaran_id' => $tpId,
+                                    ],
+                                    ['nilai_tp' => $nilai]
+                                );
                             }
                         }
                     }
                 }
     
-                // Simpan nilai LM
-                if (isset($scoreData['lm'])) {
-                    foreach($scoreData['lm'] as $lmId => $nilai) {
-                        $existingNilai = Nilai::where([
-                            'siswa_id' => $siswaId,
-                            'mata_pelajaran_id' => $id,
-                            'lingkup_materi_id' => $lmId,
-                        ])->first();
-    
-                        if ($existingNilai) {
-                            $existingNilai->nilai_lm = $nilai;
-                            $existingNilai->save();
-                        } else if ($nilai !== null && $nilai !== '') {
-                            Nilai::create([
-                                'siswa_id' => $siswaId,
-                                'mata_pelajaran_id' => $id,
-                                'lingkup_materi_id' => $lmId,
-                                'nilai_lm' => $nilai,
-                            ]);
-                        }
-                    }
-                }
-    
-                // Update nilai akhir untuk siswa ini
-                $nilaiAkhir = Nilai::firstOrNew([
-                    'siswa_id' => $siswaId,
-                    'mata_pelajaran_id' => $id,
-                ]);
-    
-                $nilaiAkhir->na_tp = $scoreData['na_tp'] ?? null;
-                $nilaiAkhir->na_lm = $scoreData['na_lm'] ?? null;
-                $nilaiAkhir->nilai_akhir_semester = $scoreData['nilai_akhir'] ?? null;
-                $nilaiAkhir->save();
+                // Save other scores in a single record
+                $mainRecord = Nilai::updateOrCreate(
+                    [
+                        'siswa_id' => $siswaId,
+                        'mata_pelajaran_id' => $id,
+                    ],
+                    [
+                        'na_tp' => $scoreData['na_tp'] ?? null,
+                        'na_lm' => $scoreData['na_lm'] ?? null,
+                        'nilai_tes' => $scoreData['nilai_tes'] ?? null,
+                        'nilai_non_tes' => $scoreData['nilai_non_tes'] ?? null,
+                        'nilai_akhir_semester' => $scoreData['nilai_akhir'] ?? null,
+                        'nilai_akhir_rapor' => $scoreData['nilai_akhir_rapor'] ?? null
+                    ]
+                );
             }
     
             DB::commit();
-            return redirect()->route('pengajar.score')
+            return redirect()->route('pengajar.preview_score', $id)
                 ->with('success', 'Nilai berhasil disimpan!');
     
-        } catch (\Exception $e) {
-            DB::rollback();
-            Log::error('Error saving scores: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat menyimpan nilai');
-        }
+            } catch (\Exception $e) {
+                DB::rollback();
+                Log::error('Error saving scores: ' . $e->getMessage());
+                return back()->with('error', 'Terjadi kesalahan saat menyimpan nilai');
+            }
     }
-    
     
 
     public function previewScore($id)
@@ -248,6 +245,15 @@ class ScoreController extends Controller
                 if ($nilai->nilai_akhir_semester !== null) {
                     $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
                 }
+                if ($nilai->nilai_tes !== null) {
+                    $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
+                }
+                if ($nilai->nilai_non_tes !== null) {
+                    $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
+                }
+                if ($nilai->nilai_akhir_rapor !== null) {
+                    $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
+                }
             }
     
             Log::info('Existing Scores:', $existingScores); // Untuk debugging
@@ -267,17 +273,18 @@ class ScoreController extends Controller
             $nilai = Nilai::where([
                 'siswa_id' => $request->siswa_id,
                 'mata_pelajaran_id' => $request->mata_pelajaran_id,
-                'tujuan_pembelajaran_id' => $request->tp_id,
-                'lingkup_materi_id' => $request->lm_id,
-            ])->first();
-
-            if ($nilai) {
-                $nilai->nilai_tp = null;
-                $nilai->save();
-                return response()->json(['success' => true]);
-            }
-
-            return response()->json(['success' => false, 'message' => 'Nilai tidak ditemukan']);
+            ])->update([
+                'nilai_tp' => null,
+                'nilai_lm' => null,
+                'na_tp' => null,
+                'na_lm' => null,
+                'nilai_tes' => null,
+                'nilai_non_tes' => null,
+                'nilai_akhir_semester' => null,
+                'nilai_akhir_rapor' => null
+            ]);
+    
+            return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }

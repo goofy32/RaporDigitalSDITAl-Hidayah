@@ -38,7 +38,9 @@
                     </th>
                     <th rowspan="2" class="px-4 py-2 border">NA Sumatif TP</th>
                     <th rowspan="2" class="px-4 py-2 border">NA Sumatif LM</th>
+                    <th colspan="2" class="px-4 py-2 border text-center">Sumatif Akhir Semester</th>
                     <th rowspan="2" class="px-4 py-2 border">NA Sumatif Akhir Semester</th>
+                    <th rowspan="2" class="px-4 py-2 border">Nilai Akhir (Rapor)</th>
                 </tr>
                 <tr>
                     @foreach($mataPelajaran->lingkupMateris as $lm)
@@ -49,6 +51,8 @@
                     @foreach($mataPelajaran->lingkupMateris as $lm)
                         <th class="px-4 py-2 border">{{ $lm->judul_lingkup_materi }}</th>
                     @endforeach
+                    <th class="px-4 py-2 border">Nilai Tes</th>
+                    <th class="px-4 py-2 border">Nilai Non-Tes</th>
                 </tr>
             </thead>
             <tbody>
@@ -83,9 +87,22 @@
                         {{ $existingScores[$siswa->id]['na_lm'] ?? '-' }}
                     </td>
                     
-                    <!-- Nilai Akhir Semester -->
+                    <!-- Sumatif Akhir Semester -->
+                    <td class="px-4 py-2 border text-center">
+                        {{ $existingScores[$siswa->id]['nilai_tes'] ?? '-' }}
+                    </td>
+                    <td class="px-4 py-2 border text-center">
+                        {{ $existingScores[$siswa->id]['nilai_non_tes'] ?? '-' }}
+                    </td>
+                    
+                    <!-- NA Sumatif Akhir Semester -->
                     <td class="px-4 py-2 border text-center">
                         {{ $existingScores[$siswa->id]['nilai_akhir_semester'] ?? '-' }}
+                    </td>
+                    
+                    <!-- Nilai Akhir Rapor -->
+                    <td class="px-4 py-2 border text-center">
+                        {{ $existingScores[$siswa->id]['nilai_akhir_rapor'] ?? '-' }}
                     </td>
                 </tr>
             @endforeach

@@ -84,6 +84,29 @@ document.addEventListener('turbo:before-fetch-response', async (event) => {
     }
 });
 
+
+document.addEventListener('turbo:before-fetch-request', (event) => {
+    if (window.formChanged) {
+        if (!confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
+            event.preventDefault();
+        } else {
+            window.formChanged = false;
+        }
+    }
+});
+
+document.addEventListener('turbo:before-visit', (event) => {
+    if (window.formChanged) {
+        if (!confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
+            event.preventDefault();
+        }
+    }
+});
+
+document.addEventListener('turbo:before-render', () => {
+    window.formChanged = false;
+});
+
 document.addEventListener('turbo:load', () => {
     initFlowbite();
 });
