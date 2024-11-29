@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckMataPelajaranOwnership;
 use App\Http\Middleware\SessionTimeout;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'session.timeout' => SessionTimeout::class, // Optional: jika ingin digunakan sebagai alias
+            'check.matapelajaran.ownership' => CheckMataPelajaranOwnership::class // Tambahkan ini
         ]);
 
         // Konfigurasi CSRF

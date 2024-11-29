@@ -169,6 +169,24 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
     Route::post('/score/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');
     Route::get('/score/{id}/preview', [ScoreController::class, 'previewScore'])->name('pengajar.preview_score');
     Route::post('/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.nilai.delete');
+
+    Route::get('/subject', [SubjectController::class, 'teacherIndex'])->name('pengajar.subject.index');
+    Route::get('/subject/create', [SubjectController::class, 'teacherCreate'])->name('pengajar.subject.create');
+    Route::post('/subject', [SubjectController::class, 'teacherStore'])->name('pengajar.subject.store');
+    Route::get('/subject/{id}/edit', [SubjectController::class, 'teacherEdit'])->name('pengajar.subject.edit');
+    Route::put('/subject/{id}', [SubjectController::class, 'teacherUpdate'])->name('pengajar.subject.update');
+    Route::delete('/subject/{id}', [SubjectController::class, 'teacherDestroy'])->name('pengajar.subject.destroy');
+
+    Route::middleware(['check.matapelajaran.ownership'])->group(function () {
+        Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])
+            ->name('pengajar.tujuan_pembelajaran.view');
+        Route::get('/tujuan-pembelajaran/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'teacherCreate'])
+            ->name('pengajar.tujuan_pembelajaran.create');
+        Route::post('/tujuan-pembelajaran/store', [TujuanPembelajaranController::class, 'teacherStore'])
+            ->name('pengajar.tujuan_pembelajaran.store');
+    });
+
+        
 });
 // Wali Kelas routes
 Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->group(function () {

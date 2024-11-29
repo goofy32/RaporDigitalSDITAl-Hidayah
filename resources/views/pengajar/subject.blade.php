@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.pengajar.app')
 
 @section('title', 'Data Siswa')
 
@@ -11,13 +11,14 @@
         </div>
 
         <div class="flex justify-start mb-4">
-            <a href="{{ route('subject.create') }}"" class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
+            <a href="{{ route('pengajar.subject.create') }}" class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
                 <svg class="h-3.5 w-3.5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
                 </svg>
                 Tambah Data
             </a>
         </div>
+
 
         <!-- Table -->
         <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
@@ -53,22 +54,25 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 text-center flex justify-around">
-                            <!-- Lihat TP -->
-                            <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
-                                <!-- Ikon Lihat TP -->
-                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
 
+                            <a href="{{ route('pengajar.tujuan_pembelajaran.view', $subject->id) }}" class="text-blue-600 hover:underline" title="Lihat Tujuan Pembelajaran">
+                                <img src="{{ asset('images/icons/view.png') }}" alt="View Icon" class="w-5 h-5">
+                            </a>
+                            <!-- Lihat TP -->
+                            <a href="{{ route('pengajar.tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
+                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
                             </a>
                         
                             <!-- Edit Data Mata Pelajaran -->
-                            <a href="{{ route('subject.edit', $subject->id) }}" class="text-green-600 hover:underline">
+                            <a href="#" ...>
                                 <!-- Ikon Edit -->
                                 <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
 
                             </a>
                         
                             <!-- Hapus Mata Pelajaran dan Lingkup Materi terkait -->
-                            <form action="{{ route('subject.destroy', $subject->id) }}" method="POST" class="inline">
+                            <form action="{{ route('pengajar.subject.destroy', $subject->id) }}" method="POST" class="inline">
+
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">

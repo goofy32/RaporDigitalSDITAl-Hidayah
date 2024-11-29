@@ -18,11 +18,11 @@
         </li>
            <!-- Data Mata Pelajaran -->
            <li>
-               <a href="#" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
-                    <img src="{{ asset('images/icons/subject-icon.png') }}" alt="Dashboard Icon" class="w-5 h-5">
-                   <span class="ml-3">Data Mata Pelajaran</span>
-               </a>
-           </li>
+            <a href="{{ route('pengajar.subject.index') }}" class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
+                <img src="{{ asset('images/icons/subject-icon.png') }}" alt="Dashboard Icon" class="w-5 h-5">
+                <span class="ml-3">Data Mata Pelajaran</span>
+            </a>
+        </li>
        </ul>
    </div>
 </aside>
