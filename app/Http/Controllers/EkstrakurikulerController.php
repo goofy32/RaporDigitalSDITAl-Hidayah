@@ -8,9 +8,20 @@ use Illuminate\Support\Facades\Log;
 
 class EkstrakurikulerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $ekstrakurikulers = Ekstrakurikuler::paginate(10);
+        $query = Ekstrakurikuler::query();
+        
+        // Handle search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama_ekstrakurikuler', 'LIKE', "%{$search}%")
+                  ->orWhere('pembina', 'LIKE', "%{$search}%");
+            });
+        }
+        
+        $ekstrakurikulers = $query->paginate(10);
         return view('admin.ekstrakulikuler', compact('ekstrakurikulers'));
     }
     

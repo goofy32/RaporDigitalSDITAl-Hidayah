@@ -16,7 +16,7 @@
 </head>
 <body>
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
-    <x-pengajar.sidebar data-turbo-permanent id="sidebar"></x-pengajar.sidebar>
+    <x-wali-kelas.sidebar data-turbo-permanent id="sidebar"></x-wali-kelas.sidebar>
 
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />
 

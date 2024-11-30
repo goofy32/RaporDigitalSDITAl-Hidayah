@@ -19,6 +19,15 @@
             </a>
         </div>
 
+        <div class="w-full md:w-1/2 mb-4">
+            <form action="{{ route('subject.index') }}" method="GET" class="flex items-center">
+                <input type="text" name="search" value="{{ request('search') }}"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                    placeholder="Cari mata pelajaran, kelas, atau guru pengampu...">
+                <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+            </form>
+        </div>
+
         <!-- Table -->
         <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
             <table class="w-full text-sm text-left text-gray-500">

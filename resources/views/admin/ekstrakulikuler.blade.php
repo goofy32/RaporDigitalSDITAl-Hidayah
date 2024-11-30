@@ -32,6 +32,17 @@
                 </a>
             </div>
 
+            <div class="w-full md:w-1/2 mb-4">
+                <form action="{{ route('ekstra.index') }}" method="GET" class="flex items-center">
+                    <input type="text" 
+                           name="search" 
+                           value="{{ request('search') }}"
+                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                           placeholder="Cari nama ekstrakurikuler atau pembina...">
+                    <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+                </form>
+            </div>
+
             <!-- Tabel Data Siswa -->
             <div class="overflow-x-auto bg-white shadow-md rounded-lg">
                 <table class="w-full text-sm text-left text-gray-500">

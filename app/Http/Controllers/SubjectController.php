@@ -11,9 +11,25 @@ use Illuminate\Http\Request;
 
 class SubjectController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $subjects = MataPelajaran::with(['kelas', 'guru'])->paginate(10);
+        $query = MataPelajaran::with(['kelas', 'guru']);
+        
+        // Handle search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama_pelajaran', 'LIKE', "%{$search}%")
+                  ->orWhereHas('kelas', function($q) use ($search) {
+                      $q->where('nama_kelas', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('guru', function($q) use ($search) {
+                      $q->where('nama', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        $subjects = $query->paginate(10);
         return view('admin.subject', compact('subjects'));
     }
 

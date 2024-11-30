@@ -46,6 +46,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     })->name('admin.dashboard');
     
     
+    Route::get('/', function () {
+        return redirect()->route('admin.dashboard');
+    });
     // Existing admin routes...
     
     Route::get('profile', [SchoolProfileController::class, 'show'])->name('profile');
