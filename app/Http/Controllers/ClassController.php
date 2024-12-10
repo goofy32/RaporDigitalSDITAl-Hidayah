@@ -10,18 +10,41 @@ class ClassController extends Controller
     // Menampilkan daftar kelas
     public function index(Request $request)
     {
-        $search = $request->input('search');
-    
         $query = Kelas::query();
-    
-        if ($search) {
-            $query->where('nama_kelas', 'like', '%' . $search . '%')
-                  ->orWhere('wali_kelas', 'like', '%' . $search . '%');
+        
+        if ($request->has('search')) {
+            $search = strtolower($request->search);
+            $terms = explode(' ', trim($search));
+            
+            $query->where(function($q) use ($terms, $search) {
+                // Jika kata pertama adalah "kelas"
+                if (count($terms) > 0 && $terms[0] === 'kelas') {
+                    if (count($terms) > 1 && is_numeric($terms[1])) {
+                        // Jika ada nomor kelas yang dispecifikkan (kelas 1, kelas 2, dst)
+                        $q->where('nomor_kelas', $terms[1]);
+                    } else {
+                        // Jika hanya "kelas", urutkan berdasarkan nomor_kelas
+                        $q->orderBy('nomor_kelas', 'asc');
+                    }
+                } else {
+                    // Pencarian normal untuk term lainnya
+                    $q->where('nama_kelas', 'like', '%' . $search . '%')
+                      ->orWhere('nomor_kelas', 'like', '%' . $search . '%')
+                      ->orWhere('wali_kelas', 'like', '%' . $search . '%');
+                }
+            });
         }
     
+        // Default ordering jika tidak ada pencarian
+        if (!$request->has('search') || 
+            (isset($terms) && count($terms) === 1 && $terms[0] === 'kelas')) {
+            $query->orderBy('nomor_kelas', 'asc')
+                  ->orderBy('nama_kelas', 'asc');
+        }
+        
         $kelasList = $query->paginate(10);
-    
-        return view('admin.class', compact('kelasList', 'search'));
+        
+        return view('admin.class', compact('kelasList'));
     }
 
     // Menampilkan form tambah data kelas

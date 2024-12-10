@@ -26,6 +26,11 @@ class Kelas extends Model
     {
         return $this->hasMany(MataPelajaran::class, 'kelas_id');
     }
+
+    public function getFullKelasAttribute()
+    {
+        return "{$this->nomor_kelas} {$this->nama_kelas}";
+    }
     
     // Tambahkan method untuk debugging
     public function toArray()

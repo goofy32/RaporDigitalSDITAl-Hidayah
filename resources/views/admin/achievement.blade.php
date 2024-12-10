@@ -20,6 +20,15 @@
             </a>
         </div>
 
+        <div class="w-full md:w-1/2 mb-4 md:mb-0">
+            <form action="{{ route('achievement.index') }}" method="GET" class="flex items-center" data-turbo="false">
+                <input type="text" name="search" value="{{ request('search') }}"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                    placeholder="Ketik 'kelas' untuk filter kelas, atau 'kelas 1' untuk kelas spesifik">
+                <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+            </form>
+        </div>        
+
         <!-- Tabel Data Prestasi -->
         <div class="overflow-x-auto bg-white shadow-md rounded-lg">
             <table class="w-full text-sm text-left text-gray-500">

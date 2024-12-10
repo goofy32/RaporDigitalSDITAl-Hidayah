@@ -15,17 +15,39 @@ class SubjectController extends Controller
     {
         $query = MataPelajaran::with(['kelas', 'guru']);
         
-        // Handle search
         if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama_pelajaran', 'LIKE', "%{$search}%")
-                  ->orWhereHas('kelas', function($q) use ($search) {
-                      $q->where('nama_kelas', 'LIKE', "%{$search}%");
-                  })
-                  ->orWhereHas('guru', function($q) use ($search) {
-                      $q->where('nama', 'LIKE', "%{$search}%");
-                  });
+            $search = strtolower($request->search);
+            $terms = explode(' ', trim($search));
+            
+            $query->where(function($q) use ($terms, $search) {
+                // Jika kata pertama adalah "kelas"
+                if (count($terms) > 0 && $terms[0] === 'kelas') {
+                    $q->whereHas('kelas', function($kelasQ) use ($terms) {
+                        if (count($terms) > 1 && is_numeric($terms[1])) {
+                            // Jika ada nomor kelas yang dispecifikkan
+                            $kelasQ->where('nomor_kelas', $terms[1]);
+                        }
+                    });
+                } else {
+                    // Pencarian normal
+                    $q->where('nama_pelajaran', 'LIKE', "%{$search}%")
+                      ->orWhereHas('kelas', function($kelasQ) use ($search) {
+                          $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
+                                ->orWhere('nomor_kelas', 'LIKE', "%{$search}%");
+                      })
+                      ->orWhereHas('guru', function($guruQ) use ($search) {
+                          $guruQ->where('nama', 'LIKE', "%{$search}%");
+                      });
+                }
+            });
+        }
+    
+        // Default ordering berdasarkan kelas
+        if (!$request->has('search') || 
+            (count($terms) === 1 && $terms[0] === 'kelas')) {
+            $query->whereHas('kelas', function($q) {
+                $q->orderBy('nomor_kelas', 'asc')
+                  ->orderBy('nama_kelas', 'asc');
             });
         }
         

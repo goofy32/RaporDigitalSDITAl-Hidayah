@@ -192,14 +192,79 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
         
 });
 // Wali Kelas routes
-Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->group(function () {
+Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->name('wali_kelas.')->group(function () {
+    // Dashboard
     Route::get('/dashboard', function () {
         return view('wali_kelas.dashboard');
-    })->name('wali_kelas.dashboard');
+    })->name('dashboard');
     
-    // Tambahkan route wali kelas lainnya
+    // Profile
     Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])
-    ->name('wali_kelas.profile');
+        ->name('profile');
+
+    // Student Management 
+    Route::get('/siswa', function () {
+        return view('wali_kelas.student');
+    })->name('student.index');
+
+    Route::get('/siswa/create', function () {
+        return view('wali_kelas.add_student');
+    })->name('student.create');
+
+    Route::get('/siswa/{id}', function () {
+        return view('wali_kelas.detail_student');
+    })->name('student.show');
+
+    Route::get('/siswa/{id}/edit', function () {
+        return view('wali_kelas.edit_student');
+    })->name('student.edit');
+
+    Route::post('/siswa', function () {
+        return redirect()->route('wali_kelas.student.index')->with('success', 'Data berhasil ditambahkan');
+    })->name('student.store');
+
+    Route::put('/siswa/{id}', function () {
+        return redirect()->route('wali_kelas.student.index')->with('success', 'Data berhasil diupdate');
+    })->name('student.update');
+
+    Route::delete('/siswa/{id}', function () {
+        return redirect()->route('wali_kelas.student.index')->with('success', 'Data berhasil dihapus');
+    })->name('student.destroy');
+
+    // Ekstrakurikuler Management
+    Route::get('/ekstrakurikuler', function () {
+        return view('wali_kelas.ekstrakurikuler');
+    })->name('ekstrakurikuler.index');
+
+    Route::get('/ekstrakurikuler/create', function () {
+        return view('wali_kelas.add_ekstrakurikuler');
+    })->name('ekstrakurikuler.create');
+
+    Route::post('/ekstrakurikuler', function () {
+        return redirect()->route('wali_kelas.ekstrakurikuler.index')->with('success', 'Data berhasil ditambahkan');
+    })->name('ekstrakurikuler.store');
+
+    // Absence Management
+    Route::get('/absensi', function () {
+        return view('wali_kelas.absence');
+    })->name('absence.index');
+
+    Route::get('/absensi/create', function () {
+        return view('wali_kelas.add_absence');
+    })->name('absence.create');
+
+    Route::post('/absensi', function () {
+        return redirect()->route('wali_kelas.absence.index')->with('success', 'Data berhasil ditambahkan');
+    })->name('absence.store');
+
+    // Rapor Management
+    Route::get('/rapor', function () {
+        return view('wali_kelas.rapor');
+    })->name('rapor.index');
+
+    Route::get('/rapor/print/{id}', function () {
+        return view('wali_kelas.print');
+    })->name('rapor.print');
 });
 
 // Logout route

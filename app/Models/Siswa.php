@@ -31,7 +31,7 @@ class Siswa extends Model
     ];
     public function kelas()
     {
-        return $this->belongsTo(Kelas::class);
+        return $this->belongsTo(Kelas::class)->orderBy('nomor_kelas', 'asc');        
     }
 
     public function prestasi()

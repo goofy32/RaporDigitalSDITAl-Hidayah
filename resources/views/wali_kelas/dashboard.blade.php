@@ -13,7 +13,7 @@
 <body>
 
     <x-admin.topbar></x-admin.topbar>
-    <x-pengajar.sidebar></x-pengajar.sidebar>
+    <x-wali-kelas.sidebar></x-wali-kelas.sidebar>
 
     <div class="p-4 sm:ml-64">
         <div class="p-4 grid grid-cols-3 gap-4 mt-14">

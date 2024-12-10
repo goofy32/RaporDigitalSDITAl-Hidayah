@@ -15,21 +15,38 @@ class TeacherController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Guru::query();
+        $query = Guru::query()->with('kelasPengajar');
         
-        // Search functionality
         if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama', 'LIKE', "%{$search}%")
-                  ->orWhere('nuptk', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
+            $search = strtolower($request->search);
+            $terms = explode(' ', trim($search));
+            
+            $query->where(function($q) use ($terms, $search) {
+                // Jika kata pertama adalah "kelas"
+                if (count($terms) > 0 && $terms[0] === 'kelas') {
+                    $q->whereHas('kelasPengajar', function($kelasQ) use ($terms) {
+                        if (count($terms) > 1 && is_numeric($terms[1])) {
+                            // Jika ada nomor kelas yang dispecifikkan
+                            $kelasQ->where('nomor_kelas', $terms[1]);
+                        } else {
+                            // Jika hanya "kelas", urutkan berdasarkan nomor_kelas
+                            $kelasQ->orderBy('nomor_kelas', 'asc');
+                        }
+                    });
+                } else {
+                    // Pencarian normal
+                    $q->where('nama', 'LIKE', "%{$search}%")
+                      ->orWhere('nuptk', 'LIKE', "%{$search}%")
+                      ->orWhere('email', 'LIKE', "%{$search}%")
+                      ->orWhereHas('kelasPengajar', function($kelasQ) use ($search) {
+                          $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
+                                ->orWhere('nomor_kelas', 'LIKE', "%{$search}%");
+                      });
+                }
             });
         }
         
-        // Get paginated results
-        $teachers = $query->with('kelasPengajar')->paginate(10);
-        
+        $teachers = $query->paginate(10);
         return view('admin.teacher', compact('teachers'));
     }
 

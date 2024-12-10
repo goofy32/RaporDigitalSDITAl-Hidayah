@@ -17,17 +17,42 @@ class StudentController extends Controller
     {
         $query = Siswa::with('kelas');
         
-        // Handle search
         if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nama', 'LIKE', "%{$search}%")
-                  ->orWhere('nis', 'LIKE', "%{$search}%")
-                  ->orWhere('nisn', 'LIKE', "%{$search}%")
-                  ->orWhereHas('kelas', function($q) use ($search) {
-                      $q->where('nama_kelas', 'LIKE', "%{$search}%");
-                  });
+            $search = strtolower($request->search);
+            $terms = explode(' ', trim($search));
+            
+            $query->where(function($q) use ($terms, $search) { // Tambahkan $search ke use
+                // Jika kata pertama adalah "kelas"
+                if (count($terms) > 0 && $terms[0] === 'kelas') {
+                    $q->whereHas('kelas', function($kelasQ) use ($terms) {
+                        // Jika ada nomor kelas yang dispecifikkan (kelas 1, kelas 2, dst)
+                        if (count($terms) > 1 && is_numeric($terms[1])) {
+                            $kelasQ->where('nomor_kelas', $terms[1]);
+                        } else {
+                            // Jika hanya "kelas", urutkan berdasarkan nomor_kelas
+                            $kelasQ->orderBy('nomor_kelas', 'asc');
+                        }
+                    });
+                } else {
+                    // Pencarian normal untuk term lainnya menggunakan $search
+                    $q->where(function($subQ) use ($search) {
+                        $subQ->where('nama', 'LIKE', "%{$search}%")
+                            ->orWhere('nis', 'LIKE', "%{$search}%")
+                            ->orWhere('nisn', 'LIKE', "%{$search}%")
+                            ->orWhereHas('kelas', function($kelasQ) use ($search) {
+                                $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
+                                      ->orWhere('nomor_kelas', 'LIKE', "%{$search}%");
+                            });
+                    });
+                }
             });
+            
+            // Jika pencarian dimulai dengan "kelas" tapi tidak ada nomor spesifik
+            if (str_starts_with($search, 'kelas') && count($terms) === 1) {
+                $query->join('kelas', 'siswas.kelas_id', '=', 'kelas.id')
+                      ->orderBy('kelas.nomor_kelas', 'asc')
+                      ->select('siswas.*');
+            }
         }
         
         $students = $query->paginate(10);

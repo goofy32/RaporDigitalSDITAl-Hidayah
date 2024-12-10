@@ -107,6 +107,7 @@
                 })"
                 class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700
                 {{ Request::routeIs('report_format.*') ? 'bg-green-100 shadow-md' : '' }}">
+                    <img src="{{ asset('images/icons/report-icon.png') }}" alt="Achievement Icon" class="w-5 h-5">
                     <span class="ml-3">Format Rapot</span>
                     <svg class="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.25 4a.75.75 0 01-1.04 0l-4.25-4a.75.75 0 01-.02-1.06z" clip-rule="evenodd" />

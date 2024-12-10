@@ -36,11 +36,11 @@
             <form action="{{ route('student') }}" method="GET" class="flex items-center">
                 <input type="text" name="search" value="{{ request('search') }}"
                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                    placeholder="Search">
+                    placeholder="Cari (contoh: kelas 1, nama siswa, NIS, atau NISN)">
                 <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
             </form>
         </div>
-
+        
         <!-- Table -->
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left text-gray-500">
@@ -50,7 +50,7 @@
                         <th class="px-6 py-3">NIS</th>
                         <th class="px-6 py-3">NISN</th>
                         <th class="px-6 py-3">Nama</th>
-                        <th class="px-6 py-3">Kelas</th>
+                        <th class="px-6 py-3">No. Kelas & Nama</th>
                         <th class="px-6 py-3">Jenis Kelamin</th>
                         <th class="px-6 py-3">Aksi</th>
                     </tr>
@@ -62,7 +62,7 @@
                         <td class="px-6 py-4">{{ $student->nis }}</td>
                         <td class="px-6 py-4">{{ $student->nisn }}</td>
                         <td class="px-6 py-4">{{ $student->nama }}</td>
-                        <td class="px-6 py-4">{{ optional($student->kelas)->nama_kelas ?? '-' }}</td>
+                        <td class="px-6 py-4">{{ optional($student->kelas)->full_kelas ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $student->jenis_kelamin }}</td>
                         <td class="px-6 py-4">
                             <div class="flex space-x-2">

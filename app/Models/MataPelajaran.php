@@ -17,13 +17,20 @@ class MataPelajaran extends Model
         'guru_id',
         'semester',
     ];
+    public function getFullKelasAttribute()
+    {
+        return $this->kelas ? "{$this->kelas->nomor_kelas} {$this->kelas->nama_kelas}" : '-';
+    }
 
     // Menambahkan eager loading default
     protected $with = ['lingkupMateris'];
 
+
     public function kelas()
     {
-        return $this->belongsTo(Kelas::class, 'kelas_id');
+        return $this->belongsTo(Kelas::class, 'kelas_id')
+                    ->orderBy('nomor_kelas', 'asc')
+                    ->orderBy('nama_kelas', 'asc');
     }
 
     public function guru()

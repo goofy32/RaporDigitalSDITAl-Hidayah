@@ -12,12 +12,44 @@ use Illuminate\Support\Facades\Log;
 class AchievementController extends Controller
 {
     // Menampilkan semua data prestasi
-    public function index()
+    public function index(Request $request)
     {
-        $prestasis = Prestasi::with('kelas', 'siswa')->paginate(10);
+        $query = Prestasi::with(['kelas', 'siswa']);
+        
+        if ($request->has('search')) {
+            $search = strtolower($request->search);
+            $terms = explode(' ', trim($search));
+            
+            $query->where(function($q) use ($terms, $search) {
+                // Jika kata pertama adalah "kelas"
+                if (count($terms) > 0 && $terms[0] === 'kelas') {
+                    $q->whereHas('kelas', function($kelasQ) use ($terms) {
+                        if (count($terms) > 1 && is_numeric($terms[1])) {
+                            // Jika ada nomor kelas yang dispecifikkan
+                            $kelasQ->where('nomor_kelas', $terms[1]);
+                        } else {
+                            // Jika hanya "kelas", urutkan berdasarkan nomor_kelas
+                            $kelasQ->orderBy('nomor_kelas', 'asc');
+                        }
+                    });
+                } else {
+                    // Pencarian normal
+                    $q->where('jenis_prestasi', 'LIKE', "%{$search}%")
+                      ->orWhere('keterangan', 'LIKE', "%{$search}%")
+                      ->orWhereHas('siswa', function($siswaQ) use ($search) {
+                          $siswaQ->where('nama', 'LIKE', "%{$search}%");
+                      })
+                      ->orWhereHas('kelas', function($kelasQ) use ($search) {
+                          $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
+                                ->orWhere('nomor_kelas', 'LIKE', "%{$search}%");
+                      });
+                }
+            });
+        }
+        
+        $prestasis = $query->paginate(10);
         return view('admin.achievement', compact('prestasis'));
     }
-
     // Menampilkan form tambah prestasi
     public function create()
     {

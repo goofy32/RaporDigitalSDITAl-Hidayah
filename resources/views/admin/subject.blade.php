@@ -20,10 +20,10 @@
         </div>
 
         <div class="w-full md:w-1/2 mb-4">
-            <form action="{{ route('subject.index') }}" method="GET" class="flex items-center">
+            <form action="{{ route('subject.index') }}" method="GET" class="flex items-center" data-turbo="false">
                 <input type="text" name="search" value="{{ request('search') }}"
                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                    placeholder="Cari mata pelajaran, kelas, atau guru pengampu...">
+                    placeholder="Ketik 'kelas' untuk melihat urutan kelas, 'kelas 1' untuk kelas spesifik">
                 <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
             </form>
         </div>
@@ -47,7 +47,7 @@
                     <tr class="bg-white border-b hover:bg-gray-50">
                         <td class="px-6 py-4">{{ $index + 1 }}</td>
                         <td class="px-6 py-4">{{ $subject->nama_pelajaran }}</td>
-                        <td class="px-6 py-4">{{ $subject->kelas->nama_kelas }}</td>
+                        <td class="px-6 py-4">{{ $subject->kelas->nomor_kelas }}-{{ $subject->kelas->nama_kelas }}</td>
                         <td class="px-6 py-4">Semester {{ $subject->semester }}</td>
                         <td class="px-6 py-4">{{ $subject->guru->nama }}</td>
                         <td class="px-6 py-4">
