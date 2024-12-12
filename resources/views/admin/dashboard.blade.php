@@ -66,14 +66,22 @@
 
                 <!-- Information Section - Takes 1/3 of the space -->
                 <div class="lg:w-1/3">
-                    <div class="bg-green-600 text-white px-3 py-1.5 rounded-lg inline-block mb-3">
-                        <span class="flex items-center text-sm">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="bg-green-600 text-white px-3 py-1.5 rounded-lg inline-block">
+                            <span class="flex items-center text-sm">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                </svg>
+                                Informasi
+                            </span>
+                        </div>
+                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex items-center justify-center" data-modal-target="addInfoModal" data-modal-toggle="addInfoModal">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                             </svg>
-                            Informasi
-                        </span>
+                        </button>
                     </div>
+
 
                     <!-- Information Items -->
                     <div class="relative pl-6 border-l-2 border-gray-200">
@@ -170,5 +178,17 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+    <script>
+        // Get the modal and button
+        const addInfoModal = document.getElementById('addInfoModal');
+        const addInfoModalBtn = document.querySelectorAll('[data-modal-target="addInfoModal"], [data-modal-toggle="addInfoModal"]');
+
+        // Add event listener to the button
+        addInfoModalBtn.forEach(btn => {
+            btn.addEventListener('click', () => {
+                addInfoModal.classList.toggle('hidden');
+            });
+        });
+    </script>
 </body>
 </html>
