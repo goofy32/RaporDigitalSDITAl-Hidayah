@@ -58,7 +58,66 @@ Alpine.data('sessionTimeout', () => ({
     }
 }));
 
-// Setup Turbo
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function updateSidebarActiveState() {
+    try {
+        const currentPath = window.location.pathname;
+        const sidebarLinks = document.querySelectorAll('#logo-sidebar a');
+        
+        if (!sidebarLinks.length) {
+            console.warn('Sidebar links not found');
+            return;
+        }
+
+        sidebarLinks.forEach(link => {
+            const path = link.dataset.path;
+            if (path && currentPath.includes(path)) {
+                link.classList.add('bg-green-100', 'shadow-md');
+            } else {
+                link.classList.remove('bg-green-100', 'shadow-md');
+            }
+        });
+
+        const dropdownButton = document.querySelector('[data-collapse-toggle="dropdown-rapor"]');
+        if (dropdownButton && currentPath.includes('report-format')) {
+            dropdownButton.classList.add('bg-green-100', 'shadow-md');
+        }
+    } catch (error) {
+        console.error('Error updating sidebar state:', error);
+    }
+}
+
+const debouncedUpdateSidebar = debounce(updateSidebarActiveState, 100);
+
+// Event Listeners
+document.addEventListener('turbo:load', () => {
+    debouncedUpdateSidebar();
+    initFlowbite();
+    
+    // Handle dropdown state
+    const dropdownButton = document.querySelector('[data-collapse-toggle="dropdown-rapor"]');
+    const dropdownContent = document.getElementById('dropdown-rapor');
+    
+    if (dropdownButton && dropdownContent) {
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('report-format')) {
+            dropdownButton.classList.add('bg-green-100', 'shadow-md');
+            dropdownContent.classList.remove('hidden');
+        }
+    }
+});
+
 document.addEventListener('turbo:before-render', (event) => {
     // Preserve permanent elements
     ['topbar', 'sidebar', 'session-alert'].forEach(id => {
@@ -68,14 +127,26 @@ document.addEventListener('turbo:before-render', (event) => {
             event.detail.newBody.querySelector(`#${id}`)?.replaceWith(clone);
         }
     });
+
+    // Preserve dropdown state
+    const dropdown = document.getElementById('dropdown-rapor');
+    const isOpen = !dropdown.classList.contains('hidden');
+    if (isOpen) {
+        const newDropdown = event.detail.newBody.getElementById('dropdown-rapor');
+        if (newDropdown) {
+            newDropdown.classList.remove('hidden');
+        }
+    }
+
+    window.formChanged = false;
 });
 
-document.addEventListener('turbo:load', () => {
-    // Initialize Flowbite components
-    initFlowbite();
+document.addEventListener('turbo:before-cache', () => {
+    document.querySelectorAll('#logo-sidebar a').forEach(link => {
+        link.classList.remove('bg-green-100', 'shadow-md');
+    });
 });
 
-// Handle session expiry
 document.addEventListener('turbo:before-fetch-response', async (event) => {
     const response = event.detail.fetchResponse;
     if (response.response.status === 401 || response.response.status === 419) {
@@ -83,7 +154,6 @@ document.addEventListener('turbo:before-fetch-response', async (event) => {
         window.location.href = '/login';
     }
 });
-
 
 document.addEventListener('turbo:before-fetch-request', (event) => {
     if (window.formChanged) {
@@ -103,12 +173,8 @@ document.addEventListener('turbo:before-visit', (event) => {
     }
 });
 
-document.addEventListener('turbo:before-render', () => {
-    window.formChanged = false;
-});
-
-document.addEventListener('turbo:load', () => {
-    initFlowbite();
+document.addEventListener('turbo:visit', () => {
+    debouncedUpdateSidebar();
 });
 
 window.Alpine = Alpine;
