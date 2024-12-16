@@ -146,12 +146,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::prefix('format-rapor')->name('report_format.')->group(function () {
         Route::get('/{type?}', [ReportFormatController::class, 'index'])->name('index');
         Route::post('/upload', [ReportFormatController::class, 'upload'])->name('upload');
+        Route::get('/preview/{format}', [ReportFormatController::class, 'preview'])->name('preview');
+        Route::post('/save/{format}', [ReportFormatController::class, 'saveReportData'])->name('save');
         Route::post('/{format}/activate', [ReportFormatController::class, 'activate'])->name('activate');
         Route::delete('/{format}', [ReportFormatController::class, 'destroy'])->name('destroy');
-        Route::post('/validate-placeholders', [ReportFormatController::class, 'validatePlaceholders'])
-             ->name('validate_placeholders');
-        Route::get('/preview/{format}', [ReportFormatController::class, 'preview'])->name('preview');
-
+        Route::get('/edit/{format}', [ReportFormatController::class, 'edit'])->name('edit');
     });
 });
 

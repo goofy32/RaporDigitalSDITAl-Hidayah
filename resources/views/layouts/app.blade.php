@@ -12,30 +12,81 @@
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    
+    <!-- React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- For production, use these instead -->
+    <!-- <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script> -->
+    <!-- <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script> -->
+    
+    <!-- Babel for JSX (development only - remove in production) -->
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        [x-cloak] { 
+            display: none !important; 
+        }
+    
+        #dropdown-rapor {
+            display: none;
+        }
+    
+        #dropdown-rapor.show {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-    <!-- Remove the direct Alpine.js CDN since we're using Vite -->
-    
-    <!-- Use data-turbo-permanent instead of data-turbolinks-permanent -->
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
     <x-admin.sidebar data-turbo-permanent id="sidebar"></x-admin.sidebar>
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />
 
-    <div class="p-4 sm:ml-64">
-        <div id="main" data-turbo-frame="main">
+    <div class="p-4 sm:ml-64 min-h-screen bg-gray-50">
+        <div class="mt-14"> <!-- Padding top untuk navbar -->
             @if(session('success'))
                 <x-alert type="success" :message="session('success')" />
             @endif
-
+    
             @if(session('error'))
                 <x-alert type="error" :message="session('error')" />
             @endif
-
-            @yield('content')
+    
+            <div id="main" data-turbo-frame="main">
+                @yield('content')
+            </div>
         </div>
     </div>
 
+    <!-- Base components for React -->
+    <script type="text/babel">
+        // Define base components that will be used across the app
+        window.Card = ({ children, className = '' }) => (
+            <div className={`bg-white shadow rounded-lg ${className}`}>
+                {children}
+            </div>
+        );
+
+        window.Button = ({ children, onClick, className = '', type = 'button' }) => (
+            <button
+                type={type}
+                onClick={onClick}
+                className={`px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${className}`}
+            >
+                {children}
+            </button>
+        );
+
+        window.Input = ({ type = 'text', value, onChange, className = '' }) => (
+            <input
+                type={type}
+                value={value}
+                onChange={onChange}
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${className}`}
+            />
+        );
+    </script>
+
     @stack('scripts')
-    <!-- Remove the direct Flowbite CDN since we're importing it via Vite -->
 </body>
 </html>

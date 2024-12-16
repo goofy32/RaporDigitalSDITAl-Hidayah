@@ -2,7 +2,7 @@
     class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-white border-r border-gray-200 sm:translate-x-0 dark:bg-gray-800 dark:border-gray-700"
     aria-label="Sidebar"
     data-turbo-permanent>
-    <div class="h-full px-3 pb-4 overflow-y-auto bg-white dark:bg-gray-800">
+    <div x-data="{ openDropdown: false }" class="h-full px-3 pb-4 overflow-y-auto bg-white dark:bg-gray-800">
         <ul class="space-y-2 font-medium">
             <li>
                 <a href="{{ route('admin.dashboard') }}"
@@ -78,10 +78,8 @@
             </li>
             <li>
                 <button type="button"
-                    data-collapse-toggle="dropdown-rapor"
-                    data-path="report-format"
-                    x-data="{ open: false }"
-                    @click="open = !open"
+                    @click="openDropdown = !openDropdown"
+                    :aria-expanded="openDropdown"
                     class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                     <img src="{{ asset('images/icons/report-icon.png') }}" alt="Report Icon" class="w-5 h-5">
                     <span class="ml-3">Format Rapot</span>
@@ -89,18 +87,25 @@
                         <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06-.02L10 10.67l3.71-3.48a.75.75 0 111.04 1.08l-4.25 4a.75.75 0 01-1.04 0l-4.25-4a.75.75 0 01-.02-1.06z" clip-rule="evenodd" />
                     </svg>
                 </button>
-                <ul id="dropdown-rapor" 
-                    x-show="open"
-                    x-transition
+                <ul 
+                    x-show="openDropdown"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="transform opacity-0 scale-95"
+                    x-transition:enter-end="transform opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="transform opacity-100 scale-100"
+                    x-transition:leave-end="transform opacity-0 scale-95"
                     class="py-2 space-y-2">
                     <li>
                         <a href="{{ route('report_format.index', ['type' => 'UTS']) }}"
+                            data-turbo-frame="main"
                             class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700">
                             UTS
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('report_format.index', ['type' => 'UAS']) }}"
+                            data-turbo-frame="main"
                             class="flex items-center w-full p-2 pl-10 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700">
                             UAS
                         </a>

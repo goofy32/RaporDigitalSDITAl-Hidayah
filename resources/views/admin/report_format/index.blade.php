@@ -1,189 +1,124 @@
-<!-- resources/views/admin/report_format/index.blade.php -->
 @extends('layouts.app')
 
-@section('title', 'Format Rapor')
+@section('title', 'Format Rapor ' . $type)
 
 @section('content')
-<div>
-    <div class="p-4 bg-white mt-14 rounded-lg shadow">
-        <!-- Header -->
-        @if(session('error'))
-        <div class="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    @if($errors->any())
-        <div class="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-            <ul>
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h2 class="text-2xl font-bold text-green-700">
-                    Format Rapor - {{ strtoupper($type) }}
-                </h2>
-                <p class="text-sm text-gray-600">Kelola format rapor yang akan digunakan</p>
-            </div>
-            <button 
+<div class="p-4 bg-white mt-14 rounded-lg shadow">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Format Rapor {{ $type }}</h2>
+        <button type="button" 
                 data-modal-target="uploadModal" 
-                data-modal-toggle="uploadModal" 
-                class="px-4 py-2 text-white bg-green-700 rounded hover:bg-green-800"
-            >
-                Upload Format Baru
-            </button>
-        </div>
+                data-modal-toggle="uploadModal"
+                class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5">
+            Upload Format Baru
+        </button>
+    </div>
 
-        <!-- Format List -->
-<!-- Format List -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    @foreach($formats as $format)
-    <div class="border rounded-lg p-4 {{ $format->is_active ? 'border-green-500' : 'border-gray-300' }}">
-        <div class="flex justify-between items-start mb-2">
-            <div>
-                <h3 class="font-semibold">{{ $format->title }}</h3>
-                <p class="text-sm text-gray-600">{{ $format->tahun_ajaran }}</p>
-            </div>
-            @if($format->is_active)
-                <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Aktif</span>
-            @endif
-        </div>
-
-        <!-- Ganti bagian preview container -->
-        <div class="preview-container bg-white p-4 rounded-lg border">
-            <!-- Tampilkan placeholders sebagai preview sederhana -->
-            <div class="mb-4">
-                <h4 class="text-sm font-medium mb-2">Placeholders:</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    @if($format->placeholders && is_array($format->placeholders))
-                        @foreach($format->placeholders as $placeholder)
-                            <div class="text-xs bg-gray-50 p-1 rounded">
-                                {{ $placeholder }}
-                            </div>
-                        @endforeach
-                    @else
-                        <div class="text-xs text-gray-500">
-                            Tidak ada placeholder tersedia
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Preview PDF jika tersedia -->
-            @if($format->pdf_path)
-                <div class="mt-4">
-                    <embed 
-                        src="{{ asset('storage/' . $format->pdf_path) }}"
-                        type="application/pdf"
-                        width="100%"
-                        height="300px"
-                        class="rounded border"
-                    />
-                </div>
-            @endif
-
-            <!-- Tombol download template -->
-            <div class="mt-4 flex space-x-2">
-                <a href="{{ asset('storage/' . $format->template_path) }}"
-                class="text-sm text-blue-600 hover:text-blue-800"
-                download>
-                    Download DOCX Template
-                </a>
-                @if($format->pdf_path)
-                    <a href="{{ asset('storage/' . $format->pdf_path) }}"
-                    class="text-sm text-blue-600 hover:text-blue-800"
-                    download>
-                        Download PDF
-                    </a>
-                @endif
-            </div>
-        </div>
-        
-        <div class="flex space-x-2 mt-4">
-            @if(!$format->is_active)
-            <form action="{{ route('report_format.activate', $format) }}" method="POST">
-                @csrf
-                <button type="submit" class="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700">
-                    Aktifkan
+    <!-- Content for upload will go here -->
+    <div class="flex items-center justify-center p-8">
+        <div class="text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Format Rapor Kosong</h3>
+            <p class="mt-1 text-sm text-gray-500">Upload format rapor baru untuk mulai.</p>
+            <div class="mt-6">
+                <button type="button" 
+                        data-modal-target="uploadModal" 
+                        data-modal-toggle="uploadModal"
+                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Upload Format Baru
                 </button>
-            </form>
-
-            <a href="{{ route('report_format.preview', $format) }}"
-               class="px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700">
-                Detail Preview
-            </a>
-            @endif
-            <form action="{{ route('report_format.destroy', $format) }}" method="POST">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700">
-                    Hapus
-                </button>
-            </form>
+            </div>
         </div>
     </div>
-    @endforeach
 </div>
 
-
 <!-- Upload Modal -->
-<div id="uploadModal" tabindex="-1" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-    <!-- Modal content -->
-    <div class="relative p-4 w-full max-w-md max-h-full">
+<div id="uploadModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative w-full max-w-2xl max-h-full">
         <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
             <!-- Modal header -->
-            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    Upload Format Rapor Baru
+            <div class="flex items-start justify-between p-4 border-b rounded-t">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    Upload Format Rapor {{ $type }}
                 </h3>
-                <button type="button" data-modal-hide="uploadModal" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex justify-center items-center">
+                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center" data-modal-hide="uploadModal">
                     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
                     </svg>
                 </button>
             </div>
+
             <!-- Modal body -->
-            <form action="{{ route('report_format.upload') }}" method="POST" enctype="multipart/form-data" class="p-4 md:p-5" id="uploadForm">
+            <form action="{{ route('report_format.upload') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="type" value="{{ $type }}">
-                <div class="space-y-4">
+                <div class="p-6 space-y-6">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-900">Judul Format</label>
-                        <input type="text" name="title" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required>
+                        <input type="text" name="title" required
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                     </div>
+
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-900">Tahun Ajaran</label>
-                        <input type="text" name="tahun_ajaran" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required>
+                        <input type="text" name="tahun_ajaran" required
+                               pattern="\d{4}/\d{4}" placeholder="2023/2024"
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <p class="mt-1 text-sm text-gray-500">Format: YYYY/YYYY (contoh: 2023/2024)</p>
                     </div>
+
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-900">File Template (.docx)</label>
-                        <input type="file" 
-                               name="template" 
-                               accept=".docx" 
-                               class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none" 
-                               required>
-                        <p class="mt-1 text-sm text-gray-500">Upload file DOCX yang berisi placeholder</p>
+                        <input type="file" name="template" required accept=".docx"
+                               class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50">
+                        <p class="mt-1 text-sm text-gray-500">Upload file template dalam format .docx</p>
                     </div>
+
                     <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-900">File PDF</label>
-                        <input type="file" 
-                               name="pdf_file" 
-                               accept=".pdf" 
-                               class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none" 
-                               required>
-                        <p class="mt-1 text-sm text-gray-500">Upload file PDF untuk preview</p>
+                        <label class="block mb-2 text-sm font-medium text-gray-900">File Preview (.pdf)</label>
+                        <input type="file" name="pdf_file" required accept=".pdf"
+                               class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50">
+                        <p class="mt-1 text-sm text-gray-500">Upload file preview dalam format .pdf</p>
                     </div>
                 </div>
-                <button type="submit" class="inline-flex items-center px-5 py-2.5 mt-4 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800">
-                    Upload
-                </button>
+
+                <!-- Modal footer -->
+                <div class="flex items-center p-6 space-x-2 border-t">
+                    <button type="submit"
+                            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                        Upload
+                    </button>
+                    <button type="button"
+                            data-modal-hide="uploadModal"
+                            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900">
+                        Batal
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 </div>
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle tahun ajaran input format
+    const tahunAjaranInput = document.querySelector('input[name="tahun_ajaran"]');
+    if (tahunAjaranInput) {
+        tahunAjaranInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 4) {
+                value = value.slice(0,4) + '/' + value.slice(4,8);
+            }
+            e.target.value = value;
+        });
+    }
+});
+</script>
+@endpush
 @endsection

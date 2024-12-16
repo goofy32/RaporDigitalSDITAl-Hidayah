@@ -61,10 +61,10 @@ class ReportFormatController extends Controller
                              ->get();
         
         return view('admin.report_format.index', [
-            'type' => $type,
-            'formats' => $formats
+            'type' => $type
         ]);
     }
+    
     public function preview(FormatRapor $format)
     {
         try {
@@ -145,36 +145,61 @@ class ReportFormatController extends Controller
         ]);
     
         try {
-            // Proses DOCX untuk validasi placeholder
             $docxFile = $request->file('template');
             $template = new TemplateProcessor($docxFile->getRealPath());
-            
-            // Get dan validasi placeholders
             $placeholders = $template->getVariables();
             
-            if (empty($placeholders)) {
-                return redirect()->back()->with('error', 'Template tidak memiliki placeholder yang valid');
+            // Parse placeholder untuk mata pelajaran
+            $subjects = [];
+            $mapelPattern = '/mapel_(\d+)_(.+)/';
+            foreach ($placeholders as $placeholder) {
+                if (preg_match($mapelPattern, $placeholder, $matches)) {
+                    $index = $matches[1];
+                    $type = $matches[2];
+                    if (!isset($subjects[$index])) {
+                        $subjects[$index] = [
+                            'name' => '',
+                            'score' => '',
+                            'competency' => ''
+                        ];
+                    }
+                }
             }
     
-            $invalidPlaceholders = $this->getInvalidPlaceholders($placeholders);
-            if (!empty($invalidPlaceholders)) {
-                return redirect()->back()
-                    ->with('error', 'Template memiliki placeholder yang tidak valid: ' . implode(', ', $invalidPlaceholders));
+            // Parse placeholder untuk ekstrakurikuler
+            $extracurricular = [];
+            $ekskulPattern = '/ekskul_(\d+)_(.+)/';
+            foreach ($placeholders as $placeholder) {
+                if (preg_match($ekskulPattern, $placeholder, $matches)) {
+                    $index = $matches[1];
+                    if (!isset($extracurricular[$index])) {
+                        $extracurricular[$index] = [
+                            'name' => '',
+                            'grade' => '',
+                            'description' => ''
+                        ];
+                    }
+                }
             }
     
-            // Simpan kedua file
             $filename = Str::slug($request->title) . '_' . time();
             $docxPath = $docxFile->storeAs('templates/rapor', $filename . '.docx', 'public');
             $pdfPath = $request->file('pdf_file')->storeAs('templates/rapor', $filename . '.pdf', 'public');
     
-            // Create format record dengan placeholders sebagai JSON string
             FormatRapor::create([
                 'type' => $request->type,
                 'title' => $request->title,
                 'template_path' => $docxPath,
                 'pdf_path' => $pdfPath,
                 'tahun_ajaran' => $request->tahun_ajaran,
-                'placeholders' => json_encode(array_values($placeholders)), // Encode sebagai JSON
+                'placeholders' => json_encode($placeholders),
+                'subjects_data' => json_encode(array_values($subjects)),
+                'extracurricular_data' => json_encode(array_values($extracurricular)),
+                'attendance_data' => json_encode([
+                    'sick' => 0,
+                    'permitted' => 0,
+                    'noPermission' => 0
+                ]),
                 'is_active' => false
             ]);
     
@@ -185,6 +210,76 @@ class ReportFormatController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return redirect()->back()->with('error', 'Gagal mengupload format: ' . $e->getMessage());
+        }
+    }
+
+    public function edit(FormatRapor $format)
+    {
+        return view('admin.report_format.edit', [
+            'format' => $format,
+            'data' => [
+                'subjects' => $this->parseSubjectsFromTemplate($format->template_path),
+                'extracurricular' => $this->parseExtracurricularFromTemplate($format->template_path)
+            ]
+        ]);
+    }
+
+    private function parseSubjectsFromTemplate($templatePath)
+    {
+        try {
+            $template = new TemplateProcessor(storage_path('app/public/' . $templatePath));
+            $variables = $template->getVariables();
+            
+            $subjects = [];
+            $mapelPattern = '/mapel_(\d+)_(nama|nilai|capaian)/';
+            
+            foreach ($variables as $var) {
+                if (preg_match($mapelPattern, $var, $matches)) {
+                    $index = $matches[1];
+                    $type = $matches[2];
+                    
+                    if (!isset($subjects[$index])) {
+                        $subjects[$index] = [
+                            'name' => '',
+                            'score' => '',
+                            'competency' => ''
+                        ];
+                    }
+                }
+            }
+            
+            return array_values($subjects);
+        } catch (\Exception $e) {
+            Log::error('Error parsing subjects: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function parseExtracurricularFromTemplate($templatePath)
+    {
+        try {
+            $template = new TemplateProcessor(storage_path('app/public/' . $templatePath));
+            $variables = $template->getVariables();
+            
+            $extracurricular = [];
+            $ekskulPattern = '/ekskul_(\d+)_(nama|keterangan)/';
+            
+            foreach ($variables as $var) {
+                if (preg_match($ekskulPattern, $var, $matches)) {
+                    $index = $matches[1];
+                    if (!isset($extracurricular[$index])) {
+                        $extracurricular[$index] = [
+                            'name' => '',
+                            'description' => ''
+                        ];
+                    }
+                }
+            }
+            
+            return array_values($extracurricular);
+        } catch (\Exception $e) {
+            Log::error('Error parsing extracurricular: ' . $e->getMessage());
+            return [];
         }
     }
     
@@ -303,5 +398,49 @@ class ReportFormatController extends Controller
         return redirect()->back()->with('success', 'Format rapor berhasil dihapus');
     }
 
+    public function saveReportData(Request $request)
+    {
+        $validated = $request->validate([
+            'subjects' => 'required|array',
+            'subjects.*.name' => 'required|string',
+            'subjects.*.score' => 'required|numeric|min:0|max:100',
+            'subjects.*.competency' => 'required|string',
+            'extracurricular' => 'required|array',
+            'extracurricular.*.name' => 'required|string',
+            'extracurricular.*.grade' => 'required|string',
+            'extracurricular.*.description' => 'required|string',
+            'attendance.sick' => 'required|numeric|min:0',
+            'attendance.permitted' => 'required|numeric|min:0',
+            'attendance.noPermission' => 'required|numeric|min:0',
+            'teacherNote' => 'nullable|string'
+        ]);
     
+        try {
+            // Here you would implement the logic to save the data to your database
+            // This will depend on your database structure
+            
+            // Example using the FormatRapor model:
+            $report = FormatRapor::findOrFail($request->report_id);
+            
+            // Update the report data
+            $report->update([
+                'subjects_data' => json_encode($validated['subjects']),
+                'extracurricular_data' => json_encode($validated['extracurricular']),
+                'attendance_data' => json_encode($validated['attendance']),
+                'teacher_note' => $validated['teacherNote']
+            ]);
+    
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Report data saved successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error saving report data: ' . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to save report data'
+            ], 500);
+        }
+    }
 }

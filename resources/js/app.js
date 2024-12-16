@@ -110,11 +110,17 @@ document.addEventListener('turbo:load', () => {
     const dropdownContent = document.getElementById('dropdown-rapor');
     
     if (dropdownButton && dropdownContent) {
+        // Cek URL untuk menentukan apakah dropdown harus terbuka
         const currentPath = window.location.pathname;
-        if (currentPath.includes('report-format')) {
+        if (currentPath.includes('format-rapor')) {
+            dropdownContent.classList.add('show');
             dropdownButton.classList.add('bg-green-100', 'shadow-md');
-            dropdownContent.classList.remove('hidden');
         }
+
+        // Toggle dropdown saat diklik
+        dropdownButton.addEventListener('click', () => {
+            dropdownContent.classList.toggle('show');
+        });
     }
 });
 
