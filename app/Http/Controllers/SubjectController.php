@@ -8,6 +8,7 @@ use App\Models\Guru;
 use App\Models\Siswa;
 use App\Models\LingkupMateri;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SubjectController extends Controller
 {
@@ -93,50 +94,7 @@ class SubjectController extends Controller
         return redirect()->route('subject.index')
             ->with('success', 'Mata Pelajaran dan Lingkup Materi berhasil ditambahkan!');
     }
-    public function teacherEdit($id)
-    {
-        $guru = auth()->guard('guru')->user();
-        $subject = MataPelajaran::with('lingkupMateris')
-            ->where('guru_id', $guru->id)
-            ->findOrFail($id);
-        $classes = Kelas::all();
 
-        return view('pengajar.edit_subject', compact('subject', 'classes'));
-    }
-
-    public function teacherUpdate(Request $request, $id)
-    {
-        $guru = auth()->guard('guru')->user();
-        $subject = MataPelajaran::where('guru_id', $guru->id)
-            ->findOrFail($id);
-
-        $validated = $request->validate([
-            'mata_pelajaran' => 'required|string|max:255',
-            'kelas' => 'required|exists:kelas,id',
-            'semester' => 'required|integer|min:1|max:2',
-            'lingkup_materi' => 'nullable|array',
-            'lingkup_materi.*' => 'required|string|max:255',
-        ]);
-
-        $subject->update([
-            'nama_pelajaran' => $validated['mata_pelajaran'],
-            'kelas_id' => $validated['kelas'],
-            'semester' => $validated['semester'],
-        ]);
-
-        if (isset($validated['lingkup_materi'])) {
-            $subject->lingkupMateris()->delete();
-            foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
-                LingkupMateri::create([
-                    'mata_pelajaran_id' => $subject->id,
-                    'judul_lingkup_materi' => $judulLingkupMateri,
-                ]);
-            }
-        }
-
-        return redirect()->route('pengajar.subject.index')
-        ->with('success', 'Mata Pelajaran berhasil diperbarui!');
-    }
 
     public function edit($id)
     {
@@ -197,6 +155,7 @@ class SubjectController extends Controller
         $guru = auth()->guard('guru')->user();
         $subjects = MataPelajaran::with(['kelas', 'guru', 'lingkupMateris'])
             ->where('guru_id', $guru->id)
+            ->orderBy('kelas_id')
             ->paginate(10);
         
         return view('pengajar.subject', compact('subjects'));
@@ -205,8 +164,8 @@ class SubjectController extends Controller
     public function teacherCreate()
     {
         $guru = auth()->guard('guru')->user();
-        $classes = Kelas::all();
-        return view('pengajar.add_subject', compact('classes', 'guru'));
+        $classes = Kelas::orderBy('nomor_kelas')->orderBy('nama_kelas')->get();
+        return view('pengajar.add_subject', compact('classes'));
     }
 
     public function teacherStore(Request $request)
@@ -221,21 +180,103 @@ class SubjectController extends Controller
             'lingkup_materi.*' => 'required|string|max:255',
         ]);
 
-        $mataPelajaran = MataPelajaran::create([
-            'nama_pelajaran' => $validated['mata_pelajaran'],
-            'kelas_id' => $validated['kelas'],
-            'guru_id' => $guru->id,
-            'semester' => $validated['semester'],
-        ]);
+        try {
+            DB::beginTransaction();
 
-        foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
-            LingkupMateri::create([
-                'mata_pelajaran_id' => $mataPelajaran->id,
-                'judul_lingkup_materi' => $judulLingkupMateri,
+            $mataPelajaran = MataPelajaran::create([
+                'nama_pelajaran' => $validated['mata_pelajaran'],
+                'kelas_id' => $validated['kelas'],
+                'guru_id' => $guru->id,
+                'semester' => $validated['semester'],
             ]);
-        }
 
-        return redirect()->route('pengajar.subject.index')
-        ->with('success', 'Mata Pelajaran berhasil ditambahkan!');
+            foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
+                LingkupMateri::create([
+                    'mata_pelajaran_id' => $mataPelajaran->id,
+                    'judul_lingkup_materi' => $judulLingkupMateri,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('pengajar.subject.index')
+                ->with('success', 'Mata Pelajaran berhasil ditambahkan!');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat menyimpan data.')
+                ->withInput();
         }
     }
+
+    public function teacherEdit($id)
+    {
+        $guru = auth()->guard('guru')->user();
+        $subject = MataPelajaran::with('lingkupMateris')
+            ->where('guru_id', $guru->id)
+            ->findOrFail($id);
+        $classes = Kelas::orderBy('nomor_kelas')->orderBy('nama_kelas')->get();
+
+        return view('pengajar.edit_subject', compact('subject', 'classes'));
+    }
+
+    public function teacherUpdate(Request $request, $id)
+    {
+        $guru = auth()->guard('guru')->user();
+        $subject = MataPelajaran::where('guru_id', $guru->id)
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'mata_pelajaran' => 'required|string|max:255',
+            'kelas' => 'required|exists:kelas,id',
+            'semester' => 'required|integer|min:1|max:2',
+            'lingkup_materi' => 'required|array',
+            'lingkup_materi.*' => 'required|string|max:255',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $subject->update([
+                'nama_pelajaran' => $validated['mata_pelajaran'],
+                'kelas_id' => $validated['kelas'],
+                'semester' => $validated['semester'],
+            ]);
+
+            // Update Lingkup Materi
+            $subject->lingkupMateris()->delete();
+            foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
+                LingkupMateri::create([
+                    'mata_pelajaran_id' => $subject->id,
+                    'judul_lingkup_materi' => $judulLingkupMateri,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('pengajar.subject.index')
+                ->with('success', 'Mata Pelajaran berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat memperbarui data.')
+                ->withInput();
+        }
+    }
+
+    public function teacherDestroy($id)
+    {
+        $guru = auth()->guard('guru')->user();
+        $subject = MataPelajaran::where('guru_id', $guru->id)
+            ->findOrFail($id);
+
+        try {
+            $subject->delete();
+            return redirect()->route('pengajar.subject.index')
+                ->with('success', 'Mata Pelajaran berhasil dihapus!');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat menghapus data.');
+        }
+    }
+}

@@ -1,6 +1,6 @@
 @extends('layouts.pengajar.app')
 
-@section('title', 'Data Siswa')
+@section('title', 'Data Mata Pelajaran')
 
 @section('content')
 <div>
@@ -18,7 +18,6 @@
                 Tambah Data
             </a>
         </div>
-
 
         <!-- Table -->
         <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
@@ -54,30 +53,29 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 text-center flex justify-around">
-
+                            <!-- View TP Button -->
                             <a href="{{ route('pengajar.tujuan_pembelajaran.view', $subject->id) }}" class="text-blue-600 hover:underline" title="Lihat Tujuan Pembelajaran">
                                 <img src="{{ asset('images/icons/view.png') }}" alt="View Icon" class="w-5 h-5">
                             </a>
-                            <!-- Lihat TP -->
-                            <a href="{{ route('pengajar.tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
-                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
-                            </a>
-                        
-                            <!-- Edit Data Mata Pelajaran -->
-                            <a href="#" ...>
-                                <!-- Ikon Edit -->
-                                <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
 
+                            <!-- Edit TP Button -->
+                            <a href="{{ route('pengajar.tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline" title="Edit Tujuan Pembelajaran">
+                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Edit TP Icon" class="w-5 h-5">
                             </a>
                         
-                            <!-- Hapus Mata Pelajaran dan Lingkup Materi terkait -->
+                            <!-- Edit Subject Button -->
+                            <a href="{{ route('pengajar.subject.edit', $subject->id) }}" class="text-yellow-600 hover:underline" title="Edit Mata Pelajaran">
+                                <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
+                            </a>
+                        
+                            <!-- Delete Button -->
                             <form action="{{ route('pengajar.subject.destroy', $subject->id) }}" method="POST" class="inline">
-
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
-                                    <!-- Ikon Hapus -->
-                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                <button type="submit" class="text-red-600 hover:underline" 
+                                        onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')"
+                                        title="Hapus Mata Pelajaran">
+                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
                                 </button>
                             </form>
                         </td>
@@ -91,12 +89,10 @@
             </table>
         </div>
 
-        <div>
+        <!-- Pagination -->
+        <div class="mt-4">
             {{ $subjects->links('vendor.pagination.custom') }}
         </div>
     </div>
 </div>
-
-<!-- Flowbite JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
 @endsection

@@ -163,6 +163,141 @@ class StudentController extends Controller
         return redirect()->route('student')->with('success', 'Data siswa berhasil dihapus!');
     }
 
+    public function waliKelasIndex(Request $request)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        $query = Siswa::with('kelas')
+            ->where('kelas_id', $waliKelas->kelas_pengajar_id);
+        
+        if($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'LIKE', "%{$search}%")
+                  ->orWhere('nis', 'LIKE', "%{$search}%")
+                  ->orWhere('nisn', 'LIKE', "%{$search}%");
+            });
+        }
+        
+        $students = $query->paginate($request->get('per_page', 10));
+        
+        return view('wali_kelas.student', compact('students'));
+    }
+
+    public function waliKelasShow($id)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        $student = Siswa::with('kelas')
+            ->where('kelas_id', $waliKelas->kelas_pengajar_id)
+            ->findOrFail($id);
+            
+        return view('wali_kelas.detail_student', compact('student'));
+    }
+
+    public function waliKelasCreate()
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        $kelas = Kelas::where('id', $waliKelas->kelas_pengajar_id)->first();
+        
+        return view('wali_kelas.add_student', compact('kelas'));
+    }
+
+    public function waliKelasStore(Request $request)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        
+        $validated = $request->validate([
+            'nis' => 'required|unique:siswas',
+            'nisn' => 'required|unique:siswas',
+            'nama' => 'required',
+            'tanggal_lahir' => 'required|date',
+            'jenis_kelamin' => 'required',
+            'agama' => 'required',
+            'alamat' => 'required',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'nama_ayah' => 'required|string',
+            'nama_ibu' => 'required|string',
+            'pekerjaan_ayah' => 'nullable|string',
+            'pekerjaan_ibu' => 'nullable|string',
+            'alamat_orangtua' => 'nullable|string',
+            'wali_siswa' => 'nullable|string',
+            'pekerjaan_wali' => 'nullable|string',
+        ]);
+
+        // Set kelas_id sesuai kelas wali kelas
+        $validated['kelas_id'] = $waliKelas->kelas_pengajar_id;
+        
+        if ($request->hasFile('photo')) {
+            $validated['photo'] = $request->file('photo')->store('photos', 'public');
+        }
+
+        try {
+            Siswa::create($validated);
+            return redirect()->route('wali_kelas.student.index')
+                ->with('success', 'Data siswa berhasil ditambahkan!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    public function waliKelasEdit($id)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        $student = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+            ->findOrFail($id);
+        $kelas = Kelas::where('id', $waliKelas->kelas_pengajar_id)->first();
+
+        return view('wali_kelas.edit_student', compact('student', 'kelas'));
+    }
+
+    public function waliKelasUpdate(Request $request, $id)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        $student = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'nis' => 'required|unique:siswas,nis,' . $id,
+            'nisn' => 'required|unique:siswas,nisn,' . $id,
+            'nama' => 'required',
+            'tanggal_lahir' => 'required|date',
+            'jenis_kelamin' => 'required',
+            'agama' => 'required',
+            'alamat' => 'required',
+            'photo' => 'nullable|image|max:2048',
+            'nama_ayah' => 'nullable',
+            'nama_ibu' => 'nullable',
+            'pekerjaan_ayah' => 'nullable',
+            'pekerjaan_ibu' => 'nullable',
+            'alamat_orangtua' => 'nullable',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            if ($student->photo) {
+                Storage::delete('public/' . $student->photo);
+            }
+            $validated['photo'] = $request->file('photo')->store('photos', 'public');
+        }
+
+        $student->update($validated);
+        return redirect()->route('wali_kelas.student.index')
+            ->with('success', 'Data siswa berhasil diperbarui!');
+    }
+
+    public function waliKelasDestroy($id)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        $student = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+            ->findOrFail($id);
+            
+        if ($student->photo) {
+            Storage::delete('public/' . $student->photo);
+        }
+            
+        $student->delete();
+        return redirect()->route('wali_kelas.student.index')
+            ->with('success', 'Data siswa berhasil dihapus!');
+    }
     public function uploadPage()
     {
         return view('data.upload_student');

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ekstrakurikuler;
+use App\Models\NilaiEkstrakurikuler;
+use App\Models\Siswa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -96,5 +98,98 @@ class EkstrakurikulerController extends Controller
             Log::error('Error deleting ekstrakurikuler: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem');
         }
+    }
+    public function waliKelasIndex()
+    {
+        // Ambil data wali kelas yang sedang login
+        $waliKelas = auth()->guard('guru')->user();
+        
+        // Query nilai ekstrakulikuler hanya untuk siswa di kelas yang diajar
+        $nilaiEkstrakurikuler = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
+            ->whereHas('siswa', function($query) use ($waliKelas) {
+                $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
+            })
+            ->paginate(10);
+    
+        return view('wali_kelas.ekstrakurikuler', compact('nilaiEkstrakurikuler'));
+    }
+
+    public function waliKelasCreate()
+    {
+        // Ambil data wali kelas yang sedang login
+        $waliKelas = auth()->guard('guru')->user();
+        
+        // Ambil daftar ekstrakurikuler
+        $ekstrakurikuler = Ekstrakurikuler::all();
+        
+        // Ambil hanya siswa dari kelas yang diajar
+        $siswa = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+                      ->orderBy('nama')
+                      ->get();
+        
+        return view('wali_kelas.add_ekstrakurikuler', compact('ekstrakurikuler', 'siswa'));
+    }
+
+    public function waliKelasStore(Request $request)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        
+        // Validasi bahwa siswa berada di kelas yang diajar
+        $validated = $request->validate([
+            'siswa_id' => [
+                'required',
+                'exists:siswas,id',
+                function ($attribute, $value, $fail) use ($waliKelas) {
+                    $siswa = Siswa::find($value);
+                    if ($siswa->kelas_id !== $waliKelas->kelas_pengajar_id) {
+                        $fail('Siswa tidak terdaftar di kelas Anda.');
+                    }
+                },
+            ],
+            'ekstrakurikuler_id' => 'required|exists:ekstrakurikulers,id',
+            'predikat' => 'required|string',
+            'deskripsi' => 'nullable|string',
+        ]);
+    
+        // Cek apakah siswa sudah memiliki nilai untuk ekstrakurikuler ini
+        $exists = NilaiEkstrakurikuler::where('siswa_id', $validated['siswa_id'])
+            ->where('ekstrakurikuler_id', $validated['ekstrakurikuler_id'])
+            ->exists();
+            
+        if ($exists) {
+            return back()->with('error', 'Siswa sudah memiliki nilai untuk ekstrakurikuler ini.');
+        }
+    
+        NilaiEkstrakurikuler::create($validated);
+    
+        return redirect()->route('wali_kelas.ekstrakurikuler.index')
+            ->with('success', 'Data ekstrakurikuler berhasil ditambahkan');
+    }
+    public function waliKelasEdit($id)
+    {
+        $waliKelas = auth()->guard('guru')->user();
+        
+        // Query nilai ekstrakulikuler dan pastikan siswa berada di kelas yang diajar
+        $nilaiEkstrakurikuler = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
+            ->whereHas('siswa', function($query) use ($waliKelas) {
+                $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
+            })
+            ->findOrFail($id);
+        
+        return view('wali_kelas.edit_ekstrakurikuler', compact('nilaiEkstrakurikuler'));
+    }
+
+    public function waliKelasUpdate(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'predikat' => 'required|string',
+            'deskripsi' => 'nullable|string',
+        ]);
+
+        $nilaiEkstrakurikuler = NilaiEkstrakurikuler::findOrFail($id);
+        $nilaiEkstrakurikuler->update($validated);
+
+        return redirect()->route('wali_kelas.ekstrakurikuler.index')
+            ->with('success', 'Data ekstrakurikuler berhasil diperbarui');
     }
 }

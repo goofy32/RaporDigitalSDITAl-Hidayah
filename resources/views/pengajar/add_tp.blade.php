@@ -191,8 +191,11 @@
         const saveButton = document.querySelector('button[onclick="saveData()"]');
         saveButton.disabled = true;
         saveButton.innerHTML = 'Menyimpan...';
+        
         if (tpData.length === 0) {
             alert('Tidak ada data untuk disimpan!');
+            saveButton.disabled = false;
+            saveButton.innerHTML = 'Simpan';
             return;
         }
 
@@ -216,7 +219,7 @@
         .then(data => {
             if (data.success) {
                 alert('Data berhasil disimpan!');
-                window.location.href = '{{ route('pengajar.subjects') }}';
+                window.location.href = '{{ route('pengajar.subject.index') }}';
             } else {
                 alert(data.message || 'Terjadi kesalahan saat menyimpan data.');
             }
@@ -224,11 +227,11 @@
         .catch(error => {
             console.error('Error:', error);
             alert(error.message || 'Terjadi kesalahan saat menyimpan data.');
-        });
+        })
         .finally(() => {
-        saveButton.disabled = false;
-        saveButton.innerHTML = 'Simpan';
-    });
+            saveButton.disabled = false;
+            saveButton.innerHTML = 'Simpan';
+        });
     }
 </script>
 @endsection

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AbsensiController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SchoolProfileController;
 use App\Http\Controllers\ClassController;
@@ -203,59 +204,31 @@ Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->name(
         ->name('profile');
 
     // Student Management 
-    Route::get('/siswa', function () {
-        return view('wali_kelas.student');
-    })->name('student.index');
-
-    Route::get('/siswa/create', function () {
-        return view('wali_kelas.add_student');
-    })->name('student.create');
-
-    Route::get('/siswa/{id}', function () {
-        return view('wali_kelas.detail_student');
-    })->name('student.show');
-
-    Route::get('/siswa/{id}/edit', function () {
-        return view('wali_kelas.edit_student');
-    })->name('student.edit');
-
-    Route::post('/siswa', function () {
-        return redirect()->route('wali_kelas.student.index')->with('success', 'Data berhasil ditambahkan');
-    })->name('student.store');
-
-    Route::put('/siswa/{id}', function () {
-        return redirect()->route('wali_kelas.student.index')->with('success', 'Data berhasil diupdate');
-    })->name('student.update');
-
-    Route::delete('/siswa/{id}', function () {
-        return redirect()->route('wali_kelas.student.index')->with('success', 'Data berhasil dihapus');
-    })->name('student.destroy');
+    Route::get('/siswa', [StudentController::class, 'waliKelasIndex'])->name('student.index');
+    Route::get('/siswa/create', [StudentController::class, 'waliKelasCreate'])->name('student.create');
+    Route::post('/siswa', [StudentController::class, 'waliKelasStore'])->name('student.store');
+    Route::get('/siswa/{id}', [StudentController::class, 'waliKelasShow'])->name('student.show');
+    Route::get('/siswa/{id}/edit', [StudentController::class, 'waliKelasEdit'])->name('student.edit');
+    Route::put('/siswa/{id}', [StudentController::class, 'waliKelasUpdate'])->name('student.update');
+    Route::delete('/siswa/{id}', [StudentController::class, 'waliKelasDestroy'])->name('student.destroy');
 
     // Ekstrakurikuler Management
-    Route::get('/ekstrakurikuler', function () {
-        return view('wali_kelas.ekstrakurikuler');
-    })->name('ekstrakurikuler.index');
-
-    Route::get('/ekstrakurikuler/create', function () {
-        return view('wali_kelas.add_ekstrakurikuler');
-    })->name('ekstrakurikuler.create');
-
-    Route::post('/ekstrakurikuler', function () {
-        return redirect()->route('wali_kelas.ekstrakurikuler.index')->with('success', 'Data berhasil ditambahkan');
-    })->name('ekstrakurikuler.store');
+    Route::get('/ekstrakurikuler', [EkstrakurikulerController::class, 'waliKelasIndex'])->name('ekstrakurikuler.index');
+    Route::get('/ekstrakurikuler/create', [EkstrakurikulerController::class, 'waliKelasCreate'])->name('ekstrakurikuler.create');
+    Route::post('/ekstrakurikuler', [EkstrakurikulerController::class, 'waliKelasStore'])->name('ekstrakurikuler.store');
+    Route::get('/ekstrakurikuler/{id}/edit', [EkstrakurikulerController::class, 'waliKelasEdit'])->name('ekstrakurikuler.edit');
+    Route::put('/ekstrakurikuler/{id}', [EkstrakurikulerController::class, 'waliKelasUpdate'])->name('ekstrakurikuler.update');
+    Route::delete('/ekstrakurikuler/{id}', [EkstrakurikulerController::class, 'waliKelasDestroy'])->name('ekstrakurikuler.destroy');
 
     // Absence Management
-    Route::get('/absensi', function () {
-        return view('wali_kelas.absence');
-    })->name('absence.index');
-
-    Route::get('/absensi/create', function () {
-        return view('wali_kelas.add_absence');
-    })->name('absence.create');
-
-    Route::post('/absensi', function () {
-        return redirect()->route('wali_kelas.absence.index')->with('success', 'Data berhasil ditambahkan');
-    })->name('absence.store');
+    Route::resource('absensi', AbsensiController::class)->names([
+        'index' => 'absence.index',
+        'create' => 'absence.create',
+        'store' => 'absence.store',
+        'edit' => 'absence.edit',
+        'update' => 'absence.update',
+        'destroy' => 'absence.destroy',
+    ]);
 
     // Rapor Management
     Route::get('/rapor', function () {
