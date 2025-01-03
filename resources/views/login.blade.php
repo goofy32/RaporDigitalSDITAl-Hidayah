@@ -27,11 +27,11 @@
     </div>
 
     <!-- Form Login -->
-    <div class="bg-white p-6 sm:p-8 rounded-none w-full max-w-sm sm:max-w-md shadow-card">
+    <div class="bg-white p-8 sm:p-12 rounded-none w-full max-w-xl sm:max-w-md shadow-card">
         <!-- Logo -->
-        <div class="flex flex-col items-center mb-6">
+        <div class="flex flex-col items-center mb-4">
             <img src="{{ asset('images/icons/sdit-logo.png') }}" alt="Logo Sekolah"
-                class="w-32 h-32 object-contain mb-4">
+                class="w-36 h-36 object-contain mb-2">
         </div>
 
         @if ($errors->any())
