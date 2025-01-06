@@ -39,7 +39,7 @@
                         <th scope="col" class="px-6 py-3">Semester</th>
                         <th scope="col" class="px-6 py-3">Guru Pengampu</th>
                         <th scope="col" class="px-6 py-3">Lingkup Materi</th>
-                        <th scope="col" class="px-6 py-3">Aksi</th>
+                        <th scope="col" class="px-6 py-3 text center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>

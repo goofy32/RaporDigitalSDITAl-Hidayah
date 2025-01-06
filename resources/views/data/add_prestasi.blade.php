@@ -74,4 +74,47 @@
         </div>
     </form>
 </div>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const kelasSelect = document.getElementById('kelas');
+    const siswaSelect = document.getElementById('nama_siswa');
+    const allSiswa = @json($siswa);
+
+    function filterSiswa() {
+        const selectedKelasId = kelasSelect.value;
+        
+        // Reset siswa dropdown
+        siswaSelect.innerHTML = '<option value="">Pilih Siswa</option>';
+        
+        // Filter siswa berdasarkan kelas
+        const filteredSiswa = allSiswa.filter(siswa => 
+            siswa.kelas_id == selectedKelasId
+        );
+
+        // Tambahkan siswa yang sesuai
+        filteredSiswa.forEach(siswa => {
+            const option = document.createElement('option');
+            option.value = siswa.id;
+            option.textContent = siswa.nama;
+            
+            // Cek jika ada siswa yang sudah dipilih sebelumnya
+            @if(isset($prestasi))
+            if (siswa.id == {{ $prestasi->siswa_id }}) {
+                option.selected = true;
+            }
+            @endif
+
+            siswaSelect.appendChild(option);
+        });
+    }
+
+    // Jalankan filter saat halaman dimuat
+    filterSiswa();
+
+    // Tambahkan event listener untuk perubahan kelas
+    kelasSelect.addEventListener('change', filterSiswa);
+});
+</script>
+@endpush
 @endsection
