@@ -29,8 +29,9 @@ class Kelas extends Model
 
     public function getFullKelasAttribute()
     {
-        return "{$this->nomor_kelas} {$this->nama_kelas}";
+        return "Kelas {$this->nomor_kelas} {$this->nama_kelas}";
     }
+    
     
     // Tambahkan method untuk debugging
     public function toArray()
