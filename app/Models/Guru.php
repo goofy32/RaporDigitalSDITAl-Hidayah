@@ -38,7 +38,13 @@ class Guru extends Authenticatable
         'password' => 'hashed',
         'tanggal_lahir' => 'date',
     ];
-
+    
+    // Tambahkan accessor jika diperlukan
+    public function getTanggalLahirAttribute($value)
+    {
+        return $value ? date('Y-m-d', strtotime($value)) : null;
+    }
+    
     public function kelasPengajar()
     {
         return $this->belongsTo(Kelas::class, 'kelas_pengajar_id');

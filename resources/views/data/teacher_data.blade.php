@@ -31,19 +31,19 @@
             <!-- Detail Pengajar -->
             <div class="flex space-x-8">
                 <!-- Foto Placeholder -->
-                <div class="flex items-start justify-center w-48 h-full bg-gray-200 rounded-lg shadow-md">
-                    @if($teacher->photo)
-                        <img src="{{ asset('storage/' . $teacher->photo) }}" 
-                             alt="Foto Pengajar" 
-                             class="w-full h-auto object-cover rounded-lg">
-                    @else
-                        <div class="flex items-center justify-center w-full h-full bg-gray-200">
-                            <svg class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                    @endif
-                </div>
+                <div class="flex items-start justify-center w-64 h-80 bg-gray-200 rounded-lg shadow-md overflow-hidden"> <!-- Ukuran diperbesar -->
+                @if($teacher->photo)
+                    <img src="{{ asset('storage/' . $teacher->photo) }}" 
+                        alt="Foto Pengajar" 
+                        class="w-full h-full object-cover">
+                @else
+                    <div class="flex items-center justify-center w-full h-full">
+                        <svg class="w-32 h-32 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                @endif
+            </div>
 
                 <!-- Informasi Detail -->
                 <div class="w-full">
