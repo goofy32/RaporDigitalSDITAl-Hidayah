@@ -54,8 +54,7 @@ class AchievementController extends Controller
     public function create()
     {
         $kelas = Kelas::orderBy('nomor_kelas')->get();
-        $siswa = Siswa::with('kelas')->get(); // Ambil siswa dengan kelasnya
-    
+        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
         return view('data.add_prestasi', compact('kelas', 'siswa'));
     }
     // Menyimpan data prestasi
@@ -78,8 +77,10 @@ class AchievementController extends Controller
     {
         $prestasi = Prestasi::findOrFail($id);
         $kelas = Kelas::orderBy('nomor_kelas')->get();
-        $siswa = Siswa::with('kelas')->get(); // Ambil siswa dengan kelasnya
-    
+        
+        // Ubah menjadi mengambil SEMUA siswa, bukan hanya dari kelas yang sedang diedit
+        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
+        
         return view('data.edit_prestasi', compact('prestasi', 'kelas', 'siswa'));
     }
     

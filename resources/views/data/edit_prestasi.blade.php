@@ -3,7 +3,7 @@
 @section('title', 'Edit Data Prestasi')
 
 @section('content')
-<div class="p-6 bg-white mt-14">
+<div class="p-6 bg-white mt-14" x-data="siswaFilter()">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">Form Edit Data Prestasi</h2>
@@ -25,8 +25,14 @@
         <!-- Kelas -->
         <div>
             <label for="kelas" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
-            <select id="kelas" name="kelas_id" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
+            <select 
+                id="kelas" 
+                name="kelas_id" 
+                x-model="selectedKelasId" 
+                required
+                @change="updateSiswaOptions"
+                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
+            >
                 <option value="">Pilih Kelas</option>
                 @foreach ($kelas as $item)
                     <option value="{{ $item->id }}" {{ $prestasi->kelas_id == $item->id ? 'selected' : '' }}>
@@ -42,12 +48,21 @@
         <!-- Nama Siswa -->
         <div>
             <label for="nama_siswa" class="block mb-2 text-sm font-medium text-gray-900">Nama Siswa</label>
-            <select id="nama_siswa" name="siswa_id" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
+            <select 
+                id="nama_siswa" 
+                name="siswa_id" 
+                x-model="selectedSiswaId"
+                required
+                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
+            >
                 <option value="">Pilih Siswa</option>
-                @foreach ($siswa as $item)
-                    <option value="{{ $item->id }}" {{ $prestasi->siswa_id == $item->id ? 'selected' : '' }}>{{ $item->nama }}</option>
-                @endforeach
+                <template x-for="siswa in filteredSiswa" :key="siswa.id">
+                    <option 
+                        :value="siswa.id" 
+                        x-text="siswa.nama"
+                        :selected="siswa.id == {{ $prestasi->siswa_id }}"
+                    ></option>
+                </template>
             </select>
             @error('siswa_id')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -78,45 +93,43 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const kelasSelect = document.getElementById('kelas');
-    const siswaSelect = document.getElementById('nama_siswa');
-    const allSiswa = @json($siswa);
-
-    function filterSiswa() {
-        const selectedKelasId = kelasSelect.value;
-        
-        // Reset siswa dropdown
-        siswaSelect.innerHTML = '<option value="">Pilih Siswa</option>';
-        
-        // Filter siswa berdasarkan kelas
-        const filteredSiswa = allSiswa.filter(siswa => 
-            siswa.kelas_id == selectedKelasId
-        );
-
-        // Tambahkan siswa yang sesuai
-        filteredSiswa.forEach(siswa => {
-            const option = document.createElement('option');
-            option.value = siswa.id;
-            option.textContent = siswa.nama;
+    function siswaFilter() {
+        return {
+            selectedKelasId: {{ $prestasi->kelas_id }},
+            selectedSiswaId: {{ $prestasi->siswa_id }},
+            allSiswa: @json($siswa),
             
-            // Cek jika ada siswa yang sudah dipilih sebelumnya
-            @if(isset($prestasi))
-            if (siswa.id == {{ $prestasi->siswa_id }}) {
-                option.selected = true;
+            init() {
+                // Pastikan dropdown siswa terisi saat halaman dimuat
+                this.updateSiswaOptions();
+                
+                // Pastikan siswa yang sedang diedit tetap terpilih
+                this.selectedSiswaId = {{ $prestasi->siswa_id }};
+            },
+            
+            updateSiswaOptions() {
+                // Pastikan dropdown siswa diperbarui
+                const filteredSiswa = this.filteredSiswa;
+                
+                // Selalu tampilkan siswa dari kelas yang sedang diedit
+                if (this.selectedSiswaId && !filteredSiswa.some(siswa => siswa.id == this.selectedSiswaId)) {
+                    // Tambahkan siswa yang sedang diedit meskipun tidak sesuai kelas yang dipilih
+                    const currentSiswa = this.allSiswa.find(siswa => siswa.id == this.selectedSiswaId);
+                    if (currentSiswa) {
+                        filteredSiswa.push(currentSiswa);
+                    }
+                }
+            },
+            
+            get filteredSiswa() {
+                if (!this.selectedKelasId) return [];
+                
+                return this.allSiswa
+                    .filter(siswa => siswa.kelas_id == this.selectedKelasId)
+                    .sort((a, b) => a.nama.localeCompare(b.nama));
             }
-            @endif
-
-            siswaSelect.appendChild(option);
-        });
+        }
     }
-
-    // Jalankan filter saat halaman dimuat
-    filterSiswa();
-
-    // Tambahkan event listener untuk perubahan kelas
-    kelasSelect.addEventListener('change', filterSiswa);
-});
 </script>
 @endpush
 @endsection
