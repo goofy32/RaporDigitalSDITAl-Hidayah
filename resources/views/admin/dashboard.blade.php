@@ -186,8 +186,20 @@
 let overallChart, classChart;
 let kelasProgress = 0;
 
+function destroyCharts() {
+    if (overallChart) {
+        overallChart.destroy();
+        overallChart = null;
+    }
+    if (classChart) {
+        classChart.destroy();
+        classChart = null;
+    }
+}
+
 function initCharts() {
-    console.log('Initializing charts');
+    destroyCharts();
+    
     const defaultOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -197,24 +209,12 @@ function initCharts() {
             },
             tooltip: {
                 enabled: false
-            },
-            datalabels: {
-                color: '#fff',
-                font: {
-                    size: 16,
-                    weight: 'bold'
-                },
-                formatter: function(value) {
-                    return Math.round(value) + '%';
-                }
             }
         }
     };
 
-    // Overall Progress Chart
     const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
     if (overallCtx) {
-        console.log('Creating overall chart');
         overallChart = new Chart(overallCtx, {
             type: 'doughnut',
             data: {
@@ -232,33 +232,11 @@ function initCharts() {
                 ...defaultOptions,
                 cutout: '60%',
             },
-            plugins: [{
-                id: 'centerText',
-                afterDraw: function(chart) {
-                    const width = chart.width;
-                    const height = chart.height;
-                    const ctx = chart.ctx;
-                    
-                    ctx.restore();
-                    const fontSize = (height / 114).toFixed(2);
-                    ctx.font = fontSize + 'em sans-serif';
-                    ctx.textBaseline = 'middle';
-                    
-                    const text = Math.round({{ $overallProgress }}) + '%';
-                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                    const textY = height / 2;
-
-                    ctx.fillStyle = '#1F2937';
-                    ctx.fillText(text, textX, textY);
-                    ctx.save();
-                }
-            }]
+            plugins: [createCenterTextPlugin({{ $overallProgress }})]
         });
-    } else {
-        console.log('Overall chart canvas not found');
     }
 
-const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
+    const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
     if (classCtx) {
         classChart = new Chart(classCtx, {
             type: 'doughnut',
@@ -274,35 +252,53 @@ const classCtx = document.getElementById('classProgressChart')?.getContext('2d')
                 ...defaultOptions,
                 cutout: '60%',
             },
-            plugins: [{
-                id: 'centerText',
-                afterDraw: function(chart) {
-                    const width = chart.width;
-                    const height = chart.height;
-                    const ctx = chart.ctx;
-                    
-                    ctx.restore();
-                    const fontSize = (height / 114).toFixed(2);
-                    ctx.font = fontSize + 'em sans-serif';
-                    ctx.textBaseline = 'middle';
-                    
-                    const text = Math.round(kelasProgress) + '%';
-                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                    const textY = height / 2;
-
-                    ctx.fillStyle = '#1F2937';
-                    ctx.fillText(text, textX, textY);
-                    ctx.save();
-                }
-            }]
+            plugins: [createCenterTextPlugin(0)]
         });
     }
+}
+
+function createCenterTextPlugin(value) {
+    return {
+        id: 'centerText',
+        afterDraw(chart) {
+            const {ctx, width, height} = chart;
+            ctx.restore();
+            const fontSize = (height / 114).toFixed(2);
+            ctx.font = `${fontSize}em sans-serif`;
+            ctx.textBaseline = 'middle';
+            const text = `${Math.round(value)}%`;
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            const textY = height / 2;
+            ctx.fillStyle = '#1F2937';
+            ctx.fillText(text, textX, textY);
+            ctx.save();
+        }
+    };
+}
+
+function updateDashboardData() {
+    fetch('/admin/dashboard-data', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.querySelectorAll('[data-statistic]').forEach(element => {
+            const key = element.dataset.statistic;
+            if (data[key] !== undefined) {
+                element.textContent = data[key];
+            }
+        });
+        updateOverallProgress(data.overallProgress);
+    });
 }
 
 function updateClassChart(progress) {
     kelasProgress = Math.min(100, Math.max(0, progress));
     if (classChart) {
         classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
+        classChart.plugins[0] = createCenterTextPlugin(kelasProgress);
         classChart.update();
     }
 }
@@ -310,31 +306,76 @@ function updateClassChart(progress) {
 function fetchKelasProgress() {
     const selectedKelas = document.getElementById('kelas').value;
     if (selectedKelas) {
-        fetch(`/admin/kelas-progress/${selectedKelas}`)
-            .then(response => response.json())
-            .then(data => {
-                console.log('Kelas progress data:', data); // Tambahkan log ini
-                updateClassChart(data.progress);
-            })
-            .catch(error => console.error('Error:', error));
+        fetch(`/admin/kelas-progress/${selectedKelas}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateClassChart(data.progress);
+            updateProgressDetails(data.details);
+        })
+        .catch(error => console.error('Error:', error));
     } else {
         updateClassChart(0);
     }
 }
 
-// Initialize charts on page load
-document.addEventListener('DOMContentLoaded', () => {
-    initCharts();
-    fetchKelasProgress(); // Ini akan menginisialisasi chart kelas dengan nilai 0
+function updateProgressDetails(details) {
+    if (details && details.mapelProgress) {
+        // Update mata pelajaran progress jika ada
+        const container = document.getElementById('mapelProgressContainer');
+        if (container) {
+            container.innerHTML = details.mapelProgress.map(item => `
+                <div class="progress-item">
+                    <span>${item.nama}</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: ${item.progress}%"></div>
+                    </div>
+                    <span>${Math.round(item.progress)}%</span>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// Dashboard reload handling
+if (window.location.pathname.includes('/admin/dashboard')) {
+    if (!window.dashboardLoaded) {
+        window.dashboardLoaded = true;
+        window.location.reload();
+    }
+} else {
+    window.dashboardLoaded = false;
+}
+
+// Event Listeners
+window.addEventListener('load', () => {
+    if (document.readyState === 'complete') {
+        initCharts();
+        fetchKelasProgress();
+        updateDashboardData();
+    }
 });
+
+document.addEventListener('turbo:load', () => {
+    destroyCharts();
+    setTimeout(() => {
+        initCharts();
+        fetchKelasProgress();
+        updateDashboardData();
+    }, 100);
+});
+
+document.addEventListener('turbo:before-cache', destroyCharts);
+
+// Cleanup on page unload
+window.addEventListener('unload', destroyCharts);
 
 // Modal functionality
 const addInfoModal = document.getElementById('addInfoModal');
 const addInfoModalBtn = document.querySelectorAll('[data-modal-target="addInfoModal"], [data-modal-toggle="addInfoModal"]');
-
-function navigateTo(url) {
-    Turbo.visit(url);
-}
 
 addInfoModalBtn.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -342,11 +383,21 @@ addInfoModalBtn.forEach(btn => {
     });
 });
 
-// Delete information function
 function deleteInformation(id) {
     if (confirm('Are you sure you want to delete this information?')) {
-        // Add your delete logic here
-        console.log('Deleting information with id:', id);
+        fetch(`/admin/information/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            }
+        });
     }
 }
 </script>

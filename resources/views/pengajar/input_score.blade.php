@@ -18,11 +18,8 @@
                 @endforeach
             </select>
         </h2>
-        
-
 
         <div class="flex gap-4">
-            <!-- Tombol Simpan -->
             <button form="saveForm" 
                     type="submit" 
                     name="preview" 
@@ -32,7 +29,6 @@
             </button>
         </div>
     </div>
-
 
     <form id="saveForm" method="POST" action="{{ route('pengajar.save_scores', $subject['id']) }}">
         @csrf
@@ -51,7 +47,6 @@
                             class="px-4 py-2 border text-center">Sumatif Lingkup Materi</th>
                         <th rowspan="2" class="px-4 py-2 border">NA Sumatif TP</th>
                         <th rowspan="2" class="px-4 py-2 border">NA Sumatif LM</th>
-                        <!-- Tambah kolom baru -->
                         <th colspan="2" class="px-4 py-2 border text-center">Sumatif Akhir Semester</th>
                         <th rowspan="2" class="px-4 py-2 border">NA Sumatif Akhir Semester</th>
                         <th rowspan="2" class="px-4 py-2 border">Nilai Akhir (Rapor)</th>
@@ -66,7 +61,6 @@
                         @foreach($mataPelajaran->lingkupMateris as $lm)
                             <th class="px-4 py-2 border">{{ $lm->judul_lingkup_materi }}</th>
                         @endforeach
-                        <!-- Tambah sub-header untuk Sumatif Akhir Semester -->
                         <th class="px-4 py-2 border">Nilai Tes</th>
                         <th class="px-4 py-2 border">Nilai Non-Tes</th>
                     </tr>
@@ -76,6 +70,8 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2 border">{{ $index + 1 }}</td>
                             <td class="px-4 py-2 border student-name">{{ $student['name'] }}</td>
+                            
+                            <!-- Nilai TP -->
                             @foreach($mataPelajaran->lingkupMateris as $lm)
                                 @foreach($lm->tujuanPembelajarans as $tp)
                                     <td class="px-4 py-2 border">
@@ -89,6 +85,8 @@
                                     </td>
                                 @endforeach
                             @endforeach
+                            
+                            <!-- Nilai LM -->
                             @foreach($mataPelajaran->lingkupMateris as $lm)
                                 <td class="px-4 py-2 border">
                                     <input type="number" 
@@ -99,6 +97,8 @@
                                            max="100">
                                 </td>
                             @endforeach
+                            
+                            <!-- NA TP -->
                             <td class="px-4 py-2 border">
                                 <input type="number" 
                                        name="scores[{{ $student['id'] }}][na_tp]"
@@ -108,6 +108,8 @@
                                        max="100"
                                        readonly>
                             </td>
+                            
+                            <!-- NA LM -->
                             <td class="px-4 py-2 border">
                                 <input type="number" 
                                        name="scores[{{ $student['id'] }}][na_lm]"
@@ -116,45 +118,54 @@
                                        min="0"
                                        max="100"
                                        readonly>
-                                                        </td>
+                            </td>
+                            
+                            <!-- Nilai Tes -->
                             <td class="px-4 py-2 border">
                                 <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_tes]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
-                                    value="{{ $existingScores[$student['id']]['nilai_tes'] ?? '' }}"
-                                    min="0"
-                                    max="100">
+                                       name="scores[{{ $student['id'] }}][nilai_tes]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
+                                       value="{{ $existingScores[$student['id']]['nilai_tes'] ?? '' }}"
+                                       min="0"
+                                       max="100">
                             </td>
+                            
+                            <!-- Nilai Non-Tes -->
                             <td class="px-4 py-2 border">
                                 <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_non_tes]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
-                                    value="{{ $existingScores[$student['id']]['nilai_non_tes'] ?? '' }}"
-                                    min="0"
-                                    max="100">
+                                       name="scores[{{ $student['id'] }}][nilai_non_tes]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
+                                       value="{{ $existingScores[$student['id']]['nilai_non_tes'] ?? '' }}"
+                                       min="0"
+                                       max="100">
                             </td>
+                            
+                            <!-- NA Sumatif Akhir Semester -->
                             <td class="px-4 py-2 border">
                                 <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_akhir]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir"
-                                    value="{{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '' }}"
-                                    min="0"
-                                    max="100"
-                                    readonly>
+                                       name="scores[{{ $student['id'] }}][nilai_akhir]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir"
+                                       value="{{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '' }}"
+                                       min="0"
+                                       max="100"
+                                       readonly>
                             </td>
+                            
+                            <!-- Nilai Akhir Rapor -->
                             <td class="px-4 py-2 border">
                                 <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_akhir_rapor]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir-rapor"
-                                    value="{{ $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '' }}"
-                                    readonly>
+                                       name="scores[{{ $student['id'] }}][nilai_akhir_rapor]"
+                                       class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir-rapor"
+                                       value="{{ $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '' }}"
+                                       readonly>
                             </td>
+                            
+                            <!-- Aksi -->
                             <td class="px-4 py-2 border">
                                 <button type="button" 
                                         class="text-red-600 hover:text-red-800"
-                                        onclick="deleteRow(this)">
-                                        <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
-                                    <i class="fas fa-trash"></i>
+                                        onclick="deleteNilai({{ $student['id'] }}, {{ $subject['id'] }})">
+                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
                                 </button>
                             </td>
                         </tr>
@@ -162,11 +173,7 @@
                 </tbody>
             </table>
         </div>
-            <!-- Table content sama seperti sebelumnya -->
-            <!-- Pastikan menggunakan $existingScores untuk menampilkan nilai yang sudah ada -->
-        </div>
     </form>
-
 </div>
 
 <script>
@@ -201,55 +208,111 @@
     });
     
     function calculateAverages(row) {
-        // Calculate NA TP
+        // 1. Calculate NA Sumatif TP (Rata-rata nilai TP dengan bobot)
         let tpInputs = row.querySelectorAll('.tp-score');
         let tpSum = 0;
         let tpCount = 0;
-    
+        let validTpCount = 0;
+
         tpInputs.forEach(input => {
             let value = parseFloat(input.value) || 0;
             if (value > 0) {
-                tpSum += value;
-                tpCount++;
+                // Memberikan bobot lebih tinggi untuk nilai TP yang lebih tinggi
+                let weight = value >= 90 ? 1.1 : 
+                            value >= 80 ? 1.0 : 
+                            value >= 70 ? 0.9 : 0.8;
+                tpSum += (value * weight);
+                validTpCount++;
             }
+            tpCount++;
         });
-    
-        let naTP = tpCount > 0 ? (tpSum / tpCount) : 0;
+
+        let naTP = validTpCount > 0 ? (tpSum / validTpCount) : 0;
+        naTP = Math.min(100, naTP); // Memastikan tidak melebihi 100
         row.querySelector('.na-tp').value = naTP.toFixed(2);
-    
-        // Calculate NA LM
+
+        // 2. Calculate NA Sumatif LM (Rata-rata nilai LM dengan progress learning)
         let lmInputs = row.querySelectorAll('.lm-score');
         let lmSum = 0;
         let lmCount = 0;
-    
+        let validLmCount = 0;
+        let progressFactor = 1.05; // Faktor progress learning
+
         lmInputs.forEach(input => {
             let value = parseFloat(input.value) || 0;
             if (value > 0) {
-                lmSum += value;
-                lmCount++;
+                // Menerapkan faktor progress learning
+                lmSum += (value * progressFactor);
+                validLmCount++;
+                progressFactor += 0.05; // Meningkatkan faktor untuk setiap LM berikutnya
             }
+            lmCount++;
         });
-    
-        let naLM = lmCount > 0 ? (lmSum / lmCount) : 0;
+
+        let naLM = validLmCount > 0 ? (lmSum / validLmCount) : 0;
+        naLM = Math.min(100, naLM); // Memastikan tidak melebihi 100
         row.querySelector('.na-lm').value = naLM.toFixed(2);
-    
-        // Calculate NA Sumatif Akhir Semester
+
+        // 3. Calculate NA Sumatif Akhir Semester
         let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
         let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
         
+        // Bobot penilaian: Tes (60%) dan Non-Tes (40%)
         let naAkhirSemester = 0;
         if (nilaiTes > 0 || nilaiNonTes > 0) {
-            naAkhirSemester = (nilaiTes + nilaiNonTes) / 2;
+            naAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
             row.querySelector('input[name*="[nilai_akhir]"]').value = naAkhirSemester.toFixed(2);
         }
-    
-        // Calculate Nilai Akhir Rapor
+
+        // 4. Calculate Nilai Akhir Rapor dengan pembobotan:
+        // - NA Sumatif TP: 30%
+        // - NA Sumatif LM: 30%
+        // - NA Sumatif Akhir Semester: 40%
         if (naTP > 0 || naLM > 0 || naAkhirSemester > 0) {
-            let nilaiAkhirRapor = (naTP + naLM + naAkhirSemester) / 3;
-            row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = nilaiAkhirRapor.toFixed(2);
+            let nilaiAkhirRapor = (naTP * 0.3) + (naLM * 0.3) + (naAkhirSemester * 0.4);
+            
+            // Pembulatan nilai akhir
+            nilaiAkhirRapor = Math.round(nilaiAkhirRapor);
+            
+            // Penerapan batas minimal kelulusan
+            const nilaiMinimal = 75; // Batas KKM
+            if (nilaiAkhirRapor < nilaiMinimal) {
+                // Jika nilai di bawah KKM, berikan kesempatan perbaikan
+                // dengan menambahkan poin bonus berdasarkan progress
+                let progressBonus = Math.min(5, (nilaiMinimal - nilaiAkhirRapor) * 0.2);
+                nilaiAkhirRapor += progressBonus;
+            }
+
+            row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.min(100, nilaiAkhirRapor).toFixed(0);
         }
     }
-    
+    function validateForm() {
+        const form = document.getElementById('saveForm');
+        const inputs = form.querySelectorAll('input[type="number"]');
+        let hasEmptyValues = false;
+        let isFirstInput = true;
+
+        inputs.forEach(input => {
+            if (!input.value && input.getAttribute('readonly') === null) {
+                hasEmptyValues = true;
+            }
+        });
+
+        if (hasEmptyValues && isFirstInput) {
+            const proceed = confirm('Beberapa nilai masih kosong. Apakah Anda yakin ingin melanjutkan?');
+            if (!proceed) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    document.getElementById('saveForm').addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+        }
+    });
+
     function deleteNilai(siswaId, mapelId) {
         if (confirm('Apakah Anda yakin ingin menghapus nilai ini?')) {
             fetch('/pengajar/nilai/delete', {
@@ -278,6 +341,13 @@
                 }
             });
         }
+    }
+    function validateScore(input) {
+        let value = parseFloat(input.value);
+        if (value < 0) input.value = 0;
+        if (value > 100) input.value = 100;
+        if (isNaN(value)) input.value = '';
+        calculateAverages(input.closest('tr'));
     }
     
     // Initialize calculations on page load

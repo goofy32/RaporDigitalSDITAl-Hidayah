@@ -28,7 +28,6 @@
         <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
         <select id="kelas" 
                 x-model="selectedKelas" 
-                @change="fetchKelasProgress()"
                 class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
             <option value="">Pilih kelas...</option>
             @foreach($kelas as $k)
@@ -38,8 +37,8 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <!-- Chart Keseluruhan -->
-        <div class="bg-white p-4 rounded-lg shadow">
+    <!-- Chart Keseluruhan -->
+        <div id="overall-chart-container" class="bg-white p-4 rounded-lg shadow">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
             <div class="flex flex-col items-center">
                 <div class="w-64 h-64 relative">
@@ -47,9 +46,9 @@
                 </div>
             </div>
         </div>
-    
+
         <!-- Chart Per Kelas -->
-        <div class="bg-white p-4 rounded-lg shadow">
+        <div id="class-chart-container" class="bg-white p-4 rounded-lg shadow">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Per Kelas</h3>
             <div class="flex flex-col items-center">
                 <div class="w-64 h-64 relative">
@@ -66,6 +65,19 @@
 let overallChart, classChart;
 let kelasProgress = 0;
 
+const PENGAJAR_DASHBOARD_KEY = 'pengajarDashboardLoaded';
+
+function destroyCharts() {
+    if (overallChart) {
+        overallChart.destroy();
+        overallChart = null;
+    }
+    if (classChart) {
+        classChart.destroy();
+        classChart = null;
+    }
+}
+
 function initCharts() {
     const defaultOptions = {
         responsive: true,
@@ -75,17 +87,7 @@ function initCharts() {
                 position: 'bottom'
             },
             tooltip: {
-                enabled: false // Disable tooltip karena kita akan tampilkan nilai di tengah
-            },
-            datalabels: { // Plugin untuk menampilkan label di dalam chart
-                color: '#fff',
-                font: {
-                    size: 16,
-                    weight: 'bold'
-                },
-                formatter: function(value) {
-                    return Math.round(value) + '%';
-                }
+                enabled: false
             }
         }
     };
@@ -94,7 +96,7 @@ function initCharts() {
     const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
     if (overallCtx) {
         overallChart = new Chart(overallCtx, {
-            type: 'doughnut', // Menggunakan doughnut untuk ruang di tengah
+            type: 'doughnut',
             data: {
                 labels: ['Selesai', 'Belum'],
                 datasets: [{
@@ -108,7 +110,7 @@ function initCharts() {
             },
             options: {
                 ...defaultOptions,
-                cutout: '60%', // Ukuran lubang di tengah
+                cutout: '60%',
             },
             plugins: [{
                 id: 'centerText',
@@ -126,7 +128,7 @@ function initCharts() {
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
 
-                    ctx.fillStyle = '#1F2937'; // Warna teks
+                    ctx.fillStyle = '#1F2937';
                     ctx.fillText(text, textX, textY);
                     ctx.save();
                 }
@@ -177,7 +179,7 @@ function initCharts() {
 }
 
 function updateClassChart(progress) {
-    kelasProgress = Math.min(100, Math.max(0, progress)); // Memastikan nilai antara 0-100
+    kelasProgress = Math.min(100, Math.max(0, progress));
     if (classChart) {
         classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
         classChart.update();
@@ -190,6 +192,7 @@ function fetchKelasProgress() {
         fetch(`/pengajar/kelas-progress/${selectedKelas}`)
             .then(response => response.json())
             .then(data => {
+                console.log('Progress data:', data); // Log untuk debugging
                 updateClassChart(data.progress);
             })
             .catch(error => console.error('Error:', error));
@@ -198,20 +201,83 @@ function fetchKelasProgress() {
     }
 }
 
-// Initialize charts on page load and when navigating back
-document.addEventListener('DOMContentLoaded', initCharts);
-document.addEventListener('turbo:render', initCharts);
-document.addEventListener('turbo:load', initCharts);
+// Implementasi Alpine.js data
+document.addEventListener('alpine:init', () => {
+    Alpine.data('dashboard', () => ({
+        selectedKelas: '',
+        mapelProgress: [],
+        
+        init() {
+            initCharts();
+            this.$watch('selectedKelas', value => {
+                if (value) {
+                    fetchKelasProgress();
+                }
+            });
+        }
+    }));
+});
 
-// Cleanup charts before caching page
-document.addEventListener('turbo:before-cache', () => {
-    if (overallChart) {
-        overallChart.destroy();
+function isDashboardPage() {
+    return window.location.pathname.includes('/pengajar/dashboard');
+}
+
+// Fungsi untuk menangani inisialisasi dashboard
+function handleDashboardInit() {
+    if (isDashboardPage()) {
+        const isLoaded = sessionStorage.getItem(PENGAJAR_DASHBOARD_KEY);
+        if (!isLoaded) {
+            sessionStorage.setItem(PENGAJAR_DASHBOARD_KEY, 'true');
+            window.location.reload();
+        } else {
+            destroyCharts();
+            initCharts();
+            fetchKelasProgress();
+        }
     }
-    if (classChart) {
-        classChart.destroy();
+}
+
+// Event Listeners
+document.addEventListener('turbo:load', () => {
+    handleDashboardInit();
+});
+
+document.addEventListener('turbo:render', () => {
+    handleDashboardInit();
+});
+
+document.addEventListener('turbo:visit', () => {
+    if (!isDashboardPage()) {
+        sessionStorage.removeItem(PENGAJAR_DASHBOARD_KEY);
     }
 });
+
+// Event listener untuk dropdown kelas
+document.addEventListener('change', function(event) {
+    if (event.target && event.target.id === 'kelas') {
+        fetchKelasProgress();
+    }
+});
+
+// Cleanup
+document.addEventListener('turbo:before-cache', () => {
+    destroyCharts();
+});
+
+// Handle unload
+window.addEventListener('unload', () => {
+    destroyCharts();
+    if (!isDashboardPage()) {
+        sessionStorage.removeItem(PENGAJAR_DASHBOARD_KEY);
+    }
+});
+
+// Inisialisasi awal
+if (document.readyState === 'complete') {
+    handleDashboardInit();
+} else {
+    window.addEventListener('load', handleDashboardInit);
+}
 </script>
 @endpush
 @endsection
