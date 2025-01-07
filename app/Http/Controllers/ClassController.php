@@ -102,7 +102,7 @@ class ClassController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'nomor_kelas' => 'required|integer',
+            'nomor_kelas' => 'required|integer|max:99|min:1',
             'nama_kelas' => 'required|string|max:255',
             'wali_kelas' => 'required|string|max:255',
         ]);

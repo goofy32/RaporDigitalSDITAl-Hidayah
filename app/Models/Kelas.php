@@ -17,6 +17,10 @@ class Kelas extends Model
         'wali_kelas',
     ];
     
+    protected $casts = [
+        'nomor_kelas' => 'integer'
+    ];
+    
     public function siswas()
     {
         return $this->hasMany(Siswa::class);

@@ -67,11 +67,13 @@
                                 Tidak ada Lingkup Materi
                             @endif
                         </td>
-                        <td class="px-6 py-4 text-center flex justify-around">
+
+                        <td class="px-6 py-4 text-center">
+                        <div class="flex space-x-2">
                             <!-- Lihat TP -->
                             <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
                                 <!-- Ikon Lihat TP -->
-                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-10 h-5">
 
                             </a>
                         
@@ -92,6 +94,7 @@
                                 </button>
                             </form>
                         </td>
+                        </div>
                     </tr>
                     @empty
                     <tr class="bg-white border-b">

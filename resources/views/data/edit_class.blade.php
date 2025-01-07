@@ -25,8 +25,14 @@
         <!-- Nomor Kelas -->
         <div>
             <label for="nomor_kelas" class="block mb-2 text-sm font-medium text-gray-900">Nomor Kelas</label>
-            <input type="number" id="nomor_kelas" name="nomor_kelas" value="{{ old('nomor_kelas', $kelas->nomor_kelas) }}" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
+            <input type="text" id="nomor_kelas" name="nomor_kelas" 
+                value="{{ $kelas->nomor_kelas }}" 
+                pattern="\d{1,2}"
+                maxlength="2"
+                required
+                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 2)"
+            >
             @error('nomor_kelas')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror
