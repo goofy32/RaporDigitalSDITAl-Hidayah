@@ -65,7 +65,7 @@
                             <!-- Lihat TP -->
                             <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
                                 <!-- Ikon Lihat TP -->
-                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-8 h-5">
 
                             </a>
                         

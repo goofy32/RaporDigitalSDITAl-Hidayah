@@ -13,7 +13,7 @@
                 </button>
                 <a href="#" class="flex ms-2 md:me-24">
                     @if(isset($schoolProfile->logo))
-                        <img src="{{ asset('storage/' . $schoolProfile->logo) }}" class="h-8 me-3" alt="Logo Sekolah" />
+                        <img src="{{ asset('storage/' . $schoolProfile->logo) }}" class="h-11 me-3" alt="Logo Sekolah" />
                     @else
                         <img src="https://flowbite.com/docs/images/logo.svg" class="h-8 me-3" alt="Default Logo" />
                     @endif

@@ -53,6 +53,7 @@
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:underline">Hapus</button>
+                                <!-- <img src="{{ asset('images/icons/delete.png') }}" alt="Hapus" class="w-8 h-5"> -->
                             </form>
                             <a href="{{ route('kelas.edit', $kelas->id) }}" class="text-blue-600 hover:underline">Edit</a>
                         </td>
