@@ -104,13 +104,13 @@
     <div class="mt-8">
         <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
         <select id="kelas" 
-                x-model="selectedKelas" 
-                @change="fetchKelasProgress()"
-                class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
-            <option value="">Pilih kelas...</option>
-            @foreach($kelas as $k)
-                <option value="{{ $k->id }}">{{ $k->nama_kelas }}</option>
-            @endforeach
+            x-model="selectedKelas" 
+            @change="fetchKelasProgress()"
+            class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
+        <option value="">Pilih kelas...</option>
+        @foreach($kelas as $k)
+            <option value="{{ $k->id }}">{{ $k->nama_kelas }}</option>
+        @endforeach
         </select>
     </div>
 
@@ -155,26 +155,39 @@
             </div>
             <!-- Modal body -->
             <div class="p-4">
-                <form>
-                    <div class="mb-4">
-                        <label class="block mb-2 text-sm font-medium text-gray-900">Judul informasi</label>
-                        <input type="text" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" placeholder="Masukkan judul informasi">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
-                        <select class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
-                            <option selected>-- Pilih --</option>
-                            <option value="all">Semua</option>
-                            <option value="guru">Guru</option>
-                            <option value="wali_kelas">Wali Kelas</option>
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label class="block mb-2 text-sm font-medium text-gray-900">Isi</label>
-                        <textarea class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" rows="4" placeholder="Masukkan isi informasi"></textarea>
-                    </div>
-                    <button type="submit" class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Simpan</button>
-                </form>
+            <form id="infoForm">
+                <div class="mb-4">
+                    <label class="block mb-2 text-sm font-medium text-gray-900">Judul informasi</label>
+                    <input type="text" 
+                        name="title" 
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                        placeholder="Masukkan judul informasi" 
+                        required>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
+                    <select name="target" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                            required>
+                        <option value="">-- Pilih --</option>
+                        <option value="all">Semua</option>
+                        <option value="guru">Guru</option>
+                        <option value="wali_kelas">Wali Kelas</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2 text-sm font-medium text-gray-900">Isi</label>
+                    <textarea name="content" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                            rows="4" 
+                            placeholder="Masukkan isi informasi" 
+                            required></textarea>
+                </div>
+                <button type="submit" 
+                        class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                    Simpan
+                </button>
+            </form>
             </div>
         </div>
     </div>
@@ -185,6 +198,22 @@
 <script>
 let overallChart, classChart;
 let kelasProgress = 0;
+const ADMIN_DASHBOARD_KEY = 'adminDashboardLoaded';
+
+function handleInitialLoad() {
+    if (window.location.pathname.includes('/admin/dashboard')) {
+        const isLoaded = sessionStorage.getItem(ADMIN_DASHBOARD_KEY);
+        if (!isLoaded) {
+            sessionStorage.setItem(ADMIN_DASHBOARD_KEY, 'true');
+            window.location.reload();
+        } else {
+            initCharts();
+            fetchKelasProgress();
+        }
+    } else {
+        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
+    }
+}
 
 function destroyCharts() {
     if (overallChart) {
@@ -198,8 +227,6 @@ function destroyCharts() {
 }
 
 function initCharts() {
-    destroyCharts();
-    
     const defaultOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -232,10 +259,34 @@ function initCharts() {
                 ...defaultOptions,
                 cutout: '60%',
             },
-            plugins: [createCenterTextPlugin({{ $overallProgress }})]
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function(chart) {
+                    const width = chart.width;
+                    const height = chart.height;
+                    const ctx = chart.ctx;
+                    
+                    ctx.restore();
+                    const fontSize = (height / 114).toFixed(2);
+                    ctx.font = fontSize + 'em sans-serif';
+                    ctx.textBaseline = 'middle';
+                    
+                    const text = Math.round({{ $overallProgress }}) + '%';
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
+
+                    ctx.fillStyle = '#1F2937';
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            }]
         });
     }
 
+    initClassChart();
+}
+
+function initClassChart() {
     const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
     if (classCtx) {
         classChart = new Chart(classCtx, {
@@ -249,157 +300,319 @@ function initCharts() {
                 }]
             },
             options: {
-                ...defaultOptions,
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: { enabled: false }
+                },
                 cutout: '60%',
             },
-            plugins: [createCenterTextPlugin(0)]
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function(chart) {
+                    const width = chart.width;
+                    const height = chart.height;
+                    const ctx = chart.ctx;
+                    
+                    ctx.restore();
+                    const fontSize = (height / 114).toFixed(2);
+                    ctx.font = fontSize + 'em sans-serif';
+                    ctx.textBaseline = 'middle';
+                    
+                    const text = Math.round(kelasProgress) + '%';
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
+
+                    ctx.fillStyle = '#1F2937';
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            }]
         });
     }
 }
 
-function createCenterTextPlugin(value) {
-    return {
-        id: 'centerText',
-        afterDraw(chart) {
-            const {ctx, width, height} = chart;
-            ctx.restore();
-            const fontSize = (height / 114).toFixed(2);
-            ctx.font = `${fontSize}em sans-serif`;
-            ctx.textBaseline = 'middle';
-            const text = `${Math.round(value)}%`;
-            const textX = Math.round((width - ctx.measureText(text).width) / 2);
-            const textY = height / 2;
-            ctx.fillStyle = '#1F2937';
-            ctx.fillText(text, textX, textY);
-            ctx.save();
-        }
-    };
-}
-
-function updateDashboardData() {
-    fetch('/admin/dashboard-data', {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.querySelectorAll('[data-statistic]').forEach(element => {
-            const key = element.dataset.statistic;
-            if (data[key] !== undefined) {
-                element.textContent = data[key];
-            }
-        });
-        updateOverallProgress(data.overallProgress);
-    });
-}
-
 function updateClassChart(progress) {
-    kelasProgress = Math.min(100, Math.max(0, progress));
+    // Pastikan progress adalah angka valid
+    kelasProgress = !isNaN(progress) ? Math.min(100, Math.max(0, progress)) : 0;
+    
     if (classChart) {
         classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
-        classChart.plugins[0] = createCenterTextPlugin(kelasProgress);
         classChart.update();
+
+        // Update teks di tengah chart
+        const centerText = document.querySelector('.class-progress-text');
+        if (centerText) {
+            centerText.textContent = `${Math.round(kelasProgress)}%`;
+        }
     }
 }
 
 function fetchKelasProgress() {
-    const selectedKelas = document.getElementById('kelas').value;
+    const selectedKelas = document.getElementById('kelas')?.value;
     if (selectedKelas) {
         fetch(`/admin/kelas-progress/${selectedKelas}`, {
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
-        .then(data => {
-            updateClassChart(data.progress);
-            updateProgressDetails(data.details);
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
         })
-        .catch(error => console.error('Error:', error));
+        .then(data => {
+            console.log('Progress data:', data); // Untuk debugging
+            if (data.success && !isNaN(data.progress)) {
+                updateClassChart(data.progress);
+            } else {
+                console.error('Invalid progress data:', data);
+                updateClassChart(0);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching progress:', error);
+            updateClassChart(0);
+        });
     } else {
         updateClassChart(0);
     }
 }
 
-function updateProgressDetails(details) {
-    if (details && details.mapelProgress) {
-        // Update mata pelajaran progress jika ada
-        const container = document.getElementById('mapelProgressContainer');
-        if (container) {
-            container.innerHTML = details.mapelProgress.map(item => `
-                <div class="progress-item">
-                    <span>${item.nama}</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: ${item.progress}%"></div>
-                    </div>
-                    <span>${Math.round(item.progress)}%</span>
-                </div>
-            `).join('');
+// Event Handlers
+document.addEventListener('alpine:init', () => {
+    Alpine.data('dashboard', () => ({
+        selectedKelas: '',
+        mapelProgress: [],
+        
+        init() {
+            this.$watch('selectedKelas', value => {
+                if (value) fetchKelasProgress();
+            });
         }
-    }
-}
+    }));
+});
 
-// Dashboard reload handling
-if (window.location.pathname.includes('/admin/dashboard')) {
-    if (!window.dashboardLoaded) {
-        window.dashboardLoaded = true;
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const isLoaded = sessionStorage.getItem(ADMIN_DASHBOARD_KEY);
+    if (!isLoaded && window.location.pathname.includes('/admin/dashboard')) {
+        sessionStorage.setItem(ADMIN_DASHBOARD_KEY, 'true');
         window.location.reload();
-    }
-} else {
-    window.dashboardLoaded = false;
-}
-
-// Event Listeners
-window.addEventListener('load', () => {
-    if (document.readyState === 'complete') {
+    } else {
         initCharts();
-        fetchKelasProgress();
         updateDashboardData();
     }
 });
 
+// Handle Turbo navigation
 document.addEventListener('turbo:load', () => {
+    if (!window.location.pathname.includes('/admin/dashboard')) {
+        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
+    }
     destroyCharts();
     setTimeout(() => {
         initCharts();
-        fetchKelasProgress();
         updateDashboardData();
     }, 100);
 });
 
+// Clean up
 document.addEventListener('turbo:before-cache', destroyCharts);
 
-// Cleanup on page unload
-window.addEventListener('unload', destroyCharts);
-
-// Modal functionality
-const addInfoModal = document.getElementById('addInfoModal');
-const addInfoModalBtn = document.querySelectorAll('[data-modal-target="addInfoModal"], [data-modal-toggle="addInfoModal"]');
-
-addInfoModalBtn.forEach(btn => {
-    btn.addEventListener('click', () => {
-        addInfoModal.classList.toggle('hidden');
-    });
+// Event listener for dropdown changes
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'kelas') {
+        fetchKelasProgress();
+    }
 });
 
+
+// Cleanup
+document.addEventListener('turbo:before-cache', () => {
+    destroyCharts();
+});
+
+// Cleanup
+document.addEventListener('turbo:before-visit', () => {
+    if (!window.location.pathname.includes('/admin/dashboard')) {
+        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
+    }
+});
+
+// Reinitialize pada navigasi
+document.addEventListener('turbo:render', () => {
+    if (window.location.pathname.includes('/admin/dashboard')) {
+        destroyCharts();
+        setTimeout(() => {
+            initCharts();
+            fetchKelasProgress();
+        }, 100);
+    }
+});
+function initModal() {
+    const modal = document.getElementById('addInfoModal');
+    const openButtons = document.querySelectorAll('[data-modal-target="addInfoModal"]');
+    const closeButtons = document.querySelectorAll('[data-modal-hide="addInfoModal"]');
+    const modalForm = modal?.querySelector('form');
+
+    // Open modal
+    openButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        });
+    });
+
+    // Close modal
+    closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        });
+    });
+
+    // Close on outside click
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    });
+
+    // Handle form submission
+    modalForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(modalForm);
+        const data = {
+            title: formData.get('title'),
+            target: formData.get('target'),
+            content: formData.get('content')
+        };
+
+        try {
+            const response = await fetch('/admin/information', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Reset form
+                modalForm.reset();
+                
+                // Close modal
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                
+                // Refresh information section
+                updateInformationSection();
+                
+                // Show success message
+                showNotification('Informasi berhasil ditambahkan', 'success');
+            } else {
+                showNotification('Gagal menambahkan informasi', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Terjadi kesalahan', 'error');
+        }
+    });
+}
+
+// Delete information handler
 function deleteInformation(id) {
-    if (confirm('Are you sure you want to delete this information?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus informasi ini?')) {
         fetch(`/admin/information/${id}`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
+                'Accept': 'application/json'
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.reload();
+                // Refresh information section
+                updateInformationSection();
+                showNotification('Informasi berhasil dihapus', 'success');
+            } else {
+                showNotification('Gagal menghapus informasi', 'error');
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Terjadi kesalahan', 'error');
         });
     }
 }
+
+// Update information section
+function updateInformationSection() {
+    fetch('/admin/information/list', {
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const container = document.querySelector('.information-items');
+        if (container && data.items) {
+            container.innerHTML = data.items.map(item => `
+                <div class="mb-4 relative">
+                    <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                        <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="bg-white rounded-lg border shadow-sm p-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-sm font-medium">${item.title}</h3>
+                                <p class="text-xs text-gray-600">${item.content}</p>
+                            </div>
+                            <button class="text-red-500 hover:text-red-700" onclick="deleteInformation(${item.id})">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    });
+}
+
+// Notification handler
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white ${
+        type === 'success' ? 'bg-green-600' : 'bg-red-600'
+    }`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Initialize modal when page loads
+document.addEventListener('DOMContentLoaded', initModal);
+document.addEventListener('turbo:load', initModal);
+
 </script>
 @endpush
 @endsection
