@@ -187,45 +187,64 @@
     }
 
     function saveData() {
-        if (tpData.length === 0) {
-            alert('Tidak ada data untuk disimpan!');
-            return;
-        }
-
-        // Tambahkan log untuk debugging
-        console.log('tpData:', tpData);
-        console.log('mataPelajaranId:', mataPelajaranId);
-
-        // Kirim data ke server menggunakan AJAX
-        fetch('{{ route('tujuan_pembelajaran.store') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-            },
-            body: JSON.stringify({ tpData: tpData, mataPelajaranId: mataPelajaranId }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || 'Terjadi kesalahan');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                alert('Data berhasil disimpan!');
-                window.location.reload();
-            } else {
-                alert(data.message || 'Terjadi kesalahan saat menyimpan data.');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message || 'Terjadi kesalahan saat menyimpan data.');
-        });
+    const saveButton = document.querySelector('button[onclick="saveData()"]');
+    saveButton.disabled = true;
+    saveButton.innerHTML = 'Menyimpan...';
+    
+    if (tpData.length === 0) {
+        alert('Tidak ada data untuk disimpan!');
+        saveButton.disabled = false;
+        saveButton.innerHTML = 'Simpan';
+        return;
     }
+
+    // Logging untuk debug
+    console.log('Data yang akan dikirim:', {
+        tpData: tpData,
+        mataPelajaranId: mataPelajaranId
+    });
+
+    fetch('{{ route('pengajar.tujuan_pembelajaran.store') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            tpData: tpData,
+            mataPelajaranId: mataPelajaranId
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.log('Response text:', text);
+                throw new Error('Invalid JSON response: ' + text);
+            }
+        });
+    })
+    .then(data => {
+        console.log('Parsed response:', data);
+        if (data.success) {
+            alert('Data berhasil disimpan!');
+            window.location.href = '{{ route('pengajar.subject.index') }}';
+        } else {
+            throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
+        }
+    })
+    .catch(error => {
+        console.error('Error full details:', error);
+        alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
+    })
+    .finally(() => {
+        saveButton.disabled = false;
+        saveButton.innerHTML = 'Simpan';
+    });
+}
 </script>
 @endsection

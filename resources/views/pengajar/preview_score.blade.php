@@ -10,12 +10,12 @@
             {{ $mataPelajaran->kelas->nama_kelas }} - {{ $mataPelajaran->nama_pelajaran }}
         </h2>
         <div class="flex gap-4">
-            <a href="{{ route('pengajar.input_score', $mataPelajaran->id) }}" 
-               class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
+            <a href="{{ route('pengajar.score.input_score', $mataPelajaran->id) }}"
+            class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
                 Edit Nilai
             </a>
-            <a href="{{ route('pengajar.score') }}" 
-               class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+            <a href="{{ route('pengajar.score.index') }}" 
+            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
                 Kembali
             </a>
         </div>
@@ -65,7 +65,7 @@
                     @foreach($mataPelajaran->lingkupMateris as $lm)
                         @foreach($lm->tujuanPembelajarans as $tp)
                             <td class="px-4 py-2 border text-center">
-                                {{ $existingScores[$siswa->id][$lm->id][$tp->id]['nilai_tp'] ?? '-' }}
+                                {{ $existingScores[$siswa->id]['tp'][$lm->id][$tp->id] ?? '-' }}
                             </td>
                         @endforeach
                     @endforeach
@@ -73,7 +73,7 @@
                     <!-- Nilai LM -->
                     @foreach($mataPelajaran->lingkupMateris as $lm)
                         <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$siswa->id][$lm->id]['nilai_lm'] ?? '-' }}
+                            {{ $existingScores[$siswa->id]['lm'][$lm->id] ?? '-' }}
                         </td>
                     @endforeach
                     
@@ -82,7 +82,7 @@
                         {{ $existingScores[$siswa->id]['na_tp'] ?? '-' }}
                     </td>
                     
-                    <!-- NA LM -->
+<!-- NA LM -->
                     <td class="px-4 py-2 border text-center">
                         {{ $existingScores[$siswa->id]['na_lm'] ?? '-' }}
                     </td>
@@ -105,7 +105,7 @@
                         {{ $existingScores[$siswa->id]['nilai_akhir_rapor'] ?? '-' }}
                     </td>
                 </tr>
-            @endforeach
+                @endforeach
             </tbody>
         </table>
     </div>

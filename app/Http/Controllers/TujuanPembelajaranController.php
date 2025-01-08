@@ -6,6 +6,9 @@ use App\Models\TujuanPembelajaran;
 use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+
+
 
 class TujuanPembelajaranController extends Controller
 {
@@ -99,40 +102,81 @@ class TujuanPembelajaranController extends Controller
 
     public function teacherStore(Request $request)
     {
-        $guru = auth()->guard('guru')->user();
-        $tpData = $request->input('tpData');
-        $mataPelajaranId = $request->input('mataPelajaranId');
+       Log::info('Request received:', $request->all());
+       
+       try {
+           $guru = auth()->guard('guru')->user();
+           // Parse data dari request body
+           $data = json_decode($request->getContent(), true);
+           Log::info('Parsed JSON data:', $data);
+           
+           if (!isset($data['tpData']) || !isset($data['mataPelajaranId'])) {
+               return response()->json([
+                   'success' => false,
+                   'message' => 'Data tidak lengkap'
+               ], 400);
+           }
     
-        // Log data
-        Log::info('Teacher TP Data:', $tpData);
-        Log::info('Teacher MataPelajaranId:', [$mataPelajaranId]);
+           $tpData = $data['tpData'];
+           $mataPelajaranId = $data['mataPelajaranId'];
     
-        // Validasi
-        if (!is_array($tpData) || empty($tpData) || !$mataPelajaranId) {
-            return response()->json(['success' => false, 'message' => 'Data tidak valid'], 400);
-        }
-
-        // Validasi kepemilikan mata pelajaran
-        $mataPelajaran = MataPelajaran::where('guru_id', $guru->id)
-            ->where('id', $mataPelajaranId)
-            ->first();
-
-        if (!$mataPelajaran) {
-            return response()->json([
-                'success' => false, 
-                'message' => 'Anda tidak memiliki akses ke mata pelajaran ini'
-            ], 403);
-        }
+           // Validasi
+           if (!is_array($tpData) || empty($tpData) || !$mataPelajaranId) {
+               return response()->json([
+                   'success' => false,
+                   'message' => 'Data tidak valid'
+               ], 400);
+           }
     
-        // Simpan setiap Tujuan Pembelajaran
-        foreach ($tpData as $tp) {
-            TujuanPembelajaran::create([
-                'lingkup_materi_id' => $tp['lingkupMateriId'],
-                'kode_tp' => $tp['kodeTP'],
-                'deskripsi_tp' => $tp['deskripsiTP'],
-            ]);
-        }
+           // Validasi kepemilikan mata pelajaran
+           $mataPelajaran = MataPelajaran::where('guru_id', $guru->id)
+               ->where('id', $mataPelajaranId)
+               ->first();
     
-        return response()->json(['success' => true]);
+           if (!$mataPelajaran) {
+               return response()->json([
+                   'success' => false,
+                   'message' => 'Anda tidak memiliki akses ke mata pelajaran ini'
+               ], 403);
+           }
+    
+           DB::beginTransaction();
+           try {
+               // Simpan setiap Tujuan Pembelajaran
+               foreach ($tpData as $tp) {
+                   if (!isset($tp['lingkupMateriId']) || !isset($tp['kodeTP']) || !isset($tp['deskripsiTP'])) {
+                       throw new \Exception('Data TP tidak lengkap');
+                   }
+    
+                   TujuanPembelajaran::create([
+                       'lingkup_materi_id' => $tp['lingkupMateriId'],
+                       'kode_tp' => $tp['kodeTP'],
+                       'deskripsi_tp' => $tp['deskripsiTP']
+                   ]);
+               }
+               
+               DB::commit();
+               
+               return response()->json([
+                   'success' => true,
+                   'message' => 'Data berhasil disimpan'
+               ]);
+               
+           } catch (\Exception $e) {
+               DB::rollback();
+               throw $e;
+           }
+           
+       } catch (\Exception $e) {
+           Log::error('Error in teacherStore:', [
+               'error' => $e->getMessage(),
+               'trace' => $e->getTraceAsString()
+           ]);
+           
+           return response()->json([
+               'success' => false,
+               'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+           ], 500);
+       }
     }
 }

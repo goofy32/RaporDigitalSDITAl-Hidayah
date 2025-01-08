@@ -94,7 +94,16 @@ class SubjectController extends Controller
         return redirect()->route('subject.index')
             ->with('success', 'Mata Pelajaran dan Lingkup Materi berhasil ditambahkan!');
     }
-
+    public function deleteLingkupMateri($id)
+    {
+        try {
+            $lingkupMateri = LingkupMateri::findOrFail($id);
+            $lingkupMateri->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 
     public function edit($id)
     {
@@ -107,39 +116,41 @@ class SubjectController extends Controller
 
     public function update(Request $request, $id)
     {
-        $subject = MataPelajaran::findOrFail($id);
+        try {
+            DB::beginTransaction();
     
-        $validated = $request->validate([
-            'mata_pelajaran' => 'required|string|max:255',
-            'kelas' => 'required|exists:kelas,id',
-            'guru_pengampu' => 'required|exists:gurus,id',
-            'semester' => 'required|integer|min:1|max:2',
-            'lingkup_materi' => 'nullable|array',
-            'lingkup_materi.*' => 'required|string|max:255',
-        ]);
+            $subject = MataPelajaran::findOrFail($id);
     
-        $subject->update([
-            'nama_pelajaran' => $validated['mata_pelajaran'],
-            'kelas_id' => $validated['kelas'],
-            'guru_id' => $validated['guru_pengampu'],
-            'semester' => $validated['semester'],
-        ]);
+            $validated = $request->validate([
+                'mata_pelajaran' => 'required|string|max:255',
+                'kelas' => 'required|exists:kelas,id',
+                'semester' => 'required|integer|min:1|max:2',
+                'lingkup_materi' => 'required|array',
+                'lingkup_materi.*' => 'required|string|max:255',
+            ]);
     
-        // Update Lingkup Materi
-        if (isset($validated['lingkup_materi'])) {
-            // Hapus Lingkup Materi lama
+            $subject->update([
+                'nama_pelajaran' => $validated['mata_pelajaran'],
+                'kelas_id' => $validated['kelas'],
+                'semester' => $validated['semester'],
+            ]);
+    
+            // Update Lingkup Materi
             $subject->lingkupMateris()->delete();
-    
-            // Tambahkan Lingkup Materi baru
             foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
                 LingkupMateri::create([
                     'mata_pelajaran_id' => $subject->id,
                     'judul_lingkup_materi' => $judulLingkupMateri,
                 ]);
             }
-        }
     
-        return redirect()->route('subject.index')->with('success', 'Mata Pelajaran dan Lingkup Materi berhasil diperbarui!');
+            DB::commit();
+            return redirect()->route('pengajar.subject.index')->with('success', 'Mata Pelajaran berhasil diperbarui!');
+    
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function destroy($id)

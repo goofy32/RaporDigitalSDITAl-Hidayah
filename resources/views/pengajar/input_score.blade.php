@@ -11,7 +11,7 @@
             <select class="border border-gray-300 rounded-lg px-4 py-2" 
                     onchange="window.location.href=this.value">
                 @foreach($mataPelajaranList as $mapel)
-                    <option value="{{ route('pengajar.input_score', $mapel->id) }}" 
+                    <option value="{{ route('pengajar.score.input_score', $mapel->id) }}" 
                             {{ $mapel->id == $mataPelajaran->id ? 'selected' : '' }}>
                         {{ $mapel->nama_pelajaran }}
                     </option>
@@ -30,10 +30,11 @@
         </div>
     </div>
 
-    <form id="saveForm" method="POST" action="{{ route('pengajar.save_scores', $subject['id']) }}">
+    <form id="saveForm" method="POST" action="{{ route('pengajar.score.save_scores', $subject['id']) }}">
         @csrf
         <div class="overflow-x-auto">
             <table id="students-table" class="min-w-full text-sm text-left text-gray-500 border-collapse">
+                
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
                         <th rowspan="2" class="px-4 py-2 border">No</th>
@@ -79,7 +80,7 @@
                                                name="scores[{{ $student['id'] }}][tp][{{ $lm->id }}][{{ $tp->id }}]"
                                                class="w-20 border border-gray-300 rounded px-2 py-1 tp-score"
                                                data-lm="{{ $lm->id }}"
-                                               value="{{ $existingScores[$student['id']][$lm->id][$tp->id]['nilai_tp'] ?? '' }}"
+                                               value="{{ $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? '' }}"
                                                min="0"
                                                max="100">
                                     </td>
@@ -92,7 +93,7 @@
                                     <input type="number" 
                                            name="scores[{{ $student['id'] }}][lm][{{ $lm->id }}]"
                                            class="w-20 border border-gray-300 rounded px-2 py-1 lm-score"
-                                           value="{{ $existingScores[$student['id']][$lm->id]['nilai_lm'] ?? '' }}"
+                                           value="{{ $existingScores[$student['id']]['lm'][$lm->id] ?? '' }}"
                                            min="0"
                                            max="100">
                                 </td>
