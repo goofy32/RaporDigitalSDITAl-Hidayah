@@ -181,6 +181,35 @@ class ClassController extends Controller
         return $progress;
     }
 
+    public function getKelasProgressAdmin($kelasId)
+    {
+        try {
+            $kelas = Kelas::with(['siswas', 'mataPelajarans'])->findOrFail($kelasId);
+            $progress = $this->calculateClassProgressForSingleClass($kelas);
+            
+            \Log::info('Admin Kelas progress calculated:', [
+                'kelas_id' => $kelasId,
+                'progress' => $progress
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'progress' => $progress
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error calculating class progress:', [
+                'error' => $e->getMessage(),
+                'kelas_id' => $kelasId
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error calculating progress'
+            ], 500);
+        }
+    }
+
     private function calculateOverallProgress()
     {
         $totalScores = DB::table('siswas')
@@ -203,24 +232,59 @@ class ClassController extends Controller
     
     public function getKelasProgress($kelasId)
     {
-        $kelas = Kelas::findOrFail($kelasId);
-        $progress = $this->calculateClassProgressForSingleClass($kelas);
-        
-        \Log::info('Kelas progress for ID ' . $kelasId . ': ' . $progress); // Tambahkan log ini
-        
-        return response()->json(['progress' => $progress]);
+        try {
+            $kelas = Kelas::findOrFail($kelasId);
+            $progress = $this->calculateClassProgressForSingleClass($kelas);
+            
+            Log::info('Kelas progress calculated:', [
+                'kelas_id' => $kelasId,
+                'progress' => $progress
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'progress' => $progress,
+                'details' => [
+                    'kelas' => $kelas->nama_kelas,
+                    'total_students' => $kelas->siswas()->count()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error calculating kelas progress:', [
+                'kelas_id' => $kelasId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error calculating progress',
+                'progress' => 0
+            ]);
+        }
     }
     
+
     private function calculateClassProgressForSingleClass($kelas)
     {
-        $totalNilai = Nilai::whereHas('siswa', function($query) use ($kelas) {
-            $query->where('kelas_id', $kelas->id);
-        })->count();
+        $totalPossibleNilai = 0;
+        $completedNilai = 0;
     
-        $completedNilai = Nilai::whereHas('siswa', function($query) use ($kelas) {
-            $query->where('kelas_id', $kelas->id);
-        })->whereNotNull('nilai_akhir_rapor')->count();
+        // Hitung untuk setiap siswa dan mata pelajaran
+        $kelas->siswas->each(function($siswa) use (&$totalPossibleNilai, &$completedNilai) {
+            $siswa->mataPelajarans->each(function($mapel) use (&$totalPossibleNilai, &$completedNilai, $siswa) {
+                $totalPossibleNilai++;
+                
+                $nilai = Nilai::where([
+                    'siswa_id' => $siswa->id,
+                    'mata_pelajaran_id' => $mapel->id
+                ])->whereNotNull('nilai_akhir_rapor')->first();
+                
+                if ($nilai) {
+                    $completedNilai++;
+                }
+            });
+        });
     
-        return $totalNilai > 0 ? ($completedNilai / $totalNilai) * 100 : 0;
+        return $totalPossibleNilai > 0 ? round(($completedNilai / $totalPossibleNilai) * 100, 2) : 0;
     }
 }

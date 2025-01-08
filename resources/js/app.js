@@ -100,7 +100,9 @@ function updateSidebarActiveState() {
 
 const debouncedUpdateSidebar = debounce(updateSidebarActiveState, 100);
 
-// Event Listeners
+
+
+// Event Listeners0
 document.addEventListener('turbo:load', () => {
     debouncedUpdateSidebar();
     initFlowbite();

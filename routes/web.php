@@ -47,13 +47,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     })->name('admin.dashboard');
     
     Route::get('/admin/dashboard', [ClassController::class, 'adminDashboard'])->name('admin.dashboard');
-    Route::get('/admin/kelas-progress/{kelasId}', [ClassController::class, 'getKelasProgress'])->name('admin.kelas.progress');
-    
+    Route::get('/kelas-progress/{id}', [ClassController::class, 'getKelasProgressAdmin'])
+        ->name('admin.kelas.progress');
+            
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     });
     // Existing admin routes...
-    
+    Route::get('/admin/dashboard-data', [DashboardController::class, 'getDashboardData'])
+    ->name('admin.dashboard.data')
+    ->middleware(['auth', 'role:admin']);
+
     Route::get('profile', [SchoolProfileController::class, 'show'])->name('profile');
     Route::get('profile/edit', [SchoolProfileController::class, 'edit'])->name('profile.edit');
     Route::post('profile', [SchoolProfileController::class, 'store'])->name('profile.submit');
@@ -168,12 +172,19 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(functio
 
     Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('pengajar.dashboard');
     Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgress'])->name('pengajar.kelas.progress');
-    
-    Route::get('/score', [ScoreController::class, 'index'])->name('pengajar.score');
-    Route::get('/score/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');
-    Route::post('/score/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');
-    Route::get('/score/{id}/preview', [ScoreController::class, 'previewScore'])->name('pengajar.preview_score');
-    Route::post('/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.nilai.delete');
+
+    Route::prefix('score')->group(function() {
+        Route::get('/', [ScoreController::class, 'index'])->name('pengajar.score');
+        Route::get('/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');
+        Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');
+        Route::get('/{id}/preview', [ScoreController::class, 'previewScore'])->name('pengajar.preview_score');
+        Route::delete('/{id}', [ScoreController::class, 'deleteScores'])->name('pengajar.delete_scores'); // Route baru untuk hapus semua nilai
+        Route::post('/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.nilai.delete');
+        Route::post('/score/validate', [ScoreController::class, 'validateScores'])
+        ->name('pengajar.validate_scores');
+        Route::post('/score/get-class-subjects', [ScoreController::class, 'getClassSubjects'])
+        ->name('pengajar.get_class_subjects');
+    });
 
     Route::get('/subject', [SubjectController::class, 'teacherIndex'])->name('pengajar.subject.index');
     Route::get('/subject/create', [SubjectController::class, 'teacherCreate'])->name('pengajar.subject.create');
