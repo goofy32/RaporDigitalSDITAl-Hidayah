@@ -5,29 +5,23 @@
         <div class="flex items-center justify-between">
             <!-- Logo dan Toggle Sidebar -->
             <div class="flex items-center justify-start">
-            <button data-drawer-target="logo-sidebar" data-drawer-toggle="logo-sidebar" aria-controls="logo-sidebar" type="button" class="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200">
-                <span class="sr-only">Open sidebar</span>
-                <svg class="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
-                    <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
-                </svg>
-            </button>
-            <a href="#" class="flex ms-2 md:me-24">
-                @if($schoolProfile && $schoolProfile->logo && Storage::disk('public')->exists($schoolProfile->logo))
-                    <img src="{{ asset('storage/' . $schoolProfile->logo) }}" 
-                        class="h-10 w-10 me-3 object-cover object-center rounded-full" 
-                        alt="Logo Sekolah" />
-                @else
-                    <svg class="h-10 w-10 me-3 text-green-600" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L3 7L12 12L21 7L12 2Z" fill="currentColor"/>
-                        <path d="M3 12L12 17L21 12" fill="currentColor"/>
-                        <path d="M3 17L12 22L21 17" fill="currentColor"/>
+                <button data-drawer-target="logo-sidebar" data-drawer-toggle="logo-sidebar" aria-controls="logo-sidebar" type="button" class="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200">
+                    <span class="sr-only">Open sidebar</span>
+                    <svg class="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                     </svg>
-                @endif
-                <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap">
-                    {{ $schoolProfile->nama_sekolah ?? 'SDIT AL Hidayah' }}
-                </span>
-            </a>
-        </div>
+                </button>
+                <a href="#" class="flex ms-2 md:me-24">
+                    @if(isset($schoolProfile->logo))
+                        <img src="{{ asset('storage/' . $schoolProfile->logo) }}" class="h-11 me-3" alt="Logo Sekolah" />
+                    @else
+                        <img src="https://flowbite.com/docs/images/logo.svg" class="h-8 me-3" alt="Default Logo" />
+                    @endif
+                    <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap dark:text-white">
+                        {{ $schoolProfile->nama_sekolah ?? 'SDIT AL Hidayah' }}
+                    </span>
+                </a>
+            </div>
 
             <!-- User Menu -->
             <div class="flex items-center relative" x-data="{ open: false }"> <!-- Tambahkan relative di sini -->

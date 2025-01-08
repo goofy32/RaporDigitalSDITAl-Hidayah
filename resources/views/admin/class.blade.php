@@ -60,9 +60,7 @@
                             <form action="{{ route('kelas.destroy', $kelas->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="inline">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-700">
-                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
-                                </button>
+                                <button type="submit" class="text-red-500 hover:underline"><img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5"></button>
                             </form>
                         </div>
                         </td>
