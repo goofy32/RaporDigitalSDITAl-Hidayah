@@ -353,6 +353,19 @@
                 });
                 detailMessage += '</ul>';
 
+                // Tambahkan pesan warning jika ada
+                if (data.warnings && Object.keys(data.warnings).length > 0) {
+                    detailMessage += '<div class="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">';
+                    detailMessage += '<strong>Peringatan:</strong><br>';
+                    Object.entries(data.warnings).forEach(([siswa, warnings]) => {
+                        detailMessage += `<strong>${siswa}:</strong><br>`;
+                        warnings.forEach(warning => {
+                            detailMessage += `- ${warning}<br>`;
+                        });
+                    });
+                    detailMessage += '</div>';
+                }
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil!',
@@ -370,14 +383,6 @@
                 });
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal!',
-                text: 'Terjadi kesalahan saat menghubungi server'
-            });
-        });
     });
 
     // Calculate averages when input changes
