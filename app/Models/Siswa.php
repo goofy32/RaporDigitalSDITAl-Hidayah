@@ -33,6 +33,7 @@ class Siswa extends Model
     {
         return $this->belongsTo(Kelas::class)->orderBy('nomor_kelas', 'asc');        
     }
+    
 
     public function prestasi()
     {

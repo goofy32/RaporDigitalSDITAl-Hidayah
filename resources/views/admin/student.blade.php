@@ -32,12 +32,18 @@
 
         <!-- Search Bar -->
 
-        <div class="w-full md:w-1/2 mb-4 md:mb-0">
-            <form action="{{ route('student') }}" method="GET" class="flex items-center">
-                <input type="text" name="search" value="{{ request('search') }}"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                    placeholder="Cari (contoh: kelas 1, nama siswa, NIS, atau NISN)">
-                <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <form action="{{ route('student') }}" method="GET" class="w-full">
+                <div class="flex gap-2">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                        placeholder="Cari (contoh: kelas 1, nama siswa, NIS, atau NISN)">
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
             </form>
         </div>
         
@@ -50,10 +56,10 @@
                         <th class="px-6 py-3">NIS</th>
                         <th class="px-6 py-3">NISN</th>
                         <th class="px-6 py-3">Nama</th>
-                        <th class="px-6 py-3">No. Kelas & Nama</th>
+                        <th class="px-6 py-3">Kelas</th>
                         <th class="px-6 py-3">Jenis Kelamin</th>
                         <th class="px-6 py-3">Aksi</th>
-                    </tr>
+                        </tr>
                 </thead>
                 <tbody>
                     @forelse ($students as $student)
@@ -64,17 +70,22 @@
                         <td class="px-6 py-4">{{ $student->nama }}</td>
                         <td class="px-6 py-4">{{ optional($student->kelas)->full_kelas ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $student->jenis_kelamin }}</td>
-                        <td class="px-6 py-4">
-                            <div class="flex space-x-2">
-                                <a href="{{ route('student.show', $student->id) }}" class="text-blue-600 hover:underline">Lihat</a>
-                                <a href="{{ route('student.edit', $student->id) }}" class="text-yellow-600 hover:underline">Edit</a>
-                                <form action="{{ route('student.destroy', $student->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:underline">Hapus</button>
-                                </form>
-                            </div>
-                        </td>
+                <!-- Aksi dengan icon -->
+                <td class="px-1 py-4 text-center flex space-x-2">
+                    <a href="{{ route('student.show', $student->id) }}" class="text-blue-600 hover:text-blue-800">
+                       <img src="{{ asset('images/icons/detail.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                    </a>
+                    <a href="{{ route('student.edit', $student->id) }}" class="text-yellow-600 hover:text-yellow-800">
+                        <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                    </a>
+                    <form action="{{ route('student.destroy', $student->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="text-red-600 hover:text-red-800">
+                            <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                        </button>
+                    </form>
+                    </td>
                     </tr>
                     @empty
                     <tr>

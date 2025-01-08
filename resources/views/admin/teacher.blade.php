@@ -21,13 +21,18 @@
             </a>
         </div>
 
-        <!-- Search Bar -->
-        <div class="w-full md:w-1/2 mb-4 md:mb-0">
-            <form action="{{ route('teacher') }}" method="GET" class="flex items-center">
-                <input type="text" name="search" value="{{ request('search') }}"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                    placeholder="Search">
-                <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <form action="{{ route('teacher') }}" method="GET" class="w-full" data-turbo="false">
+                <div class="flex gap-2">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                        placeholder="Cari (contoh: kelas 1, nama siswa, NIS, atau NISN)">
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
             </form>
         </div>
 
@@ -46,34 +51,42 @@
                         <th class="px-6 py-3">Alamat</th>
                         <th class="px-6 py-3">Jabatan</th>
                         <th class="px-6 py-3">Kelas Mengajar</th>
-                        <th class="px-6 py-3 text-center">Aksi</th>
+                        <th class="px-6 py-3">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($teachers as $teacher)
-                    <tr class="bg-white border-b hover:bg-gray-50">
-                        <td class="px-6 py-4">{{ $loop->iteration + ($teachers->currentPage() - 1) * $teachers->perPage() }}</td>
-                        <td class="px-6 py-4">{{ $teacher->nuptk }}</td>
-                        <td class="px-6 py-4">{{ $teacher->nama }}</td>
-                        <td class="px-6 py-4">{{ $teacher->username }}</td>
-                        <td class="px-6 py-4">{{ $teacher->jenis_kelamin }}</td>
-                        <td class="px-6 py-4">{{ $teacher->email }}</td>
-                        <td class="px-6 py-4">{{ $teacher->no_handphone }}</td>
-                        <td class="px-6 py-4">{{ $teacher->alamat }}</td>
-                        <td class="px-6 py-4">{{ $teacher->jabatan }}</td>
-                        <td class="px-6 py-4">
-                            {{ $teacher->kelasPengajar->nomor_kelas ?? '-' }} - {{ $teacher->kelasPengajar->nama_kelas ?? 'Belum Diisi' }}
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <div class="flex justify-center space-x-2">
-                                <a href="{{ route('teacher.show', $teacher->id) }}" class="text-blue-600 hover:underline">Lihat</a>
-                                <a href="{{ route('teacher.edit', $teacher->id) }}" class="text-yellow-600 hover:underline">Edit</a>
-                                <form action="{{ route('teacher.destroy', $teacher->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:underline">Hapus</button>
-                                </form>
-                            </div>
+                @forelse ($teachers->sortBy(function($teacher) {
+                    return $teacher->kelasPengajar->nomor_kelas ?? PHP_INT_MAX;
+                }) as $teacher)
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4">{{ $loop->iteration + ($teachers->currentPage() - 1) * $teachers->perPage() }}</td>
+                    <td class="px-6 py-4">{{ $teacher->nuptk }}</td>
+                    <td class="px-6 py-4">{{ $teacher->nama }}</td>
+                    <td class="px-6 py-4">{{ $teacher->username }}</td>
+                    <td class="px-6 py-4">{{ $teacher->jenis_kelamin }}</td>
+                    <td class="px-6 py-4">{{ $teacher->email }}</td>
+                    <td class="px-6 py-4">{{ $teacher->no_handphone }}</td>
+                    <td class="px-6 py-4">{{ $teacher->alamat }}</td>
+                    <td class="px-6 py-4">{{ $teacher->jabatan }}</td>
+                    <td class="px-6 py-4">Kelas
+                        {{ $teacher->kelasPengajar->nomor_kelas ?? '-' }} - {{ $teacher->kelasPengajar->nama_kelas ?? 'Belum Diisi' }}
+                    </td>
+                        <td class="px-1 py-4">
+                        <div class="flex space-x-2">
+                            <a href="{{ route('teacher.show', $teacher->id) }}" class="text-blue-600 hover:text-blue-800">
+                                <img src="{{ asset('images/icons/detail.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                            </a>
+                            <a href="{{ route('teacher.edit', $teacher->id) }}" class="text-yellow-600 hover:text-yellow-800">
+                                <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                            </a>
+                            <form action="{{ route('teacher.destroy', $teacher->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-500 hover:text-red-700">
+                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                </button>
+                            </form>
+                        </div>
                         </td>
                     </tr>
                     @empty

@@ -35,17 +35,20 @@
 
             <!-- Header -->
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Pengajar</h2>
-                <div class="flex space-x-2">
-                    <button  onclick="window.history.back()" data-turbo="false" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                        Kembali
-                    </button>
-                </div>
+            <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Pengajar</h2>
+            <div class="flex space-x-2">
+                <button onclick="window.history.back()" data-turbo="false" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    Kembali
+                </button>
+                <button type="submit" form="createTeacherForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    Simpan Data
+                </button>
             </div>
+        </div>
 
             <!-- Form -->
-            <form action="{{ route('teacher.store') }}" method="POST" enctype="multipart/form-data" data-turbo="false" class="grid grid-cols-2 gap-6">
-                @csrf
+            <form id="createTeacherForm" action="{{ route('teacher.store') }}" method="POST" enctype="multipart/form-data" data-turbo="false" class="grid grid-cols-2 gap-6">
+            @csrf
             
                 <!-- Kolom Kiri -->
                 <div>
@@ -174,12 +177,6 @@
                         @error('photo')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
-                    </div>
-
-                    <div class="mt-6">
-                        <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                            Simpan Data
-                        </button>
                     </div>
                 </div>
             </form>

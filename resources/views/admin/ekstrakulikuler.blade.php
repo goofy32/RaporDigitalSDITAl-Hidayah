@@ -32,16 +32,20 @@
                 </a>
             </div>
 
-            <div class="w-full md:w-1/2 mb-4">
-                <form action="{{ route('ekstra.index') }}" method="GET" class="flex items-center">
-                    <input type="text" 
-                           name="search" 
-                           value="{{ request('search') }}"
-                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                           placeholder="Cari nama ekstrakurikuler atau pembina...">
-                    <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
-                </form>
-            </div>
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <form action="{{ route('ekstra.index') }}" method="GET" class="w-full" data-turbo="false">
+                <div class="flex gap-2">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                        placeholder="Cari nama ekstrakurikuler atau pembina...">
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
 
             <!-- Tabel Data Siswa -->
             <div class="overflow-x-auto bg-white shadow-md rounded-lg">
@@ -61,17 +65,20 @@
                             <td class="px-6 py-4">{{ $index + 1 }}</td>
                             <td class="px-6 py-4">{{ $ekstra->nama_ekstrakurikuler }}</td>
                             <td class="px-6 py-4">{{ $ekstra->pembina }}</td>
-                            <td class="px-6 py-4 text-center flex justify-around">
-                                <a href="{{ route('ekstra.edit', $ekstra->id) }}" class="text-green-600 hover:underline">
-                                    <img src="{{ asset('images/icons/edit.png') }}" alt="Edit" class="w-5 h-5">
-                                </a>
-                                <form action="{{ route('ekstra.destroy', $ekstra->id) }}" method="POST" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
-                                        <img src="{{ asset('images/icons/delete.png') }}" alt="Delete" class="w-5 h-5">
-                                    </button>
-                                </form>
+                            <td class="px-6 py-4">
+                                <div class="flex space-x-2">
+                                    <a href="{{ route('ekstra.edit', $ekstra->id) }}" class="text-green-600 hover:text-green-800 transition-colors duration-200">
+                                        <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                    </a>
+                                    <form action="{{ route('ekstra.destroy', $ekstra->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 transition-colors duration-200" 
+                                                onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                                                <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         @empty

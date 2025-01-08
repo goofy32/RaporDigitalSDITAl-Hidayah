@@ -221,17 +221,19 @@
         </div>
     </div>
     <!-- Script untuk Preview Gambar -->
-    <script>
-        function previewImage(event) {
-            var input = event.target;
-            var reader = new FileReader();
-            reader.onload = function(){
-                var dataURL = reader.result;
-                var output = document.getElementById('profileImage');
-                output.src = dataURL;
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
+<script>
+    document.getElementById('logo').addEventListener('change', function(event) {
+        var input = event.target;
+        var reader = new FileReader();
+        reader.onload = function(){
+            var dataURL = reader.result;
+            var output = document.getElementById('profileImage');
+            output.src = dataURL;
+            output.classList.add('object-cover'); // Pastikan gambar tidak terpotong
+            output.classList.add('object-center'); // Posisikan gambar di tengah
+        };
+        reader.readAsDataURL(input.files[0]);
+    });
 
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>

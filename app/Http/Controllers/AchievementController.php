@@ -53,12 +53,8 @@ class AchievementController extends Controller
     // Menampilkan form tambah prestasi
     public function create()
     {
-        $kelas = Kelas::all();
-        $siswa = Siswa::all();
-    
-        // Tambahkan log untuk memeriksa data kelas
-        Log::info('Data Kelas:', $kelas->toArray());
-    
+        $kelas = Kelas::orderBy('nomor_kelas')->get();
+        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
         return view('data.add_prestasi', compact('kelas', 'siswa'));
     }
     // Menyimpan data prestasi
@@ -80,8 +76,11 @@ class AchievementController extends Controller
     public function edit($id)
     {
         $prestasi = Prestasi::findOrFail($id);
-        $kelas = Kelas::all();
-        $siswa = Siswa::all();
+        $kelas = Kelas::orderBy('nomor_kelas')->get();
+        
+        // Ubah menjadi mengambil SEMUA siswa, bukan hanya dari kelas yang sedang diedit
+        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
+        
         return view('data.edit_prestasi', compact('prestasi', 'kelas', 'siswa'));
     }
     
@@ -90,7 +89,7 @@ class AchievementController extends Controller
     {
         $validated = $request->validate([
             'kelas_id' => 'required|exists:kelas,id',
-            'siswa_id' => 'required|exists:siswa,id',
+            'siswa_id' => 'required|exists:siswas,id',
             'jenis_prestasi' => 'required|string|max:255',
             'keterangan' => 'nullable|string|max:500',
         ]);

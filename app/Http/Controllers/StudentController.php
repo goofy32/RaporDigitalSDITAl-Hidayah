@@ -15,8 +15,8 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Siswa::with('kelas');
-        
+        $query = Siswa::with('kelas')->orderBy('kelas_id', 'asc');
+     
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
@@ -68,22 +68,22 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nis' => 'required|unique:siswas',
-            'nisn' => 'required|unique:siswas',
-            'nama' => 'required',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required',
-            'agama' => 'required',
-            'alamat' => 'required',
+            'nis' => 'required|string|max:20|unique:siswas,nis', // Batasi panjang NIS
+            'nisn' => 'required|string|max:20|unique:siswas,nisn', // Batasi panjang NISN
+            'nama' => 'required|string|max:255',
+            'tanggal_lahir' => 'required|date|before:today', // Pastikan tanggal lahir sebelum hari ini
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'agama' => 'required|string|in:Islam,Kristen,Katolik,Hindu,Buddha,Konghucu',
+            'alamat' => 'required|string|max:500',
             'kelas_id' => 'required|exists:kelas,id',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'nama_ayah' => 'required|string',
-            'nama_ibu' => 'required|string',
-            'pekerjaan_ayah' => 'nullable|string',
-            'pekerjaan_ibu' => 'nullable|string',
-            'alamat_orangtua' => 'nullable|string',
-            'wali_siswa' => 'nullable|string',
-            'pekerjaan_wali' => 'nullable|string',
+            'nama_ayah' => 'required|string|max:255',
+            'nama_ibu' => 'required|string|max:255',
+            'pekerjaan_ayah' => 'nullable|string|max:100',
+            'pekerjaan_ibu' => 'nullable|string|max:100',
+            'alamat_orangtua' => 'nullable|string|max:500',
+            'wali_siswa' => 'nullable|string|max:255',
+            'pekerjaan_wali' => 'nullable|string|max:100',
         ]);
     
         // Set default empty string untuk field nullable
@@ -122,20 +122,22 @@ class StudentController extends Controller
     {
         $student = Siswa::findOrFail($id);
         $validated = $request->validate([
-            'nis' => 'required|unique:siswas,nis,' . $id,
-            'nisn' => 'required|unique:siswas,nisn,' . $id,
-            'nama' => 'required',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required',
-            'agama' => 'required',
-            'alamat' => 'required',
+            'nis' => 'required|string|max:20|unique:siswas,nis,'.$id,
+            'nisn' => 'required|string|max:20|unique:siswas,nisn,'.$id,
+            'nama' => 'required|string|max:255',
+            'tanggal_lahir' => 'required|date|before:today',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'agama' => 'required|string|in:Islam,Kristen,Katolik,Hindu,Buddha,Konghucu',
+            'alamat' => 'required|string|max:500',
             'kelas_id' => 'required|exists:kelas,id',
-            'nama_ayah' => 'nullable',
-            'nama_ibu' => 'nullable',
-            'pekerjaan_ayah' => 'nullable',
-            'pekerjaan_ibu' => 'nullable',
-            'alamat_orangtua' => 'nullable',
-            'photo' => 'nullable|image|max:2048'
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'nama_ayah' => 'required|string|max:255',
+            'nama_ibu' => 'required|string|max:255',
+            'pekerjaan_ayah' => 'nullable|string|max:100',
+            'pekerjaan_ibu' => 'nullable|string|max:100',
+            'alamat_orangtua' => 'nullable|string|max:500',
+            'wali_siswa' => 'nullable|string|max:255',
+            'pekerjaan_wali' => 'nullable|string|max:100',
         ]);
     
         if ($request->hasFile('photo')) {

@@ -13,7 +13,7 @@
                 </button>
                 <a href="#" class="flex ms-2 md:me-24">
                     @if(isset($schoolProfile->logo))
-                        <img src="{{ asset('storage/' . $schoolProfile->logo) }}" class="h-11 me-3" alt="Logo Sekolah" />
+                        <img src="{{ asset('storage/' . $schoolProfile->logo) }}" class="h-8 me-3" alt="Logo Sekolah" />
                     @else
                         <img src="https://flowbite.com/docs/images/logo.svg" class="h-8 me-3" alt="Default Logo" />
                     @endif
@@ -24,17 +24,25 @@
             </div>
 
             <!-- User Menu -->
-            <div class="flex items-center" x-data="{ open: false }">
-                <div class="relative">
-                    <button @click="open = !open" 
-                            @click.away="open = false"
-                            class="flex items-center text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300">
+            <div class="flex items-center relative" x-data="{ open: false }"> <!-- Tambahkan relative di sini -->
+    <div class="flex items-center space-x-8">
+        <span class="text-sm font-medium text-gray-900">
+            @if(Auth::guard('guru')->check())
+                {{ Auth::guard('guru')->user()->nama }}
+            @else
+                {{ Auth::user()->name }}
+            @endif
+        </span>
+        
+        <button @click="open = !open" 
+                @click.away="open = false"
+                class="flex items-center text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300">
                         <span class="sr-only">Open user menu</span>
-                        @if(Auth::guard('guru')->check() && Auth::guard('guru')->user()->photo)
+                            @if(Auth::guard('guru')->check() && Auth::guard('guru')->user()->photo)
                             <img class="w-8 h-8 rounded-full" 
-                                 src="{{ asset('storage/' . Auth::guard('guru')->user()->photo) }}" 
-                                 alt="user photo">
-                        @else
+                                src="{{ asset('storage/' . Auth::guard('guru')->user()->photo) }}" 
+                                alt="user photo">
+                            @else
                             <div class="relative w-8 h-8 overflow-hidden bg-gray-100 rounded-full">
                                 <svg class="absolute w-10 h-10 text-gray-400 -left-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                                     <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
@@ -45,18 +53,14 @@
 
                     <!-- Dropdown menu -->
                     <div x-show="open" 
-                         x-transition:enter="transition ease-out duration-100"
-                         x-transition:enter-start="transform opacity-0 scale-95"
-                         x-transition:enter-end="transform opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-75"
-                         x-transition:leave-start="transform opacity-100 scale-100"
-                         x-transition:leave-end="transform opacity-0 scale-95"
-                         class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                         role="menu"
-                         aria-orientation="vertical"
-                         aria-labelledby="user-menu-button"
-                         tabindex="-1"
-                         style="display: none;">
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave-start="transform opacity-100 scale-100"
+                        x-transition:leave-end="transform opacity-0 scale-95"
+                        class="absolute right-0 mt-16 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                        style="display: none;">
                         <!-- User Info -->
                         <div class="px-4 py-3">
                             @if(Auth::guard('guru')->check())

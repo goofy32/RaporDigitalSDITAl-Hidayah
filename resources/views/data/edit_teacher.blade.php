@@ -65,8 +65,18 @@
                         <option value="Perempuan" {{ $teacher->jenis_kelamin === 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                     </select>
 
-                    <label for="tanggal_lahir" class="block mt-4 text-sm font-medium text-gray-700">Tanggal Lahir</label>
-                    <input type="date" id="tanggal_lahir" name="tanggal_lahir" value="{{ $teacher->tanggal_lahir }}" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required>
+                    <div class="mb-4">
+                        <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
+                        <input type="date" 
+                            id="tanggal_lahir" 
+                            name="tanggal_lahir" 
+                            value="{{ $teacher->tanggal_lahir }}"
+                            class="w-full mt-1 p-2 border @error('tanggal_lahir') border-red-500 @enderror border-gray-300 rounded-lg" 
+                            required>
+                        @error('tanggal_lahir')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
                     <label for="no_handphone" class="block mt-4 text-sm font-medium text-gray-700">No Handphone</label>
                     <input type="text" id="no_handphone" name="no_handphone" value="{{ $teacher->no_handphone }}" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required>
@@ -98,10 +108,45 @@
                     <label for="username" class="block mt-4 text-sm font-medium text-gray-700">Username</label>
                     <input type="text" id="username" name="username" value="{{ $teacher->username }}" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required>
                     
-                     <!-- Tambahkan field password_confirmation -->
-                    <div class="mb-4">
-                        <label for="password_confirmation" class="block mt-4 text-sm font-medium text-gray-700">Konfirmasi Password</label>
-                        <input type="password" id="password_confirmation" name="password_confirmation" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                    <!-- Password Section -->
+                    <div class="mt-6 border-t pt-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Ubah Password</h3>
+                        
+                        <!-- Current Password -->
+                        <div class="mb-4">
+                            <label for="current_password" class="block text-sm font-medium text-gray-700">Password Saat Ini</label>
+                            <input type="password" 
+                                id="current_password" 
+                                name="current_password" 
+                                class="w-full mt-1 p-2 border @error('current_password') border-red-500 @enderror border-gray-300 rounded-lg">
+                            @error('current_password')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- New Password -->
+                        <div class="mb-4">
+                            <label for="password" class="block text-sm font-medium text-gray-700">Password Baru</label>
+                            <input type="password" 
+                                id="password" 
+                                name="password" 
+                                class="w-full mt-1 p-2 border @error('password') border-red-500 @enderror border-gray-300 rounded-lg">
+                            @error('password')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Confirm New Password -->
+                        <div class="mb-4">
+                            <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
+                            <input type="password" 
+                                id="password_confirmation" 
+                                name="password_confirmation" 
+                                class="w-full mt-1 p-2 border @error('password_confirmation') border-red-500 @enderror border-gray-300 rounded-lg">
+                            @error('password_confirmation')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
                 </div>
             </form>
@@ -153,6 +198,37 @@
         }
     });
 });</script>
+
+<!-- Tambahkan script JavaScript untuk validasi -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordForm = document.getElementById('editTeacherForm');
+    const newPassword = document.getElementById('password');
+    const confirmPassword = document.getElementById('password_confirmation');
+    const currentPassword = document.getElementById('current_password');
+
+    passwordForm.addEventListener('submit', function(e) {
+        // Jika password baru diisi
+        if (newPassword.value) {
+            // Pastikan password saat ini diisi
+            if (!currentPassword.value) {
+                e.preventDefault();
+                alert('Password saat ini harus diisi untuk mengubah password');
+                currentPassword.focus();
+                return;
+            }
+
+            // Pastikan konfirmasi password cocok
+            if (newPassword.value !== confirmPassword.value) {
+                e.preventDefault();
+                alert('Konfirmasi password tidak cocok');
+                confirmPassword.focus();
+                return;
+            }
+        }
+    });
+});
+</script>
 </body>
 
 </html>

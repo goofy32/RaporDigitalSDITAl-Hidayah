@@ -4,6 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Kelas;
+use App\Models\Siswa;
+use App\Models\Guru;
+use App\Models\MataPelajaran;
+use App\Models\Nilai;
+use App\Models\Ekstrakurikuler;
+use Illuminate\Support\Facades\DB;
 
 class ClassController extends Controller
 {
@@ -96,7 +102,7 @@ class ClassController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'nomor_kelas' => 'required|integer',
+            'nomor_kelas' => 'required|integer|max:99|min:1',
             'nama_kelas' => 'required|string|max:255',
             'wali_kelas' => 'required|string|max:255',
         ]);
@@ -119,5 +125,102 @@ class ClassController extends Controller
         $kelas->delete();
 
         return redirect()->route('kelas.index')->with('success', 'Data kelas berhasil dihapus.');
+    }
+
+    public function adminDashboard()
+    {
+        $totalStudents = Siswa::count();
+        $totalTeachers = Guru::count();
+        $totalSubjects = MataPelajaran::count();
+        $totalClasses = Kelas::count();
+        $totalExtracurriculars = Ekstrakurikuler::count();
+        $overallProgress = $this->calculateOverallProgressForAdmin();
+        $informationItems = $this->getInformationItems();
+        $kelas = Kelas::all();
+    
+        return view('admin.dashboard', compact(
+            'totalStudents',
+            'totalTeachers',
+            'totalSubjects',
+            'totalClasses',
+            'totalExtracurriculars',
+            'overallProgress',
+            'kelas',
+            'informationItems'
+        ));
+    }
+    
+    private function calculateOverallProgressForAdmin()
+    {
+        $totalNilai = Nilai::count();
+        $completedNilai = Nilai::whereNotNull('nilai_akhir_rapor')->count();
+
+        return $totalNilai > 0 ? ($completedNilai / $totalNilai) * 100 : 0;
+    }
+
+    private function calculateClassProgress()
+    {
+        $classes = Kelas::with('mataPelajarans')->get();
+        $progress = [];
+
+        foreach ($classes as $class) {
+            $totalScores = 0;
+            $completedScores = 0;
+
+            foreach ($class->mataPelajarans as $subject) {
+                $totalStudents = $class->siswas()->count();
+                $totalScores += $totalStudents;
+                $completedScores += Nilai::where('mata_pelajaran_id', $subject->id)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->count();
+            }
+
+            $progress[$class->nama_kelas] = $totalScores > 0 ? ($completedScores / $totalScores) * 100 : 0;
+        }
+
+        return $progress;
+    }
+
+    private function calculateOverallProgress()
+    {
+        $totalScores = DB::table('siswas')
+            ->join('kelas', 'siswas.kelas_id', '=', 'kelas.id')
+            ->join('mata_pelajarans', 'kelas.id', '=', 'mata_pelajarans.kelas_id')
+            ->count();
+
+        $completedScores = Nilai::whereNotNull('nilai_akhir_rapor')->count();
+
+        return $totalScores > 0 ? ($completedScores / $totalScores) * 100 : 0;
+    }
+
+    private function getInformationItems()
+    {
+        // Implement this method to fetch information items
+        // For now, we'll return an empty array
+        return [];
+    }
+
+    
+    public function getKelasProgress($kelasId)
+    {
+        $kelas = Kelas::findOrFail($kelasId);
+        $progress = $this->calculateClassProgressForSingleClass($kelas);
+        
+        \Log::info('Kelas progress for ID ' . $kelasId . ': ' . $progress); // Tambahkan log ini
+        
+        return response()->json(['progress' => $progress]);
+    }
+    
+    private function calculateClassProgressForSingleClass($kelas)
+    {
+        $totalNilai = Nilai::whereHas('siswa', function($query) use ($kelas) {
+            $query->where('kelas_id', $kelas->id);
+        })->count();
+    
+        $completedNilai = Nilai::whereHas('siswa', function($query) use ($kelas) {
+            $query->where('kelas_id', $kelas->id);
+        })->whereNotNull('nilai_akhir_rapor')->count();
+    
+        return $totalNilai > 0 ? ($completedNilai / $totalNilai) * 100 : 0;
     }
 }

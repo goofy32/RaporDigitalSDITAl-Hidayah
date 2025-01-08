@@ -46,6 +46,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         return view('admin.dashboard');
     })->name('admin.dashboard');
     
+    Route::get('/admin/dashboard', [ClassController::class, 'adminDashboard'])->name('admin.dashboard');
+    Route::get('/admin/kelas-progress/{kelasId}', [ClassController::class, 'getKelasProgress'])->name('admin.kelas.progress');
     
     Route::get('/', function () {
         return redirect()->route('admin.dashboard');

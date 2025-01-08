@@ -20,14 +20,20 @@
             </a>
         </div>
 
-        <div class="w-full md:w-1/2 mb-4 md:mb-0">
-            <form action="{{ route('achievement.index') }}" method="GET" class="flex items-center" data-turbo="false">
-                <input type="text" name="search" value="{{ request('search') }}"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                    placeholder="Ketik 'kelas' untuk filter kelas, atau 'kelas 1' untuk kelas spesifik">
-                <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <form action="{{ route('achievement.index') }}" method="GET" class="w-full" data-turbo="false">
+                <div class="flex gap-2">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                        placeholder="Cari (contoh: kelas 1, nama siswa, NIS, atau NISN)">
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
             </form>
-        </div>        
+        </div>
 
         <!-- Tabel Data Prestasi -->
         <div class="overflow-x-auto bg-white shadow-md rounded-lg">
@@ -52,15 +58,20 @@
                             <td class="px-6 py-4">{{ $prestasi->siswa->nama ?? '-' }}</td>
                             <td class="px-6 py-4">{{ $prestasi->jenis_prestasi }}</td>
                             <td class="px-6 py-4">{{ $prestasi->keterangan }}</td>
-                            <td class="px-6 py-4 text-center flex justify-around">
-                                <a href="{{ route('achievement.edit', $prestasi->id) }}" class="text-green-600 hover:underline">
-                                    ✏
-                                </a>
-                                <form action="{{ route('achievement.destroy', $prestasi->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:underline">🗑</button>
-                                </form>
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex space-x-2">
+                                    <a href="{{ route('achievement.edit', $prestasi->id) }}" class="text-green-600 hover:text-green-800 transition-colors duration-200">
+                                        <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+
+                                    </a>
+                                    <form action="{{ route('achievement.destroy', $prestasi->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?');" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 transition-colors duration-200">
+                                            <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @endforeach

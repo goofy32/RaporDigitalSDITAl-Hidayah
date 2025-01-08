@@ -46,6 +46,11 @@ class TeacherController extends Controller
             });
         }
         
+        // Tambahkan pengurutan berdasarkan nomor kelas
+        $query->leftJoin('kelas', 'gurus.kelas_pengajar_id', '=', 'kelas.id')
+              ->orderBy('kelas.nomor_kelas', 'asc')
+              ->select('gurus.*');
+        
         $teachers = $query->paginate(10);
         return view('admin.teacher', compact('teachers'));
     }
@@ -104,7 +109,8 @@ class TeacherController extends Controller
             Guru::create($validated);
     
             return redirect()->route('teacher')
-                ->with('success', 'Data guru berhasil ditambahkan');
+            ->with('success', 'Data guru berhasil ditambahkan');
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()
                 ->withErrors($e->validator)
@@ -114,7 +120,7 @@ class TeacherController extends Controller
             return back()
                 ->with('error', 'Terjadi kesalahan sistem')
                 ->withInput();
-        }
+     }
     }
 
     public function show($id)
@@ -126,6 +132,10 @@ class TeacherController extends Controller
     public function edit($id)
     {
         $teacher = Guru::findOrFail($id);
+        // Format tanggal untuk input date
+        if ($teacher->tanggal_lahir) {
+            $teacher->tanggal_lahir = date('Y-m-d', strtotime($teacher->tanggal_lahir));
+        }
         $classes = Kelas::all();
         return view('data.edit_teacher', compact('teacher', 'classes'));
     }
@@ -134,8 +144,9 @@ class TeacherController extends Controller
     {
         try {
             $teacher = Guru::findOrFail($id);
-
-            $validated = $request->validate([
+    
+            // Validasi dasar
+            $rules = [
                 'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,'.$id,
                 'nama' => 'required|string|max:255',
                 'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
@@ -146,27 +157,23 @@ class TeacherController extends Controller
                 'jabatan' => 'required|string|max:100',
                 'kelas_pengajar_id' => 'required|exists:kelas,id',
                 'username' => 'required|string|max:255|unique:gurus,username,'.$id,
-                'password' => 'nullable|string|min:6|confirmed',
                 'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ], [
-                // Custom error messages
-                'nuptk.required' => 'NIP wajib diisi',
-                'nuptk.numeric' => 'NIP harus berupa angka',
-                'nuptk.digits_between' => 'NIP harus antara 9-15 digit',
-                'nama.required' => 'Nama wajib diisi',
-                'jenis_kelamin.required' => 'Jenis kelamin wajib diisi',
-                'tanggal_lahir.required' => 'Tanggal lahir wajib diisi',
-                'no_handphone.required' => 'Nomor handphone wajib diisi',
-                'email.required' => 'Email wajib diisi',
-                'email.email' => 'Format email tidak valid',
-                'alamat.required' => 'Alamat wajib diisi',
-                'jabatan.required' => 'Jabatan wajib diisi',
-                'kelas_pengajar_id.required' => 'Kelas mengajar wajib diisi',
-                'username.required' => 'Username wajib diisi',
-                'password.required' => 'Password wajib diisi',
-                'password.min' => 'Password minimal 6 karakter',
-                'password.confirmed' => 'Konfirmasi password tidak cocok',
-            ]);
+            ];
+    
+            // Tambahkan validasi password jika password diisi
+            if ($request->filled('password')) {
+                $rules['password'] = 'required|string|min:6|confirmed';
+                $rules['current_password'] = 'required';
+                
+                // Verifikasi password lama
+                if (!Hash::check($request->current_password, $teacher->password)) {
+                    return back()
+                        ->withErrors(['current_password' => 'Password saat ini tidak sesuai'])
+                        ->withInput();
+                }
+            }
+    
+            $validated = $request->validate($rules);
     
             // Handle password
             if ($request->filled('password')) {
@@ -174,10 +181,9 @@ class TeacherController extends Controller
             } else {
                 unset($validated['password']);
             }
-        
+    
             // Handle photo upload
             if ($request->hasFile('photo')) {
-                // Delete old photo
                 if ($teacher->photo) {
                     Storage::disk('public')->delete($teacher->photo);
                 }
@@ -185,17 +191,15 @@ class TeacherController extends Controller
                 $validated['photo'] = $path;
             }
     
-    
             $teacher->update($validated);
-
     
-            return redirect()->route('teacher')->with('success', 'Data guru berhasil diperbarui');
-
+            return redirect()->route('teacher')
+                ->with('success', 'Data guru berhasil diperbarui');
+    
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()
                 ->withErrors($e->validator)
-                ->withInput()
-                ->with('error', 'Mohon periksa kembali input Anda');
+                ->withInput();
         } catch (\Exception $e) {
             Log::error('Error updating teacher: ' . $e->getMessage());
             return back()

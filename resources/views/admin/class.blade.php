@@ -20,14 +20,18 @@
             </a>
         </div>
         
-
-        <!-- Search Bar -->
-        <div class="w-full md:w-1/2 mb-4 md:mb-0">
-            <form action="{{ route('kelas.index') }}" method="GET" class="flex items-center">
-                <input type="text" name="search" value="{{ request('search') }}"
-                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                    placeholder="Search">
-                <button type="submit" class="ml-2 px-4 py-2 bg-green-600 text-white rounded-lg">Cari</button>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <form action="{{ route('kelas.index') }}" method="GET" class="w-full" data-turbo="false">
+                <div class="flex gap-2">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
+                        placeholder="Cari (contoh: kelas 1, nama siswa, NIS, atau NISN)">
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
             </form>
         </div>
 
@@ -39,7 +43,7 @@
                         <th class="px-6 py-3">Nomor</th>
                         <th class="px-6 py-3">Kelas</th>
                         <th class="px-6 py-3">Wali Kelas</th>
-                        <th class="px-6 py-3 text-center">Aksi</th>
+                        <th class="px-6 py-3">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,14 +52,17 @@
                         <td class="px-6 py-4">{{ $index + $kelasList->firstItem() }}</td>
                         <td class="px-6 py-4">Kelas {{ $kelas->nomor_kelas }} - {{ $kelas->nama_kelas }}</td>
                         <td class="px-6 py-4">{{ $kelas->wali_kelas }}</td>
-                        <td class="px-6 py-4 text-center space-x-2">
+                        <td class="px-6 py-4 text-center">
+                        <div class="flex space-x-2">
+                            <a href="{{ route('kelas.edit', $kelas->id) }}" class="text-yellow-600 hover:text-yellow-800">
+                                <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                            </a>
                             <form action="{{ route('kelas.destroy', $kelas->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="inline">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:underline">Hapus</button>
-                                <!-- <img src="{{ asset('images/icons/delete.png') }}" alt="Hapus" class="w-8 h-5"> -->
                             </form>
-                            <a href="{{ route('kelas.edit', $kelas->id) }}" class="text-blue-600 hover:underline">Edit</a>
+                        </div>
                         </td>
                     </tr>
                     @empty

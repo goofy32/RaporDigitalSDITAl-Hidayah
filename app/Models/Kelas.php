@@ -17,6 +17,10 @@ class Kelas extends Model
         'wali_kelas',
     ];
     
+    protected $casts = [
+        'nomor_kelas' => 'integer'
+    ];
+    
     public function siswas()
     {
         return $this->hasMany(Siswa::class);
@@ -29,8 +33,9 @@ class Kelas extends Model
 
     public function getFullKelasAttribute()
     {
-        return "{$this->nomor_kelas} {$this->nama_kelas}";
+        return "Kelas {$this->nomor_kelas} {$this->nama_kelas}";
     }
+    
     
     // Tambahkan method untuk debugging
     public function toArray()
