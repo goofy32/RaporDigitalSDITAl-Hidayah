@@ -175,7 +175,7 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->name('pengaja
         Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('save_scores');
         Route::get('/{id}/preview', [ScoreController::class, 'previewScore'])->name('preview_score');
         Route::delete('/{id}', [ScoreController::class, 'deleteScores'])->name('delete');
-        Route::post('/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('nilai.delete');
+        Route::post('/score/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.score.nilai.delete');
         Route::post('/validate', [ScoreController::class, 'validateScores'])->name('validate');
         Route::post('/get-class-subjects', [ScoreController::class, 'getClassSubjects'])->name('get_class_subjects');
     });

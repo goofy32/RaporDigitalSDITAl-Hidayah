@@ -66,6 +66,11 @@
                         <th class="px-4 py-2 border">Nilai Non-Tes</th>
                     </tr>
                 </thead>
+
+                @php
+                $siswas = $mataPelajaran->kelas->siswas()->orderBy('nama', 'asc')->get();
+                @endphp
+
                 <tbody>
                     @foreach($students as $index => $student)
                         <tr class="hover:bg-gray-50">
@@ -186,20 +191,195 @@
             formChanged = true;
         });
     });
-    
-    // Handle page leave
-    window.onbeforeunload = function(e) {
-        if (formChanged) {
-            e.preventDefault();
-            return "Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?";
+
+    function calculateAverages(row) {
+        // 1. Calculate NA Sumatif TP
+        let tpInputs = row.querySelectorAll('.tp-score');
+        let tpSum = 0;
+        let validTpCount = 0;
+
+        tpInputs.forEach(input => {
+            let value = parseFloat(input.value);
+            if (!isNaN(value) && value > 0) {
+                tpSum += value;
+                validTpCount++;
+            }
+        });
+
+        if (validTpCount > 0) {
+            let naTP = tpSum / validTpCount;
+            row.querySelector('.na-tp').value = naTP.toFixed(2);
         }
-    };
-    
-    // Handle form submission
-    document.getElementById('saveForm').addEventListener('submit', () => {
-        formChanged = false;
+
+        // 2. Calculate NA Sumatif LM
+        let lmInputs = row.querySelectorAll('.lm-score');
+        let lmSum = 0;
+        let validLmCount = 0;
+
+        lmInputs.forEach(input => {
+            let value = parseFloat(input.value);
+            if (!isNaN(value) && value > 0) {
+                lmSum += value;
+                validLmCount++;
+            }
+        });
+
+        if (validLmCount > 0) {
+            let naLM = lmSum / validLmCount;
+            row.querySelector('.na-lm').value = naLM.toFixed(2);
+        }
+
+        // 3. Calculate NA Sumatif Akhir Semester
+        let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
+        let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
+
+        if (nilaiTes > 0 || nilaiNonTes > 0) {
+            let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
+            row.querySelector('input[name*="[nilai_akhir]"]').value = nilaiAkhirSemester.toFixed(2);
+        }
+
+        // 4. Calculate Nilai Akhir Rapor
+        let naTP = parseFloat(row.querySelector('.na-tp').value) || 0;
+        let naLM = parseFloat(row.querySelector('.na-lm').value) || 0;
+        let nilaiAkhirSemester = parseFloat(row.querySelector('input[name*="[nilai_akhir]"]').value) || 0;
+
+        if (naTP > 0 || naLM > 0 || nilaiAkhirSemester > 0) {
+            let nilaiAkhirRapor = (naTP * 0.3) + (naLM * 0.3) + (nilaiAkhirSemester * 0.4);
+            row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.round(nilaiAkhirRapor);
+        }
+    }
+
+    function validateForm() {
+        const form = document.getElementById('saveForm');
+        const inputs = form.querySelectorAll('input[type="number"]:not([readonly])');
+        let hasEmptyValues = false;
+
+        inputs.forEach(input => {
+            if (!input.value && !input.readOnly) {
+                hasEmptyValues = true;
+            }
+        });
+
+        if (hasEmptyValues) {
+            return confirm('Beberapa nilai masih kosong. Apakah Anda yakin ingin melanjutkan?');
+        }
+        return true;
+    }
+
+    function deleteNilai(siswaId, mapelId) {
+        Swal.fire({
+            title: 'Hapus Nilai?',
+            text: "Nilai yang dihapus tidak dapat dikembalikan!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/pengajar/score/nilai/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        siswa_id: siswaId,
+                        mata_pelajaran_id: mapelId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
+                        row.querySelectorAll('input[type="number"]').forEach(input => {
+                            input.value = '';
+                        });
+                        calculateAverages(row);
+                        formChanged = true;
+                        
+                        Swal.fire(
+                            'Terhapus!',
+                            'Nilai berhasil dihapus.',
+                            'success'
+                        );
+                    } else {
+                        Swal.fire(
+                            'Gagal!',
+                            data.message || 'Gagal menghapus nilai',
+                            'error'
+                        );
+                    }
+                });
+            }
+        });
+    }
+
+    document.getElementById('saveForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+            return;
+        }
+
+        Swal.fire({
+            title: 'Menyimpan Nilai...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const formData = new FormData(this);
+        
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let detailMessage = '<ul class="text-left">';
+                data.details.forEach(student => {
+                    detailMessage += `<li class="mb-2"><strong>${student.nama}</strong>:<br>`;
+                    student.nilai.forEach(nilai => {
+                        detailMessage += `- ${nilai.tipe}: ${nilai.nilai}<br>`;
+                    });
+                    detailMessage += '</li>';
+                });
+                detailMessage += '</ul>';
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    html: `Nilai berhasil disimpan!<br><br>${detailMessage}`,
+                    width: '600px'
+                }).then(() => {
+                    formChanged = false;
+                    window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: data.message || 'Terjadi kesalahan saat menyimpan nilai'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: 'Terjadi kesalahan saat menghubungi server'
+            });
+        });
     });
-    
+
     // Calculate averages when input changes
     document.addEventListener('input', function(e) {
         if (e.target.matches('.tp-score, .lm-score, .nilai-semester')) {
@@ -207,157 +387,41 @@
             formChanged = true;
         }
     });
-    
-    function calculateAverages(row) {
-        // 1. Calculate NA Sumatif TP (Rata-rata nilai TP dengan bobot)
-        let tpInputs = row.querySelectorAll('.tp-score');
-        let tpSum = 0;
-        let tpCount = 0;
-        let validTpCount = 0;
 
-        tpInputs.forEach(input => {
-            let value = parseFloat(input.value) || 0;
-            if (value > 0) {
-                // Memberikan bobot lebih tinggi untuk nilai TP yang lebih tinggi
-                let weight = value >= 90 ? 1.1 : 
-                            value >= 80 ? 1.0 : 
-                            value >= 70 ? 0.9 : 0.8;
-                tpSum += (value * weight);
-                validTpCount++;
-            }
-            tpCount++;
-        });
-
-        let naTP = validTpCount > 0 ? (tpSum / validTpCount) : 0;
-        naTP = Math.min(100, naTP); // Memastikan tidak melebihi 100
-        row.querySelector('.na-tp').value = naTP.toFixed(2);
-
-        // 2. Calculate NA Sumatif LM (Rata-rata nilai LM dengan progress learning)
-        let lmInputs = row.querySelectorAll('.lm-score');
-        let lmSum = 0;
-        let lmCount = 0;
-        let validLmCount = 0;
-        let progressFactor = 1.05; // Faktor progress learning
-
-        lmInputs.forEach(input => {
-            let value = parseFloat(input.value) || 0;
-            if (value > 0) {
-                // Menerapkan faktor progress learning
-                lmSum += (value * progressFactor);
-                validLmCount++;
-                progressFactor += 0.05; // Meningkatkan faktor untuk setiap LM berikutnya
-            }
-            lmCount++;
-        });
-
-        let naLM = validLmCount > 0 ? (lmSum / validLmCount) : 0;
-        naLM = Math.min(100, naLM); // Memastikan tidak melebihi 100
-        row.querySelector('.na-lm').value = naLM.toFixed(2);
-
-        // 3. Calculate NA Sumatif Akhir Semester
-        let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
-        let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
-        
-        // Bobot penilaian: Tes (60%) dan Non-Tes (40%)
-        let naAkhirSemester = 0;
-        if (nilaiTes > 0 || nilaiNonTes > 0) {
-            naAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
-            row.querySelector('input[name*="[nilai_akhir]"]').value = naAkhirSemester.toFixed(2);
-        }
-
-        // 4. Calculate Nilai Akhir Rapor dengan pembobotan:
-        // - NA Sumatif TP: 30%
-        // - NA Sumatif LM: 30%
-        // - NA Sumatif Akhir Semester: 40%
-        if (naTP > 0 || naLM > 0 || naAkhirSemester > 0) {
-            let nilaiAkhirRapor = (naTP * 0.3) + (naLM * 0.3) + (naAkhirSemester * 0.4);
-            
-            // Pembulatan nilai akhir
-            nilaiAkhirRapor = Math.round(nilaiAkhirRapor);
-            
-            // Penerapan batas minimal kelulusan
-            const nilaiMinimal = 75; // Batas KKM
-            if (nilaiAkhirRapor < nilaiMinimal) {
-                // Jika nilai di bawah KKM, berikan kesempatan perbaikan
-                // dengan menambahkan poin bonus berdasarkan progress
-                let progressBonus = Math.min(5, (nilaiMinimal - nilaiAkhirRapor) * 0.2);
-                nilaiAkhirRapor += progressBonus;
-            }
-
-            row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.min(100, nilaiAkhirRapor).toFixed(0);
-        }
-    }
-    function validateForm() {
-        const form = document.getElementById('saveForm');
-        const inputs = form.querySelectorAll('input[type="number"]');
-        let hasEmptyValues = false;
-        let isFirstInput = true;
-
-        inputs.forEach(input => {
-            if (!input.value && input.getAttribute('readonly') === null) {
-                hasEmptyValues = true;
-            }
-        });
-
-        if (hasEmptyValues && isFirstInput) {
-            const proceed = confirm('Beberapa nilai masih kosong. Apakah Anda yakin ingin melanjutkan?');
-            if (!proceed) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    document.getElementById('saveForm').addEventListener('submit', function(e) {
-        if (!validateForm()) {
+    // Handle page navigation warnings
+    window.addEventListener('beforeunload', (e) => {
+        if (formChanged) {
             e.preventDefault();
+            e.returnValue = 'Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
+            return e.returnValue;
         }
     });
 
-    function deleteNilai(siswaId, mapelId) {
-        if (confirm('Apakah Anda yakin ingin menghapus nilai ini?')) {
-            fetch('/pengajar/nilai/delete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    siswa_id: siswaId,
-                    mata_pelajaran_id: mapelId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    let row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
-                    // Reset all inputs
-                    row.querySelectorAll('input[type="number"]').forEach(input => {
-                        input.value = '';
-                    });
-                    calculateAverages(row);
-                    formChanged = true;
-                } else {
-                    alert('Gagal menghapus nilai');
-                }
-            });
-        }
-    }
-    function validateScore(input) {
-        let value = parseFloat(input.value);
-        if (value < 0) input.value = 0;
-        if (value > 100) input.value = 100;
-        if (isNaN(value)) input.value = '';
-        calculateAverages(input.closest('tr'));
-    }
-    
-    // Initialize calculations on page load
+    // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('#students-table tbody tr').forEach(row => {
             calculateAverages(row);
         });
     });
-    </script>
+
+    // Handle Turbo navigation
+    document.addEventListener('turbo:before-visit', (event) => {
+        if (formChanged) {
+            if (!confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
+                event.preventDefault();
+            }
+        }
+    });
+
+    // Handle back/forward browser navigation
+    document.addEventListener('turbo:before-cache', () => {
+        if (formChanged) {
+            if (!confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
+                window.history.forward();
+            }
+        }
+    });
+</script>
 
 @endsection
 

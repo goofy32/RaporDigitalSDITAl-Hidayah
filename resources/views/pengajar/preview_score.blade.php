@@ -55,8 +55,13 @@
                     <th class="px-4 py-2 border">Nilai Non-Tes</th>
                 </tr>
             </thead>
+
+            @php
+                $siswas = $mataPelajaran->kelas->siswas()->orderBy('nama', 'asc')->get();
+            @endphp
+            
             <tbody>
-                @foreach($mataPelajaran->kelas->siswas as $index => $siswa)
+                @foreach($siswas as $index => $siswa)
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2 border">{{ $index + 1 }}</td>
                     <td class="px-4 py-2 border">{{ $siswa->nama }}</td>
@@ -65,7 +70,8 @@
                     @foreach($mataPelajaran->lingkupMateris as $lm)
                         @foreach($lm->tujuanPembelajarans as $tp)
                             <td class="px-4 py-2 border text-center">
-                                {{ $existingScores[$siswa->id]['tp'][$lm->id][$tp->id] ?? '-' }}
+                                {{ isset($existingScores[$siswa->id]['tp'][$lm->id][$tp->id]) ? 
+                                number_format($existingScores[$siswa->id]['tp'][$lm->id][$tp->id], 2) : '-' }}
                             </td>
                         @endforeach
                     @endforeach
@@ -73,36 +79,35 @@
                     <!-- Nilai LM -->
                     @foreach($mataPelajaran->lingkupMateris as $lm)
                         <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$siswa->id]['lm'][$lm->id] ?? '-' }}
+                            {{ isset($existingScores[$siswa->id]['lm'][$lm->id]) ? 
+                            number_format($existingScores[$siswa->id]['lm'][$lm->id], 2) : '-' }}
                         </td>
                     @endforeach
                     
-                    <!-- NA TP -->
+                    <!-- Nilai lainnya -->
                     <td class="px-4 py-2 border text-center">
-                        {{ $existingScores[$siswa->id]['na_tp'] ?? '-' }}
-                    </td>
-                    
-<!-- NA LM -->
-                    <td class="px-4 py-2 border text-center">
-                        {{ $existingScores[$siswa->id]['na_lm'] ?? '-' }}
-                    </td>
-                    
-                    <!-- Sumatif Akhir Semester -->
-                    <td class="px-4 py-2 border text-center">
-                        {{ $existingScores[$siswa->id]['nilai_tes'] ?? '-' }}
+                        {{ isset($existingScores[$siswa->id]['na_tp']) ? 
+                        number_format($existingScores[$siswa->id]['na_tp'], 2) : '-' }}
                     </td>
                     <td class="px-4 py-2 border text-center">
-                        {{ $existingScores[$siswa->id]['nilai_non_tes'] ?? '-' }}
+                        {{ isset($existingScores[$siswa->id]['na_lm']) ? 
+                        number_format($existingScores[$siswa->id]['na_lm'], 2) : '-' }}
                     </td>
-                    
-                    <!-- NA Sumatif Akhir Semester -->
                     <td class="px-4 py-2 border text-center">
-                        {{ $existingScores[$siswa->id]['nilai_akhir_semester'] ?? '-' }}
+                        {{ isset($existingScores[$siswa->id]['nilai_tes']) ? 
+                        number_format($existingScores[$siswa->id]['nilai_tes'], 2) : '-' }}
                     </td>
-                    
-                    <!-- Nilai Akhir Rapor -->
                     <td class="px-4 py-2 border text-center">
-                        {{ $existingScores[$siswa->id]['nilai_akhir_rapor'] ?? '-' }}
+                        {{ isset($existingScores[$siswa->id]['nilai_non_tes']) ? 
+                        number_format($existingScores[$siswa->id]['nilai_non_tes'], 2) : '-' }}
+                    </td>
+                    <td class="px-4 py-2 border text-center">
+                        {{ isset($existingScores[$siswa->id]['nilai_akhir_semester']) ? 
+                        number_format($existingScores[$siswa->id]['nilai_akhir_semester'], 2) : '-' }}
+                    </td>
+                    <td class="px-4 py-2 border text-center">
+                        {{ isset($existingScores[$siswa->id]['nilai_akhir_rapor']) ? 
+                        number_format($existingScores[$siswa->id]['nilai_akhir_rapor'], 0) : '-' }}
                     </td>
                 </tr>
                 @endforeach

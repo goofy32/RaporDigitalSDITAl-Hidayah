@@ -18,7 +18,7 @@ class Nilai extends Model
         'lingkup_materi_id',
         'nilai_tp',
         'nilai_lm',
-        'nilai_akhir_semester', // ini yang sudah ada untuk NA Sumatif Akhir Semester
+        'nilai_akhir_semester',
         'na_tp',
         'na_lm',
         'tp_number',
@@ -32,6 +32,11 @@ class Nilai extends Model
         'nilai_tp' => 'float',
         'nilai_lm' => 'float',
         'nilai_akhir_semester' => 'float',
+        'na_tp' => 'float',
+        'na_lm' => 'float',
+        'nilai_tes' => 'float',
+        'nilai_non_tes' => 'float',
+        'nilai_akhir_rapor' => 'float'
     ];
 
     // Menambahkan rules validasi
@@ -60,18 +65,5 @@ class Nilai extends Model
         return $this->belongsTo(TujuanPembelajaran::class, 'tujuan_pembelajaran_id');
     }
 
-    public function lingkupMateri()
-    {
-        return $this->belongsTo(LingkupMateri::class, 'lingkup_materi_id');
-    }
 
-    public function scopeForMataKuliah($query, $mataPelajaranId)
-    {
-        return $query->where('mata_pelajaran_id', $mataPelajaranId);
-    }
-
-    public function scopeForSiswa($query, $siswaId)
-    {
-        return $query->where('siswa_id', $siswaId);
-    }
 }
