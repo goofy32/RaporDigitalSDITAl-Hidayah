@@ -3,7 +3,20 @@ import 'flowbite';
 import '@hotwired/turbo';
 import Alpine from 'alpinejs';
 
-// Daftarkan komponen Alpine sebelum menginisialisasi
+// Alpine Store untuk navigasi dan gambar
+Alpine.store('navigation', {
+    imagesLoaded: {},
+    
+    markImageLoaded(id) {
+        this.imagesLoaded[id] = true;
+    },
+    
+    isImageLoaded(id) {
+        return this.imagesLoaded[id] || false;
+    }
+});
+
+// Alpine Component untuk Session Timeout
 Alpine.data('sessionTimeout', () => ({
     isExpired: false,
     timeoutDuration: 7200000, // 2 jam dalam milidetik
@@ -70,6 +83,7 @@ function debounce(func, wait) {
     };
 }
 
+// Update sidebar state
 function updateSidebarActiveState() {
     try {
         const currentPath = window.location.pathname;
@@ -100,30 +114,17 @@ function updateSidebarActiveState() {
 
 const debouncedUpdateSidebar = debounce(updateSidebarActiveState, 100);
 
-
-
-// Event Listeners0
+// Event Listeners
 document.addEventListener('turbo:load', () => {
     debouncedUpdateSidebar();
     initFlowbite();
     
-    // Handle dropdown state
-    const dropdownButton = document.querySelector('[data-collapse-toggle="dropdown-rapor"]');
-    const dropdownContent = document.getElementById('dropdown-rapor');
-    
-    if (dropdownButton && dropdownContent) {
-        // Cek URL untuk menentukan apakah dropdown harus terbuka
-        const currentPath = window.location.pathname;
-        if (currentPath.includes('format-rapor')) {
-            dropdownContent.classList.add('show');
-            dropdownButton.classList.add('bg-green-100', 'shadow-md');
+    // Initialize images state
+    document.querySelectorAll('img[id]').forEach(img => {
+        if (img.complete && img.naturalHeight !== 0) {
+            Alpine.store('navigation').markImageLoaded(img.id);
         }
-
-        // Toggle dropdown saat diklik
-        dropdownButton.addEventListener('click', () => {
-            dropdownContent.classList.toggle('show');
-        });
-    }
+    });
 });
 
 document.addEventListener('turbo:before-render', (event) => {
@@ -136,23 +137,43 @@ document.addEventListener('turbo:before-render', (event) => {
         }
     });
 
-    // Preserve dropdown state
-    const dropdown = document.getElementById('dropdown-rapor');
-    const isOpen = !dropdown.classList.contains('hidden');
-    if (isOpen) {
-        const newDropdown = event.detail.newBody.getElementById('dropdown-rapor');
-        if (newDropdown) {
-            newDropdown.classList.remove('hidden');
+    // Keep Alpine store state for images
+    const navigationStore = Alpine.store('navigation');
+    event.detail.newBody.querySelectorAll('img[id]').forEach(img => {
+        if (navigationStore.isImageLoaded(img.id)) {
+            img.style.opacity = '1';
+            img.setAttribute('data-turbo-cache', 'true');
         }
-    }
+    });
 
-    window.formChanged = false;
+    // Preserve form changes status
+    const currentFormChanged = window.formChanged;
+    event.detail.newBody.querySelectorAll('script').forEach(script => {
+        if (script.textContent.includes('window.formChanged')) {
+            script.textContent = script.textContent.replace(
+                'window.formChanged = false',
+                `window.formChanged = ${currentFormChanged}`
+            );
+        }
+    });
 });
 
 document.addEventListener('turbo:before-cache', () => {
     document.querySelectorAll('#logo-sidebar a').forEach(link => {
         link.classList.remove('bg-green-100', 'shadow-md');
     });
+    window.formChanged = false;
+});
+
+// Form change handling
+document.addEventListener('turbo:before-visit', (event) => {
+    if (window.formChanged) {
+        if (!confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
+            event.preventDefault();
+        } else {
+            window.formChanged = false;
+        }
+    }
 });
 
 document.addEventListener('turbo:before-fetch-response', async (event) => {
@@ -169,14 +190,6 @@ document.addEventListener('turbo:before-fetch-request', (event) => {
             event.preventDefault();
         } else {
             window.formChanged = false;
-        }
-    }
-});
-
-document.addEventListener('turbo:before-visit', (event) => {
-    if (window.formChanged) {
-        if (!confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
-            event.preventDefault();
         }
     }
 });

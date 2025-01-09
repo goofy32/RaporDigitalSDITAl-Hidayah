@@ -6,6 +6,22 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="turbo-cache-control" content="no-preview">
+
+    <meta name="turbo-cache-control" content="no-preview">
+    <meta name="turbo-visit-control" content="reload">
+    <!-- Add this new meta tag -->
+    <meta name="turbo-root" content="true">
+    
+    <!-- Preload critical images -->
+    <link rel="preload" 
+          href="{{ asset('images/icons/dashboard-icon.png') }}" 
+          as="image">
+    <link rel="preload" 
+          href="{{ asset('images/icons/score.png') }}" 
+          as="image">
+    <link rel="preload" 
+          href="{{ asset('images/icons/subject-icon.png') }}" 
+          as="image">
     
     <title>@yield('title')</title>
     

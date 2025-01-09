@@ -159,50 +159,48 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         Route::get('/edit/{format}', [ReportFormatController::class, 'edit'])->name('edit');
     });
 });
+Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->name('pengajar.')->group(function () {
+    // Dashboard routes
+    Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
+    Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgress'])->name('kelas.progress');
 
-// Pengajar routes
-Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('pengajar.dashboard');
-    })->name('pengajar.dashboard');
-    
-    // Profile route - hanya untuk menampilkan
-    Route::get('/profile', [TeacherController::class, 'showProfile'])->name('pengajar.profile');
+    // Profile routes
+    Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
     Route::get('profile/{id}', [UserController::class, 'show'])->name('profile.show');
 
-    Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('pengajar.dashboard');
-    Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgress'])->name('pengajar.kelas.progress');
-
-    Route::prefix('score')->group(function() {
-        Route::get('/', [ScoreController::class, 'index'])->name('pengajar.score');
-        Route::get('/{id}/input', [ScoreController::class, 'inputScore'])->name('pengajar.input_score');
-        Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('pengajar.save_scores');
-        Route::get('/{id}/preview', [ScoreController::class, 'previewScore'])->name('pengajar.preview_score');
-        Route::delete('/{id}', [ScoreController::class, 'deleteScores'])->name('pengajar.delete_scores'); // Route baru untuk hapus semua nilai
-        Route::post('/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.nilai.delete');
-        Route::post('/score/validate', [ScoreController::class, 'validateScores'])
-        ->name('pengajar.validate_scores');
-        Route::post('/score/get-class-subjects', [ScoreController::class, 'getClassSubjects'])
-        ->name('pengajar.get_class_subjects');
+    // Score routes
+    Route::prefix('score')->name('score.')->group(function () {
+        Route::get('/', [ScoreController::class, 'index'])->name('index');
+        Route::get('/{id}/input', [ScoreController::class, 'inputScore'])->name('input_score');
+        Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('save_scores');
+        Route::get('/{id}/preview', [ScoreController::class, 'previewScore'])->name('preview_score');
+        Route::delete('/{id}', [ScoreController::class, 'deleteScores'])->name('delete');
+        Route::post('/score/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.score.nilai.delete');
+        Route::post('/validate', [ScoreController::class, 'validateScores'])->name('validate');
+        Route::post('/get-class-subjects', [ScoreController::class, 'getClassSubjects'])->name('get_class_subjects');
     });
 
-    Route::get('/subject', [SubjectController::class, 'teacherIndex'])->name('pengajar.subject.index');
-    Route::get('/subject/create', [SubjectController::class, 'teacherCreate'])->name('pengajar.subject.create');
-    Route::post('/subject', [SubjectController::class, 'teacherStore'])->name('pengajar.subject.store');
-    Route::get('/subject/{id}/edit', [SubjectController::class, 'teacherEdit'])->name('pengajar.subject.edit');
-    Route::put('/subject/{id}', [SubjectController::class, 'teacherUpdate'])->name('pengajar.subject.update');
-    Route::delete('/subject/{id}', [SubjectController::class, 'teacherDestroy'])->name('pengajar.subject.destroy');
-
-    Route::middleware(['check.matapelajaran.ownership'])->group(function () {
-        Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])
-            ->name('pengajar.tujuan_pembelajaran.view');
-        Route::get('/tujuan-pembelajaran/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'teacherCreate'])
-            ->name('pengajar.tujuan_pembelajaran.create');
-        Route::post('/tujuan-pembelajaran/store', [TujuanPembelajaranController::class, 'teacherStore'])
-            ->name('pengajar.tujuan_pembelajaran.store');
+    // Subject routes
+    Route::prefix('subject')->name('subject.')->group(function () {
+        Route::get('/', [SubjectController::class, 'teacherIndex'])->name('index');
+        Route::get('/create', [SubjectController::class, 'teacherCreate'])->name('create');
+        Route::post('/', [SubjectController::class, 'teacherStore'])->name('store');
+        Route::get('/{id}/edit', [SubjectController::class, 'teacherEdit'])->name('edit');
+        Route::put('/{id}', [SubjectController::class, 'teacherUpdate'])->name('update');
+        Route::delete('/{id}', [SubjectController::class, 'teacherDestroy'])->name('destroy');
+        Route::delete('/lingkup-materi/{id}', [SubjectController::class, 'deleteLingkupMateri'])->name('lingkup_materi.destroy');
     });
 
-        
+    // Tujuan Pembelajaran routes - Perbaikan di sini
+    Route::prefix('tujuan-pembelajaran')->name('tujuan_pembelajaran.')->group(function () {
+        Route::get('/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])->name('view');
+        Route::get('/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'teacherCreate'])->name('create');
+        Route::post('/store', [TujuanPembelajaranController::class, 'teacherStore'])->name('store');
+    });
+
+    // Lingkup Materi routes
+    Route::delete('/lingkup-materi/{id}', [SubjectController::class, 'deleteLingkupMateri'])
+        ->name('lingkup_materi.destroy');
 });
 // Wali Kelas routes
 Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->name('wali_kelas.')->group(function () {

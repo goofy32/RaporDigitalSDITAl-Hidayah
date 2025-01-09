@@ -1,3 +1,4 @@
+
 @extends('layouts.pengajar.app')
 
 @section('title', 'Tambah Tujuan Pembelajaran')
@@ -20,6 +21,12 @@
         
         <!-- Form -->
         <form id="addTPForm" class="space-y-6">
+            <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
+                    <p class="text-gray-700 font-semibold">{{ $mataPelajaran->nama_pelajaran }}</p>
+                    <input type="hidden" id="mata_pelajaran_id" value="{{ $mataPelajaran->id }}">
+                </div>
+            @csrf
             <!-- Mata Pelajaran -->
             <div>
                 <label class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
@@ -39,9 +46,9 @@
                 </select>
             </div>
 
-            <!-- Kode TP and Deskripsi TP Inputs -->
+            <!-- Kode TP dan Deskripsi TP Inputs -->
             <div id="tpContainer">
-                <div class="flex items-center mb-2">
+            <div class="flex items-center mb-2">
                     <input type="text" name="kode_tp[]" placeholder="Kode TP (contoh: TP1)" required
                         class="block w-1/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mr-2">
                     <input type="text" name="deskripsi_tp[]" placeholder="Deskripsi TP" required
@@ -85,9 +92,8 @@
 <script>
     const csrfToken = '{{ csrf_token() }}';
     const mataPelajaranId = '{{ $mataPelajaran->id }}';
-    let tpData = []; // Array untuk menyimpan data TP sementara
+    let tpData = [];
 
-    // Fungsi untuk menambahkan input Kode TP dan Deskripsi TP
     function addTPRow() {
         const container = document.getElementById('tpContainer');
         const div = document.createElement('div');
@@ -168,25 +174,25 @@
     }
 
     function clearForm() {
-        // Hapus semua input Kode TP dan Deskripsi TP kecuali satu
-        const tpContainer = document.getElementById('tpContainer');
-        tpContainer.innerHTML = `
-            <div class="flex items-center mb-2">
-                <input type="text" name="kode_tp[]" placeholder="Kode TP" required
-                    class="block w-1/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mr-2">
-                <input type="text" name="deskripsi_tp[]" placeholder="Deskripsi TP" required
-                    class="block w-2/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                <button type="button" onclick="addTPRow()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    <!-- Plus Icon -->
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
-                    </svg>
-                </button>
-            </div>
-        `;
-    }
+            // Hapus semua input Kode TP dan Deskripsi TP kecuali satu
+            const tpContainer = document.getElementById('tpContainer');
+            tpContainer.innerHTML = `
+                <div class="flex items-center mb-2">
+                    <input type="text" name="kode_tp[]" placeholder="Kode TP" required
+                        class="block w-1/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mr-2">
+                    <input type="text" name="deskripsi_tp[]" placeholder="Deskripsi TP" required
+                        class="block w-2/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                    <button type="button" onclick="addTPRow()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <!-- Plus Icon -->
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+        }
 
-    
+
     function saveData() {
         const saveButton = document.querySelector('button[onclick="saveData()"]');
         saveButton.disabled = true;
@@ -199,34 +205,43 @@
             return;
         }
 
+        const data = {
+            tpData: tpData,
+            mataPelajaranId: mataPelajaranId
+        };
+
+        console.log('Sending data:', data); // Debug log
+
         fetch('{{ route('pengajar.tujuan_pembelajaran.store') }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
                 'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
             },
-            body: JSON.stringify({ tpData: tpData, mataPelajaranId: mataPelajaranId }),
+            body: JSON.stringify(data)
         })
         .then(response => {
+            console.log('Response:', response); // Debug log
             if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || 'Terjadi kesalahan');
+                return response.text().then(text => {
+                    throw new Error(text);
                 });
             }
             return response.json();
         })
         .then(data => {
+            console.log('Success:', data); // Debug log
             if (data.success) {
                 alert('Data berhasil disimpan!');
                 window.location.href = '{{ route('pengajar.subject.index') }}';
             } else {
-                alert(data.message || 'Terjadi kesalahan saat menyimpan data.');
+                throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert(error.message || 'Terjadi kesalahan saat menyimpan data.');
+            alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
         })
         .finally(() => {
             saveButton.disabled = false;

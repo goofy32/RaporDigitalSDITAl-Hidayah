@@ -59,25 +59,25 @@
             <div>
                 <label class="block mb-2 text-sm font-medium text-gray-900">Lingkup Materi</label>
                 <div id="lingkupMateriContainer">
-                    @foreach($subject->lingkupMateris as $index => $lm)
-                        <div class="flex items-center mb-2">
-                            <input type="text" name="lingkup_materi[]" value="{{ $lm->judul_lingkup_materi }}" required
-                                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                            @if($index == 0)
-                                <button type="button" onclick="addLingkupMateri()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
-                                    </svg>
-                                </button>
-                            @else
-                                <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                                    </svg>
-                                </button>
-                            @endif
-                        </div>
-                    @endforeach
+                @foreach($subject->lingkupMateris as $index => $lm)
+                <div class="flex items-center mb-2">
+                    <input type="text" name="lingkup_materi[]" value="{{ $lm->judul_lingkup_materi }}" required
+                        class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                    @if($index == 0)
+                        <button type="button" onclick="addLingkupMateri()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    @else
+                        <button type="button" onclick="removeLingkupMateri(this, {{ $lm->id }})" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    @endif
+                </div>
+            @endforeach
                 </div>
             </div>
         </form>
@@ -104,8 +104,34 @@
         container.appendChild(div);
     }
     
-    function removeLingkupMateri(button) {
-        button.parentElement.remove();
+    function removeLingkupMateri(button, id) {
+        if (confirm('Apakah Anda yakin ingin menghapus Lingkup Materi ini?')) {
+            fetch(`/pengajar/lingkup-materi/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    button.closest('.flex.items-center').remove();
+                } else {
+                    alert('Gagal menghapus Lingkup Materi: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat menghapus Lingkup Materi');
+            });
+        }
     }
 </script>
 @endsection
