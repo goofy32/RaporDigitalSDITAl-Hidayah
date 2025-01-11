@@ -23,9 +23,9 @@
 
     <div class="overflow-x-auto">
         <table class="min-w-full text-sm text-left text-gray-500 border-collapse">
-            <!-- Header sama dengan input_score -->
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
+            <!-- Header -->
+            <thead>
+            <tr>
                     <th rowspan="2" class="px-4 py-2 border">No</th>
                     <th rowspan="2" class="px-4 py-2 border">Nama Siswa</th>
                     <th colspan="{{ $mataPelajaran->lingkupMateris->sum(function($lm) { 
@@ -66,10 +66,7 @@
                         @foreach($mataPelajaran->lingkupMateris as $lm)
                             @foreach($lm->tujuanPembelajarans as $tp)
                                 <td class="px-4 py-2 border text-center">
-                                    <input type="number" 
-                                           value="{{ $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? '' }}"
-                                           class="w-20 border-none bg-transparent text-center"
-                                           readonly>
+                                    {{ $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? '-' }}
                                 </td>
                             @endforeach
                         @endforeach
@@ -77,73 +74,38 @@
                         <!-- Nilai LM -->
                         @foreach($mataPelajaran->lingkupMateris as $lm)
                             <td class="px-4 py-2 border text-center">
-                                <input type="number" 
-                                       value="{{ $existingScores[$student['id']]['lm'][$lm->id] ?? '' }}"
-                                       class="w-20 border-none bg-transparent text-center"
-                                       readonly>
+                                {{ $existingScores[$student['id']]['lm'][$lm->id] ?? '-' }}
                             </td>
                         @endforeach
                         
                         <!-- NA TP -->
                         <td class="px-4 py-2 border text-center">
-                            <input type="number" 
-                                   value="{{ $existingScores[$student['id']]['na_tp'] ?? '' }}"
-                                   class="w-20 border-none bg-transparent text-center"
-                                   readonly>
+                            {{ $existingScores[$student['id']]['na_tp'] ?? '-' }}
                         </td>
                         
                         <!-- NA LM -->
-                        <td class="px-4 py-2 border">
-                            <input type="number" 
-                                    name="scores[{{ $student['id'] }}][na_lm]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 na-lm"
-                                    value="{{ $existingScores[$student['id']]['na_lm'] ?? '' }}"
-                                    min="0"
-                                    max="100"
-                                    readonly>
+                        <td class="px-4 py-2 border text-center">
+                            {{ $existingScores[$student['id']]['na_lm'] ?? '-' }}
                         </td>
                         
                         <!-- Nilai Tes -->
-                        <td class="px-4 py-2 border">
-                            <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_tes]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
-                                    value="{{ $existingScores[$student['id']]['nilai_tes'] ?? '' }}"
-                                    min="0"
-                                    max="100"
-                                    readonly>
+                        <td class="px-4 py-2 border text-center">
+                            {{ $existingScores[$student['id']]['nilai_tes'] ?? '-' }}
                         </td>
                         
                         <!-- Nilai Non-Tes -->
-                        <td class="px-4 py-2 border">
-                            <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_non_tes]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-semester"
-                                    value="{{ $existingScores[$student['id']]['nilai_non_tes'] ?? '' }}"
-                                    min="0"
-                                    max="100"
-                                    readonly>
-                                    
+                        <td class="px-4 py-2 border text-center">
+                            {{ $existingScores[$student['id']]['nilai_non_tes'] ?? '-' }}
                         </td>
                         
                         <!-- NA Sumatif Akhir Semester -->
-                        <td class="px-4 py-2 border">
-                            <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_akhir]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir"
-                                    value="{{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '' }}"
-                                    min="0"
-                                    max="100"
-                                    readonly>
+                        <td class="px-4 py-2 border text-center">
+                            {{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '-' }}
                         </td>
                         
                         <!-- Nilai Akhir Rapor -->
-                        <td class="px-4 py-2 border">
-                            <input type="number" 
-                                    name="scores[{{ $student['id'] }}][nilai_akhir_rapor]"
-                                    class="w-20 border border-gray-300 rounded px-2 py-1 nilai-akhir-rapor"
-                                    value="{{ $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '' }}"
-                                    readonly>
+                        <td class="px-4 py-2 border text-center">
+                            {{ $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '-' }}
                         </td>
                     </tr>
                 @endforeach

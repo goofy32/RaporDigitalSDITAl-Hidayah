@@ -315,28 +315,29 @@ class ScoreController extends Controller
                     $query->orderBy('nama', 'asc');
                 },
                 'lingkupMateris.tujuanPembelajarans',
+                'lingkupMateris.nilais',
             ])->findOrFail($id);
     
             // Validasi akses guru
             $guru = Auth::guard('guru')->user();
             if ($mataPelajaran->guru_id !== $guru->id) {
-                return redirect()->route('pengajar.score')
+                return redirect()->route('pengajar.score.index')
                     ->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
             }
     
             $students = $mataPelajaran->kelas->siswas
-            ->sortBy('nama')
-            ->map(function($siswa) {
-                return [
-                    'id' => $siswa->id,
-                    'name' => $siswa->nama
-                ];
-            });
+                ->sortBy('nama')
+                ->map(function($siswa) {
+                    return [
+                        'id' => $siswa->id,
+                        'name' => $siswa->nama
+                    ];
+                });
             
             // Inisialisasi struktur data nilai
             $existingScores = [];
-            foreach ($mataPelajaran->kelas->siswas as $siswa) {
-                $existingScores[$siswa->id] = [
+            foreach ($students as $student) {
+                $existingScores[$student['id']] = [
                     'tp' => [],
                     'lm' => [],
                     'na_tp' => null,
@@ -348,65 +349,38 @@ class ScoreController extends Controller
                 ];
                 
                 foreach ($mataPelajaran->lingkupMateris as $lm) {
-                    $existingScores[$siswa->id]['lm'][$lm->id] = null;
+                    $existingScores[$student['id']]['lm'][$lm->id] = null;
                     foreach ($lm->tujuanPembelajarans as $tp) {
-                        $existingScores[$siswa->id]['tp'][$lm->id][$tp->id] = null;
+                        $existingScores[$student['id']]['tp'][$lm->id][$tp->id] = null;
                     }
                 }
             }
     
-            // Ambil semua nilai
-            $nilaiQuery = Nilai::where('mata_pelajaran_id', $id)
-            ->where(function($q) {
-                $q->where('nilai_tp', '>', 0)
-                  ->orWhere('nilai_lm', '>', 0)
-                  ->orWhere('na_tp', '>', 0)
-                  ->orWhere('na_lm', '>', 0)
-                  ->orWhere('nilai_tes', '>', 0)
-                  ->orWhere('nilai_non_tes', '>', 0)
-                  ->orWhere('nilai_akhir_semester', '>', 0)
-                  ->orWhere('nilai_akhir_rapor', '>', 0);
-            })
-            ->get();
-            
-            Log::info('Nilai Query:', $nilaiQuery->toArray()); // Tambahkan logging untuk debug
-
-
             // Isi struktur data dengan nilai yang ada
-            foreach ($nilaiQuery as $nilai) {
-                if ($nilai->nilai_tp !== null && isset($existingScores[$nilai->siswa_id]['tp'][$nilai->lingkup_materi_id][$nilai->tujuan_pembelajaran_id])) {
-                    $existingScores[$nilai->siswa_id]['tp'][$nilai->lingkup_materi_id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
-                }
-                
-                if ($nilai->nilai_lm !== null && isset($existingScores[$nilai->siswa_id]['lm'][$nilai->lingkup_materi_id])) {
-                    $existingScores[$nilai->siswa_id]['lm'][$nilai->lingkup_materi_id] = $nilai->nilai_lm;
-                }
-                
-                if ($nilai->na_tp !== null) {
-                    $existingScores[$nilai->siswa_id]['na_tp'] = $nilai->na_tp;
-                }
-                if ($nilai->na_lm !== null) {
-                    $existingScores[$nilai->siswa_id]['na_lm'] = $nilai->na_lm;
-                }
-                if ($nilai->nilai_akhir_semester !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
-                }
-                if ($nilai->nilai_tes !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
-                }
-                if ($nilai->nilai_non_tes !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
-                }
-                if ($nilai->nilai_akhir_rapor !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
+            foreach ($mataPelajaran->lingkupMateris as $lm) {
+                foreach ($lm->nilais as $nilai) {
+                    if (isset($existingScores[$nilai->siswa_id])) {
+                        if ($nilai->tujuan_pembelajaran_id) {
+                            $existingScores[$nilai->siswa_id]['tp'][$lm->id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
+                        }
+                        $existingScores[$nilai->siswa_id]['lm'][$lm->id] = $nilai->nilai_lm;
+                        $existingScores[$nilai->siswa_id]['na_tp'] = $nilai->na_tp;
+                        $existingScores[$nilai->siswa_id]['na_lm'] = $nilai->na_lm;
+                        $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
+                        $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
+                        $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
+                        $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
+                    }
                 }
             }
+    
+            Log::info('Existing Scores:', $existingScores);
     
             return view('pengajar.preview_score', compact('mataPelajaran', 'existingScores', 'students'));
         } catch (\Exception $e) {
             Log::error('Error in ScoreController@previewScore: ' . $e->getMessage());
-            return redirect()->route('pengajar.score')
-                ->with('error', 'Terjadi kesalahan saat memuat data');
+            return redirect()->route('pengajar.score.index')
+                ->with('error', 'Terjadi kesalahan saat memuat data: ' . $e->getMessage());
         }
     }
     

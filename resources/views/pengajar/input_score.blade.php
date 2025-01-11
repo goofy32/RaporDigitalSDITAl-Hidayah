@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
-    <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700 flex items-center gap-2">
             <span>{{ $subject['class'] }} - </span>      
@@ -34,8 +33,7 @@
         @csrf
         <div class="overflow-x-auto">
             <table id="students-table" class="min-w-full text-sm text-left text-gray-500 border-collapse">
-                
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
                         <th rowspan="2" class="px-4 py-2 border">No</th>
                         <th rowspan="2" class="px-4 py-2 border">Nama Siswa</th>
@@ -92,6 +90,7 @@
                                 @endforeach
                             @endforeach
                             
+
                             <!-- Nilai LM -->
                             @foreach($mataPelajaran->lingkupMateris as $lm)
                                 <td class="px-4 py-2 border">
@@ -181,6 +180,7 @@
         </div>
     </form>
 </div>
+
 
 <script>
     let formChanged = false;
@@ -427,7 +427,4 @@
         }
     });
 </script>
-
 @endsection
-
-

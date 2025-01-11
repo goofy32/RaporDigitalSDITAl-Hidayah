@@ -39,7 +39,6 @@ class Guru extends Authenticatable
         'tanggal_lahir' => 'date',
     ];
     
-    // Tambahkan accessor jika diperlukan
     public function getTanggalLahirAttribute($value)
     {
         return $value ? date('Y-m-d', strtotime($value)) : null;
@@ -48,5 +47,20 @@ class Guru extends Authenticatable
     public function kelasPengajar()
     {
         return $this->belongsTo(Kelas::class, 'kelas_pengajar_id');
+    }
+
+    public function mataPelajarans()
+    {
+        return $this->hasMany(MataPelajaran::class, 'guru_id');
+    }
+
+    public function nilais()
+    {
+        return $this->hasManyThrough(Nilai::class, MataPelajaran::class, 'guru_id', 'mata_pelajaran_id');
+    }
+
+    public function kelas()
+    {
+        return $this->belongsToMany(Kelas::class, 'guru_kelas', 'guru_id', 'kelas_id');
     }
 }
