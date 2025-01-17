@@ -167,12 +167,14 @@
                 <div class="mb-4">
                     <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
                     <select name="target" 
+                            id="target-select"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
                             required>
                         <option value="">-- Pilih --</option>
                         <option value="all">Semua</option>
-                        <option value="guru">Guru</option>
-                        <option value="wali_kelas">Wali Kelas</option>
+                        <option value="guru">Semua Guru</option>
+                        <option value="wali_kelas">Semua Wali Kelas</option>
+                        <option value="specific">Guru Tertentu</option>
                     </select>
                 </div>
                 <div class="mb-4">
@@ -187,6 +189,29 @@
                         class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
                     Simpan
                 </button>
+
+
+                <div id="specific-teachers-container" class="mb-4 hidden">
+                    <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
+                    <div class="max-h-40 overflow-y-auto">
+                        @foreach($guru as $g)
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" 
+                                name="specific_users[]" 
+                                value="{{ $g->id }}" 
+                                class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                            <label class="ml-2 text-sm text-gray-900">
+                                {{ $g->nama }} 
+                                @if($g->jabatan == 'wali_kelas')
+                                    (Wali Kelas {{ $g->kelasPengajar->nama_kelas ?? '' }})
+                                @else
+                                    (Guru {{ implode(', ', $g->mataPelajarans->pluck('nama_pelajaran')->toArray()) }})
+                                @endif
+                            </label>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
             </form>
             </div>
         </div>
@@ -214,6 +239,15 @@ function handleInitialLoad() {
         sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
     }
 }
+
+document.getElementById('target-select').addEventListener('change', function() {
+    const specificContainer = document.getElementById('specific-teachers-container');
+    if (this.value === 'specific') {
+        specificContainer.classList.remove('hidden');
+    } else {
+        specificContainer.classList.add('hidden');
+    }
+});
 
 function destroyCharts() {
     if (overallChart) {

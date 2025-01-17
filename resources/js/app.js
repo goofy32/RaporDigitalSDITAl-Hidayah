@@ -163,6 +163,12 @@ document.addEventListener('turbo:before-cache', () => {
         link.classList.remove('bg-green-100', 'shadow-md');
     });
     window.formChanged = false;
+
+    // Clear notification polling
+    const notificationHandler = document.querySelector('[x-data="notificationHandler"]');
+    if (notificationHandler && notificationHandler.__x) {
+        notificationHandler.__x.destroy();
+    }
 });
 
 // Form change handling
@@ -197,6 +203,70 @@ document.addEventListener('turbo:before-fetch-request', (event) => {
 document.addEventListener('turbo:visit', () => {
     debouncedUpdateSidebar();
 });
+
+// Notifikasi Store dan Component
+Alpine.store('notification', {
+    items: [],
+    unreadCount: 0,
+
+    async fetchNotifications() {
+        try {
+            const response = await fetch('/notifications');
+            const data = await response.json();
+            this.items = data.notifications;
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    },
+
+    async fetchUnreadCount() {
+        try {
+            const response = await fetch('/notifications/unread-count');
+            const data = await response.json();
+            this.unreadCount = data.count;
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    }
+});
+
+Alpine.data('notificationHandler', () => ({
+    isOpen: false,
+    pollingInterval: null,
+
+    init() {
+        this.$store.notification.fetchNotifications();
+        this.$store.notification.fetchUnreadCount();
+        
+        // Polling untuk update count
+        this.pollingInterval = setInterval(() => {
+            this.$store.notification.fetchUnreadCount();
+        }, 30000); // Update setiap 30 detik
+    },
+
+    toggleNotifications() {
+        this.isOpen = !this.isOpen;
+        if (this.isOpen) {
+            this.$store.notification.fetchNotifications();
+        }
+    },
+
+    formatDate(date) {
+        return new Date(date).toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    },
+
+    destroy() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+        }
+    }
+}));
 
 window.Alpine = Alpine;
 Alpine.start();
