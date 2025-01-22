@@ -31,9 +31,15 @@ class Kelas extends Model
         return $this->hasMany(MataPelajaran::class, 'kelas_id');
     }
 
-    public function getFullKelasAttribute()
+    public function waliKelas()
     {
-        return "Kelas {$this->nomor_kelas} {$this->nama_kelas}";
+        return $this->belongsTo(Guru::class, 'wali_kelas', 'id');
+    }
+    
+    // Tambahkan accessor untuk mendapatkan nama wali kelas
+    public function getWaliKelasNameAttribute()
+    {
+        return $this->waliKelas ? $this->waliKelas->nama : '-';
     }
     
     

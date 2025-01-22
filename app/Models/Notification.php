@@ -20,8 +20,12 @@ class Notification extends Model
 
     protected $casts = [
         'is_read' => 'boolean',
-        'specific_users' => 'array', // Cast JSON ke array
-        'read_at' => 'datetime',
+        'specific_users' => 'array',
+    ];
+    
+    protected $attributes = [
+        'is_read' => false,
+        'specific_users' => null,
     ];
 
     // Relationship dengan guru yang membaca notifikasi
@@ -49,9 +53,10 @@ class Notification extends Model
     {
         return $query->where(function($q) use ($userId) {
             $q->where('target', 'all')
+              ->orWhere('target', 'guru')
               ->orWhere(function($sub) use ($userId) {
                   $sub->where('target', 'specific')
-                      ->whereRaw("JSON_CONTAINS(specific_users, ?)", [$userId]);
+                      ->whereRaw('JSON_CONTAINS(specific_users, ?)', [json_encode($userId)]);
               });
         });
     }

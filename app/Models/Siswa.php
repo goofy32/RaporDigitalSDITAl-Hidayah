@@ -43,4 +43,23 @@ class Siswa extends Model
     {
         return $this->hasMany(Nilai::class);
     }
+
+    public function getKelasLengkapAttribute()
+    {
+        return $this->kelas ? $this->kelas->full_kelas : '-';
+    }
+
+    // Tambahkan scope untuk filter berdasarkan wali kelas
+    public function scopeWaliKelas($query, $guruId)
+    {
+        return $query->whereHas('kelas', function($q) use ($guruId) {
+            $q->where('wali_kelas', $guruId);
+        });
+    }
+
+    // Tambahkan method untuk mengecek apakah siswa ada di kelas yang diwalikan
+    public function isInKelasWali($guruId)
+    {
+        return $this->kelas && $this->kelas->wali_kelas == $guruId;
+    }
 }

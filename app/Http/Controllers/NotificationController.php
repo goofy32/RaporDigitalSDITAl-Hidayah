@@ -18,21 +18,30 @@ class NotificationController extends Controller
             'specific_users' => 'required_if:target,specific|array'
         ]);
 
-        $notification = new Notification();
-        $notification->title = $validated['title'];
-        $notification->content = $validated['content'];
-        $notification->target = $validated['target'];
-        
-        if ($validated['target'] === 'specific') {
-            $notification->specific_users = json_encode($request->specific_users);
-        }
-        
-        $notification->save();
+        try {
+            $notification = new Notification();
+            $notification->title = $validated['title'];
+            $notification->content = $validated['content'];
+            $notification->target = $validated['target'];
+            
+            if ($validated['target'] === 'specific') {
+                // Pastikan specific_users adalah JSON array yang valid
+                $notification->specific_users = array_map('intval', $validated['specific_users']);
+            }
+            
+            $notification->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Notifikasi berhasil ditambahkan'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Notifikasi berhasil ditambahkan'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Notification creation error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan notifikasi'
+            ], 500);
+        }
     }
 
     public function destroy(Notification $notification)
@@ -60,13 +69,26 @@ class NotificationController extends Controller
 
     public function markAsRead(Notification $notification)
     {
-        $guru = Auth::guard('guru')->user();
-        
-        if (!$notification->readers()->where('guru_id', $guru->id)->exists()) {
-            $notification->readers()->attach($guru->id, ['read_at' => now()]);
+        try {
+            $guru = Auth::guard('guru')->user();
+            
+            if (!$notification->readers()->where('guru_id', $guru->id)->exists()) {
+                $notification->readers()->attach($guru->id, [
+                    'read_at' => now()
+                ]);
+            }
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Notifikasi telah dibaca'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error marking notification as read: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menandai notifikasi sebagai telah dibaca'
+            ], 500);
         }
-
-        return response()->json(['success' => true]);
     }
 
     public function getUnreadCount()

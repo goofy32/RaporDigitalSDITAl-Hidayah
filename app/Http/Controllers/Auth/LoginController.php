@@ -7,61 +7,60 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Guru;
 use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 
 class LoginController extends Controller
 {
+
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required',
-            'password' => 'required',
+            'username' => 'required|string|max:255',
+            'password' => 'required|string',
             'role' => 'required|in:admin,guru,wali_kelas'
         ]);
-    
+
         // Clear existing sessions
         Auth::guard('web')->logout();
         Auth::guard('guru')->logout();
-    
-        switch ($request->role) {
-            case 'guru':
-            case 'wali_kelas':
-                $guru = Guru::where('username', $request->username)->first();
+
+        if ($request->role === 'admin') {
+            $admin = User::where('username', $request->username)->first();
+            
+            if ($admin && Hash::check($request->password, $admin->password)) {
+                Auth::guard('web')->login($admin);
+                return redirect()->route('admin.dashboard');
+            }
+        } else {
+            // Handle guru login (both pengajar and wali kelas)
+            $guru = Guru::where('username', $request->username)->first();
+            
+            if ($guru && Hash::check($request->password, $guru->password)) {
+                Auth::guard('guru')->login($guru);
+                session(['selected_role' => $request->role]);
                 
-                if ($guru && Hash::check($request->password, $guru->password)) {
-                    Auth::guard('guru')->login($guru);
-                    session(['selected_role' => $request->role]);
-                    
-                    // Redirect berdasarkan pilihan role saat login
-                    return $request->role === 'wali_kelas' 
-                        ? redirect()->route('wali_kelas.dashboard')
-                        : redirect()->route('pengajar.dashboard');
-                }
-                break;
-    
-            case 'admin':
-                if (Auth::guard('web')->attempt([
-                    'username' => $request->username,
-                    'password' => $request->password
-                ])) {
-                    $request->session()->regenerate();
-                    return redirect()->route('admin.dashboard');
-                }
-                break;
+                return redirect()->route(
+                    $request->role === 'wali_kelas' 
+                        ? 'wali_kelas.dashboard' 
+                        : 'pengajar.dashboard'
+                );
+            }
         }
-    
+
         return back()
             ->withInput($request->only('username', 'role'))
             ->withErrors(['login' => 'Username atau password salah']);
     }
     public function logout(Request $request)
     {
-        // Logout from all guards
+        $message = 'Anda telah berhasil logout.';
+        
         Auth::guard('web')->logout();
         Auth::guard('guru')->logout();
-
+    
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
-        return redirect('/login');
+    
+        return redirect('/login')->with('success', $message);
     }
 }
