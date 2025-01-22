@@ -17,20 +17,10 @@ class MataPelajaran extends Model
         'guru_id',
         'semester',
     ];
-    public function getFullKelasAttribute()
-    {
-        return $this->kelas ? "{$this->kelas->nomor_kelas} {$this->kelas->nama_kelas}" : '-';
-    }
-
-    // Menambahkan eager loading default
-    protected $with = ['lingkupMateris'];
-
 
     public function kelas()
     {
-        return $this->belongsTo(Kelas::class, 'kelas_id')
-                    ->orderBy('nomor_kelas', 'asc')
-                    ->orderBy('nama_kelas', 'asc');
+        return $this->belongsTo(Kelas::class, 'kelas_id');
     }
 
     public function guru()
@@ -51,13 +41,11 @@ class MataPelajaran extends Model
     protected static function booted()
     {
         static::deleting(function ($mataPelajaran) {
-            // Hapus nilai terkait
             $mataPelajaran->nilais()->delete();
-            
-            // Hapus Lingkup Materi terkait
-            $mataPelajaran->lingkupMateris()->each(function ($lingkupMateri) {
-                $lingkupMateri->delete();
+            $mataPelajaran->lingkupMateris->each(function ($lingkupMateri) {
+                $lingkupMateri->tujuanPembelajarans()->delete();
             });
+            $mataPelajaran->lingkupMateris()->delete();
         });
     }
 }

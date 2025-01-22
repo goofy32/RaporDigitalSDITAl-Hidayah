@@ -15,53 +15,65 @@ use App\Http\Controllers\TujuanPembelajaranController;
 use App\Http\Controllers\EkstrakurikulerController;
 use App\Http\Controllers\ReportFormatController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\NotificationController;
 use App\Models\FormatRapor;
-use Illuminate\Support\Facades\Auth; // Tambahkan baris ini
+use Illuminate\Support\Facades\Auth;
 
-
+// Root route with role-based redirection
 Route::get('/', function () {
     if (Auth::guard('web')->check()) {
         return redirect()->route('admin.dashboard');
     } elseif (Auth::guard('guru')->check()) {
-        $guru = Auth::guard('guru')->user();
-        if ($guru->jabatan === 'wali_kelas') {
-            return redirect()->route('wali_kelas.dashboard');
-        } else {
-            return redirect()->route('pengajar.dashboard');
+        $selectedRole = session('selected_role');
+        
+        // Tambahkan pengecekan role yang valid
+        if (!in_array($selectedRole, ['guru', 'wali_kelas'])) {
+            Auth::guard('guru')->logout();
+            return redirect()->route('login')
+                ->with('error', 'Sesi tidak valid. Silakan login kembali.');
         }
+        
+        return $selectedRole === 'wali_kelas' 
+            ? redirect()->route('wali_kelas.dashboard')
+            : redirect()->route('pengajar.dashboard');
     }
-    
     return redirect()->route('login');
 });
 
-Route::get('login', function () {
-    return view('login');
-})->name('login')->middleware('guest');
+// Login Routes
+Route::middleware('guest')->group(function () {
+    Route::get('login', function () {
+        return view('login');
+    })->name('login');
 
-Route::post('/login', [LoginController::class, 'login'])->name('login.post');
+    Route::post('/login', [LoginController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('login.post');
+});
 
-// Admin routes
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('admin.dashboard');
-    
-    Route::get('/admin/dashboard', [ClassController::class, 'adminDashboard'])->name('admin.dashboard');
-    Route::get('/kelas-progress/{id}', [ClassController::class, 'getKelasProgressAdmin'])
+
+Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+
+// Admin Routes - Guard: web, Role: admin only
+Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function () {
+        // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'adminDashboard'])->name('admin.dashboard');
+    Route::get('/kelas-progress/{id}', [DashboardController::class, 'getKelasProgressAdmin'])
         ->name('admin.kelas.progress');
-            
-    Route::get('/', function () {
-        return redirect()->route('admin.dashboard');
+    
+    // Information/Notifications
+    Route::prefix('information')->name('information.')->group(function () {
+        Route::post('/', [NotificationController::class, 'store'])->name('store');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::get('/list', [NotificationController::class, 'list'])->name('list');
     });
-    // Existing admin routes...
-    Route::get('/admin/dashboard-data', [DashboardController::class, 'getDashboardData'])
-    ->name('admin.dashboard.data')
-    ->middleware(['auth', 'role:admin']);
 
+    // Profile Routes
     Route::get('profile', [SchoolProfileController::class, 'show'])->name('profile');
     Route::get('profile/edit', [SchoolProfileController::class, 'edit'])->name('profile.edit');
     Route::post('profile', [SchoolProfileController::class, 'store'])->name('profile.submit');
     
+    // Student Management
     Route::resource('students', StudentController::class)->names([
         'index' => 'student',
         'create' => 'student.create',
@@ -72,15 +84,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         'destroy' => 'student.destroy',
     ]);
     
-    Route::get('students/template', [StudentController::class, 'downloadTemplate'])
-        ->name('student.template');
-    Route::get('students/upload', [StudentController::class, 'uploadPage'])
-        ->name('student.upload');
-    Route::post('students/import', [StudentController::class, 'importExcel'])
-        ->name('student.import');
+    Route::get('students/template', [StudentController::class, 'downloadTemplate'])->name('student.template');
+    Route::get('students/upload', [StudentController::class, 'uploadPage'])->name('student.upload');
+    Route::post('students/import', [StudentController::class, 'importExcel'])->name('student.import');
 
+    // Subject Routes
     Route::resource('subject', SubjectController::class);
 
+    // Class Management
     Route::get('kelas', [ClassController::class, 'index'])->name('kelas.index');
     Route::get('kelas/create', [ClassController::class, 'create'])->name('kelas.create');
     Route::post('kelas', [ClassController::class, 'store'])->name('kelas.store');
@@ -89,6 +100,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::put('kelas/{id}', [ClassController::class, 'update'])->name('kelas.update');
     Route::delete('kelas/{id}', [ClassController::class, 'destroy'])->name('kelas.destroy');
     
+    // Teacher Management
     Route::prefix('pengajar')->group(function () {
         Route::get('/', [TeacherController::class, 'index'])->name('teacher');
         Route::get('/create', [TeacherController::class, 'create'])->name('teacher.create');
@@ -98,10 +110,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         Route::put('/{id}', [TeacherController::class, 'update'])->name('teacher.update');
         Route::delete('/{id}', [TeacherController::class, 'destroy'])->name('teacher.destroy');
     });
-    Route::get('pelajaran', function () {
-        return view('admin.subject');
-    })->name('subject');
     
+    // Achievement Routes
     Route::resource('achievement', AchievementController::class)->names([
         'index' => 'achievement.index',
         'create' => 'achievement.create',
@@ -111,13 +121,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         'destroy' => 'achievement.destroy',
     ]);
     
-    Route::get('tujuan-pembelajaran/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'create'])
-    ->name('tujuan_pembelajaran.create');
-    Route::post('tujuan-pembelajaran/store', [TujuanPembelajaranController::class, 'store'])->name('tujuan_pembelajaran.store');
-    Route::get('tujuan-pembelajaran/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])
-    ->name('tujuan_pembelajaran.view');
+    // Learning Objectives
+    Route::prefix('tujuan-pembelajaran')->name('tujuan_pembelajaran.')->group(function () {
+        Route::get('/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'create'])->name('create');
+        Route::post('/store', [TujuanPembelajaranController::class, 'store'])->name('store');
+        Route::get('/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])->name('view');
+    });
     
-    
+    // Extracurricular
     Route::resource('ekstrakulikuler', EkstrakurikulerController::class)->names([
         'index' => 'ekstra.index',
         'create' => 'ekstra.create',
@@ -127,28 +138,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         'destroy' => 'ekstra.destroy',
     ]);
 
-    Route::get('template-preview/{format}', function (FormatRapor $format) {
-        $path = storage_path('app/public/' . $format->template_path);
-        
-        if (!file_exists($path)) {
-            abort(404);
-        }
-        
-        return response()->file($path, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition' => 'inline; filename="' . basename($format->template_path) . '"'
-        ]);
-    })->name('template.preview')->middleware(['auth', 'role:admin']);
-
-    Route::get('/preview-doc/{id}', function($id) {
-        $format = \App\Models\FormatRapor::findOrFail($id);
-        $path = storage_path('app/public/' . $format->template_path);
-        
-        return response()->file($path, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ]);
-    })->name('preview.doc')->middleware(['auth', 'role:admin']);
-    
+    // Report Format
     Route::prefix('format-rapor')->name('report_format.')->group(function () {
         Route::get('/{type?}', [ReportFormatController::class, 'index'])->name('index');
         Route::post('/upload', [ReportFormatController::class, 'upload'])->name('upload');
@@ -159,28 +149,36 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
         Route::get('/edit/{format}', [ReportFormatController::class, 'edit'])->name('edit');
     });
 });
-Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->name('pengajar.')->group(function () {
-    // Dashboard routes
+
+// Pengajar Routes - Guard: guru, Role: guru
+Route::middleware(['auth:guru', 'role:guru'])
+    ->prefix('pengajar')
+    ->name('pengajar.')  // Tambahkan ini untuk name prefix
+    ->group(function () {
+    // Notifications
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
+    });
+    
     Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
     Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgress'])->name('kelas.progress');
-
-    // Profile routes
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
-    Route::get('profile/{id}', [UserController::class, 'show'])->name('profile.show');
-
-    // Score routes
+    
+    // Score Management
     Route::prefix('score')->name('score.')->group(function () {
         Route::get('/', [ScoreController::class, 'index'])->name('index');
         Route::get('/{id}/input', [ScoreController::class, 'inputScore'])->name('input_score');
         Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('save_scores');
         Route::get('/{id}/preview', [ScoreController::class, 'previewScore'])->name('preview_score');
         Route::delete('/{id}', [ScoreController::class, 'deleteScores'])->name('delete');
-        Route::post('/score/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('pengajar.score.nilai.delete');
+        Route::post('/score/nilai/delete', [ScoreController::class, 'deleteNilai'])->name('nilai.delete');
         Route::post('/validate', [ScoreController::class, 'validateScores'])->name('validate');
         Route::post('/get-class-subjects', [ScoreController::class, 'getClassSubjects'])->name('get_class_subjects');
     });
 
-    // Subject routes
+    // Subject Management
     Route::prefix('subject')->name('subject.')->group(function () {
         Route::get('/', [SubjectController::class, 'teacherIndex'])->name('index');
         Route::get('/create', [SubjectController::class, 'teacherCreate'])->name('create');
@@ -191,69 +189,70 @@ Route::middleware(['auth.guru', 'role:guru'])->prefix('pengajar')->name('pengaja
         Route::delete('/lingkup-materi/{id}', [SubjectController::class, 'deleteLingkupMateri'])->name('lingkup_materi.destroy');
     });
 
-    // Tujuan Pembelajaran routes - Perbaikan di sini
+    // Learning Objectives
     Route::prefix('tujuan-pembelajaran')->name('tujuan_pembelajaran.')->group(function () {
         Route::get('/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])->name('view');
         Route::get('/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'teacherCreate'])->name('create');
         Route::post('/store', [TujuanPembelajaranController::class, 'teacherStore'])->name('store');
     });
-
-    // Lingkup Materi routes
-    Route::delete('/lingkup-materi/{id}', [SubjectController::class, 'deleteLingkupMateri'])
-        ->name('lingkup_materi.destroy');
 });
-// Wali Kelas routes
-Route::middleware(['auth.guru', 'role:wali_kelas'])->prefix('wali-kelas')->name('wali_kelas.')->group(function () {
-    // Dashboard
-    Route::get('/dashboard', function () {
-        return view('wali_kelas.dashboard');
-    })->name('dashboard');
+
+// Wali Kelas Routes - Guard: guru, Role: wali_kelas
+Route::middleware(['auth:guru', 'role:wali_kelas'])
+    ->prefix('wali-kelas')
+    ->name('wali_kelas.')
+    ->group(function () {
     
-    // Profile
-    Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])
-        ->name('profile');
+        // Notifications
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
+    });
+    
+    Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])->name('dashboard');
+    Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])->name('profile');
+    Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgress'])->name('kelas.progress');
+    Route::get('/overall-progress', [DashboardController::class, 'getOverallProgress'])->name('overall.progress');
 
-    // Student Management 
-    Route::get('/siswa', [StudentController::class, 'waliKelasIndex'])->name('student.index');
-    Route::get('/siswa/create', [StudentController::class, 'waliKelasCreate'])->name('student.create');
-    Route::post('/siswa', [StudentController::class, 'waliKelasStore'])->name('student.store');
-    Route::get('/siswa/{id}', [StudentController::class, 'waliKelasShow'])->name('student.show');
-    Route::get('/siswa/{id}/edit', [StudentController::class, 'waliKelasEdit'])->name('student.edit');
-    Route::put('/siswa/{id}', [StudentController::class, 'waliKelasUpdate'])->name('student.update');
-    Route::delete('/siswa/{id}', [StudentController::class, 'waliKelasDestroy'])->name('student.destroy');
+    // Student Management
+    Route::prefix('siswa')->name('student.')->group(function () {
+        Route::get('/', [StudentController::class, 'waliKelasIndex'])->name('index');
+        Route::get('/create', [StudentController::class, 'waliKelasCreate'])->name('create'); 
+        Route::post('/', [StudentController::class, 'waliKelasStore'])->name('store');
+        Route::get('/{id}', [StudentController::class, 'waliKelasShow'])->name('show');
+        Route::get('/{id}/edit', [StudentController::class, 'waliKelasEdit'])->name('edit');
+        Route::put('/{id}', [StudentController::class, 'waliKelasUpdate'])->name('update');
+        Route::delete('/{id}', [StudentController::class, 'waliKelasDestroy'])->name('destroy');
+    });
 
-    // Ekstrakurikuler Management
-    Route::get('/ekstrakurikuler', [EkstrakurikulerController::class, 'waliKelasIndex'])->name('ekstrakurikuler.index');
-    Route::get('/ekstrakurikuler/create', [EkstrakurikulerController::class, 'waliKelasCreate'])->name('ekstrakurikuler.create');
-    Route::post('/ekstrakurikuler', [EkstrakurikulerController::class, 'waliKelasStore'])->name('ekstrakurikuler.store');
-    Route::get('/ekstrakurikuler/{id}/edit', [EkstrakurikulerController::class, 'waliKelasEdit'])->name('ekstrakurikuler.edit');
-    Route::put('/ekstrakurikuler/{id}', [EkstrakurikulerController::class, 'waliKelasUpdate'])->name('ekstrakurikuler.update');
-    Route::delete('/ekstrakurikuler/{id}', [EkstrakurikulerController::class, 'waliKelasDestroy'])->name('ekstrakurikuler.destroy');
+    // Extracurricular
+    Route::prefix('ekstrakurikuler')->name('ekstrakurikuler.')->group(function () {
+        Route::get('/', [EkstrakurikulerController::class, 'waliKelasIndex'])->name('index');
+        Route::get('/create', [EkstrakurikulerController::class, 'waliKelasCreate'])->name('create');
+        Route::post('/', [EkstrakurikulerController::class, 'waliKelasStore'])->name('store');
+        Route::get('/{id}/edit', [EkstrakurikulerController::class, 'waliKelasEdit'])->name('edit');
+        Route::put('/{id}', [EkstrakurikulerController::class, 'waliKelasUpdate'])->name('update');
+        Route::delete('/{id}', [EkstrakurikulerController::class, 'waliKelasDestroy'])->name('destroy');
+    });
 
     // Absence Management
     Route::resource('absensi', AbsensiController::class)->names([
         'index' => 'absence.index',
-        'create' => 'absence.create',
+        'create' => 'absence.create', 
         'store' => 'absence.store',
         'edit' => 'absence.edit',
         'update' => 'absence.update',
         'destroy' => 'absence.destroy',
     ]);
 
-    // Rapor Management
-    Route::get('/rapor', function () {
-        return view('wali_kelas.rapor');
-    })->name('rapor.index');
-
-    Route::get('/rapor/print/{id}', function () {
-        return view('wali_kelas.print');
-    })->name('rapor.print');
+    // Report Management
+    Route::prefix('rapor')->name('rapor.')->group(function () {
+        Route::get('/', function () {
+            return view('wali_kelas.rapor');
+        })->name('index');
+        Route::get('/print/{id}', function () {
+            return view('wali_kelas.print');
+        })->name('print');
+    });
 });
-
-// Logout route
-Route::post('logout', [LoginController::class, 'logout'])->name('logout');
-
-
-
-
-

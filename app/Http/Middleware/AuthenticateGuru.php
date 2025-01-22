@@ -14,6 +14,13 @@ class AuthenticateGuru
             return redirect('login');
         }
 
+        // Tambahan pengecekan session
+        if (!session()->has('selected_role')) {
+            Auth::guard('guru')->logout();
+            return redirect('login')
+                ->with('error', 'Sesi telah berakhir. Silakan login kembali.');
+        }
+
         return $next($request);
     }
 }

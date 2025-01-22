@@ -20,21 +20,20 @@ return Application::configure(basePath: dirname(__DIR__))
             CacheControl::class
         ]);
 
-
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
             'auth.guru' => \App\Http\Middleware\AuthenticateGuru::class,
             'role' => \App\Http\Middleware\CheckRole::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
-            'session.timeout' => SessionTimeout::class, // Optional: jika ingin digunakan sebagai alias
-            'check.matapelajaran.ownership' => CheckMataPelajaranOwnership::class // Tambahkan ini
+            'session.timeout' => SessionTimeout::class,
+            'check.matapelajaran.ownership' => CheckMataPelajaranOwnership::class,
+            'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class
         ]);
 
         // Konfigurasi CSRF
         $middleware->validateCsrfTokens(
             except: [
                 // Tambahkan rute yang ingin dikecualikan dari CSRF protection
-                // 'stripe/*'
             ]
         );
 

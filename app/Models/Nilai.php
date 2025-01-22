@@ -12,6 +12,7 @@ class Nilai extends Model
     protected $table = 'nilais';
 
     protected $fillable = [
+        'id',  // Menambahkan 'id' ke dalam fillable
         'siswa_id',
         'mata_pelajaran_id',
         'tujuan_pembelajaran_id',
@@ -27,7 +28,6 @@ class Nilai extends Model
         'nilai_akhir_rapor'
     ];
 
-    // Menambahkan casting untuk memastikan tipe data
     protected $casts = [
         'nilai_tp' => 'float',
         'nilai_lm' => 'float',
@@ -39,7 +39,6 @@ class Nilai extends Model
         'nilai_akhir_rapor' => 'float'
     ];
 
-    // Menambahkan rules validasi
     public static $rules = [
         'siswa_id' => 'required|exists:siswas,id',
         'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
@@ -65,5 +64,8 @@ class Nilai extends Model
         return $this->belongsTo(TujuanPembelajaran::class, 'tujuan_pembelajaran_id');
     }
 
-
+    public function lingkupMateri()
+    {
+        return $this->belongsTo(LingkupMateri::class, 'lingkup_materi_id');
+    }
 }

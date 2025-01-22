@@ -167,12 +167,14 @@
                 <div class="mb-4">
                     <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
                     <select name="target" 
+                            id="target-select"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
                             required>
                         <option value="">-- Pilih --</option>
                         <option value="all">Semua</option>
-                        <option value="guru">Guru</option>
-                        <option value="wali_kelas">Wali Kelas</option>
+                        <option value="guru">Semua Guru</option>
+                        <option value="wali_kelas">Semua Wali Kelas</option>
+                        <option value="specific">Guru Tertentu</option>
                     </select>
                 </div>
                 <div class="mb-4">
@@ -187,6 +189,29 @@
                         class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
                     Simpan
                 </button>
+
+
+                <div id="specific-teachers-container" class="mb-4 hidden">
+                    <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
+                    <div class="max-h-40 overflow-y-auto">
+                        @foreach($guru as $g)
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" 
+                                name="specific_users[]" 
+                                value="{{ $g->id }}" 
+                                class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                            <label class="ml-2 text-sm text-gray-900">
+                                {{ $g->nama }} 
+                                @if($g->jabatan == 'wali_kelas')
+                                    (Wali Kelas {{ $g->kelasPengajar->nama_kelas ?? '' }})
+                                @else
+                                    (Guru {{ implode(', ', $g->mataPelajarans->pluck('nama_pelajaran')->toArray()) }})
+                                @endif
+                            </label>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
             </form>
             </div>
         </div>
@@ -214,6 +239,15 @@ function handleInitialLoad() {
         sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
     }
 }
+
+document.getElementById('target-select').addEventListener('change', function() {
+    const specificContainer = document.getElementById('specific-teachers-container');
+    if (this.value === 'specific') {
+        specificContainer.classList.remove('hidden');
+    } else {
+        specificContainer.classList.add('hidden');
+    }
+});
 
 function destroyCharts() {
     if (overallChart) {
@@ -477,15 +511,25 @@ function initModal() {
 
     // Close on outside click
     modal?.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-    });
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        });
 
-    // Handle form submission
-    modalForm?.addEventListener('submit', async (e) => {
+        // Handle form submission
+        modalForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        const submitButton = modalForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Menyimpan...
+        `;
 
         const formData = new FormData(modalForm);
         const data = {
@@ -493,6 +537,11 @@ function initModal() {
             target: formData.get('target'),
             content: formData.get('content')
         };
+
+        if (formData.get('target') === 'specific') {
+            data.specific_users = Array.from(formData.getAll('specific_users[]'))
+                .map(id => parseInt(id, 10));
+        }
 
         try {
             const response = await fetch('/admin/information', {
@@ -508,17 +557,10 @@ function initModal() {
             const result = await response.json();
 
             if (result.success) {
-                // Reset form
                 modalForm.reset();
-                
-                // Close modal
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                
-                // Refresh information section
                 updateInformationSection();
-                
-                // Show success message
                 showNotification('Informasi berhasil ditambahkan', 'success');
             } else {
                 showNotification('Gagal menambahkan informasi', 'error');
@@ -526,6 +568,9 @@ function initModal() {
         } catch (error) {
             console.error('Error:', error);
             showNotification('Terjadi kesalahan', 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Simpan';
         }
     });
 }
