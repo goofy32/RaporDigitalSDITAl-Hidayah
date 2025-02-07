@@ -118,7 +118,6 @@
 <script>
 let overallChart, classChart;
 let kelasProgress = 0;
-
 const PENGAJAR_DASHBOARD_KEY = 'pengajarDashboardLoaded';
 
 function destroyCharts() {
@@ -240,28 +239,6 @@ function updateClassChart(progress) {
     }
 }
 
-async function markAsRead(notificationId) {
-    try {
-        const response = await fetch(`/notifications/${notificationId}/read`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            // Update UI to show notification as read
-            this.isRead = true;
-            // Update unread count in notification store
-            Alpine.store('notification').fetchUnreadCount();
-        }
-    } catch (error) {
-        console.error('Error marking notification as read:', error);
-    }
-}
-
 function fetchKelasProgress() {
     const selectedKelas = document.getElementById('kelas').value;
     if (selectedKelas) {
@@ -283,16 +260,20 @@ function fetchKelasProgress() {
     } else {
         updateClassChart(0);
     }
-
 }
-// Implementasi Alpine.js data
+
+// Event handlers untuk initialization
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboard', () => ({
         selectedKelas: '',
         mapelProgress: [],
         
         init() {
-            initCharts();
+            setTimeout(() => {
+                this.initCharts();
+                this.fetchKelasProgress();
+            }, 100);
+
             this.$watch('selectedKelas', value => {
                 if (value) {
                     fetchKelasProgress();
@@ -302,11 +283,12 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
+// Function untuk mengecek apakah di halaman dashboard
 function isDashboardPage() {
     return window.location.pathname.includes('/pengajar/dashboard');
 }
 
-// Fungsi untuk menangani inisialisasi dashboard
+// Function untuk menangani inisialisasi dashboard
 function handleDashboardInit() {
     if (isDashboardPage()) {
         const isLoaded = sessionStorage.getItem(PENGAJAR_DASHBOARD_KEY);
@@ -321,7 +303,11 @@ function handleDashboardInit() {
     }
 }
 
-// Event Listeners
+// Event Listeners untuk navigasi dan reload
+document.addEventListener('DOMContentLoaded', () => {
+    handleDashboardInit();
+});
+
 document.addEventListener('turbo:load', () => {
     handleDashboardInit();
 });
@@ -343,7 +329,7 @@ document.addEventListener('change', function(event) {
     }
 });
 
-// Cleanup
+// Cleanup saat navigasi
 document.addEventListener('turbo:before-cache', () => {
     destroyCharts();
 });
@@ -362,6 +348,14 @@ if (document.readyState === 'complete') {
 } else {
     window.addEventListener('load', handleDashboardInit);
 }
+
+// Function untuk navigasi
+function navigateTo(url) {
+    window.location.href = url;
+}
+</script>
+<script>
+    const overallProgress = {{ $overallProgress ?? 0 }};
 </script>
 @endpush
 @endsection

@@ -11,41 +11,46 @@
             <div class="lg:w-2/3">
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <!-- Siswa Card -->
-                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('student') }}')">
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors" onclick="navigateTo('{{ route('student') }}')">
                         <div class="p-4">
                             <p class="text-2xl font-bold text-green-600">{{ $totalStudents }}</p>
                             <p class="text-sm text-green-600">Siswa</p>
                         </div>
                     </div>
+                    
                     <!-- Guru Card -->
-                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('teacher') }}')">
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors" onclick="navigateTo('{{ route('teacher') }}')">
                         <div class="p-4">
                             <p class="text-2xl font-bold text-green-600">{{ $totalTeachers }}</p>
                             <p class="text-sm text-green-600">Guru</p>
                         </div>
                     </div>
+                    
                     <!-- Mata Pelajaran Card -->
-                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('subject.index') }}')">
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors" onclick="navigateTo('{{ route('subject.index') }}')">
                         <div class="p-4">
                             <p class="text-2xl font-bold text-green-600">{{ $totalSubjects }}</p>
                             <p class="text-sm text-green-600">Mata Pelajaran</p>
                         </div>
                     </div>
+                    
                     <!-- Kelas Card -->
-                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('kelas.index') }}')">
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors" onclick="navigateTo('{{ route('kelas.index') }}')">
                         <div class="p-4">
                             <p class="text-2xl font-bold text-green-600">{{ $totalClasses }}</p>
                             <p class="text-sm text-green-600">Kelas</p>
                         </div>
                     </div>
+                    
                     <!-- Ekstrakurikuler Card -->
-                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('ekstra.index') }}')">
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50 transition-colors" onclick="navigateTo('{{ route('ekstra.index') }}')">
                         <div class="p-4">
                             <p class="text-2xl font-bold text-green-600">{{ $totalExtracurriculars }}</p>
                             <p class="text-sm text-green-600">Ekstrakurikuler</p>
                         </div>
                     </div>
-                    <!-- Progres Rapor Card -->
+                    
+                    <!-- Progres Rapor Card - Not clickable -->
                     <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
                         <div class="p-4">
                             <p class="text-2xl font-bold text-green-600">{{ number_format($overallProgress, 2) }}%</p>
@@ -260,33 +265,16 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    const overallProgress = {{ $overallProgress ?? 0 }};
+</script>
+<script>
 let overallChart, classChart;
 let kelasProgress = 0;
 const ADMIN_DASHBOARD_KEY = 'adminDashboardLoaded';
 
-function handleInitialLoad() {
-    if (window.location.pathname.includes('/admin/dashboard')) {
-        const isLoaded = sessionStorage.getItem(ADMIN_DASHBOARD_KEY);
-        if (!isLoaded) {
-            sessionStorage.setItem(ADMIN_DASHBOARD_KEY, 'true');
-            window.location.reload();
-        } else {
-            initCharts();
-            fetchKelasProgress();
-        }
-    } else {
-        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
-    }
+function navigateTo(url) {
+    window.location.href = url;
 }
-
-document.getElementById('target-select').addEventListener('change', function() {
-    const specificContainer = document.getElementById('specific-teachers-container');
-    if (this.value === 'specific') {
-        specificContainer.classList.remove('hidden');
-    } else {
-        specificContainer.classList.add('hidden');
-    }
-});
 
 function destroyCharts() {
     if (overallChart) {
@@ -313,6 +301,7 @@ function initCharts() {
         }
     };
 
+    // Overall Progress Chart
     const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
     if (overallCtx) {
         overallChart = new Chart(overallCtx, {
@@ -321,8 +310,8 @@ function initCharts() {
                 labels: ['Selesai', 'Belum'],
                 datasets: [{
                     data: [
-                        Math.min(100, Math.max(0, {{ $overallProgress }})), 
-                        Math.min(100, Math.max(0, 100 - {{ $overallProgress }}))
+                        Math.min(100, Math.max(0, overallProgress)), 
+                        Math.min(100, Math.max(0, 100 - overallProgress))
                     ],
                     backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
                     borderWidth: 0
@@ -344,7 +333,7 @@ function initCharts() {
                     ctx.font = fontSize + 'em sans-serif';
                     ctx.textBaseline = 'middle';
                     
-                    const text = Math.round({{ $overallProgress }}) + '%';
+                    const text = Math.round(overallProgress) + '%';
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
 
@@ -356,10 +345,7 @@ function initCharts() {
         });
     }
 
-    initClassChart();
-}
-
-function initClassChart() {
+    // Class Progress Chart
     const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
     if (classCtx) {
         classChart = new Chart(classCtx, {
@@ -373,12 +359,7 @@ function initClassChart() {
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: { enabled: false }
-                },
+                ...defaultOptions,
                 cutout: '60%',
             },
             plugins: [{
@@ -407,18 +388,11 @@ function initClassChart() {
 }
 
 function updateClassChart(progress) {
-    // Pastikan progress adalah angka valid
     kelasProgress = !isNaN(progress) ? Math.min(100, Math.max(0, progress)) : 0;
     
     if (classChart) {
         classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
         classChart.update();
-
-        // Update teks di tengah chart
-        const centerText = document.querySelector('.class-progress-text');
-        if (centerText) {
-            centerText.textContent = `${Math.round(kelasProgress)}%`;
-        }
     }
 }
 
@@ -438,7 +412,6 @@ function fetchKelasProgress() {
             return response.json();
         })
         .then(data => {
-            console.log('Progress data:', data); // Untuk debugging
             if (data.success && !isNaN(data.progress)) {
                 updateClassChart(data.progress);
             } else {
@@ -455,13 +428,18 @@ function fetchKelasProgress() {
     }
 }
 
-// Event Handlers
+// Alpine.js Initialization
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboard', () => ({
         selectedKelas: '',
         mapelProgress: [],
         
         init() {
+            this.$nextTick(() => {
+                initCharts();
+                fetchKelasProgress();
+            });
+
             this.$watch('selectedKelas', value => {
                 if (value) fetchKelasProgress();
             });
@@ -469,7 +447,7 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-// Initialize on page load
+// Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     const isLoaded = sessionStorage.getItem(ADMIN_DASHBOARD_KEY);
     if (!isLoaded && window.location.pathname.includes('/admin/dashboard')) {
@@ -477,7 +455,24 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.reload();
     } else {
         initCharts();
-        updateDashboardData();
+    }
+});
+
+// Handle dropdown changes
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'kelas') {
+        fetchKelasProgress();
+    }
+});
+
+// Cleanup
+document.addEventListener('turbo:before-cache', () => {
+    destroyCharts();
+});
+
+document.addEventListener('turbo:before-visit', () => {
+    if (!window.location.pathname.includes('/admin/dashboard')) {
+        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
     }
 });
 
@@ -489,34 +484,10 @@ document.addEventListener('turbo:load', () => {
     destroyCharts();
     setTimeout(() => {
         initCharts();
-        updateDashboardData();
     }, 100);
 });
 
-// Clean up
-document.addEventListener('turbo:before-cache', destroyCharts);
-
-// Event listener for dropdown changes
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'kelas') {
-        fetchKelasProgress();
-    }
-});
-
-
-// Cleanup
-document.addEventListener('turbo:before-cache', () => {
-    destroyCharts();
-});
-
-// Cleanup
-document.addEventListener('turbo:before-visit', () => {
-    if (!window.location.pathname.includes('/admin/dashboard')) {
-        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
-    }
-});
-
-// Reinitialize pada navigasi
+// Reinitialize on navigation
 document.addEventListener('turbo:render', () => {
     if (window.location.pathname.includes('/admin/dashboard')) {
         destroyCharts();
@@ -526,6 +497,7 @@ document.addEventListener('turbo:render', () => {
         }, 100);
     }
 });
+
 function initModal() {
     const modal = document.getElementById('addInfoModal');
     const openButtons = document.querySelectorAll('[data-modal-target="addInfoModal"]');
@@ -550,14 +522,14 @@ function initModal() {
 
     // Close on outside click
     modal?.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }
-        });
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    });
 
-        // Handle form submission
-        modalForm?.addEventListener('submit', async (e) => {
+    // Handle form submission
+    modalForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const submitButton = modalForm.querySelector('button[type="submit"]');
@@ -627,7 +599,6 @@ function deleteInformation(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Refresh information section
                 updateInformationSection();
                 showNotification('Informasi berhasil dihapus', 'success');
             } else {
@@ -696,7 +667,6 @@ function showNotification(message, type = 'success') {
 // Initialize modal when page loads
 document.addEventListener('DOMContentLoaded', initModal);
 document.addEventListener('turbo:load', initModal);
-
 </script>
 @endpush
 @endsection

@@ -166,7 +166,8 @@ Route::middleware(['auth:guru', 'role:guru'])
     });
     
     Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
-    Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgress'])->name('kelas.progress');
+    Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgressPengajar'])
+        ->name('kelas.progress');
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
     
     // Score Management
@@ -215,9 +216,10 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
     
     Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])->name('dashboard');
     Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])->name('profile');
-    Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgress'])->name('kelas.progress');
-    Route::get('/overall-progress', [DashboardController::class, 'getOverallProgress'])->name('overall.progress');
-
+    Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgressWaliKelas'])
+        ->name('kelas.progress');
+    Route::get('/overall-progress', [DashboardController::class, 'getOverallProgressWaliKelas'])
+    ->name('overall.progress');
     // Student Management
     Route::prefix('siswa')->name('student.')->group(function () {
         Route::get('/', [StudentController::class, 'waliKelasIndex'])->name('index');

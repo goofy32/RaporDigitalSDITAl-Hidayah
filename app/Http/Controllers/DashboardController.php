@@ -451,4 +451,43 @@ class DashboardController extends Controller
             return 0;
         }
     }
+
+    public function getKelasProgressPengajar($kelasId)
+    {
+        try {
+            $guru = Auth::guard('guru')->user();
+            if (!$guru) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $totalTP = DB::table('mata_pelajarans')
+                ->join('lingkup_materis', 'mata_pelajarans.id', '=', 'lingkup_materis.mata_pelajaran_id')
+                ->join('tujuan_pembelajarans', 'lingkup_materis.id', '=', 'tujuan_pembelajarans.lingkup_materi_id')
+                ->where('mata_pelajarans.guru_id', $guru->id)
+                ->where('mata_pelajarans.kelas_id', $kelasId)
+                ->count();
+
+            if ($totalTP === 0) {
+                return response()->json(['progress' => 0]);
+            }
+
+            $completedTP = DB::table('mata_pelajarans')
+                ->join('lingkup_materis', 'mata_pelajarans.id', '=', 'lingkup_materis.mata_pelajaran_id')
+                ->join('tujuan_pembelajarans', 'lingkup_materis.id', '=', 'tujuan_pembelajarans.lingkup_materi_id')
+                ->join('nilais', function($join) {
+                    $join->on('tujuan_pembelajarans.id', '=', 'nilais.tujuan_pembelajaran_id')
+                        ->whereNotNull('nilais.nilai_tp');
+                })
+                ->where('mata_pelajarans.guru_id', $guru->id)
+                ->where('mata_pelajarans.kelas_id', $kelasId)
+                ->count();
+
+            $progress = ($completedTP / $totalTP) * 100;
+
+            return response()->json(['progress' => round($progress, 2)]);
+        } catch (\Exception $e) {
+            \Log::error('Error calculating class progress: ' . $e->getMessage());
+            return response()->json(['error' => 'Terjadi kesalahan'], 500);
+        }
+    }
 }

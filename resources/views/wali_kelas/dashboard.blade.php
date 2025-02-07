@@ -127,188 +127,176 @@
 <script>
 let overallChart, classChart;
 let kelasProgress = 0;
+const WALIKELAS_DASHBOARD_KEY = 'walikelasDashboardLoaded';
 
 function destroyCharts() {
-   if (overallChart) {
-       overallChart.destroy();
-       overallChart = null;
-   }
-   if (classChart) {
-       classChart.destroy();
-       classChart = null;
-   }
+    if (overallChart) {
+        overallChart.destroy();
+        overallChart = null;
+    }
+    if (classChart) {
+        classChart.destroy();
+        classChart = null;
+    }
 }
 
 function initCharts() {
-   const defaultOptions = {
-       responsive: true,
-       maintainAspectRatio: false,
-       plugins: {
-           legend: {
-               position: 'bottom'
-           },
-           tooltip: {
-               enabled: false
-           }
-       }
-   };
+    const defaultOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                enabled: false
+            }
+        }
+    };
 
-   // Initialize Overall Progress Chart
-   const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
-   if (overallCtx) {
-       overallChart = new Chart(overallCtx, {
-           type: 'doughnut',
-           data: {
-               labels: ['Selesai', 'Belum'],
-               datasets: [{
-                   data: [0, 100],
-                   backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
-                   borderWidth: 0
-               }]
-           },
-           options: {
-               ...defaultOptions,
-               cutout: '60%',
-           },
-           plugins: [{
-               id: 'centerText',
-               afterDraw: function(chart) {
-                   const width = chart.width;
-                   const height = chart.height;
-                   const ctx = chart.ctx;
-                   
-                   ctx.restore();
-                   const fontSize = (height / 114).toFixed(2);
-                   ctx.font = fontSize + 'em sans-serif';
-                   ctx.textBaseline = 'middle';
-                   
-                   const text = '0%';
-                   const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                   const textY = height / 2;
+    const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
+    if (overallCtx) {
+        overallChart = new Chart(overallCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Selesai', 'Belum'],
+                datasets: [{
+                    data: [60, 40], // Nilai default, akan diupdate oleh fetchKelasProgress
+                    backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                ...defaultOptions,
+                cutout: '60%'
+            },
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function(chart) {
+                    const width = chart.width;
+                    const height = chart.height;
+                    const ctx = chart.ctx;
+                    
+                    ctx.restore();
+                    const fontSize = (height / 114).toFixed(2);
+                    ctx.font = fontSize + 'em sans-serif';
+                    ctx.textBaseline = 'middle';
+                    
+                    const data = chart.data.datasets[0].data;
+                    const text = Math.round(data[0]) + '%';
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
 
-                   ctx.fillStyle = '#1F2937';
-                   ctx.fillText(text, textX, textY);
-                   ctx.save();
-               }
-           }]
-       });
-   }
+                    ctx.fillStyle = '#1F2937';
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            }]
+        });
+    }
 
-   // Initialize Class Progress Chart
-   initClassChart();
+    const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
+    if (classCtx) {
+        classChart = new Chart(classCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Selesai', 'Belum'],
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                ...defaultOptions,
+                cutout: '60%'
+            },
+            plugins: [{
+                id: 'centerText',
+                afterDraw: function(chart) {
+                    const width = chart.width;
+                    const height = chart.height;
+                    const ctx = chart.ctx;
+                    
+                    ctx.restore();
+                    const fontSize = (height / 114).toFixed(2);
+                    ctx.font = fontSize + 'em sans-serif';
+                    ctx.textBaseline = 'middle';
+                    
+                    const data = chart.data.datasets[0].data;
+                    const text = Math.round(data[0]) + '%';
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
+
+                    ctx.fillStyle = '#1F2937';
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            }]
+        });
+    }
 }
 
-function initClassChart() {
-   const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
-   if (classCtx) {
-       classChart = new Chart(classCtx, {
-           type: 'doughnut',
-           data: {
-               labels: ['Selesai', 'Belum'],
-               datasets: [{
-                   data: [0, 100],
-                   backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
-                   borderWidth: 0
-               }]
-           },
-           options: {
-               responsive: true,
-               maintainAspectRatio: false,
-               plugins: {
-                   legend: { position: 'bottom' },
-                   tooltip: { enabled: false }
-               },
-               cutout: '60%',
-           },
-           plugins: [{
-               id: 'centerText',
-               afterDraw: function(chart) {
-                   const width = chart.width;
-                   const height = chart.height;
-                   const ctx = chart.ctx;
-                   
-                   ctx.restore();
-                   const fontSize = (height / 114).toFixed(2);
-                   ctx.font = fontSize + 'em sans-serif';
-                   ctx.textBaseline = 'middle';
-                   
-                   const text = '0%';
-                   const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                   const textY = height / 2;
-
-                   ctx.fillStyle = '#1F2937';
-                   ctx.fillText(text, textX, textY);
-                   ctx.save();
-               }
-           }]
-       });
-   }
-}
-
-function updateOverallChart(progress) {
-   if (overallChart) {
-       overallChart.data.datasets[0].data = [progress, 100 - progress];
-       overallChart.options.plugins.centerText = {
-           text: `${Math.round(progress)}%`
-       };
-       overallChart.update();
-   }
-}
-
-function updateClassChart(progress) {
-   if (classChart) {
-       classChart.data.datasets[0].data = [progress, 100 - progress];
-       classChart.options.plugins.centerText = {
-           text: `${Math.round(progress)}%`
-       };
-       classChart.update();
-   }
+function updateCharts(overallProgress, classProgress) {
+    if (overallChart) {
+        overallChart.data.datasets[0].data = [overallProgress, 100 - overallProgress];
+        overallChart.update();
+    }
+    if (classChart) {
+        classChart.data.datasets[0].data = [classProgress, 100 - classProgress];
+        classChart.update();
+    }
 }
 
 function fetchKelasProgress() {
-   const selectedKelas = document.getElementById('kelas').value;
-   if (!selectedKelas) return;
-
-   Promise.all([
-       fetch("{{ route('wali_kelas.overall.progress') }}", {
-           headers: {
-               'Accept': 'application/json',
-               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-           }
-       }),
-       fetch("{{ route('wali_kelas.kelas.progress') }}", {
-           headers: {
-               'Accept': 'application/json',
-               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-           }
-       })
-   ])
-   .then(responses => Promise.all(responses.map(r => r.json())))
-   .then(([overallData, kelasData]) => {
-       if (overallData.progress !== undefined) {
-           updateOverallChart(overallData.progress);
-       }
-       if (kelasData.progress !== undefined) {
-           updateClassChart(kelasData.progress);
-       }
-   })
-   .catch(error => console.error('Error:', error));
+    Promise.all([
+        fetch("{{ route('wali_kelas.overall.progress') }}", {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        }),
+        fetch("{{ route('wali_kelas.kelas.progress') }}", {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+    ])
+    .then(responses => Promise.all(responses.map(r => r.json())))
+    .then(([overallData, kelasData]) => {
+        if (overallData.progress !== undefined && kelasData.progress !== undefined) {
+            updateCharts(overallData.progress, kelasData.progress);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        updateCharts(0, 0);
+    });
 }
 
-// Initialize on page load
+// Inisialisasi
 document.addEventListener('DOMContentLoaded', () => {
-   initCharts();
-   fetchKelasProgress(); // Fetch initial data
+    initCharts();
+    fetchKelasProgress();
 });
 
-// Event listener for kelas dropdown
-document.getElementById('kelas')?.addEventListener('change', fetchKelasProgress);
+// Event Listeners
+document.addEventListener('turbo:load', () => {
+    if (window.location.pathname.includes('/wali-kelas/dashboard')) {
+        destroyCharts();
+        setTimeout(() => {
+            initCharts();
+            fetchKelasProgress();
+        }, 100);
+    }
+});
 
-// Clean up
 document.addEventListener('turbo:before-cache', destroyCharts);
 
 function navigateTo(url) {
-   window.location.href = url;
+    window.location.href = url;
 }
 </script>
+
 @endpush
