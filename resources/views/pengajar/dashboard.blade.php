@@ -3,12 +3,12 @@
 @section('title', 'Dashboard Pengajar')
 
 @section('content')
-<div x-data="{ selectedKelas: '', mapelProgress: [] }">
+<div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
     <!-- Main Content Container -->
     <div class="flex flex-col lg:flex-row gap-4 mt-14">
-    <!-- Statistics Grid - Takes 2/3 of the space -->
+        <!-- Statistics Grid - Takes 2/3 of the space -->
         <div class="lg:w-2/3">
-        <!-- Stats Cards - Using consistent grid and spacing -->
+            <!-- Stats Cards -->
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <!-- Kelas Card -->
                 <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -35,38 +35,43 @@
                 </div>
             </div>
         </div>
+
         <!-- Information Section - Takes 1/3 of the space -->
         <div class="lg:w-1/3">
-            <div class="bg-white rounded-lg shadow">
-                <div class="flex items-center justify-between p-4 border-b">
-                    <span class="flex items-center text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg">
+            <div class="flex items-center justify-between mb-3">
+                <div class="bg-green-600 text-white px-3 py-1.5 rounded-lg inline-block">
+                    <span class="flex items-center text-sm">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                         </svg>
                         Informasi
                     </span>
                 </div>
-                
-                <!-- Timeline notifikasi with read status -->
-                <div class="relative pl-6 border-l-2 border-gray-200 p-4">
-                    @foreach($notifications as $notification)
-                    <div class="mb-4 relative" x-data="{ isRead: {{ $notification->is_read ? 'true' : 'false' }} }">
-                        <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                            <svg class="w-3 h-3" :class="isRead ? 'text-green-600' : 'text-gray-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                            </svg>
-                        </div>
-                        <div @click="if(!isRead) { await $store.notification.markAsRead({{ $notification->id }}); isRead = true; }" 
-                             class="bg-white rounded-lg border shadow-sm p-3 cursor-pointer transition-colors"
-                             :class="{ 'hover:bg-gray-50': !isRead }">
-                            <div>
-                                <h3 class="text-sm font-medium">{{ $notification->title }}</h3>
-                                <p class="text-xs text-gray-600">{{ $notification->content }}</p>
-                                <span class="text-xs text-gray-500">{{ $notification->created_at->diffForHumans() }}</span>
+            </div>
+
+            <!-- Information Items -->
+            <div class="h-[150px] overflow-y-auto">
+                <div class="relative pl-6 border-l-2 border-gray-200">
+                    <template x-for="item in $store.notification.items" :key="item.id">
+                        <div class="mb-4 relative h-[60px]">
+                            <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
+                                class="bg-white rounded-lg border shadow-sm p-3"
+                                :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h3 class="text-sm font-medium" x-text="item.title"></h3>
+                                        <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
+                                    </div>
+                                    <span class="text-xs text-gray-500" x-text="item.created_at"></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    @endforeach
+                    </template>
                 </div>
             </div>
         </div>
@@ -108,7 +113,6 @@
         </div>
     </div>
 </div>
-
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>

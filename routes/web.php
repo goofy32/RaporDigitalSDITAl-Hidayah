@@ -54,8 +54,11 @@ Route::middleware('guest')->group(function () {
 
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
+
+
 // Admin Routes - Guard: web, Role: admin only
 Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function () {
+
         // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'adminDashboard'])->name('admin.dashboard');
     Route::get('/kelas-progress/{id}', [DashboardController::class, 'getKelasProgressAdmin'])
@@ -158,7 +161,7 @@ Route::middleware(['auth:guru', 'role:guru'])
     // Notifications
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
     
@@ -206,7 +209,7 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         // Notifications
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
     

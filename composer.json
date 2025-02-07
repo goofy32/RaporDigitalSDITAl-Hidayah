@@ -11,6 +11,7 @@
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "phpoffice/phpword": "^1.3",
+        "pusher/pusher-php-server": "^7.2",
         "spatie/pdf-to-image": "^1.2"
     },
     "require-dev": {

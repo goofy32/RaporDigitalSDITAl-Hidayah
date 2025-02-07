@@ -1,3 +1,4 @@
+// Import dependencies
 import './bootstrap';
 import 'flowbite';
 import '@hotwired/turbo';
@@ -14,28 +15,86 @@ Alpine.store('navigation', {
     }
 });
 
+// Notification Store dengan Real-time Updates
 Alpine.store('notification', {
     items: [],
     unreadCount: 0,
     loading: false,
+    refreshInterval: null,
 
+    // Ambil semua notifikasi
     async fetchNotifications() {
         if (this.loading) return;
         
         this.loading = true;
         try {
-            const response = await fetch('/notifications');
+            const path = window.location.pathname;
+            let url;
+            
+            // Perbaiki URL sesuai dengan routes yang baru
+            if (path.includes('/admin/')) {
+                url = '/admin/information/list';
+            } else if (path.includes('/pengajar/')) {
+                url = '/pengajar/notifications';
+            } else if (path.includes('/wali-kelas/')) {
+                url = '/wali-kelas/notifications';
+            }
+            
+            if (!url) return;
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            
             const data = await response.json();
-            this.items = data;
-            return data;
+            this.items = data.items || [];
+            
+            // Log untuk debugging
+            console.log('Fetched notifications:', this.items);
         } catch (error) {
             console.error('Error fetching notifications:', error);
-            return [];
         } finally {
             this.loading = false;
         }
     },
 
+    // Perbaiki URL untuk markAsRead
+    async markAsRead(notificationId) {
+        try {
+            const path = window.location.pathname;
+            let baseUrl = '';
+            
+            if (path.includes('/pengajar/')) {
+                baseUrl = '/pengajar/notifications';
+            } else if (path.includes('/wali-kelas/')) {
+                baseUrl = '/wali-kelas/notifications';
+            }
+            
+            if (!baseUrl) return;
+
+            const response = await fetch(`${baseUrl}/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+            
+            if (response.ok) {
+                this.items = this.items.map(item => {
+                    if (item.id === notificationId) {
+                        return { ...item, is_read: true };
+                    }
+                    return item;
+                });
+                
+                await this.fetchUnreadCount();
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    },
+
+    // Ambil jumlah notifikasi yang belum dibaca
     async fetchUnreadCount() {
         try {
             const response = await fetch('/notifications/unread-count');
@@ -48,18 +107,67 @@ Alpine.store('notification', {
         }
     },
 
-    async markAsRead(notificationId) {
+    // Tambah notifikasi baru (untuk admin)
+    async addNotification(notification) {
         try {
-            await fetch(`/notifications/${notificationId}/read`, {
+            const response = await fetch('/admin/information', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(notification)
+            });
+            
+            if (response.ok) {
+                await this.fetchNotifications();
+                await this.fetchUnreadCount();
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error adding notification:', error);
+            return false;
+        }
+    },
+
+    // Hapus notifikasi (untuk admin)
+    async deleteNotification(id) {
+        try {
+            const response = await fetch(`/admin/information/${id}`, {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
             });
-            await this.fetchUnreadCount();
+
+            if (response.ok) {
+                this.items = this.items.filter(item => item.id !== id);
+                await this.fetchUnreadCount();
+                return true;
+            }
+            return false;
         } catch (error) {
-            console.error('Error marking notification as read:', error);
+            console.error('Error deleting notification:', error);
+            return false;
+        }
+    },
+
+    // Mulai interval pembaruan otomatis
+    startAutoRefresh() {
+        this.stopAutoRefresh(); // Hentikan interval yang mungkin sudah berjalan
+        this.refreshInterval = setInterval(() => {
+            this.fetchNotifications();
+            this.fetchUnreadCount();
+        }, 30000); // Update setiap 30 detik
+    },
+
+    // Hentikan interval pembaruan otomatis
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
         }
     }
 });
@@ -67,7 +175,7 @@ Alpine.store('notification', {
 // Alpine Components
 Alpine.data('sessionTimeout', () => ({
     isExpired: false,
-    timeoutDuration: 7200000,
+    timeoutDuration: 7200000, // 2 jam dalam milidetik
     checkInterval: null,
 
     init() {
@@ -119,17 +227,56 @@ Alpine.data('sessionTimeout', () => ({
     }
 }));
 
+// Notification Handler Component
 Alpine.data('notificationHandler', () => ({
+    showModal: false,
     isOpen: false,
-    pollingInterval: null,
+    errorMessage: '',
+    successMessage: '',
+    notificationForm: {
+        title: '',
+        content: '',
+        target: '',
+        specific_users: []
+    },
 
     init() {
         this.$store.notification.fetchNotifications();
         this.$store.notification.fetchUnreadCount();
-        
-        this.pollingInterval = setInterval(() => {
-            this.$store.notification.fetchUnreadCount();
-        }, 30000);
+        this.$store.notification.startAutoRefresh();
+    },
+
+    async submitNotification() {
+        try {
+            const result = await this.$store.notification.addNotification(this.notificationForm);
+            
+            if (result) {
+                this.successMessage = 'Notifikasi berhasil ditambahkan';
+                this.resetForm();
+                this.showModal = false; // Tutup modal
+                await this.$store.notification.fetchNotifications(); // Refresh notifikasi
+            } else {
+                this.errorMessage = 'Gagal menambahkan notifikasi';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.errorMessage = 'Terjadi kesalahan';
+        }
+
+        setTimeout(() => {
+            this.successMessage = '';
+            this.errorMessage = '';
+        }, 3000);
+    },
+
+
+    resetForm() {
+        this.notificationForm = {
+            title: '',
+            content: '',
+            target: '',
+            specific_users: []
+        };
     },
 
     toggleNotifications() {
@@ -139,24 +286,8 @@ Alpine.data('notificationHandler', () => ({
         }
     },
 
-    formatDate(date) {
-        return new Date(date).toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    },
-
-    async markAsRead(notificationId) {
-        await this.$store.notification.markAsRead(notificationId);
-    },
-
     destroy() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-        }
+        this.$store.notification.stopAutoRefresh();
     }
 }));
 
@@ -168,22 +299,20 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
+
+// Sidebar Active State Handler
 function updateSidebarActiveState() {
     try {
         const currentPath = window.location.pathname;
         const sidebarLinks = document.querySelectorAll('#logo-sidebar a[data-path]');
         
-        if (!sidebarLinks.length) {
-            return; // Silent fail jika tidak ada links
-        }
+        if (!sidebarLinks.length) return;
 
         sidebarLinks.forEach(link => {
             const path = link.dataset.path;
-            // Remove existing active classes
             link.classList.remove('bg-green-100', 'bg-gray-100', 'shadow-md');
             
             if (path && currentPath.includes(path)) {
-                // Add active classes based on role
                 if (currentPath.includes('admin')) {
                     link.classList.add('bg-green-100', 'shadow-md');
                 } else {
@@ -192,7 +321,6 @@ function updateSidebarActiveState() {
             }
         });
 
-        // Handle dropdown for admin panel
         const dropdownButton = document.querySelector('[data-collapse-toggle="dropdown-rapor"]');
         if (dropdownButton && currentPath.includes('report-format')) {
             dropdownButton.classList.add('bg-green-100', 'shadow-md');
@@ -202,84 +330,27 @@ function updateSidebarActiveState() {
     }
 }
 
-
-// Add manual sidebar update
-document.addEventListener('DOMContentLoaded', updateSidebarActiveState);
-document.addEventListener('turbo:render', updateSidebarActiveState);
-
+// Event Listeners
 const debouncedUpdateSidebar = debounce(updateSidebarActiveState, 100);
 
-// Event Listeners
-const eventListeners = {
-    'turbo:load': () => {
-        debouncedUpdateSidebar();
+document.addEventListener('DOMContentLoaded', () => {
+    updateSidebarActiveState();
+    if (typeof initFlowbite === 'function') {
         initFlowbite();
-        
-        document.querySelectorAll('img[id]').forEach(img => {
-            if (img.complete && img.naturalHeight !== 0) {
-                Alpine.store('navigation').markImageLoaded(img.id);
-            }
-        });
-    },
-
-    'turbo:before-render': (event) => {
-        ['topbar', 'sidebar', 'session-alert'].forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                const clone = element.cloneNode(true);
-                event.detail.newBody.querySelector(`#${id}`)?.replaceWith(clone);
-            }
-        });
-
-        const navigationStore = Alpine.store('navigation');
-        event.detail.newBody.querySelectorAll('img[id]').forEach(img => {
-            if (navigationStore.isImageLoaded(img.id)) {
-                img.style.opacity = '1';
-                img.setAttribute('data-turbo-cache', 'true');
-            }
-        });
-    },
-
-    'turbo:before-cache': () => {
-        document.querySelectorAll('#logo-sidebar a').forEach(link => {
-            link.classList.remove('bg-green-100', 'shadow-md');
-        });
-        window.formChanged = false;
-
-        const notificationHandler = document.querySelector('[x-data="notificationHandler"]');
-        if (notificationHandler && notificationHandler.__x) {
-            notificationHandler.__x.destroy();
-        }
-    },
-
-    'turbo:before-visit': (event) => {
-        if (window.formChanged && !confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
-            event.preventDefault();
-        } else {
-            window.formChanged = false;
-        }
-    },
-
-    'turbo:before-fetch-response': async (event) => {
-        const response = event.detail.fetchResponse;
-        if (response.response.status === 401 || response.response.status === 419) {
-            event.preventDefault();
-            window.location.href = '/login';
-        }
-    },
-
-    'turbo:visit': () => {
-        debouncedUpdateSidebar();
     }
-};
-
-
-
-
-// Register event listeners
-Object.entries(eventListeners).forEach(([event, handler]) => {
-    document.addEventListener(event, handler);
 });
 
+document.addEventListener('turbo:render', updateSidebarActiveState);
+document.addEventListener('turbo:visit', debouncedUpdateSidebar);
+
+// Cleanup listeners
+document.addEventListener('turbo:before-cache', () => {
+    const notificationHandler = document.querySelector('[x-data="notificationHandler"]');
+    if (notificationHandler && notificationHandler.__x) {
+        notificationHandler.__x.destroy();
+    }
+});
+
+// Initialize Alpine
 window.Alpine = Alpine;
 Alpine.start();

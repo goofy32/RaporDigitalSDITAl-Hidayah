@@ -3,220 +3,259 @@
 @section('title', 'Dashboard Admin')
 
 @section('content')
-<div x-data="{ selectedKelas: '', mapelProgress: [] }">
-    <!-- Main Content Container -->
+<div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
+    <div x-data="notificationHandler">  
+        <!-- Main Content Container -->
         <div class="flex flex-col lg:flex-row gap-4 mt-14">
             <!-- Statistics Grid - Takes 2/3 of the space -->
             <div class="lg:w-2/3">
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <!-- Siswa Card -->
-            <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('student') }}')">
-                <div class="p-4">
-                    <p class="text-2xl font-bold text-green-600">{{ $totalStudents }}</p>
-                    <p class="text-sm text-green-600">Siswa</p>
-                </div>
-            </div>
-            <!-- Guru Card -->
-            <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('teacher') }}')">
-                <div class="p-4">
-                    <p class="text-2xl font-bold text-green-600">{{ $totalTeachers }}</p>
-                    <p class="text-sm text-green-600">Guru</p>
-                </div>
-            </div>
-            <!-- Mata Pelajaran Card -->
-            <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('subject.index') }}')">
-                <div class="p-4">
-                    <p class="text-2xl font-bold text-green-600">{{ $totalSubjects }}</p>
-                    <p class="text-sm text-green-600">Mata Pelajaran</p>
-                </div>
-            </div>
-            <!-- Kelas Card -->
-            <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('kelas.index') }}')">
-                <div class="p-4">
-                    <p class="text-2xl font-bold text-green-600">{{ $totalClasses }}</p>
-                    <p class="text-sm text-green-600">Kelas</p>
-                </div>
-            </div>
-            <!-- Ekstrakurikuler Card -->
-            <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('ekstra.index') }}')">
-                <div class="p-4">
-                    <p class="text-2xl font-bold text-green-600">{{ $totalExtracurriculars }}</p>
-                    <p class="text-sm text-green-600">Ekstrakurikuler</p>
-                </div>
-            </div>
-            <!-- Progres Rapor Card -->
-            <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
-                <div class="p-4">
-                    <p class="text-2xl font-bold text-green-600">{{ number_format($overallProgress, 2) }}%</p>
-                    <p class="text-sm text-green-600">Progres Rapor</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-        <!-- Information Section - Takes 1/3 of the space -->
-        <div class="lg:w-1/3">
-            <div class="flex items-center justify-between mb-3">
-                <div class="bg-green-600 text-white px-3 py-1.5 rounded-lg inline-block">
-                    <span class="flex items-center text-sm">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                        </svg>
-                        Informasi
-                    </span>
-                </div>
-                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex items-center justify-center" data-modal-target="addInfoModal" data-modal-toggle="addInfoModal">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Information Items -->
-            <div class="relative pl-6 border-l-2 border-gray-200">
-                @foreach($informationItems as $item)
-                <div class="mb-4 relative">
-                    <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                        <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                        </svg>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <!-- Siswa Card -->
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('student') }}')">
+                        <div class="p-4">
+                            <p class="text-2xl font-bold text-green-600">{{ $totalStudents }}</p>
+                            <p class="text-sm text-green-600">Siswa</p>
+                        </div>
                     </div>
-                    <div class="bg-white rounded-lg border shadow-sm p-3">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="text-sm font-medium">{{ $item->title }}</h3>
-                                <p class="text-xs text-gray-600">{{ $item->content }}</p>
+                    <!-- Guru Card -->
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('teacher') }}')">
+                        <div class="p-4">
+                            <p class="text-2xl font-bold text-green-600">{{ $totalTeachers }}</p>
+                            <p class="text-sm text-green-600">Guru</p>
+                        </div>
+                    </div>
+                    <!-- Mata Pelajaran Card -->
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('subject.index') }}')">
+                        <div class="p-4">
+                            <p class="text-2xl font-bold text-green-600">{{ $totalSubjects }}</p>
+                            <p class="text-sm text-green-600">Mata Pelajaran</p>
+                        </div>
+                    </div>
+                    <!-- Kelas Card -->
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('kelas.index') }}')">
+                        <div class="p-4">
+                            <p class="text-2xl font-bold text-green-600">{{ $totalClasses }}</p>
+                            <p class="text-sm text-green-600">Kelas</p>
+                        </div>
+                    </div>
+                    <!-- Ekstrakurikuler Card -->
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('ekstra.index') }}')">
+                        <div class="p-4">
+                            <p class="text-2xl font-bold text-green-600">{{ $totalExtracurriculars }}</p>
+                            <p class="text-sm text-green-600">Ekstrakurikuler</p>
+                        </div>
+                    </div>
+                    <!-- Progres Rapor Card -->
+                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="p-4">
+                            <p class="text-2xl font-bold text-green-600">{{ number_format($overallProgress, 2) }}%</p>
+                            <p class="text-sm text-green-600">Progres Rapor</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Information Section - Takes 1/3 of the space -->
+            <div class="lg:w-1/3">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="bg-green-600 text-white px-3 py-1.5 rounded-lg inline-block">
+                        <span class="flex items-center text-sm">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                            </svg>
+                            Informasi
+                        </span>
+                    </div>
+                    <button type="button" 
+                            @click="showModal = true"
+                            class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Information Items -->
+                <div class="h-[150px] overflow-y-auto">
+                    <div class="relative pl-6 border-l-2 border-gray-200">
+                        <template x-for="item in $store.notification.items" :key="item.id">
+                            <div class="mb-4 relative h-[60px]">
+                                <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="bg-white rounded-lg border shadow-sm p-3">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h3 class="text-sm font-medium" x-text="item.title"></h3>
+                                            <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
+                                        </div>
+                                        <button type="button" 
+                                                @click="$store.notification.deleteNotification(item.id)"
+                                                class="text-red-500 hover:text-red-700">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <button class="text-red-500 hover:text-red-700" onclick="deleteInformation({{ $item->id }})">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                            </button>
-                        </div>
+                        </template>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Dropdown Pilih Kelas -->
+        <div class="mt-8">
+            <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
+            <select id="kelas" 
+                x-model="selectedKelas" 
+                @change="fetchKelasProgress()"
+                class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
+                <option value="">Pilih kelas...</option>
+                @foreach($kelas as $k)
+                    <option value="{{ $k->id }}">{{ $k->nama_kelas }}</option>
                 @endforeach
-            </div>
+            </select>
         </div>
-    </div>
 
-    <!-- Dropdown Pilih Kelas -->
-    <div class="mt-8">
-        <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
-        <select id="kelas" 
-            x-model="selectedKelas" 
-            @change="fetchKelasProgress()"
-            class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
-        <option value="">Pilih kelas...</option>
-        @foreach($kelas as $k)
-            <option value="{{ $k->id }}">{{ $k->nama_kelas }}</option>
-        @endforeach
-        </select>
-    </div>
-
-    <!-- Charts Section -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <!-- Chart Keseluruhan -->
-        <div class="bg-white p-4 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
-            <div class="flex flex-col items-center">
-                <div class="w-64 h-64 relative">
-                    <canvas id="overallPieChart"></canvas>
-                </div>
-            </div>
-        </div>
-    
-        <!-- Chart Per Kelas -->
-        <div class="bg-white p-4 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai <span x-text="selectedKelas ? 'Kelas ' + selectedKelas : 'Per Kelas'"></span></h3>
-            <div class="flex flex-col items-center">
-                <div class="w-64 h-64 relative">
-                    <canvas id="classProgressChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Information Modal -->
-<div id="addInfoModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
-    <div class="relative p-4 w-full max-w-md max-h-full">
-        <div class="relative bg-white rounded-lg shadow">
-            <!-- Modal header -->
-            <div class="flex items-center justify-between p-4 border-b">
-                <h3 class="text-xl font-semibold">
-                    Tambah Informasi
-                </h3>
-                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex items-center justify-center" data-modal-hide="addInfoModal">
-                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                    </svg>
-                </button>
-            </div>
-            <!-- Modal body -->
-            <div class="p-4">
-            <form id="infoForm">
-                <div class="mb-4">
-                    <label class="block mb-2 text-sm font-medium text-gray-900">Judul informasi</label>
-                    <input type="text" 
-                        name="title" 
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
-                        placeholder="Masukkan judul informasi" 
-                        required>
-                </div>
-                <div class="mb-4">
-                    <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
-                    <select name="target" 
-                            id="target-select"
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
-                            required>
-                        <option value="">-- Pilih --</option>
-                        <option value="all">Semua</option>
-                        <option value="guru">Semua Guru</option>
-                        <option value="wali_kelas">Semua Wali Kelas</option>
-                        <option value="specific">Guru Tertentu</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block mb-2 text-sm font-medium text-gray-900">Isi</label>
-                    <textarea name="content" 
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
-                            rows="4" 
-                            placeholder="Masukkan isi informasi" 
-                            required></textarea>
-                </div>
-                <button type="submit" 
-                        class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                    Simpan
-                </button>
-
-
-                <div id="specific-teachers-container" class="mb-4 hidden">
-                    <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
-                    <div class="max-h-40 overflow-y-auto">
-                        @foreach($guru as $g)
-                        <div class="flex items-center mb-2">
-                            <input type="checkbox" 
-                                name="specific_users[]" 
-                                value="{{ $g->id }}" 
-                                class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
-                            <label class="ml-2 text-sm text-gray-900">
-                                {{ $g->nama }} 
-                                @if($g->jabatan == 'wali_kelas')
-                                    (Wali Kelas {{ $g->kelasPengajar->nama_kelas ?? '' }})
-                                @else
-                                    (Guru {{ implode(', ', $g->mataPelajarans->pluck('nama_pelajaran')->toArray()) }})
-                                @endif
-                            </label>
-                        </div>
-                        @endforeach
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <!-- Chart Keseluruhan -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
+                <div class="flex flex-col items-center">
+                    <div class="w-64 h-64 relative">
+                        <canvas id="overallPieChart"></canvas>
                     </div>
                 </div>
-            </form>
+            </div>
+
+            <!-- Chart Per Kelas -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai <span x-text="selectedKelas ? 'Kelas ' + selectedKelas : 'Per Kelas'"></span></h3>
+                <div class="flex flex-col items-center">
+                    <div class="w-64 h-64 relative">
+                        <canvas id="classProgressChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div x-show="showModal" 
+             class="fixed inset-0 z-50 overflow-y-auto"
+             style="display: none;">
+            <!-- Modal backdrop -->
+            <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+                 x-show="showModal"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click="showModal = false"></div>
+
+            <!-- Modal content -->
+            <div class="relative flex min-h-screen items-center justify-center p-4">
+                <div class="relative w-full max-w-md rounded-lg bg-white shadow-xl"
+                     x-show="showModal"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <h3 class="text-xl font-semibold">Tambah Informasi</h3>
+                        <button type="button" 
+                                @click="showModal = false"
+                                class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex items-center justify-center">
+                            <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-4">
+                        <form @submit.prevent="submitNotification">
+                            <div class="mb-4">
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Judul informasi</label>
+                                <input type="text" 
+                                    x-model="notificationForm.title"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                                    placeholder="Masukkan judul informasi" 
+                                    required>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
+                                <select x-model="notificationForm.target"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                                        required>
+                                    <option value="">-- Pilih --</option>
+                                    <option value="all">Semua</option>
+                                    <option value="guru">Semua Guru</option>
+                                    <option value="wali_kelas">Semua Wali Kelas</option>
+                                    <option value="specific">Guru Tertentu</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Isi</label>
+                                <textarea x-model="notificationForm.content"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                                        rows="4" 
+                                        placeholder="Masukkan isi informasi" 
+                                        required></textarea>
+                            </div>
+
+                            <!-- Specific teachers container -->
+                            <div x-show="notificationForm.target === 'specific'" class="mb-4">
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
+                                <div class="max-h-40 overflow-y-auto">
+                                    @foreach($guru as $g)
+                                    <div class="flex items-center mb-2">
+                                        <input type="checkbox" 
+                                            value="{{ $g->id }}" 
+                                            x-model="notificationForm.specific_users"
+                                            class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                            <label class="ml-2 text-sm text-gray-900">
+                                            {{ $g->nama }} 
+                                            @if($g->jabatan == 'wali_kelas')
+                                                (Wali Kelas {{ $g->kelasPengajar->nama_kelas ?? '' }})
+                                            @else
+                                                (Guru {{ implode(', ', $g->mataPelajarans->pluck('nama_pelajaran')->toArray()) }})
+                                            @endif
+                                        </label>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <!-- Success/Error Messages -->
+                            <div x-show="successMessage" x-text="successMessage" class="mb-4 text-green-600"></div>
+                            <div x-show="errorMessage" x-text="errorMessage" class="mb-4 text-red-600"></div>
+
+                            <button type="submit" 
+                                    class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                                Simpan
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+        
+
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

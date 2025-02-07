@@ -25,15 +25,23 @@ class NotificationController extends Controller
             $notification->target = $validated['target'];
             
             if ($validated['target'] === 'specific') {
-                // Pastikan specific_users adalah JSON array yang valid
                 $notification->specific_users = array_map('intval', $validated['specific_users']);
             }
             
             $notification->save();
 
+            // Return the newly created notification with additional data
             return response()->json([
                 'success' => true,
-                'message' => 'Notifikasi berhasil ditambahkan'
+                'message' => 'Notifikasi berhasil ditambahkan',
+                'notification' => [
+                    'id' => $notification->id,
+                    'title' => $notification->title,
+                    'content' => $notification->content,
+                    'target' => $notification->target,
+                    'created_at' => $notification->created_at->diffForHumans(),
+                    'is_read' => false
+                ]
             ]);
         } catch (\Exception $e) {
             \Log::error('Notification creation error: ' . $e->getMessage());
@@ -44,29 +52,48 @@ class NotificationController extends Controller
         }
     }
 
-    public function destroy(Notification $notification)
+    public function list()
     {
-        $notification->delete();
-        return response()->json(['success' => true]);
-    }
+        $notifications = Notification::latest()->get()->map(function($notification) {
+            return [
+                'id' => $notification->id,
+                'title' => $notification->title,
+                'content' => $notification->content,
+                'created_at' => $notification->created_at->diffForHumans()
+            ];
+        });
 
+        return response()->json(['items' => $notifications]);
+    }
     public function index()
     {
         $guru = Auth::guard('guru')->user();
-        $role = session('selected_role');
-
-        return Notification::where(function($query) use ($guru, $role) {
+        $selected_role = session('selected_role');
+    
+        $notifications = Notification::where(function($query) use ($guru, $selected_role) {
             $query->where('target', 'all')
-                  ->orWhere('target', $role)
+                  ->orWhere('target', $selected_role) // Menggunakan selected_role dari session
                   ->orWhere(function($q) use ($guru) {
                       $q->where('target', 'specific')
-                        ->whereRaw("JSON_CONTAINS(specific_users, ?)", [$guru->id]);
+                        ->whereJsonContains('specific_users', $guru->id);
                   });
         })
-        ->latest()
-        ->get();
+        ->orderBy('created_at', 'desc') // Tambahkan ordering
+        ->take(5) // Batasi 5 notifikasi terakhir
+        ->get()
+        ->map(function ($notification) use ($guru) {
+            return [
+                'id' => $notification->id,
+                'title' => $notification->title,
+                'content' => $notification->content,
+                'created_at' => $notification->created_at->diffForHumans(),
+                'is_read' => $notification->isReadBy($guru->id)
+            ];
+        });
+    
+        return response()->json(['items' => $notifications]);
     }
-
+    
     public function markAsRead(Notification $notification)
     {
         try {
@@ -110,5 +137,22 @@ class NotificationController extends Controller
         ->count();
 
         return response()->json(['count' => $count]);
+    }
+
+    public function destroy(Notification $notification)
+    {
+        try {
+            $notification->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Notifikasi berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error deleting notification: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus notifikasi'
+            ], 500);
+        }
     }
 }
