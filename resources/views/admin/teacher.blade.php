@@ -42,7 +42,7 @@
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
                         <th class="px-6 py-3">No</th>
-                        <th class="px-6 py-3">NIP</th>
+                        <th class="px-6 py-3">NUPTK</th>
                         <th class="px-6 py-3">Nama</th>
                         <th class="px-6 py-3">Username</th>
                         <th class="px-6 py-3">Jenis Kelamin</th>
@@ -50,7 +50,7 @@
                         <th class="px-6 py-3">No Handphone</th>
                         <th class="px-6 py-3">Alamat</th>
                         <th class="px-6 py-3">Jabatan</th>
-                        <th class="px-6 py-3">Kelas Mengajar</th>
+                        <th class="px-6 py-3">Wali Kelas</th>
                         <th class="px-6 py-3">Aksi</th>
                     </tr>
                 </thead>

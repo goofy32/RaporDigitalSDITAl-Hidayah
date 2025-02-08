@@ -20,9 +20,9 @@
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-green-700">Detail Data Pengajar</h2>
                 <div class="flex space-x-2">
-                    <button class="bg-green-600 text-white font-medium py-2 px-4 rounded hover:bg-green-700" onclick="window.history.back()">Kembali</button>
+                    <button class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600" onclick="window.history.back()">Kembali</button>
                     <button onclick="window.location.href='{{ route('teacher.edit', $teacher->id) }}'" 
-                        class="bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700">
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                         Edit
                     </button>
                 </div>
@@ -82,7 +82,7 @@
                                 <td class="px-4 py-2">{{ $teacher->jabatan ?? 'Belum Diisi' }}</td>
                             </tr>
                             <tr class="border-b">
-                                <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
+                                <th class="px-4 py-2 font-medium text-gray-900">Wali Kelas</th>
                                 <td class="px-4 py-2">
                                     {{ $teacher->kelasPengajar->nomor_kelas ?? '-' }} - {{ $teacher->kelasPengajar->nama_kelas ?? 'Belum Diisi' }}
                                 </td>
@@ -93,7 +93,20 @@
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Password</th>
-                                <td class="px-4 py-2">••••••••</td>
+                                <td class="px-4 py-2">
+                                    <div class="flex items-center space-x-2">
+                                        <span id="passwordText">••••••••</span>
+                                        <button type="button"
+                                                onclick="togglePassword('{{ $teacher->id }}')"
+                                                class="text-blue-600 hover:text-blue-800 inline-flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                            Lihat Password
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -101,6 +114,37 @@
             </div>
         </div>
     </div>
-</body>
 
+<script>
+function togglePassword(teacherId) {
+    if(confirm('Apakah Anda yakin ingin melihat password pengajar ini?')) {
+        fetch(`/admin/pengajar/${teacherId}/password`, {
+            method: 'GET',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const passwordText = document.getElementById('passwordText');
+            if (data.status === 'success') {
+                if (passwordText.textContent === '••••••••') {
+                    passwordText.textContent = data.password;
+                } else {
+                    passwordText.textContent = '••••••••';
+                }
+            } else {
+                alert(data.message || 'Password tidak tersedia');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat mengambil password');
+        });
+    }
+}
+</script>
+</body>
 </html>

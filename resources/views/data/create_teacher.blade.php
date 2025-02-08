@@ -53,7 +53,7 @@
                 <!-- Kolom Kiri -->
                 <div>
                     <div class="mb-4">
-                        <label for="nip" class="block text-sm font-medium text-gray-700">NIP</label>
+                        <label for="nip" class="block text-sm font-medium text-gray-700">NUPTK</label>
                         <input type="text" id="nip" name="nuptk" value="{{ old('nuptk') }}" 
                             class="w-full mt-1 p-2 border @error('nuptk') border-red-500 @enderror border-gray-300 rounded-lg">
                         @error('nuptk')
@@ -172,8 +172,13 @@
 
                     <div class="mb-4">
                         <label for="photo" class="block text-sm font-medium text-gray-700">Foto Pengajar (Opsional)</label>
-                        <input type="file" id="photo" name="photo"
-                            class="w-full mt-1 p-2 border @error('photo') border-red-500 @enderror border-gray-300 rounded-lg">
+                        <input type="file" 
+                            id="photo" 
+                            name="photo"
+                            accept="image/jpeg,image/jpg,image/png"
+                            onchange="validateFile(this)"
+                            class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none">
+                        <p class="mt-1 text-sm text-gray-500">Format file yang diizinkan: JPG, JPEG, atau PNG (Maks. 2MB)</p>
                         @error('photo')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
@@ -194,7 +199,9 @@
         
     </script>
 
-    <script>document.addEventListener('DOMContentLoaded', function() {
+    <script>
+    
+    document.addEventListener('DOMContentLoaded', function() {
         const form = document.querySelector('form');
         const requiredFields = form.querySelectorAll('[required]');
     
@@ -229,7 +236,36 @@
                 }
             }
         });
-    });</script>
+    });
+    
+    function validateFile(input) {
+        const file = input.files[0];
+        const fileType = file?.type; // Menggunakan optional chaining
+        
+        // Definisikan tipe file yang diizinkan
+        const allowedTypes = {
+            'image/jpeg': 'JPG File',
+            'image/jpg': 'JPG File',
+            'image/png': 'PNG File'
+        };
+
+        if (file) {
+            // Cek apakah tipe file diizinkan
+            if (!allowedTypes[fileType]) {
+                alert('Format file tidak diizinkan. Harap pilih file JPG, JPEG, atau PNG.');
+                input.value = '';
+                return;
+            }
+
+            // Cek ukuran file (maksimal 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Ukuran file terlalu besar. Maksimal 2MB.');
+                input.value = '';
+                return;
+            }
+        }
+    }
+    </script>
 </body>
 
 </html>

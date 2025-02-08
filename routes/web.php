@@ -112,6 +112,8 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
         Route::get('/{id}/edit', [TeacherController::class, 'edit'])->name('teacher.edit');
         Route::put('/{id}', [TeacherController::class, 'update'])->name('teacher.update');
         Route::delete('/{id}', [TeacherController::class, 'destroy'])->name('teacher.destroy');
+        Route::get('/{id}/password', [TeacherController::class, 'showPassword'])
+        ->name('teacher.show_password');
     });
     
     // Achievement Routes

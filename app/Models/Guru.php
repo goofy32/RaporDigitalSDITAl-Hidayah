@@ -25,6 +25,7 @@ class Guru extends Authenticatable
         'kelas_pengajar_id',
         'username',
         'password',
+        'password_plain', 
         'photo',
     ];
 

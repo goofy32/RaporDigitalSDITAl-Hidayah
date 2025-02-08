@@ -63,9 +63,14 @@ class ClassController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nomor_kelas' => 'required|integer',
+            'nomor_kelas' => 'required|integer|min:1|max:99',
             'nama_kelas' => 'required|string|max:255',
             'wali_kelas' => 'required|string|max:255',
+        ], [
+            'nomor_kelas.min' => 'Nomor kelas minimal 1',
+            'nomor_kelas.max' => 'Nomor kelas maksimal 99',
+            'nomor_kelas.required' => 'Nomor kelas harus diisi',
+            'nomor_kelas.integer' => 'Nomor kelas harus berupa angka'
         ]);
     
         Kelas::create([
@@ -81,23 +86,10 @@ class ClassController extends Controller
     public function edit($id)
     {
         $kelas = Kelas::findOrFail($id);
-    
-        // Pisahkan nomor kelas dan nama kelas dari nama_kelas
-        $pattern = '/Kelas (\d+) - (.+)/';
-        preg_match($pattern, $kelas->nama_kelas, $matches);
-    
-        if ($matches) {
-            $kelas->nomor_kelas = $matches[1];
-            $kelas->nama_kelas = $matches[2];
-        } else {
-            // Jika format tidak sesuai, set nilai default
-            $kelas->nomor_kelas = '';
-            $kelas->nama_kelas = $kelas->nama_kelas;
-        }
-    
+        
+        // Tidak perlu parsing nama_kelas karena kita sudah punya field nomor_kelas
         return view('data.edit_class', compact('kelas'));
     }
-
     // Mengupdate data kelas
     public function update(Request $request, $id)
     {
