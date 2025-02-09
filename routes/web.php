@@ -41,8 +41,20 @@ Route::get('/', function () {
 });
 
 // Login Routes
-Route::middleware('guest')->group(function () {
+Route::middleware(['web', 'guest'])->group(function () {
     Route::get('login', function () {
+        // Cek jika user sudah login
+        if (Auth::guard('web')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+        
+        if (Auth::guard('guru')->check()) {
+            $selectedRole = session('selected_role');
+            return $selectedRole === 'wali_kelas' 
+                ? redirect()->route('wali_kelas.dashboard')
+                : redirect()->route('pengajar.dashboard');
+        }
+        
         return view('login');
     })->name('login');
 

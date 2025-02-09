@@ -10,17 +10,12 @@ class RedirectIfAuthenticated
 {
     public function handle(Request $request, Closure $next)
     {
-        // Jangan redirect jika mengakses route login
-        if ($request->is('login')) {
-            return $next($request);
-        }
-
-        // Redirect admin
+        // Cek jika user sudah login sebagai admin
         if (Auth::guard('web')->check()) {
             return redirect()->route('admin.dashboard');
         }
 
-        // Redirect guru berdasarkan selected_role di session
+        // Cek jika user sudah login sebagai guru
         if (Auth::guard('guru')->check()) {
             $selectedRole = session('selected_role');
 
@@ -29,11 +24,6 @@ class RedirectIfAuthenticated
             } else if ($selectedRole === 'guru') {
                 return redirect()->route('pengajar.dashboard');
             }
-
-            // Jika tidak ada selected_role yang valid, logout dan redirect ke login
-            Auth::guard('guru')->logout();
-            return redirect()->route('login')
-                ->with('error', 'Silakan login kembali dan pilih role Anda');
         }
 
         return $next($request);
