@@ -7,12 +7,18 @@
     <div class="p-4 bg-white mt-14">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-green-700">Form Edit Data Siswa</h2>
-            <a href="{{ route('student') }}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
-                Kembali
-            </a>
+            <!-- Pindahkan tombol ke sini -->
+            <div class="flex space-x-2">
+                <button type="submit" form="editStudentForm" class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
+                    Update Data
+                </button>
+                <a href="{{ route('student') }}" class="px-6 py-2.5 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 focus:ring-4 focus:ring-gray-300">
+                    Batal
+                </a>
+            </div>
         </div>
 
-        <form action="{{ route('student.update', $student->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form id="editStudentForm" action="{{ route('student.update', $student->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @method('PUT')
             
@@ -25,6 +31,9 @@
                         <div>
                             <label for="nis" class="block text-sm font-medium text-gray-700 mb-1">NIS <span class="text-red-500">*</span></label>
                             <input type="text" id="nis" name="nis" 
+                                maxlength="10" 
+                                pattern="[0-9]*"
+                                oninput="numbersOnly(this); maxLength(this, 10);"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nis') border-red-500 @enderror" 
                                 value="{{ old('nis', $student->nis) }}" required>
                             @error('nis')
@@ -36,6 +45,9 @@
                         <div>
                             <label for="nisn" class="block text-sm font-medium text-gray-700 mb-1">NISN <span class="text-red-500">*</span></label>
                             <input type="text" id="nisn" name="nisn" 
+                                maxlength="10" 
+                                pattern="[0-9]*"
+                                oninput="numbersOnly(this); maxLength(this, 10);"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nisn') border-red-500 @enderror" 
                                 value="{{ old('nisn', $student->nisn) }}" required>
                             @error('nisn')
@@ -47,6 +59,7 @@
                         <div>
                             <label for="nama" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span class="text-red-500">*</span></label>
                             <input type="text" id="nama" name="nama" 
+                                oninput="lettersOnly(this);"
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nama') border-red-500 @enderror" 
                                 value="{{ old('nama', $student->nama) }}" required>
                             @error('nama')
@@ -231,21 +244,74 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Tombol Submit -->
-            <div class="flex justify-end space-x-2">
-                <button type="submit" class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
-                    Update Data
-                </button>
-                <a href="{{ route('student') }}" class="px-6 py-2.5 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 focus:ring-4 focus:ring-gray-300">
-                    Batal
-                </a>
-            </div>
         </form>
     </div>
 </div>
 
 <script>
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Fungsi validasi
+    function numbersOnly(input) {
+        input.value = input.value.replace(/[^0-9]/g, '');
+    }
+
+    function lettersOnly(input) {
+        input.value = input.value.replace(/[^a-zA-Z\s]/g, '');
+    }
+
+    function maxLength(input, max) {
+        if (input.value.length > max) {
+            input.value = input.value.slice(0, max);
+        }
+    }
+
+    // NIS dan NISN validasi
+    const nisInput = document.getElementById('nis');
+    const nisnInput = document.getElementById('nisn');
+    const namaInput = document.getElementById('nama');
+
+    if (nisInput) {
+        nisInput.addEventListener('input', function() {
+            numbersOnly(this);
+            maxLength(this, 10);
+        });
+    }
+
+    if (nisnInput) {
+        nisnInput.addEventListener('input', function() {
+            numbersOnly(this);
+            maxLength(this, 10);
+        });
+    }
+
+    if (namaInput) {
+        namaInput.addEventListener('input', function() {
+            lettersOnly(this);
+            maxLength(this, 255);
+        });
+    }
+
+    // Form validation sebelum submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const nis = document.getElementById('nis').value;
+        const nisn = document.getElementById('nisn').value;
+
+        if (nis.length < 5) { // Minimal 5 digit
+            e.preventDefault();
+            alert('NIS harus minimal 5 digit!');
+            return false;
+        }
+
+        if (nisn.length < 10) { // NISN harus 10 digit
+            e.preventDefault();
+            alert('NISN harus 10 digit!');
+            return false;
+        }
+    });
+});
+
 document.getElementById('photo').onchange = function(evt) {
     const preview = document.getElementById('photo-preview');
     preview.innerHTML = '';
@@ -264,13 +330,20 @@ document.getElementById('photo').onchange = function(evt) {
             return;
         }
 
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'mt-4 relative';
+
         const img = document.createElement('img');
         img.src = URL.createObjectURL(file);
-        img.className = 'mt-2 max-w-xs rounded-lg shadow-sm';
+        img.className = 'max-w-xs rounded-lg shadow-sm';
+        img.style.maxHeight = '200px';
+        
+        previewContainer.appendChild(img);
+        preview.appendChild(previewContainer);
+
         img.onload = function() {
             URL.revokeObjectURL(this.src);
         }
-        preview.appendChild(img);
     }
 };
 </script>

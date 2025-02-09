@@ -21,6 +21,15 @@ class Kelas extends Model
         'nomor_kelas' => 'integer'
     ];
     
+    // Tambahkan accessor untuk nama kelas lengkap
+    public function getFullKelasAttribute()
+    {
+        return "Kelas {$this->nomor_kelas} {$this->nama_kelas}";
+    }
+
+    // Tambahkan ke appends agar bisa diakses langsung
+    protected $appends = ['full_kelas'];
+    
     public function siswas()
     {
         return $this->hasMany(Siswa::class);
@@ -36,14 +45,11 @@ class Kelas extends Model
         return $this->belongsTo(Guru::class, 'wali_kelas', 'id');
     }
     
-    // Tambahkan accessor untuk mendapatkan nama wali kelas
     public function getWaliKelasNameAttribute()
     {
         return $this->waliKelas ? $this->waliKelas->nama : '-';
     }
     
-    
-    // Tambahkan method untuk debugging
     public function toArray()
     {
         $array = parent::toArray();

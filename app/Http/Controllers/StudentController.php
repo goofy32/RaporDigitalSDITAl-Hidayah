@@ -68,9 +68,24 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nis' => 'required|string|max:20|unique:siswas,nis', // Batasi panjang NIS
-            'nisn' => 'required|string|max:20|unique:siswas,nisn', // Batasi panjang NISN
-            'nama' => 'required|string|max:255',
+            'nis' => [
+                'required',
+                'numeric',          // Memastikan hanya angka
+                'digits_between:5,10', // Minimal 5 digit, maksimal 10 digit
+                'unique:siswas,nis'
+            ],
+            'nisn' => [
+                'required',
+                'numeric',         // Memastikan hanya angka
+                'digits:10',       // Harus 10 digit
+                'unique:siswas,nisn'
+            ],
+            'nama' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\s]*$/'  // Hanya huruf dan spasi
+            ],
             'tanggal_lahir' => 'required|date|before:today', // Pastikan tanggal lahir sebelum hari ini
             'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
             'agama' => 'required|string|in:Islam,Kristen,Katolik,Hindu,Buddha,Konghucu',
