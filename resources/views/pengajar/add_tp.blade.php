@@ -21,11 +21,6 @@
         
         <!-- Form -->
         <form id="addTPForm" class="space-y-6">
-            <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
-                    <p class="text-gray-700 font-semibold">{{ $mataPelajaran->nama_pelajaran }}</p>
-                    <input type="hidden" id="mata_pelajaran_id" value="{{ $mataPelajaran->id }}">
-                </div>
             @csrf
             <!-- Mata Pelajaran -->
             <div>
