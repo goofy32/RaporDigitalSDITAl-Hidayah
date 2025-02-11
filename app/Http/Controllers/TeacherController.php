@@ -275,7 +275,7 @@ class TeacherController extends Controller
         try {
             $teacher = Guru::findOrFail($id);
     
-            // Validasi input
+            // Validasi dasar
             $rules = [
                 'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,'.$id,
                 'nama' => 'required|string|max:255',
@@ -286,97 +286,71 @@ class TeacherController extends Controller
                 'alamat' => 'required|string|max:500',
                 'jabatan' => 'required|in:guru,guru_wali',
                 'kelas_ids' => 'required|array',
-                'wali_kelas_id' => 'required_if:jabatan,guru_wali|exists:kelas,id',
                 'username' => 'required|string|max:255|unique:gurus,username,'.$id,
-                'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ];
     
-            // Tambah validasi password jika diisi
-            if ($request->filled('password')) {
-                $rules['password'] = 'required|string|min:6|confirmed';
-                $rules['current_password'] = 'required';
-                
-                // Verifikasi password lama
-                if (!Hash::check($request->current_password, $teacher->password)) {
-                    throw ValidationException::withMessages([
-                        'current_password' => 'Password saat ini tidak sesuai'
-                    ]);
-                }
+            if ($request->jabatan === 'guru_wali') {
+                $rules['wali_kelas_id'] = 'required|exists:kelas,id';
             }
     
             $validated = $request->validate($rules);
     
-            // Jika guru dan wali kelas, cek duplikasi wali kelas
-            if ($validated['jabatan'] === 'guru_wali' && $request->filled('wali_kelas_id')) {
-                $existingWaliKelas = DB::table('guru_kelas')
-                    ->where('kelas_id', $request->wali_kelas_id)
-                    ->where('guru_id', '!=', $teacher->id)
-                    ->where('is_wali_kelas', true)
-                    ->exists();
-    
-                if ($existingWaliKelas) {
-                    throw ValidationException::withMessages([
-                        'wali_kelas_id' => 'Kelas ini sudah memiliki wali kelas'
-                    ]);
-                }
-            }
-    
-            // Handle password baru jika ada
-            if ($request->filled('password')) {
-                $validated['password'] = Hash::make($request->password);
-                $validated['password_plain'] = $request->password;
-            }
-    
-            // Handle photo jika ada
-            if ($request->hasFile('photo')) {
-                if ($teacher->photo) {
-                    Storage::disk('public')->delete($teacher->photo);
-                }
-                $validated['photo'] = $request->file('photo')->store('teacher-photos', 'public');
-            }
-    
-            // Update data guru
+            // Update guru basic info
             $teacher->update($validated);
     
             // Hapus semua relasi kelas yang ada
             $teacher->kelas()->detach();
     
-            // Proses kelas mengajar
+            // Array untuk tracking kelas yang sudah di-attach
+            $attachedClasses = [];
+    
+            // Attach kelas mengajar terlebih dahulu
             foreach ($validated['kelas_ids'] as $kelasId) {
-                $isWaliKelas = ($validated['jabatan'] === 'guru_wali' && $kelasId == $request->wali_kelas_id);
-                
+                // Skip jika kelas sudah di-attach
+                if (in_array($kelasId, $attachedClasses)) {
+                    continue;
+                }
+    
                 $teacher->kelas()->attach($kelasId, [
-                    'is_wali_kelas' => $isWaliKelas,
-                    'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
+                    'is_wali_kelas' => false,
+                    'role' => 'pengajar'
                 ]);
+                $attachedClasses[] = $kelasId;
             }
     
-            // Jika guru dan wali kelas tapi kelas yang diwalikan tidak ada di kelas yang diajar
-            if ($validated['jabatan'] === 'guru_wali' && !in_array($request->wali_kelas_id, $validated['kelas_ids'])) {
-                $teacher->kelas()->attach($request->wali_kelas_id, [
-                    'is_wali_kelas' => true,
-                    'role' => 'wali_kelas'
-                ]);
+            // Jika guru_wali, attach kelas wali secara terpisah
+            if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
+                $waliKelasId = $request->wali_kelas_id;
+                
+                // Jika kelas wali belum di-attach sebagai pengajar
+                if (!in_array($waliKelasId, $attachedClasses)) {
+                    $teacher->kelas()->attach($waliKelasId, [
+                        'is_wali_kelas' => true,
+                        'role' => 'wali_kelas'
+                    ]);
+                } else {
+                    // Jika sudah ada sebagai pengajar, update role-nya
+                    DB::table('guru_kelas')
+                        ->where('guru_id', $teacher->id)
+                        ->where('kelas_id', $waliKelasId)
+                        ->update([
+                            'is_wali_kelas' => true,
+                            'role' => 'wali_kelas'
+                        ]);
+                }
             }
     
             DB::commit();
             return redirect()->route('teacher')
                 ->with('success', 'Data guru berhasil diperbarui');
     
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            return back()
-                ->withErrors($e->validator)
-                ->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating teacher: ' . $e->getMessage());
             return back()
-                ->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
                 ->withInput();
         }
     }
-    
 
     public function showProfile()
     {
