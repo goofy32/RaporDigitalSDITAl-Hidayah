@@ -11,7 +11,6 @@ use App\Models\User;
 
 class LoginController extends Controller
 {
-
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -28,25 +27,38 @@ class LoginController extends Controller
                 return redirect()->route('admin.dashboard');
             }
         } else {
-            if (Auth::guard('guru')->attempt([
-                'username' => $credentials['username'],
-                'password' => $credentials['password']
-            ])) {
-                $guru = Auth::guard('guru')->user();
+            // Cari guru berdasarkan username
+            $guru = Guru::where('username', $credentials['username'])->first();
+            
+            // Jika guru ditemukan
+            if ($guru && Hash::check($credentials['password'], $guru->password)) {
                 
-                // Cek role wali kelas
+                // Jika mencoba login sebagai wali kelas
                 if ($credentials['role'] === 'wali_kelas') {
+                    // Cek apakah guru memiliki jabatan guru_wali
+                    if ($guru->jabatan !== 'guru_wali') {
+                        return back()->withErrors([
+                            'role' => 'Akun ini tidak memiliki akses sebagai wali kelas. Silakan pilih role lain.'
+                        ])->withInput($request->except('password'));
+                    }
+                    
+                    // Cek apakah guru benar-benar terdaftar sebagai wali kelas di suatu kelas
                     $isWaliKelas = $guru->kelas()
                         ->wherePivot('is_wali_kelas', true)
+                        ->wherePivot('role', 'wali_kelas')
                         ->exists();
                         
                     if (!$isWaliKelas) {
-                        Auth::guard('guru')->logout();
-                        return back()->with('error', 'Anda tidak terdaftar sebagai wali kelas');
+                        return back()->withErrors([
+                            'role' => 'Akun ini belum ditugaskan sebagai wali kelas.'
+                        ])->withInput($request->except('password'));
                     }
                 }
                 
+                // Login berhasil
+                Auth::guard('guru')->login($guru);
                 session(['selected_role' => $credentials['role']]);
+                
                 return redirect()->route($credentials['role'] === 'wali_kelas' ? 
                     'wali_kelas.dashboard' : 'pengajar.dashboard');
             }
@@ -56,6 +68,7 @@ class LoginController extends Controller
             'username' => 'Kredensial yang diberikan tidak cocok dengan data kami.',
         ])->withInput($request->except('password'));
     }
+
     public function logout(Request $request)
     {
         $message = 'Anda telah berhasil logout.';

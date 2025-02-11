@@ -85,13 +85,11 @@ class TeacherController extends Controller
         return view('data.create_teacher', compact('kelasForMengajar', 'kelasForWali'));
     }
 
-
-
     public function store(Request $request)
     {
         return DB::transaction(function() use ($request) {
-            // Validasi input
-            $validated = $request->validate([
+            // Validasi dasar tetap sama
+            $rules = [
                 'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk',
                 'nama' => 'required|string|max:255',
                 'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
@@ -101,11 +99,17 @@ class TeacherController extends Controller
                 'alamat' => 'required|string|max:500',
                 'jabatan' => 'required|in:guru,guru_wali',
                 'kelas_ids' => 'required|array',
-                'wali_kelas_id' => 'required_if:jabatan,guru_wali|exists:kelas,id',
                 'username' => 'required|string|max:255|unique:gurus,username',
                 'password' => 'required|string|min:6|confirmed',
                 'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ], [
+            ];
+            // Tambah validasi wali_kelas_id jika jabatan guru_wali
+            if ($request->jabatan === 'guru_wali') {
+                $rules['wali_kelas_id'] = 'required|exists:kelas,id';
+            }
+
+
+            $validated = $request->validate($rules, [
                 'nuptk.required' => 'NUPTK wajib diisi',
                 'nuptk.numeric' => 'NUPTK harus berupa angka',
                 'nuptk.digits_between' => 'NUPTK harus antara 9-15 digit',
@@ -123,7 +127,8 @@ class TeacherController extends Controller
                 'jabatan.required' => 'Jabatan wajib diisi',
                 'jabatan.in' => 'Jabatan harus guru atau guru dan wali kelas',
                 'kelas_ids.required' => 'Kelas yang diajar wajib diisi',
-                'wali_kelas_id.required_if' => 'Kelas yang diwalikan wajib diisi untuk wali kelas',
+                'wali_kelas_id.required' => 'Kelas yang diwalikan wajib diisi untuk wali kelas',
+                'wali_kelas_id.exists' => 'Kelas yang dipilih tidak valid',
                 'username.required' => 'Username wajib diisi',
                 'username.unique' => 'Username sudah digunakan',
                 'password.required' => 'Password wajib diisi',
@@ -133,53 +138,62 @@ class TeacherController extends Controller
                 'photo.mimes' => 'Format file harus JPG atau PNG',
                 'photo.max' => 'Ukuran file maksimal 2MB',
             ]);
-    
-            // Jika guru dan wali kelas, cek apakah kelas sudah punya wali
-            if ($request->jabatan === 'guru_wali') {
-                $sudahAdaWali = DB::table('guru_kelas')
-                    ->where('kelas_id', $request->wali_kelas_id)
-                    ->where('is_wali_kelas', true)
-                    ->exists();
-    
-                if ($sudahAdaWali) {
-                    throw ValidationException::withMessages([
-                        'wali_kelas_id' => 'Kelas ini sudah memiliki wali kelas'
-                    ]);
-                }
-            }
-    
-    
-            // Handle password
+
+
+            $validated = $request->validate($rules);
+
+            // Handle password dan photo seperti sebelumnya
             $validated['password'] = Hash::make($validated['password']);
             $validated['password_plain'] = $request->password;
-    
-            // Handle photo jika ada
+
             if ($request->hasFile('photo')) {
                 $validated['photo'] = $request->file('photo')->store('teacher-photos', 'public');
             }
-    
+
             // Buat guru baru
             $guru = Guru::create($validated);
 
-            foreach ($validated['kelas_ids'] as $kelasId) {
-                $isWaliKelas = ($validated['jabatan'] === 'guru_wali' && 
-                               $kelasId == $request->wali_kelas_id);
-                
-                $guru->kelas()->attach($kelasId, [
-                    'is_wali_kelas' => $isWaliKelas,
-                    'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
-                ]);
+            // Array untuk menyimpan kelas yang sudah di-attach
+            $attachedKelas = [];
+
+            // Proses kelas yang diajar
+            if (!empty($validated['kelas_ids'])) {
+                foreach ($validated['kelas_ids'] as $kelasId) {
+                    // Skip jika kelas sudah di-attach
+                    if (in_array($kelasId, $attachedKelas)) {
+                        continue;
+                    }
+
+                    $isWaliKelas = ($request->jabatan === 'guru_wali' && $request->wali_kelas_id == $kelasId);
+                    
+                    // Cek apakah sudah ada relasi yang sama
+                    $existingRelation = DB::table('guru_kelas')
+                        ->where('guru_id', $guru->id)
+                        ->where('kelas_id', $kelasId)
+                        ->where('is_wali_kelas', $isWaliKelas)
+                        ->where('role', $isWaliKelas ? 'wali_kelas' : 'pengajar')
+                        ->exists();
+
+                    if (!$existingRelation) {
+                        $guru->kelas()->attach($kelasId, [
+                            'is_wali_kelas' => $isWaliKelas,
+                            'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
+                        ]);
+                        $attachedKelas[] = $kelasId;
+                    }
+                }
             }
 
-            if ($validated['jabatan'] === 'guru_wali' && 
-                !in_array($request->wali_kelas_id, $validated['kelas_ids'])) {
+            // Proses wali kelas jika perlu
+            if ($request->jabatan === 'guru_wali' && 
+                !in_array($request->wali_kelas_id, $attachedKelas)) {
                 
                 $guru->kelas()->attach($request->wali_kelas_id, [
                     'is_wali_kelas' => true,
                     'role' => 'wali_kelas'
                 ]);
             }
-    
+
             return redirect()->route('teacher')
                 ->with('success', 'Data guru berhasil ditambahkan');
         });
