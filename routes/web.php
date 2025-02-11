@@ -227,8 +227,10 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
-    
-    Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])->name('dashboard');
+
+    Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])
+    ->middleware('check.wali.kelas')  // Tambah middleware baru
+    ->name('dashboard');
     Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])->name('profile');
     Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgressWaliKelas'])
         ->name('kelas.progress');

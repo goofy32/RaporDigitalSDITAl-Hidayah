@@ -51,18 +51,24 @@
                     <tr class="bg-white border-b hover:bg-gray-50">
                         <td class="px-6 py-4">{{ $index + $kelasList->firstItem() }}</td>
                         <td class="px-6 py-4">Kelas {{ $kelas->nomor_kelas }} - {{ $kelas->nama_kelas }}</td>
-                        <td class="px-6 py-4">{{ $kelas->wali_kelas }}</td>
+                        <td class="px-6 py-4">
+                            @if($kelas->waliKelas->first())
+                                {{ $kelas->waliKelas->first()->nama }}
+                            @else
+                                <span class="text-gray-400">Belum ada wali kelas</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 text-center">
-                        <div class="flex space-x-2">
-                            <a href="{{ route('kelas.edit', $kelas->id) }}" class="text-yellow-600 hover:text-yellow-800">
-                                <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
-                            </a>
-                            <form action="{{ route('kelas.destroy', $kelas->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:underline"><img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5"></button>
-                            </form>
-                        </div>
+                            <div class="flex space-x-2">
+                                <a href="{{ route('kelas.edit', $kelas->id) }}" class="text-yellow-600 hover:text-yellow-800">
+                                    <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                </a>
+                                <form action="{{ route('kelas.destroy', $kelas->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?');" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-500 hover:underline"><img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5"></button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty

@@ -56,58 +56,116 @@ class ClassController extends Controller
     // Menampilkan form tambah data kelas
     public function create()
     {
-        return view('data.create_class');
+        // Ambil hanya guru yang:
+        // 1. Jabatannya guru_wali
+        // 2. Belum menjadi wali kelas dimanapun
+        $guruList = Guru::where('jabatan', 'guru_wali')
+                        ->whereDoesntHave('kelas', function($query) {
+                            $query->where('guru_kelas.is_wali_kelas', true)
+                                  ->where('guru_kelas.role', 'wali_kelas');
+                        })
+                        ->get();
+    
+        return view('data.create_class', compact('guruList'));
     }
-
-    // Menyimpan data kelas baru
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'nomor_kelas' => 'required|integer|min:1|max:99',
             'nama_kelas' => 'required|string|max:255',
-            'wali_kelas' => 'required|string|max:255',
         ], [
+            'nomor_kelas.required' => 'Nomor kelas harus diisi',
+            'nomor_kelas.integer' => 'Nomor kelas harus berupa angka',
             'nomor_kelas.min' => 'Nomor kelas minimal 1',
             'nomor_kelas.max' => 'Nomor kelas maksimal 99',
-            'nomor_kelas.required' => 'Nomor kelas harus diisi',
-            'nomor_kelas.integer' => 'Nomor kelas harus berupa angka'
+            'nama_kelas.required' => 'Nama kelas harus diisi',
+            'nama_kelas.max' => 'Nama kelas maksimal 255 karakter'
         ]);
     
-        Kelas::create([
-            'nomor_kelas' => $request->input('nomor_kelas'),
-            'nama_kelas' => $request->input('nama_kelas'),
-            'wali_kelas' => $request->input('wali_kelas'),
-        ]);
+        DB::beginTransaction();
+        try {
+            // Cek apakah kombinasi nomor_kelas dan nama_kelas sudah ada
+            $existingClass = Kelas::where('nomor_kelas', $validated['nomor_kelas'])
+                                 ->where('nama_kelas', $validated['nama_kelas'])
+                                 ->first();
+            if ($existingClass) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Kelas ' . $validated['nomor_kelas'] . ' ' . $validated['nama_kelas'] . ' sudah ada. Silakan gunakan nama kelas yang berbeda.');
+            }
     
-        return redirect()->route('kelas.index')->with('success', 'Data kelas berhasil ditambahkan.');
+            // Buat kelas baru
+            $kelas = Kelas::create([
+                'nomor_kelas' => $validated['nomor_kelas'],
+                'nama_kelas' => $validated['nama_kelas']
+            ]);
+    
+            DB::commit();
+            return redirect()->route('kelas.index')
+                ->with('success', 'Data kelas berhasil ditambahkan');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
-
     // Menampilkan form edit data kelas
     public function edit($id)
     {
         $kelas = Kelas::findOrFail($id);
+        $waliKelas = $kelas->guru()  // Perbaiki dari $kelAs menjadi $kelas
+                          ->whereRaw('guru_kelas.is_wali_kelas = 1')
+                          ->whereRaw("guru_kelas.role = 'wali_kelas'")
+                          ->first();
         
-        // Tidak perlu parsing nama_kelas karena kita sudah punya field nomor_kelas
-        return view('data.edit_class', compact('kelas'));
+        return view('data.edit_class', compact('kelas', 'waliKelas'));
     }
     // Mengupdate data kelas
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'nomor_kelas' => 'required|integer|max:99|min:1',
+        $validated = $request->validate([
+            'nomor_kelas' => 'required|integer|min:1|max:99',
             'nama_kelas' => 'required|string|max:255',
-            'wali_kelas' => 'required|string|max:255',
+        ], [
+            'nomor_kelas.required' => 'Nomor kelas harus diisi',
+            'nomor_kelas.integer' => 'Nomor kelas harus berupa angka',
+            'nomor_kelas.min' => 'Nomor kelas minimal 1',
+            'nomor_kelas.max' => 'Nomor kelas maksimal 99',
+            'nama_kelas.required' => 'Nama kelas harus diisi',
+            'nama_kelas.max' => 'Nama kelas maksimal 255 karakter'
         ]);
     
-        $kelas = Kelas::findOrFail($id);
+        DB::beginTransaction();
+        try {
+            $kelas = Kelas::findOrFail($id);
     
-        $kelas->update([
-            'nomor_kelas' => $request->input('nomor_kelas'),
-            'nama_kelas' => $request->input('nama_kelas'),
-            'wali_kelas' => $request->input('wali_kelas'),
-        ]);
+            // Cek apakah kombinasi nomor_kelas dan nama_kelas sudah ada di kelas lain
+            $existingClass = Kelas::where('id', '!=', $id)
+                                 ->where('nomor_kelas', $validated['nomor_kelas'])
+                                 ->where('nama_kelas', $validated['nama_kelas'])
+                                 ->first();
+            
+            if ($existingClass) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Kelas ' . $validated['nomor_kelas'] . ' ' . $validated['nama_kelas'] . ' sudah ada. Silakan gunakan nama kelas yang berbeda.');
+            }
+            
+            $kelas->update([
+                'nomor_kelas' => $validated['nomor_kelas'],
+                'nama_kelas' => $validated['nama_kelas']
+            ]);
     
-        return redirect()->route('kelas.index')->with('success', 'Data kelas berhasil diupdate.');
+            DB::commit();
+            return redirect()->route('kelas.index')
+                ->with('success', 'Data kelas berhasil diperbarui');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     // Menghapus data kelas

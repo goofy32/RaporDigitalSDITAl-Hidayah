@@ -27,7 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'session.timeout' => SessionTimeout::class,
             'check.matapelajaran.ownership' => CheckMataPelajaranOwnership::class,
-            'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class
+            'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            'check.wali.kelas' => \App\Http\Middleware\CheckWaliKelas::class,
         ]);
 
         // Konfigurasi CSRF

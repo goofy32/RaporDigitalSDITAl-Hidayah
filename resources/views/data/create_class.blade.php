@@ -3,53 +3,139 @@
 @section('title', 'Tambah Data Kelas')
 
 @section('content')
-<div class="p-6 bg-white mt-14">
-    <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Kelas</h2>
-        <div>
-            <a href="{{ route('kelas.index') }}" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                Kembali
-            </a>
-            <button type="submit" form="createClassForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                Simpan
-            </button>
+<div class="w-full">
+    <div class="p-4 bg-white mt-14 rounded-lg shadow">
+        <!-- Error Messages -->
+        @if ($errors->any())
+        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium">Terdapat beberapa kesalahan:</h3>
+                    <ul class="mt-2 list-disc list-inside text-sm">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
         </div>
+        @endif
+
+         <!-- Error Specific Message -->
+         @if(session('error'))
+        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm">{{ session('error') }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
+
+
+        <!-- Success Message -->
+        @if (session('success'))
+        <div class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium">{{ session('success') }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
+
+
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-green-700">Form Tambah Kelas</h2>
+            <div class="flex space-x-2">
+                <button onclick="window.history.back()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    Kembali
+                </button>
+                <button form="createClassForm" type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    Simpan
+                </button>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="createClassForm" action="{{ route('kelas.store') }}" method="POST" class="w-full">  <!-- Tambahkan w-full -->
+            @csrf
+            <div class="space-y-6 w-full">  <!-- Tambahkan w-full -->
+                <!-- Nomor Kelas -->
+                <div class="w-full">  <!-- Tambahkan w-full -->
+                    <label class="block text-sm font-medium text-gray-700">Nomor Kelas</label>
+                    <input type="number" name="nomor_kelas" min="1" max="99" value="{{ old('nomor_kelas') }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 @error('nomor_kelas') border-red-500 @enderror"
+                        placeholder="Masukkan nomor kelas">
+                    <p class="mt-1 text-sm text-gray-500">Masukkan angka antara 1-99</p>
+                    @error('nomor_kelas')
+                        <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Nama Kelas -->
+                <div class="w-full">  <!-- Tambahkan w-full -->
+                    <label class="block text-sm font-medium text-gray-700">Nama Kelas</label>
+                    <input type="text" name="nama_kelas" value="{{ old('nama_kelas') }}" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 @error('nama_kelas') border-red-500 @enderror"
+                        placeholder="Contoh: Al-Farabi, Ibnu Sina">
+                    @error('nama_kelas')
+                        <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Wali Kelas -->
+                <div class="w-full">  <!-- Tambahkan w-full -->
+                    <label class="block text-sm font-medium text-gray-700">Wali Kelas (Opsional)</label>
+                    <select name="wali_kelas_id" 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 @error('wali_kelas_id') border-red-500 @enderror">
+                        <option value="">Pilih Wali Kelas</option>
+                        @foreach($guruList as $guru)
+                            <option value="{{ $guru->id }}" {{ old('wali_kelas_id') == $guru->id ? 'selected' : '' }}>
+                                {{ $guru->nama }} ({{ $guru->nuptk }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-sm text-gray-500">Hanya menampilkan guru dengan jabatan Wali Kelas yang belum ditugaskan</p>
+                </div>
+            </div>
+        </form>
     </div>
-
-    <!-- Form Tambah Data Kelas -->
-    <form id="createClassForm" action="{{ route('kelas.store') }}" method="post" class="space-y-6">
-        @csrf
-
-        <!-- Nomor Kelas -->
-        <div>
-            <label for="nomor_kelas" class="block mb-2 text-sm font-medium text-gray-900">Nomor Kelas</label>
-            <input type="number" id="nomor_kelas" name="nomor_kelas" value="{{ old('nomor_kelas') }}" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
-            @error('nomor_kelas')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <!-- Nama Kelas -->
-        <div>
-            <label for="nama_kelas" class="block mb-2 text-sm font-medium text-gray-900">Nama Kelas</label>
-            <input type="text" id="nama_kelas" name="nama_kelas" value="{{ old('nama_kelas') }}" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
-            @error('nama_kelas')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <!-- Wali Kelas -->
-        <div>
-            <label for="wali_kelas" class="block mb-2 text-sm font-medium text-gray-900">Wali Kelas</label>
-            <input type="text" id="wali_kelas" name="wali_kelas" value="{{ old('wali_kelas') }}" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
-            @error('wali_kelas')
-            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-    </form>
 </div>
+@push('scripts')
+<script>
+document.getElementById('nomor_kelas').addEventListener('input', function(e) {
+    // Hapus angka 0 di depan
+    if(this.value.length > 0) {
+        this.value = parseInt(this.value.replace(/^0+/, '')) || '';
+    }
+    
+    // Jika nilai 0, kosongkan input
+    if(this.value === '0') {
+        this.value = '';
+    }
+    
+    // Batasi input maksimal 99
+    if(parseInt(this.value) > 99) {
+        this.value = '99';
+    }
+});
+</script>
+@endpush
 @endsection

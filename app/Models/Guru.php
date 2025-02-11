@@ -22,12 +22,46 @@ class Guru extends Authenticatable
         'email',
         'alamat',
         'jabatan',
-        'kelas_pengajar_id',
         'username',
         'password',
-        'password_plain', 
+        'password_plain',
         'photo',
     ];
+
+    // Relasi dengan kelas
+    public function kelas()
+    {
+        return $this->belongsToMany(Kelas::class, 'guru_kelas')
+            ->withPivot('is_wali_kelas', 'role')
+            ->withTimestamps();
+    }
+    // Kelas yang diwali
+    public function kelasWali()
+    {
+        return $this->belongsToMany(Kelas::class, 'guru_kelas')
+            ->wherePivot('is_wali_kelas', true)
+            ->where('role', 'wali_kelas')  // Tambahkan ini
+            ->withTimestamps();
+    }
+    // Kelas yang diajar
+    public function kelasAjar()
+    {
+        return $this->belongsToMany(Kelas::class, 'guru_kelas')
+            ->wherePivot('role', 'pengajar')
+            ->withTimestamps();
+    }
+
+    // Check if guru is wali kelas
+    public function isWaliKelas()
+    {
+        return $this->kelasWali()->exists();
+    }
+
+    // Get kelas wali if exists
+    public function getKelasWaliAttribute()
+    {
+        return $this->kelasWali()->first();
+    }
 
     protected $hidden = [
         'password',
@@ -171,9 +205,4 @@ class Guru extends Authenticatable
     {
         return $this->photo ? asset('storage/' . $this->photo) : null;
     }
-    public function kelasWaliKelas()
-    {
-        return $this->hasOne(Kelas::class, 'wali_kelas', 'id');
-    }
-
 }

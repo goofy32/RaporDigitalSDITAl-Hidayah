@@ -13,14 +13,18 @@ class AuthenticateGuru
         if (!Auth::guard('guru')->check()) {
             return redirect('login');
         }
-
-        // Tambahan pengecekan session
-        if (!session()->has('selected_role')) {
-            Auth::guard('guru')->logout();
-            return redirect('login')
-                ->with('error', 'Sesi telah berakhir. Silakan login kembali.');
+    
+        $guru = Auth::guard('guru')->user();
+    
+        // Jika user adalah wali kelas, pastikan dia benar-benar wali kelas dari kelasnya
+        if(session('selected_role') === 'wali_kelas') {
+            $kelas = Kelas::where('wali_kelas_id', $guru->id)->first();
+            if(!$kelas) {
+                Auth::guard('guru')->logout();
+                return redirect('login')->with('error', 'Anda tidak terdaftar sebagai wali kelas');
+            }
         }
-
+    
         return $next($request);
     }
 }
