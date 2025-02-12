@@ -3,29 +3,38 @@
 @section('title', 'Manajemen Template Rapor')
 
 @section('content')
-<div class="container mx-auto px-4">
+<div class="container mx-auto px-4" 
+     x-data="reportManager" 
+     x-init="initData('{{ $type }}')"
+     data-type="{{ $type }}"><!-- Pindahkan x-data ke sini -->
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-semibold">Template Rapor {{ $type }}</h1>
-        <button @click="openPlaceholderGuide" 
+        <button @click="openPlaceholderGuide()" 
                 class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             Panduan Placeholder
         </button>
     </div>
 
-    <div x-data="reportManager"
-         x-init="initData('{{ $type }}')"
+
+    <div x-init="initData('{{ $type }}')"
          class="space-y-6">
         <!-- Alert Feedback -->
         <div x-show="feedback.message" 
-             x-transition
-             :class="{'bg-green-100 border-green-400': feedback.type === 'success', 
-                     'bg-red-100 border-red-400': feedback.type === 'error'}"
-             class="p-4 rounded-lg border">
-            <div class="flex justify-between">
-                <p :class="{'text-green-700': feedback.type === 'success', 
-                           'text-red-700': feedback.type === 'error'}" 
-                   x-text="feedback.message"></p>
-                <button @click="feedback.message = ''" class="text-gray-500 hover:text-gray-700">×</button>
+            x-transition
+            :class="{'bg-green-100 border-green-400 text-green-700': feedback.type === 'success', 
+                    'bg-red-100 border-red-400 text-red-700': feedback.type === 'error'}"
+            class="fixed top-4 right-4 p-4 rounded-lg border shadow-lg z-50 max-w-md">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg x-show="feedback.type === 'success'" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
+                    </svg>
+                    <svg x-show="feedback.type === 'error'" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                    </svg>
+                    <p x-text="feedback.message"></p>
+                </div>
+                <button @click="feedback.message = ''" class="ml-4 text-current hover:text-gray-600">×</button>
             </div>
         </div>
 
@@ -88,16 +97,13 @@
 
         <!-- Modal Panduan Placeholder -->
         <div x-show="showPlaceholderGuide" 
-             x-transition.opacity
-             class="fixed inset-0 z-50 overflow-y-auto"
-             @click.away="showPlaceholderGuide = false"
-             x-cloak>
+            x-transition.opacity
+            class="fixed inset-0 z-50 overflow-y-auto"
+            @keydown.escape.window="showPlaceholderGuide = false"
+            x-cloak>
             <div class="flex items-center justify-center min-h-screen p-4">
-                <div class="fixed inset-0 bg-black opacity-50"></div>
-                <div class="relative bg-white rounded-lg max-w-4xl w-full mx-auto">
-                    @include('admin.report.placeholder_guide')
-                </div>
-                <div class="fixed inset-0 bg-black opacity-50"></div>
+                <!-- Overlay yang bisa diklik untuk menutup -->
+                <div class="fixed inset-0 bg-black opacity-50" @click="showPlaceholderGuide = false"></div>
                 <div class="relative bg-white rounded-lg max-w-4xl w-full mx-auto">
                     @include('admin.report.placeholder_guide')
                 </div>

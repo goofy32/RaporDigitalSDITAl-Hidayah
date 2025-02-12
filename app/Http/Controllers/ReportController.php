@@ -36,28 +36,29 @@ class ReportController extends Controller
                 ->where('is_active', true)
                 ->first();
 
+            // Tambahkan header untuk memastikan response JSON
             return response()->json([
                 'success' => true,
                 'template' => $template
-            ]);
+            ])->header('Content-Type', 'application/json');
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengambil template: ' . $e->getMessage()
-            ], 500);
+            ], 500)->header('Content-Type', 'application/json');
         }
     }
 
     public function upload(Request $request)
     {
-        $request->validate([
-            'template' => 'required|file|mimes:docx',
-            'type' => 'required|in:UTS,UAS'
-        ]);
-
         try {
+            $request->validate([
+                'template' => 'required|file|mimes:docx',
+                'type' => 'required|in:UTS,UAS'
+            ]);
+    
             DB::beginTransaction();
-
+    
             $file = $request->file('template');
             $filename = time() . '_' . $file->getClientOriginalName();
             
@@ -81,10 +82,10 @@ class ReportController extends Controller
                     'message' => $message
                 ], 422);
             }
-
+    
             // Simpan file
             $path = $file->storeAs('templates/rapor', $filename, 'public');
-
+    
             // Simpan record ke database
             $template = ReportTemplate::create([
                 'filename' => $filename,
@@ -94,14 +95,20 @@ class ReportController extends Controller
                 'tahun_ajaran' => session('tahun_ajaran'),
                 'semester' => session('semester')
             ]);
-
+    
             DB::commit();
-
+    
             return response()->json([
                 'success' => true,
                 'template' => $template
             ]);
-
+    
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -352,9 +359,10 @@ class ReportController extends Controller
 
         \Log::info('Placeholders data:', $placeholders);
 
+        if (request()->wantsJson()) {
+            return response()->json(['placeholders' => $placeholders]);
+        }
     
-        return view('admin.report.placeholder_guide', [
-            'placeholders' => $placeholders
-        ]);
+        return view('admin.report.placeholder_guide', ['placeholders' => $placeholders]);
     }
 }

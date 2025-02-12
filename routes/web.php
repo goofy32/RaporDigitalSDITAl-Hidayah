@@ -163,7 +163,8 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
         Route::get('/{template}/preview', [ReportController::class, 'preview'])->name('preview');
         Route::post('/{template}/activate', [ReportController::class, 'activate'])->name('activate');
         Route::delete('/{template}', [ReportController::class, 'destroy'])->name('destroy');
-        Route::get('/placeholder-guide', [ReportController::class, 'placeholderGuide'])->name('placeholder.guide');
+        Route::get('/report-template/placeholder-guide', [ReportController::class, 'placeholderGuide'])
+            ->name('report.template.placeholder.guide');
     });
 });
 

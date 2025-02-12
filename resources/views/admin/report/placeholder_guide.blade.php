@@ -1,22 +1,28 @@
 <div class="p-6">
 @if(isset($placeholders) && is_array($placeholders))
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold">Panduan Placeholder Rapor</h2>
-            <button @click="showPlaceholderGuide = false" 
-                    class="text-gray-500 hover:text-gray-700">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-
-    <!-- Search -->
-    <div class="mb-4">
-        <input type="text" 
-                x-model="placeholderSearch" 
-                placeholder="Cari placeholder..."
-                class="w-full px-4 py-2 border rounded-lg">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold">Panduan Placeholder Rapor</h2>
+        <button @click="showPlaceholderGuide = false" 
+                class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
+
+    @if(count($placeholders) === 0)
+        <div class="text-red-500">
+            Variabel placeholders kosong
+        </div>
+    @else
+        <!-- Search -->
+        <div class="mb-4">
+            <input type="text" 
+                   x-model="placeholderSearch" 
+                   placeholder="Cari placeholder..."
+                   class="w-full px-4 py-2 border rounded-lg">
+        </div>
+    @endif
 
     <!-- Category Tabs -->
     <div x-data="{ activeCategory: 'siswa' }">
@@ -95,6 +101,12 @@
 
 @push('scripts')
 <script>
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        showPlaceholderGuide = false;
+    }
+});
 document.addEventListener('alpine:init', () => {
     Alpine.data('placeholderGuide', () => ({
         placeholderSearch: '',

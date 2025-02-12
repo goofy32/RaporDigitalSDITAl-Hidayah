@@ -4,6 +4,8 @@ import 'flowbite';
 import '@hotwired/turbo';
 import Alpine from 'alpinejs';
 
+const cleanupHandlers = new Set();
+
 document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
         dropdownState: {
@@ -191,15 +193,35 @@ Alpine.store('report', {
 });
 
 // Tambahkan component untuk manajemen rapor
+// Tambahkan component untuk manajemen rapor
 Alpine.data('reportManager', () => ({
+    currentTemplate: null,
+    feedback: {
+        type: '',
+        message: ''
+    },
+    loading: false,
     showPlaceholderGuide: false,
     placeholderSearch: '',
 
-    async openPlaceholderGuide() {
-        this.showPlaceholderGuide = true;
-        // Load panduan placeholder dalam modal
+    async initData(type) {
+        try {
+            const response = await fetch(`/admin/report-template/current?type=${type}`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            if (data.success) {
+                this.currentTemplate = data.template;
+            }
+        } catch (error) {
+            console.error('Error fetching template:', error);
+        }
     },
 
+    // Hapus duplikasi fungsi openPlaceholderGuide
     openPlaceholderGuide() {
         this.showPlaceholderGuide = true;
     },
@@ -214,27 +236,55 @@ Alpine.data('reportManager', () => ({
             });
     },
 
-    init() {
-        const type = this.$el.dataset.type;
-        if (type) {
-            this.$store.report.fetchActiveTemplate(type);
+    async handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+    
+        if (!file.name.endsWith('.docx')) {
+            this.showFeedback('error', 'File harus berformat .docx');
+            return;
+        }
+    
+        const formData = new FormData();
+        formData.append('template', file);
+        formData.append('type', this.$root.dataset.type); // Ambil type dari data attribute
+    
+        try {
+            this.loading = true;
+            console.log('Uploading...', { type: this.$root.dataset.type }); // Debug log
+    
+            const response = await fetch('/admin/report-template/upload', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                }
+            });
+    
+            const result = await response.json();
+            
+            if (result.success) {
+                this.currentTemplate = result.template;
+                this.showFeedback('success', 'Template berhasil diupload');
+                event.target.value = '';
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            this.showFeedback('error', error.message || 'Gagal mengupload template');
+        } finally {
+            this.loading = false;
         }
     },
 
-    handleFileUpload(event) {
-        const file = event.target.files[0];
-        const type = this.$el.dataset.type;
-        if (file) {
-            this.$store.report.uploadTemplate(file, type);
-        }
-    },
     showFeedback(type, message) {
         this.feedback = { type, message };
         setTimeout(() => {
             this.feedback.message = '';
         }, 3000);
-    },
-    
+    }
 }));
 
 // Notification Store dengan Real-time Updates
@@ -440,28 +490,25 @@ Alpine.data('sessionTimeout', () => ({
             sessionStorage.setItem('lastActivityTime', Date.now().toString());
             this.setupSessionCheck();
         });
-
+    
         document.addEventListener('turbo:before-cache', () => {
             if (this.checkInterval) {
                 clearInterval(this.checkInterval);
             }
         });
-
-        updateSidebarActiveState();
+    
         if (typeof initFlowbite === 'function') {
             initFlowbite();
         }
     
-        cleanupHandlers.forEach(cleanup => cleanup());
-        cleanupHandlers.clear();
-    
+        // Perbaiki bagian ini
         const handler = debounce(updateSidebarActiveState, 100);
         document.addEventListener('turbo:render', handler);
         cleanupHandlers.add(() => {
             document.removeEventListener('turbo:render', handler);
         });
     
-        // Restore state dropdown setelah navigasi
+        // Restore dropdown state
         const savedState = localStorage.getItem('formatRaporDropdown');
         if (savedState) {
             Alpine.store('sidebar').dropdownState.formatRapor = savedState === 'true';
