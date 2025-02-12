@@ -11,15 +11,26 @@ class CacheControl
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
-
-        if ($request->is('*.jpg', '*.jpeg', '*.png', '*.gif', '*.svg', '*.ico')) {
-            return $response->header('Cache-Control', 'public, max-age=31536000');
+    
+        // Cache gambar icon dengan aggressive caching
+        if ($request->is('images/icons/*')) {
+            return $response
+                ->header('Cache-Control', 'public, max-age=31536000, immutable')
+                ->header('X-Content-Type-Options', 'nosniff')
+                ->header('X-Frame-Options', 'DENY');
         }
-
+    
+        // Cache asset statis
         if ($request->is('*.css', '*.js')) {
-            return $response->header('Cache-Control', 'public, max-age=2592000');
+            return $response
+                ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                ->header('X-Content-Type-Options', 'nosniff');
         }
-
-        return $response->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    
+        // Prevent caching untuk konten dinamis
+        return $response
+            ->header('Cache-Control', 'no-store, private, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 }

@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.matapelajaran.ownership' => CheckMataPelajaranOwnership::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'check.wali.kelas' => \App\Http\Middleware\CheckWaliKelas::class,
+            'check.report.template' => \App\Http\Middleware\CheckReportTemplate::class,
         ]);
 
         // Konfigurasi CSRF

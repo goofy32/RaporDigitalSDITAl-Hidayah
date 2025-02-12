@@ -13,7 +13,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\TujuanPembelajaranController;
 use App\Http\Controllers\EkstrakurikulerController;
-use App\Http\Controllers\ReportFormatController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Models\FormatRapor;
@@ -156,14 +156,14 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
     ]);
 
     // Report Format
-    Route::prefix('format-rapor')->name('report_format.')->group(function () {
-        Route::get('/{type?}', [ReportFormatController::class, 'index'])->name('index');
-        Route::post('/upload', [ReportFormatController::class, 'upload'])->name('upload');
-        Route::get('/preview/{format}', [ReportFormatController::class, 'preview'])->name('preview');
-        Route::post('/save/{format}', [ReportFormatController::class, 'saveReportData'])->name('save');
-        Route::post('/{format}/activate', [ReportFormatController::class, 'activate'])->name('activate');
-        Route::delete('/{format}', [ReportFormatController::class, 'destroy'])->name('destroy');
-        Route::get('/edit/{format}', [ReportFormatController::class, 'edit'])->name('edit');
+    Route::prefix('report-template')->name('report.template.')->group(function () {
+        Route::get('/{type?}', [ReportController::class, 'index'])->name('index');
+        Route::get('/current', [ReportController::class, 'getCurrentTemplate'])->name('current');
+        Route::post('/upload', [ReportController::class, 'upload'])->name('upload');
+        Route::get('/{template}/preview', [ReportController::class, 'preview'])->name('preview');
+        Route::post('/{template}/activate', [ReportController::class, 'activate'])->name('activate');
+        Route::delete('/{template}', [ReportController::class, 'destroy'])->name('destroy');
+        Route::get('/placeholder-guide', [ReportController::class, 'placeholderGuide'])->name('placeholder.guide');
     });
 });
 
@@ -267,13 +267,15 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         'destroy' => 'absence.destroy',
     ]);
 
-    // Report Management
     Route::prefix('rapor')->name('rapor.')->group(function () {
-        Route::get('/', function () {
-            return view('wali_kelas.rapor');
-        })->name('index');
-        Route::get('/print/{id}', function () {
-            return view('wali_kelas.print');
-        })->name('print');
+        Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
+        Route::get('/preview/{siswa}', [ReportController::class, 'previewWaliKelas'])->name('preview');
+        Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
+        Route::get('/download/{siswa}', [ReportController::class, 'downloadReport'])->name('download');
+        Route::get('/print/{siswa}', [ReportController::class, 'printReport'])->name('print');
+        
+        // Tambahan untuk melihat history rapor
+        Route::get('/history/{siswa}', [ReportController::class, 'reportHistory'])->name('history');
+        Route::get('/batch-generate', [ReportController::class, 'batchGenerate'])->name('batch.generate');
     });
 });

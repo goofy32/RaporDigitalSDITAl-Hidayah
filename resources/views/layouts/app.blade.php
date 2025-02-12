@@ -14,14 +14,57 @@
     
     <!-- Preload critical images -->
     <link rel="preload" 
-          href="{{ asset('images/icons/dashboard-icon.png') }}" 
-          as="image">
+        href="{{ asset('images/icons/dashboard-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
     <link rel="preload" 
-          href="{{ asset('images/icons/score.png') }}" 
-          as="image">
+        href="{{ asset('images/icons/score.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+
     <link rel="preload" 
-          href="{{ asset('images/icons/subject-icon.png') }}" 
-          as="image">
+        href="{{ asset('images/icons/subject-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/achievement-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/class-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/report-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/teacher-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/extracurricular-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/student-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/profile-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+
     
     <title>@yield('title')</title>
     
@@ -51,6 +94,21 @@
         #dropdown-rapor.show {
             display: block;
         }
+        
+        .dropdown-transition {
+            transition: opacity 150ms ease-in-out,
+                        transform 150ms ease-in-out;
+        }
+
+        .sidebar-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        /* Mencegah flash saat navigasi */
+        .turbo-progress-bar {
+            background-color: #3B82F6 !important;
+        }
     </style>
 </head>
 <body>
@@ -58,7 +116,7 @@
     <x-admin.sidebar data-turbo-permanent id="sidebar"></x-admin.sidebar>
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />
 
-    <div class="p-4 sm:ml-64 min-h-screen bg-gray-50">
+    <div class="p-4 sm:ml-64 min-h-screen bg-white">
         <div class="mt-14"> <!-- Padding top untuk navbar -->
             @if(session('success'))
                 <x-alert type="success" :message="session('success')" />

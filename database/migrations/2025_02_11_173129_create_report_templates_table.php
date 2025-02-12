@@ -11,21 +11,20 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('format_rapors', function (Blueprint $table) {
+        Schema::create('report_templates', function (Blueprint $table) {
             $table->id();
-            $table->string('type'); // UTS/UAS
-            $table->string('title');
-            $table->string('template_path');
-            $table->string('preview_path')->nullable();
-            $table->string('tahun_ajaran');
+            $table->string('filename');
+            $table->string('path');
+            $table->enum('type', ['UTS', 'UAS']);
             $table->boolean('is_active')->default(false);
-            $table->json('placeholders')->nullable();
+            $table->string('tahun_ajaran')->nullable();
+            $table->integer('semester')->nullable();
             $table->timestamps();
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('format_rapors');
+        Schema::dropIfExists('report_templates');
     }
 };

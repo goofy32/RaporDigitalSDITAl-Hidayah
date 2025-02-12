@@ -4,6 +4,26 @@ import 'flowbite';
 import '@hotwired/turbo';
 import Alpine from 'alpinejs';
 
+document.addEventListener('alpine:init', () => {
+    Alpine.store('sidebar', {
+        dropdownState: {
+            formatRapor: false
+        },
+        
+        toggleDropdown(name) {
+            this.dropdownState[name] = !this.dropdownState[name];
+            localStorage.setItem(`dropdown_${name}`, this.dropdownState[name]);
+        },
+
+        initDropdown(name) {
+            const savedState = localStorage.getItem(`dropdown_${name}`);
+            if (savedState !== null) {
+                this.dropdownState[name] = savedState === 'true';
+            }
+        }
+    });
+});
+
 // Alpine Stores
 Alpine.store('navigation', {
     imagesLoaded: {},
@@ -14,6 +34,208 @@ Alpine.store('navigation', {
         return this.imagesLoaded[id] || false;
     }
 });
+
+// Tambahkan store baru untuk rapor
+Alpine.store('report', {
+    template: null,
+    loading: false,
+    error: null,
+    feedback: null,
+    
+    // Fetch template aktif
+    async fetchActiveTemplate(type) {
+        if (this.loading) return;
+        
+        this.loading = true;
+        try {
+            const response = await fetch(`/admin/report-template/${type}/active`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            
+            const data = await response.json();
+            this.template = data.template;
+        } catch (error) {
+            console.error('Error fetching template:', error);
+            this.error = error.message;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    // Upload template baru
+    async uploadTemplate(file, type) {
+        if (!file || this.loading) return;
+
+        const formData = new FormData();
+        formData.append('template', file);
+        formData.append('type', type);
+
+        this.loading = true;
+        try {
+            const response = await fetch('/admin/report-template/upload', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+
+            this.template = result.template;
+            this.setFeedback('Template berhasil diupload', 'success');
+            return true;
+        } catch (error) {
+            this.setFeedback(error.message, 'error');
+            return false;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    // Aktivasi template
+    async activateTemplate(templateId) {
+        if (this.loading) return;
+
+        this.loading = true;
+        try {
+            const response = await fetch(`/admin/report-template/${templateId}/activate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+
+            if (this.template && this.template.id === templateId) {
+                this.template.is_active = true;
+            }
+            this.setFeedback('Template berhasil diaktifkan', 'success');
+            return true;
+        } catch (error) {
+            this.setFeedback(error.message, 'error');
+            return false;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async downloadSampleTemplate() {
+        try {
+            const response = await fetch('/admin/report-template/sample');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'template_rapor_sample.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            this.setFeedback('Gagal mengunduh template contoh', 'error');
+        }
+    },
+
+    // Generate rapor
+    async generateReport(siswaId, type) {
+        if (this.loading) return;
+
+        this.loading = true;
+        try {
+            const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ type })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message);
+            }
+
+            // Handle file download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rapor_${type.toLowerCase()}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            this.setFeedback('Rapor berhasil digenerate', 'success');
+            return true;
+        } catch (error) {
+            this.setFeedback(error.message, 'error');
+            return false;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    // Helper untuk feedback
+    setFeedback(message, type = 'success') {
+        this.feedback = { message, type };
+        setTimeout(() => {
+            this.feedback = null;
+        }, 3000);
+    }
+});
+
+// Tambahkan component untuk manajemen rapor
+Alpine.data('reportManager', () => ({
+    showPlaceholderGuide: false,
+    placeholderSearch: '',
+
+    async openPlaceholderGuide() {
+        this.showPlaceholderGuide = true;
+        // Load panduan placeholder dalam modal
+    },
+
+    openPlaceholderGuide() {
+        this.showPlaceholderGuide = true;
+    },
+
+    copyPlaceholder(text) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                this.showFeedback('success', 'Placeholder berhasil disalin');
+            })
+            .catch(() => {
+                this.showFeedback('error', 'Gagal menyalin placeholder');
+            });
+    },
+
+    init() {
+        const type = this.$el.dataset.type;
+        if (type) {
+            this.$store.report.fetchActiveTemplate(type);
+        }
+    },
+
+    handleFileUpload(event) {
+        const file = event.target.files[0];
+        const type = this.$el.dataset.type;
+        if (file) {
+            this.$store.report.uploadTemplate(file, type);
+        }
+    },
+    showFeedback(type, message) {
+        this.feedback = { type, message };
+        setTimeout(() => {
+            this.feedback.message = '';
+        }, 3000);
+    },
+    
+}));
 
 // Notification Store dengan Real-time Updates
 Alpine.store('notification', {
@@ -224,8 +446,31 @@ Alpine.data('sessionTimeout', () => ({
                 clearInterval(this.checkInterval);
             }
         });
+
+        updateSidebarActiveState();
+        if (typeof initFlowbite === 'function') {
+            initFlowbite();
+        }
+    
+        cleanupHandlers.forEach(cleanup => cleanup());
+        cleanupHandlers.clear();
+    
+        const handler = debounce(updateSidebarActiveState, 100);
+        document.addEventListener('turbo:render', handler);
+        cleanupHandlers.add(() => {
+            document.removeEventListener('turbo:render', handler);
+        });
+    
+        // Restore state dropdown setelah navigasi
+        const savedState = localStorage.getItem('formatRaporDropdown');
+        if (savedState) {
+            Alpine.store('sidebar').dropdownState.formatRapor = savedState === 'true';
+        }
     }
 }));
+
+
+
 
 // Notification Handler Component
 Alpine.data('notificationHandler', () => ({
@@ -349,6 +594,21 @@ document.addEventListener('turbo:before-cache', () => {
     if (notificationHandler && notificationHandler.__x) {
         notificationHandler.__x.destroy();
     }
+
+    const reportManager = document.querySelector('[x-data="reportManager"]');
+    if (reportManager && reportManager.__x) {
+        reportManager.__x.destroy();
+    }
+
+    const dropdowns = document.querySelectorAll('[x-data]');
+    dropdowns.forEach(dropdown => {
+        if (dropdown.__x) {
+            const state = dropdown.__x.$data.openDropdown;
+            if (typeof state !== 'undefined') {
+                localStorage.setItem('formatRaporDropdown', state);
+            }
+        }
+    });
 });
 
 // Initialize Alpine
