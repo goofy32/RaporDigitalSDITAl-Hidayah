@@ -47,7 +47,6 @@
                     <input type="text" name="deskripsi_tp[]" placeholder="Deskripsi TP" required
                         class="block w-2/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
                     <button type="button" onclick="addTPRow()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                        <!-- Plus Icon -->
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
                         </svg>
@@ -92,20 +91,19 @@
         const container = document.getElementById('tpContainer');
         const div = document.createElement('div');
         div.className = 'flex items-center mb-2';
-
+        
         div.innerHTML = `
             <input type="text" name="kode_tp[]" placeholder="Kode TP" required
                 class="block w-1/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 mr-2">
             <input type="text" name="deskripsi_tp[]" placeholder="Deskripsi TP" required
                 class="block w-2/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
             <button type="button" onclick="removeTPRow(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                <!-- Minus Icon -->
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 14a1 1 0 01-1-1V6a1 1 0 012 0v7a1 1 0 01-1 1z" clip-rule="evenodd"/>
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                 </svg>
             </button>
         `;
-
+        
         container.appendChild(div);
     }
 
@@ -144,7 +142,7 @@
     // Fungsi untuk menampilkan data di tabel
     function renderTable() {
         const tableBody = document.getElementById('tpTableBody');
-        tableBody.innerHTML = ''; // Bersihkan tabel sebelum render ulang
+        tableBody.innerHTML = '';
 
         tpData.forEach((tp, index) => {
             const row = `
@@ -154,7 +152,9 @@
                     <td class="px-6 py-4">${tp.kodeTP}</td>
                     <td class="px-6 py-4">${tp.deskripsiTP}</td>
                     <td class="px-6 py-4 text-center">
-                        <button onclick="deleteRow(${index})" class="text-red-600 hover:underline">Hapus</button>
+                        <button onclick="deleteRow(${index})" class="hover:opacity-80">
+                            <img src="{{ asset('images/icons/delete.png') }}" alt="Delete" class="w-5 h-5 inline">
+                        </button>
                     </td>
                 </tr>
             `;
@@ -168,7 +168,6 @@
     }
 
     function clearForm() {
-        // Hapus semua input Kode TP dan Deskripsi TP kecuali satu
         const tpContainer = document.getElementById('tpContainer');
         tpContainer.innerHTML = `
             <div class="flex items-center mb-2">
@@ -177,7 +176,6 @@
                 <input type="text" name="deskripsi_tp[]" placeholder="Deskripsi TP" required
                     class="block w-2/3 p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
                 <button type="button" onclick="addTPRow()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    <!-- Plus Icon -->
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
                     </svg>

@@ -18,8 +18,6 @@
             </div>
         </div>
 
-        <!-- Form -->
-        
         <form id="addSubjectForm" action="{{ route('pengajar.subject.store') }}" method="POST" class="space-y-6">
             @csrf
 
@@ -36,10 +34,19 @@
                 <select id="kelas" name="kelas" required
                     class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
                     <option value="">Pilih Kelas</option>
-                    @foreach($classes as $class)
-                        <option value="{{ $class->id }}">{{ $class->nama_kelas }}</option>
-                    @endforeach
+                    @if($classes->isEmpty())
+                        <option value="" disabled>Tidak ada kelas yang ditugaskan</option>
+                    @else
+                        @foreach($classes as $class)
+                            <option value="{{ $class->id }}">
+                                Kelas {{ $class->nomor_kelas }} {{ $class->nama_kelas }}
+                            </option>
+                        @endforeach
+                    @endif
                 </select>
+                @if($classes->isEmpty())
+                    <p class="mt-2 text-sm text-red-600">Anda belum ditugaskan ke kelas manapun. Silakan hubungi admin.</p>
+                @endif
             </div>
 
             <!-- Semester Dropdown -->

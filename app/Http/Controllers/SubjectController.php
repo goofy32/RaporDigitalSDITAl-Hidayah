@@ -9,6 +9,7 @@ use App\Models\Siswa;
 use App\Models\LingkupMateri;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class SubjectController extends Controller
 {
@@ -174,8 +175,17 @@ class SubjectController extends Controller
 
     public function teacherCreate()
     {
-        $guru = auth()->guard('guru')->user();
-        $classes = Kelas::orderBy('nomor_kelas')->orderBy('nama_kelas')->get();
+        // Ambil ID guru yang sedang login
+        $guruId = Auth::guard('guru')->id();
+        
+        // Ambil hanya kelas yang diajar oleh guru tersebut
+        $classes = Kelas::whereHas('guru', function($query) use ($guruId) {
+            $query->where('guru_id', $guruId)
+                  ->where('role', 'pengajar');
+        })->orderBy('nomor_kelas')
+          ->orderBy('nama_kelas')
+          ->get();
+
         return view('pengajar.add_subject', compact('classes'));
     }
 
@@ -222,12 +232,21 @@ class SubjectController extends Controller
 
     public function teacherEdit($id)
     {
-        $guru = auth()->guard('guru')->user();
-        $subject = MataPelajaran::with('lingkupMateris')
-            ->where('guru_id', $guru->id)
-            ->findOrFail($id);
-        $classes = Kelas::orderBy('nomor_kelas')->orderBy('nama_kelas')->get();
-
+        // Ambil data mata pelajaran yang akan diedit
+        $subject = MataPelajaran::with('lingkupMateris')->findOrFail($id);
+        
+        // Ambil ID guru yang sedang login
+        $guruId = Auth::guard('guru')->id();
+        
+        // Ambil hanya kelas yang diajar oleh guru tersebut
+        $classes = Kelas::whereHas('guru', function($query) use ($guruId) {
+            $query->where('guru_id', $guruId)
+                  ->where('role', 'pengajar');
+        })
+        ->orderBy('nomor_kelas')
+        ->orderBy('nama_kelas')
+        ->get();
+    
         return view('pengajar.edit_subject', compact('subject', 'classes'));
     }
 
