@@ -6,29 +6,31 @@
 <div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
     <!-- Statistics Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-14">
-        <!-- Left Section - Stats (2 columns) -->
+        <!-- Left Section - Stats (col-span-2) -->
         <div class="lg:col-span-2">
-            <div class="grid grid-cols-2 gap-3">
+            <!-- Top Row - 2 Cards -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
                 <!-- Siswa Card -->
-                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('wali_kelas.student.index') }}')">
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50" onclick="navigateTo('{{ route('wali_kelas.student.index') }}')">
                     <div class="p-4">
                         <p class="text-2xl font-bold text-green-600">{{ $totalSiswa }}</p>
                         <p class="text-sm text-green-600">Siswa</p>
                     </div>
                 </div>
 
-                <!-- Mata Pelajaran Card -->
-                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
+                <!-- Absensi Card -->
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50" onclick="navigateTo('{{ route('wali_kelas.absence.index') }}')">
                     <div class="p-4">
-                        <p class="text-2xl font-bold text-green-600">{{ $totalMapel }}</p>
-                        <p class="text-sm text-green-600">Mata Pelajaran</p>
+                        <p class="text-2xl font-bold text-green-600">{{ $totalAbsensi ?? 0 }}</p>
+                        <p class="text-sm text-green-600">Absensi</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Ekstrakurikuler Card (Full Width) -->
-            <div class="mt-3">
-                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer" onclick="navigateTo('{{ route('wali_kelas.ekstrakurikuler.index') }}')">
+            <!-- Bottom Row - 1 Card -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Ekstrakurikuler Card -->
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50" onclick="navigateTo('{{ route('wali_kelas.ekstrakurikuler.index') }}')">
                     <div class="p-4">
                         <p class="text-2xl font-bold text-green-600">{{ $totalEkskul }}</p>
                         <p class="text-sm text-green-600">Ekstrakurikuler</p>
@@ -51,7 +53,7 @@
             </div>
 
             <!-- Information Items -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div class="rounded-lg border border-gray-200 shadow-sm">
                 <div class="h-[150px] overflow-y-auto">
                     <div class="relative pl-6 border-l-2 border-gray-200 p-4">
                         <template x-for="item in $store.notification.items" :key="item.id">

@@ -8,15 +8,24 @@ use Illuminate\Http\Request;
 
 class AbsensiController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $absensis = Absensi::with('siswa')
+        $query = Absensi::with('siswa')
             ->whereHas('siswa', function($query) use ($waliKelas) {
                 $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
-            })
-            ->paginate(10);
-
+            });
+    
+        // Tambah fitur pencarian
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->whereHas('siswa', function($q) use ($search) {
+                $q->where('nama', 'LIKE', "%{$search}%")
+                  ->orWhere('nis', 'LIKE', "%{$search}%");
+            });
+        }
+    
+        $absensis = $query->orderBy('created_at', 'desc')->paginate(10);
         return view('wali_kelas.absence', compact('absensis'));
     }
 

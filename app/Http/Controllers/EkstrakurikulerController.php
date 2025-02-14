@@ -99,18 +99,32 @@ class EkstrakurikulerController extends Controller
             return back()->with('error', 'Terjadi kesalahan sistem');
         }
     }
-    public function waliKelasIndex()
+    public function waliKelasIndex(Request $request)
     {
         // Ambil data wali kelas yang sedang login
         $waliKelas = auth()->guard('guru')->user();
         
-        // Query nilai ekstrakulikuler hanya untuk siswa di kelas yang diajar
-        $nilaiEkstrakurikuler = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
+        // Query nilai ekstrakulikuler dengan relasi
+        $query = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
             ->whereHas('siswa', function($query) use ($waliKelas) {
                 $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
-            })
-            ->paginate(10);
+            });
     
+        // Tambah fitur pencarian
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('siswa', function($sq) use ($search) {
+                    $sq->where('nama', 'LIKE', "%{$search}%")
+                       ->orWhere('nis', 'LIKE', "%{$search}%");
+                })->orWhereHas('ekstrakurikuler', function($eq) use ($search) {
+                    $eq->where('nama_ekstrakurikuler', 'LIKE', "%{$search}%");
+                });
+            });
+        }
+    
+        // Urutkan berdasarkan yang terbaru
+        $nilaiEkstrakurikuler = $query->orderBy('created_at', 'desc')->paginate(10);
         return view('wali_kelas.ekstrakurikuler', compact('nilaiEkstrakurikuler'));
     }
 

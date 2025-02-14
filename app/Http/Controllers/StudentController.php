@@ -183,23 +183,34 @@ class StudentController extends Controller
     public function waliKelasIndex(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $query = Siswa::with('kelas')
-            ->where('kelas_id', $waliKelas->kelas_pengajar_id);
+        $kelas = $waliKelas->kelasWali()->first();
+        
+        if (!$kelas) {
+            return back()->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
+        }
+        
+        // Pastikan relasi kelas selalu di-load
+        $query = Siswa::with(['kelas' => function($query) {
+            $query->select('id', 'nomor_kelas', 'nama_kelas');
+        }])->where('kelas_id', $kelas->id);
         
         if($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('nama', 'LIKE', "%{$search}%")
-                  ->orWhere('nis', 'LIKE', "%{$search}%")
-                  ->orWhere('nisn', 'LIKE', "%{$search}%");
+                ->orWhere('nis', 'LIKE', "%{$search}%")
+                ->orWhere('nisn', 'LIKE', "%{$search}%")
+                ->orWhere('jenis_kelamin', 'LIKE', "%{$search}%");
             });
         }
         
-        $students = $query->paginate($request->get('per_page', 10));
+        // Default sorting
+        $query->orderBy('nama', 'asc');
+        
+        $students = $query->paginate(10);
         
         return view('wali_kelas.student', compact('students'));
     }
-
     public function waliKelasShow($id)
     {
         $waliKelas = auth()->guard('guru')->user();
@@ -213,14 +224,30 @@ class StudentController extends Controller
     public function waliKelasCreate()
     {
         $waliKelas = auth()->guard('guru')->user();
-        $kelas = Kelas::where('id', $waliKelas->kelas_pengajar_id)->first();
+        
+        // Cek wali kelas melalui relasi guru_kelas
+        $kelas = $waliKelas->kelasWali()->first();
+        
+        if (!$kelas) {
+            return redirect()->route('wali_kelas.student.index')
+                ->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
+        }
         
         return view('wali_kelas.add_student', compact('kelas'));
     }
+    
 
     public function waliKelasStore(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
+        
+        // Cek wali kelas melalui relasi guru_kelas
+        $kelas = $waliKelas->kelasWali()->first();
+        
+        if (!$kelas) {
+            return redirect()->route('wali_kelas.student.index')
+                ->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
+        }
         
         $validated = $request->validate([
             'nis' => 'required|unique:siswas',
@@ -240,8 +267,8 @@ class StudentController extends Controller
             'pekerjaan_wali' => 'nullable|string',
         ]);
 
-        // Set kelas_id sesuai kelas wali kelas
-        $validated['kelas_id'] = $waliKelas->kelas_pengajar_id;
+        // Set kelas_id dari kelas wali yang ditemukan
+        $validated['kelas_id'] = $kelas->id;
         
         if ($request->hasFile('photo')) {
             $validated['photo'] = $request->file('photo')->store('photos', 'public');
@@ -256,7 +283,6 @@ class StudentController extends Controller
                 ->withInput();
         }
     }
-
     public function waliKelasEdit($id)
     {
         $waliKelas = auth()->guard('guru')->user();

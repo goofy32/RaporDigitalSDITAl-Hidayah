@@ -4,14 +4,14 @@
 
 @section('content')
 <div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
-    <!-- Main Content Container -->
-    <div class="flex flex-col lg:flex-row gap-4 mt-14">
-        <!-- Statistics Grid - Takes 2/3 of the space -->
-        <div class="lg:w-2/3">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+    <!-- Statistics Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-14">
+        <!-- Left Section - Stats (col-span-2) -->
+        <div class="lg:col-span-2">
+            <!-- Top Row - 2 Cards -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
                 <!-- Kelas Card -->
-                <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50">
                     <div class="p-4">
                         <p class="text-2xl font-bold text-green-600">{{ $kelasCount }}</p>
                         <p class="text-sm text-green-600">Kelas</p>
@@ -19,15 +19,18 @@
                 </div>
                 
                 <!-- Siswa Card -->
-                <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50">
                     <div class="p-4">
                         <p class="text-2xl font-bold text-green-600">{{ $siswaCount }}</p>
                         <p class="text-sm text-green-600">Siswa</p>
                     </div>
                 </div>
-                
+            </div>
+
+            <!-- Bottom Row - 1 Card -->
+            <div class="grid grid-cols-2 gap-4">
                 <!-- Mata Pelajaran Card -->
-                <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50">
                     <div class="p-4">
                         <p class="text-2xl font-bold text-green-600">{{ $mapelCount }}</p>
                         <p class="text-sm text-green-600">Mata Pelajaran</p>
@@ -36,8 +39,8 @@
             </div>
         </div>
 
-        <!-- Information Section - Takes 1/3 of the space -->
-        <div class="lg:w-1/3">
+        <!-- Right Section - Information -->
+        <div class="lg:col-span-1">
             <div class="flex items-center justify-between mb-3">
                 <div class="bg-green-600 text-white px-3 py-1.5 rounded-lg inline-block">
                     <span class="flex items-center text-sm">
@@ -50,32 +53,35 @@
             </div>
 
             <!-- Information Items -->
-            <div class="h-[150px] overflow-y-auto">
-                <div class="relative pl-6 border-l-2 border-gray-200">
-                    <template x-for="item in $store.notification.items" :key="item.id">
-                        <div class="mb-4 relative h-[60px]">
-                            <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                </svg>
-                            </div>
-                            <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
-                                class="bg-white rounded-lg border shadow-sm p-3"
-                                :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h3 class="text-sm font-medium" x-text="item.title"></h3>
-                                        <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div class="h-[150px] overflow-y-auto">
+                    <div class="relative pl-6 border-l-2 border-gray-200 p-4">
+                        <template x-for="item in $store.notification.items" :key="item.id">
+                            <div class="mb-4 relative h-[60px]">
+                                <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
+                                    class="bg-white rounded-lg border shadow-sm p-3"
+                                    :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h3 class="text-sm font-medium" x-text="item.title"></h3>
+                                            <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
+                                        </div>
+                                        <span class="text-xs text-gray-500" x-text="item.created_at"></span>
                                     </div>
-                                    <span class="text-xs text-gray-500" x-text="item.created_at"></span>
                                 </div>
                             </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Dropdown and Charts Section -->
     <div class="mt-8">
