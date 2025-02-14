@@ -356,13 +356,13 @@ class ReportController extends Controller
                 ['key' => 'semester', 'description' => 'Semester']
             ]
         ];
-
-        \Log::info('Placeholders data:', $placeholders);
-
-        if (request()->wantsJson()) {
-            return response()->json(['placeholders' => $placeholders]);
-        }
+        
+        \Log::info('Accessing placeholderGuide', [
+            'request_type' => request()->wantsJson() ? 'ajax' : 'regular',
+            'placeholders_count' => count($placeholders)
+        ]);
     
-        return view('admin.report.placeholder_guide', ['placeholders' => $placeholders]);
+        // Selalu kirim data ke view
+        return view('admin.report.placeholder_guide', compact('placeholders'));
     }
 }

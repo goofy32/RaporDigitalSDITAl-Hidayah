@@ -157,14 +157,15 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
 
     // Report Format
     Route::prefix('report-template')->name('report.template.')->group(function () {
+        // Route placeholder guide harus di atas route yang memiliki parameter opsional
+        Route::get('/placeholder-guide', [ReportController::class, 'placeholderGuide'])
+            ->name('placeholder.guide');
         Route::get('/{type?}', [ReportController::class, 'index'])->name('index');
         Route::get('/current', [ReportController::class, 'getCurrentTemplate'])->name('current');
         Route::post('/upload', [ReportController::class, 'upload'])->name('upload');
         Route::get('/{template}/preview', [ReportController::class, 'preview'])->name('preview');
         Route::post('/{template}/activate', [ReportController::class, 'activate'])->name('activate');
         Route::delete('/{template}', [ReportController::class, 'destroy'])->name('destroy');
-        Route::get('/report-template/placeholder-guide', [ReportController::class, 'placeholderGuide'])
-            ->name('report.template.placeholder.guide');
     });
 });
 

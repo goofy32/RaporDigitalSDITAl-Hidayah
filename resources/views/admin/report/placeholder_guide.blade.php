@@ -1,4 +1,8 @@
 <div class="p-6">
+{{-- Debug untuk melihat nilai $placeholders --}}
+    @php
+        \Log::info("Placeholders in view:", ['data' => $placeholders ?? 'Not set']);
+    @endphp
 @if(isset($placeholders) && is_array($placeholders))
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-bold">Panduan Placeholder Rapor</h2>
@@ -83,12 +87,17 @@
         </div>
         @endforeach
     </div>
-@else
-    <div class="text-red-500">
-        Data placeholder tidak tersedia.
-    </div>
-@endif
 
+@else
+        <div class="text-red-500">
+            Data placeholder tidak tersedia.
+            @if(isset($placeholders))
+                (Debug: {{ gettype($placeholders) }})
+            @else
+                (Debug: Variabel tidak terset)
+            @endif
+        </div>
+    @endif
     <!-- Download Template -->
     <div class="mt-8 pt-4 border-t">
         <h3 class="font-medium mb-2">Template Contoh</h3>
