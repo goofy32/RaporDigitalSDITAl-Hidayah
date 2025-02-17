@@ -13,7 +13,7 @@
                 <button onclick="window.history.back()" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Kembali
                 </button>
-                <button @click="handleAjaxSubmit" onclick="saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button @click="handleAjaxSubmit"  class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                     Simpan
                 </button>
             </div>
@@ -184,66 +184,40 @@
         `;
     }
 
-    function saveData() {
-        Alpine.store('formProtection').startSubmitting();
-
-        const saveButton = document.querySelector('button[onclick="saveData()"]');
-        saveButton.disabled = true;
-        saveButton.innerHTML = 'Menyimpan...';
-        
-        if (tpData.length === 0) {
-            alert('Tidak ada data untuk disimpan!');
-            saveButton.disabled = false;
-            saveButton.innerHTML = 'Simpan';
-            return;
-        }
-
-        const data = {
-            tpData: tpData,
-            mataPelajaranId: mataPelajaranId
-        };
-
-        console.log('Sending data:', data); // Debug log
-
-        fetch('{{ route('pengajar.tujuan_pembelajaran.store') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            console.log('Response:', response); // Debug log
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(text);
-                });
+    window.saveData = async function() {
+        try {
+            if (tpData.length === 0) {
+                alert('Tidak ada data untuk disimpan!');
+                return;
             }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Success:', data); // Debug log
-            Alpine.store('formProtection').reset(); // Reset setelah berhasil
-            if (data.success) {
-                alert('Data berhasil disimpan!');
-                window.location.href = '{{ route('pengajar.subject.index') }}';
-            } else {
-                Alpine.store('formProtection').isSubmitting = false; // Reset flag jika gagal
 
+            const response = await fetch('{{ route("pengajar.tujuan_pembelajaran.store") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    tpData: tpData,
+                    mataPelajaranId: mataPelajaranId
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                Alpine.store('formProtection').reset();
+                alert('Data berhasil disimpan!');
+                window.location.href = '{{ route("pengajar.subject.index") }}';
+            } else {
                 throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
             }
-        })
-        .catch(error => {
-            Alpine.store('formProtection').isSubmitting = false;
+        } catch (error) {
             console.error('Error:', error);
             alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
-        })
-        .finally(() => {
-            saveButton.disabled = false;
-            saveButton.innerHTML = 'Simpan';
-        });
-    }
+            Alpine.store('formProtection').isSubmitting = false;
+        }
+    };
 </script>
 @endsection

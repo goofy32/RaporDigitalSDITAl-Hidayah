@@ -12,14 +12,19 @@
                 <button onclick="window.history.back()" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Kembali
                 </button>
-                <button @click="handleAjaxSubmit" form="editSubjectForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button type="submit" form="editSubjectForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                     Simpan
                 </button>
             </div>
         </div>
 
         <!-- Form -->
-        <form id="editSubjectForm" action="{{ route('pengajar.subject.update', $subject->id) }}" x-data="formProtection" method="POST" class="space-y-6">
+        <form id="editSubjectForm" 
+            action="{{ route('pengajar.subject.update', $subject->id) }}" 
+            x-data="formProtection"
+            @submit.prevent="handleNormalSubmit"
+            method="POST" 
+            class="space-y-6">
             @csrf
             @method('PUT')
 
@@ -108,10 +113,20 @@
         `;
         
         container.appendChild(div);
+        
+        // Tandai form berubah saat menambah Lingkup Materi baru
+        Alpine.store('formProtection').markAsChanged();
+        
+        // Tambahkan listener untuk input baru
+        div.querySelector('input').addEventListener('change', () => {
+            Alpine.store('formProtection').markAsChanged();
+        });
     }
     
     function removeLingkupMateri(button, id) {
         if (confirm('Apakah Anda yakin ingin menghapus Lingkup Materi ini?')) {
+            Alpine.store('formProtection').startSubmitting(); // Tandai sedang submit
+            
             fetch(`/pengajar/lingkup-materi/${id}`, {
                 method: 'DELETE',
                 headers: {
@@ -129,6 +144,7 @@
             .then(data => {
                 if (data.success) {
                     button.closest('.flex.items-center').remove();
+                    Alpine.store('formProtection').markAsChanged(); // Tandai form berubah
                 } else {
                     alert('Gagal menghapus Lingkup Materi: ' + data.message);
                 }
@@ -136,6 +152,9 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Terjadi kesalahan saat menghapus Lingkup Materi');
+            })
+            .finally(() => {
+                Alpine.store('formProtection').isSubmitting = false; // Reset flag submit
             });
         }
     }

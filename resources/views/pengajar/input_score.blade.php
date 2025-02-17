@@ -20,7 +20,8 @@
 
         <div class="flex gap-4">
             <button form="saveForm" 
-                    type="submit" 
+                    type="button" 
+                    @click="handleAjaxSubmit" 
                     name="preview" 
                     value="true"
                     class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
@@ -316,33 +317,35 @@
         });
     }
 
-    document.getElementById('saveForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (!validateForm()) {
-            return;
-        }
-
-        Swal.fire({
-            title: 'Menyimpan Nilai...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
+    window.saveData = async function() {
+        try {
+            if (!validateForm()) {
+                return;
             }
-        });
 
-        const formData = new FormData(this);
-        
-        fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
+            Swal.fire({
+                title: 'Menyimpan Nilai...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const formData = new FormData(document.getElementById('saveForm'));
+            
+            const response = await fetch('{{ route("pengajar.score.save_scores", $subject["id"]) }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const data = await response.json();
+            
             if (data.success) {
+                Alpine.store('formProtection').reset();
+                
                 let detailMessage = '<ul class="text-left">';
                 data.details.forEach(student => {
                     detailMessage += `<li class="mb-2"><strong>${student.nama}</strong>:<br>`;
@@ -353,7 +356,6 @@
                 });
                 detailMessage += '</ul>';
 
-                // Tambahkan pesan warning jika ada
                 if (data.warnings && Object.keys(data.warnings).length > 0) {
                     detailMessage += '<div class="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">';
                     detailMessage += '<strong>Peringatan:</strong><br>';
@@ -366,25 +368,27 @@
                     detailMessage += '</div>';
                 }
 
-                Swal.fire({
+                await Swal.fire({
                     icon: 'success',
                     title: 'Berhasil!',
                     html: `Nilai berhasil disimpan!<br><br>${detailMessage}`,
                     width: '600px'
-                }).then(() => {
-                    formChanged = false;
-                    window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
                 });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: data.message || 'Terjadi kesalahan saat menyimpan nilai'
-                });
-            }
-        })
-    });
 
+                window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+            } else {
+                throw new Error(data.message || 'Terjadi kesalahan saat menyimpan nilai');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            Alpine.store('formProtection').isSubmitting = false;
+            await Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: error.message || 'Terjadi kesalahan saat menyimpan nilai'
+            });
+        }
+    };
     // Calculate averages when input changes
     document.addEventListener('input', function(e) {
         if (e.target.matches('.tp-score, .lm-score, .nilai-semester')) {

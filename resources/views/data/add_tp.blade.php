@@ -84,9 +84,8 @@
 <script>
     const csrfToken = '{{ csrf_token() }}';
     const mataPelajaranId = '{{ $mataPelajaran->id }}';
-    let tpData = []; // Array untuk menyimpan data TP sementara
+    let tpData = [];
 
-    // Fungsi untuk menambahkan input Kode TP dan Deskripsi TP
     function addTPRow() {
         const container = document.getElementById('tpContainer');
         const div = document.createElement('div');
@@ -105,13 +104,14 @@
         `;
         
         container.appendChild(div);
+        Alpine.store('formProtection').markAsChanged();
     }
 
     function removeTPRow(button) {
         button.parentElement.remove();
+        Alpine.store('formProtection').markAsChanged();
     }
 
-    // Fungsi untuk menambahkan data ke tabel
     function addRow() {
         if (!validateInputs()) {
             return;
@@ -131,7 +131,6 @@
                 deskripsiTP: deskripsiTPs[i].value.trim(),
             };
 
-            // Validasi duplikasi kode TP
             if (tpData.some(item => item.kodeTP === newRow.kodeTP)) {
                 alert(`Kode TP "${newRow.kodeTP}" sudah ada dalam tabel!`);
                 return;
@@ -142,9 +141,35 @@
 
         renderTable();
         clearForm();
+        Alpine.store('formProtection').markAsChanged();
     }
 
-    // Fungsi untuk menampilkan data di tabel
+    function validateInputs() {
+        const lingkupMateri = document.getElementById('lingkup_materi').value;
+        const kodeTPs = document.getElementsByName('kode_tp[]');
+        const deskripsiTPs = document.getElementsByName('deskripsi_tp[]');
+        
+        if (!lingkupMateri) {
+            alert('Lingkup Materi harus dipilih!');
+            return false;
+        }
+
+        for (let i = 0; i < kodeTPs.length; i++) {
+            if (!kodeTPs[i].value.trim()) {
+                alert(`Kode TP ${i + 1} tidak boleh kosong!`);
+                kodeTPs[i].focus();
+                return false;
+            }
+            if (!deskripsiTPs[i].value.trim()) {
+                alert(`Deskripsi TP ${i + 1} tidak boleh kosong!`);
+                deskripsiTPs[i].focus();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     function renderTable() {
         const tableBody = document.getElementById('tpTableBody');
         tableBody.innerHTML = '';
@@ -170,6 +195,7 @@
     function deleteRow(index) {
         tpData.splice(index, 1);
         renderTable();
+        Alpine.store('formProtection').markAsChanged();
     }
 
     function clearForm() {
@@ -189,47 +215,54 @@
         `;
     }
 
-    function validateInputs() {
-        const lingkupMateri = document.getElementById('lingkup_materi').value;
-        const kodeTPs = document.getElementsByName('kode_tp[]');
-        const deskripsiTPs = document.getElementsByName('deskripsi_tp[]');
-        
-        // Validasi Lingkup Materi
-        if (!lingkupMateri) {
-            alert('Lingkup Materi harus dipilih!');
-            return false;
-        }
-
-        // Validasi Kode TP dan Deskripsi TP
-        for (let i = 0; i < kodeTPs.length; i++) {
-            if (!kodeTPs[i].value.trim()) {
-                alert(`Kode TP ${i + 1} tidak boleh kosong!`);
-                kodeTPs[i].focus();
-                return false;
+    window.saveData = async function() {
+        try {
+            if (tpData.length === 0) {
+                alert('Tidak ada data untuk disimpan!');
+                return;
             }
-            if (!deskripsiTPs[i].value.trim()) {
-                alert(`Deskripsi TP ${i + 1} tidak boleh kosong!`);
-                deskripsiTPs[i].focus();
-                return false;
-            }
-        }
 
-        return true;
-    }
+            const response = await fetch('{{ route("tujuan_pembelajaran.store") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    tpData: tpData,
+                    mataPelajaranId: mataPelajaranId
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                Alpine.store('formProtection').reset();
+                alert('Data berhasil disimpan!');
+                window.location.href = '{{ route("subject.index") }}';
+            } else {
+                throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
+            Alpine.store('formProtection').isSubmitting = false;
+        }
+    };
 
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('addTPForm');
         
         form.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Mencegah form submit default
+                e.preventDefault();
                 if (validateInputs()) {
                     addRow();
                 }
             }
         });
 
-        // Validasi saat input blur (kehilangan fokus)
         form.addEventListener('blur', function(e) {
             if (e.target.hasAttribute('required') && !e.target.value.trim()) {
                 e.target.classList.add('border-red-500');
@@ -240,68 +273,5 @@
             }
         }, true);
     });
-
-
-    function saveData() {
-        Alpine.store('formProtection').startSubmitting();
-
-        const saveButton = document.querySelector('button[onclick="saveData()"]');
-        
-        if (tpData.length === 0) {
-            alert('Tidak ada data untuk disimpan! Silakan tambahkan minimal satu Tujuan Pembelajaran.');
-            return;
-        }
-
-        // Konfirmasi sebelum menyimpan
-        if (!confirm('Apakah Anda yakin ingin menyimpan data?')) {
-            return;
-        }
-
-        saveButton.disabled = true;
-        saveButton.innerHTML = 'Menyimpan...';
-
-        fetch('{{ route('tujuan_pembelajaran.store') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                tpData: tpData,
-                mataPelajaranId: mataPelajaranId
-            })
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            return response.text().then(text => {
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.log('Response text:', text);
-                    throw new Error('Invalid JSON response: ' + text);
-                }
-            });
-        })
-        .then(data => {
-            if (data.success) {
-                Alpine.store('formProtection').reset(); // Reset setelah berhasil
-                alert('Data berhasil disimpan!');
-                window.location.href = '{{ route('subject.index') }}';
-            } else {
-                Alpine.store('formProtection').isSubmitting = false; // Reset flag jika gagal
-                throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
-            }
-        })
-        .catch(error => {
-            Alpine.store('formProtection').isSubmitting = false; // Reset flag jika error
-            console.error('Error:', error);
-            alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
-        });
-        .finally(() => {
-            saveButton.disabled = false;
-            saveButton.innerHTML = 'Simpan';
-        });
-    }
 </script>
 @endsection

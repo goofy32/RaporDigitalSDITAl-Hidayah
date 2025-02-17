@@ -347,11 +347,30 @@ Alpine.data('formProtection', () => ({
             });
         });
     },
+    handleSubmit(e) {
+        e.preventDefault();
+        if (this.$store.formProtection.formChanged) {
+            if (confirm('Apakah Anda yakin ingin menyimpan perubahan?')) {
+                this.$store.formProtection.startSubmitting();
+                e.target.submit();
+            }
+        } else {
+            e.target.submit();
+        }
+    },
 
-    // Method untuk digunakan pada form submission
-    handleSubmit() {
-        // Reset form protection state saat form berhasil disubmit
-        this.$store.formProtection.reset();
+    // Method untuk handle AJAX submit
+    async handleAjaxSubmit() {
+        this.$store.formProtection.startSubmitting();
+        try {
+            if (typeof window.saveData === 'function') {
+                await window.saveData();
+            }
+            this.$store.formProtection.reset();
+        } catch (error) {
+            console.error('Error:', error);
+            this.$store.formProtection.isSubmitting = false;
+        }
     },
 
     // Method untuk konfirmasi saat membersihkan form
