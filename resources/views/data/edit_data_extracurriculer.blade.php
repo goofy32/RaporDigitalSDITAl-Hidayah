@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="editExtraForm" action="{{ route('ekstra.update', $ekstrakurikuler->id) }}" method="POST" class="space-y-6">
+    <form id="editExtraForm" action="{{ route('ekstra.update', $ekstrakurikuler->id) }}" x-data="formProtection"  @submit="handleSubmit" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 

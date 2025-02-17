@@ -55,7 +55,7 @@
             </div>
         </div>
 
-        <form id="createTeacherForm" action="{{ route('teacher.store') }}" method="POST" enctype="multipart/form-data">
+        <form id="createTeacherForm" action="{{ route('teacher.store') }}" method="POST" @submit="handleSubmit" x-data="formProtection" enctype="multipart/form-data">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Kolom Kiri -->

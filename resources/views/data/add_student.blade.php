@@ -18,7 +18,7 @@
             </div>
         </div>
 
-        <form id="studentForm" action="{{ route('student.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form id="studentForm" action="{{ route('student.store') }}" method="POST" enctype="multipart/form-data" x-data="formProtection"  @submit="handleSubmit" class="space-y-6">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Data Diri Siswa -->

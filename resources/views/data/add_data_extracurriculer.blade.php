@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="addExtraForm" action="{{ route('ekstra.store') }}" method="POST" class="space-y-6">
+    <form id="addExtraForm" action="{{ route('ekstra.store') }}" method="POST" x-data="formProtection"  @submit="handleSubmit" class="space-y-6">
         @csrf
 
         <!-- Nama Ekstrakurikuler -->

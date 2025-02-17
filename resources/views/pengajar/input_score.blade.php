@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    <form id="saveForm" method="POST" action="{{ route('pengajar.score.save_scores', $subject['id']) }}">
+    <form id="saveForm" method="POST" action="{{ route('pengajar.score.save_scores', $subject['id']) }}" x-data="formProtection" >
         @csrf
         <div class="overflow-x-auto">
             <table id="students-table" class="min-w-full text-sm text-left text-gray-500 border-collapse">

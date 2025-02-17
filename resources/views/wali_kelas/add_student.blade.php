@@ -8,7 +8,7 @@
         <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Siswa</h2>
     </div>
 
-    <form action="{{ route('wali_kelas.student.store') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form action="{{ route('wali_kelas.student.store') }}" method="POST" enctype="multipart/form-data" x-data="formProtection" @submit="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         @csrf
         <!-- Data Diri -->
         <div>

@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="createEkskulForm" action="{{ route('wali_kelas.ekstrakurikuler.store') }}" method="POST" class="space-y-6">
+    <form id="createEkskulForm" action="{{ route('wali_kelas.ekstrakurikuler.store') }}" x-data="formProtection" @submit="handleSubmit" method="POST" class="space-y-6">
         @csrf
 
         <!-- NIS -->

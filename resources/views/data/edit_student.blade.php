@@ -18,7 +18,7 @@
             </div>
         </div>
 
-        <form id="editStudentForm" action="{{ route('student.update', $student->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form id="editStudentForm" action="{{ route('student.update', $student->id) }}"  @submit="handleSubmit" x-data="formProtection" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @method('PUT')
             

@@ -72,7 +72,7 @@
         </div>
 
         <!-- Form -->
-        <form id="editClassForm" action="{{ route('kelas.update', $kelas->id) }}" method="POST" data-turbo="false" class="space-y-6">
+        <form id="editClassForm" action="{{ route('kelas.update', $kelas->id) }}" method="POST"  @submit="handleSubmit" data-turbo="false" x-data="formProtection" class="space-y-6">
             @csrf
             @method('PUT')
 

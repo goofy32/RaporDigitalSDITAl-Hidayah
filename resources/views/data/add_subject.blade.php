@@ -27,7 +27,7 @@
             </div>
 
             <!-- Form -->
-            <form id="addSubjectForm" action="{{ route('subject.store') }}" method="POST" class="space-y-6">
+            <form id="addSubjectForm" action="{{ route('subject.store') }}" method="POST"  @submit="handleSubmit" x-data="formProtection" class="space-y-6">
                 @csrf
 
                 <!-- Mata Pelajaran -->

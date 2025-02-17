@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="editAbsenceForm" action="{{ route('wali_kelas.absence.update', $absensi->id) }}" method="POST" class="space-y-6">
+    <form id="editAbsenceForm" action="{{ route('wali_kelas.absence.update', $absensi->id) }}" x-data="formProtection" @submit="handleSubmit" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 

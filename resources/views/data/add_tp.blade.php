@@ -12,14 +12,14 @@
                 <button onclick="window.history.back()" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Kembali
                 </button>
-                <button onclick="saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button @click="handleAjaxSubmit" onclick="saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                     Simpan
                 </button>
             </div>
         </div>
         
         <!-- Form -->
-        <form id="addTPForm" class="space-y-6">
+        <form id="addTPForm" x-data="formProtection" class="space-y-6">
             <!-- Mata Pelajaran -->
             <div>
                 <label class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
@@ -55,7 +55,7 @@
             </div>
 
             <!-- Tambah Button -->
-            <button type="button" onclick="addRow()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <button type="button"  @click="handleAjaxSubmit" onclick="addRow()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                 Tambah
             </button>
         </form>
@@ -113,24 +113,29 @@
 
     // Fungsi untuk menambahkan data ke tabel
     function addRow() {
+        if (!validateInputs()) {
+            return;
+        }
+
         const lingkupMateriId = document.getElementById('lingkup_materi').value;
         const kodeTPs = document.getElementsByName('kode_tp[]');
         const deskripsiTPs = document.getElementsByName('deskripsi_tp[]');
 
-        if (!lingkupMateriId || kodeTPs.length === 0) {
-            alert('Harap isi semua field!');
-            return;
-        }
-
         for (let i = 0; i < kodeTPs.length; i++) {
             const newRow = {
                 id: tpData.length + 1,
-                mataPelajaranId, // Menggunakan mataPelajaranId dari variabel JavaScript
+                mataPelajaranId,
                 lingkupMateriId,
                 lingkupMateriText: document.getElementById('lingkup_materi').options[document.getElementById('lingkup_materi').selectedIndex].text,
-                kodeTP: kodeTPs[i].value,
-                deskripsiTP: deskripsiTPs[i].value,
+                kodeTP: kodeTPs[i].value.trim(),
+                deskripsiTP: deskripsiTPs[i].value.trim(),
             };
+
+            // Validasi duplikasi kode TP
+            if (tpData.some(item => item.kodeTP === newRow.kodeTP)) {
+                alert(`Kode TP "${newRow.kodeTP}" sudah ada dalam tabel!`);
+                return;
+            }
 
             tpData.push(newRow);
         }
@@ -184,65 +189,119 @@
         `;
     }
 
-    function saveData() {
-    const saveButton = document.querySelector('button[onclick="saveData()"]');
-    saveButton.disabled = true;
-    saveButton.innerHTML = 'Menyimpan...';
-    
-    if (tpData.length === 0) {
-        alert('Tidak ada data untuk disimpan!');
-        saveButton.disabled = false;
-        saveButton.innerHTML = 'Simpan';
-        return;
+    function validateInputs() {
+        const lingkupMateri = document.getElementById('lingkup_materi').value;
+        const kodeTPs = document.getElementsByName('kode_tp[]');
+        const deskripsiTPs = document.getElementsByName('deskripsi_tp[]');
+        
+        // Validasi Lingkup Materi
+        if (!lingkupMateri) {
+            alert('Lingkup Materi harus dipilih!');
+            return false;
+        }
+
+        // Validasi Kode TP dan Deskripsi TP
+        for (let i = 0; i < kodeTPs.length; i++) {
+            if (!kodeTPs[i].value.trim()) {
+                alert(`Kode TP ${i + 1} tidak boleh kosong!`);
+                kodeTPs[i].focus();
+                return false;
+            }
+            if (!deskripsiTPs[i].value.trim()) {
+                alert(`Deskripsi TP ${i + 1} tidak boleh kosong!`);
+                deskripsiTPs[i].focus();
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    // Logging untuk debug
-    console.log('Data yang akan dikirim:', {
-        tpData: tpData,
-        mataPelajaranId: mataPelajaranId
-    });
-
-    fetch('{{ route('pengajar.tujuan_pembelajaran.store') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({
-            tpData: tpData,
-            mataPelajaranId: mataPelajaranId
-        })
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        return response.text().then(text => {
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.log('Response text:', text);
-                throw new Error('Invalid JSON response: ' + text);
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('addTPForm');
+        
+        form.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Mencegah form submit default
+                if (validateInputs()) {
+                    addRow();
+                }
             }
         });
-    })
-    .then(data => {
-        console.log('Parsed response:', data);
-        if (data.success) {
-            alert('Data berhasil disimpan!');
-            window.location.href = '{{ route('pengajar.subject.index') }}';
-        } else {
-            throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
-        }
-    })
-    .catch(error => {
-        console.error('Error full details:', error);
-        alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
-    })
-    .finally(() => {
-        saveButton.disabled = false;
-        saveButton.innerHTML = 'Simpan';
+
+        // Validasi saat input blur (kehilangan fokus)
+        form.addEventListener('blur', function(e) {
+            if (e.target.hasAttribute('required') && !e.target.value.trim()) {
+                e.target.classList.add('border-red-500');
+                e.target.setAttribute('title', 'Field ini wajib diisi!');
+            } else {
+                e.target.classList.remove('border-red-500');
+                e.target.removeAttribute('title');
+            }
+        }, true);
     });
-}
+
+
+    function saveData() {
+        Alpine.store('formProtection').startSubmitting();
+
+        const saveButton = document.querySelector('button[onclick="saveData()"]');
+        
+        if (tpData.length === 0) {
+            alert('Tidak ada data untuk disimpan! Silakan tambahkan minimal satu Tujuan Pembelajaran.');
+            return;
+        }
+
+        // Konfirmasi sebelum menyimpan
+        if (!confirm('Apakah Anda yakin ingin menyimpan data?')) {
+            return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.innerHTML = 'Menyimpan...';
+
+        fetch('{{ route('tujuan_pembelajaran.store') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+                tpData: tpData,
+                mataPelajaranId: mataPelajaranId
+            })
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.text().then(text => {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.log('Response text:', text);
+                    throw new Error('Invalid JSON response: ' + text);
+                }
+            });
+        })
+        .then(data => {
+            if (data.success) {
+                Alpine.store('formProtection').reset(); // Reset setelah berhasil
+                alert('Data berhasil disimpan!');
+                window.location.href = '{{ route('subject.index') }}';
+            } else {
+                Alpine.store('formProtection').isSubmitting = false; // Reset flag jika gagal
+                throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
+            }
+        })
+        .catch(error => {
+            Alpine.store('formProtection').isSubmitting = false; // Reset flag jika error
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
+        });
+        .finally(() => {
+            saveButton.disabled = false;
+            saveButton.innerHTML = 'Simpan';
+        });
+    }
 </script>
 @endsection

@@ -12,14 +12,14 @@
                 <button onclick="window.history.back()" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Kembali
                 </button>
-                <button type="submit" form="editSubjectForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button @click="handleAjaxSubmit" form="editSubjectForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                     Simpan
                 </button>
             </div>
         </div>
 
         <!-- Form -->
-        <form id="editSubjectForm" action="{{ route('pengajar.subject.update', $subject->id) }}" method="POST" class="space-y-6">
+        <form id="editSubjectForm" action="{{ route('pengajar.subject.update', $subject->id) }}" x-data="formProtection" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
 

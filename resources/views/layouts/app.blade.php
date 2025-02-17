@@ -83,6 +83,18 @@
     <!-- Babel for JSX (development only - remove in production) -->
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
+        input:required:invalid,
+        select:required:invalid {
+            border-color: #EF4444;
+        }
+
+        .invalid-feedback {
+            color: #EF4444;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+    <style>
         [x-cloak] { 
             display: none !important; 
         }

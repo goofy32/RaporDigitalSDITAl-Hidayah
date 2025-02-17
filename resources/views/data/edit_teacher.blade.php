@@ -71,7 +71,7 @@
        </div>
 
        <!-- Form -->
-       <form id="editTeacherForm" action="{{ route('teacher.update', $teacher->id) }}" method="POST" enctype="multipart/form-data">
+       <form id="editTeacherForm" action="{{ route('teacher.update', $teacher->id) }}"  @submit="handleSubmit" method="POST" x-data="formProtection" enctype="multipart/form-data">
            @csrf
            @method('PUT')
            <div class="w-full px-4">

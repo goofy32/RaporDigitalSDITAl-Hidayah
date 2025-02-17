@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="editEkskulForm" action="{{ route('wali_kelas.ekstrakurikuler.update', $nilaiEkstrakurikuler->id) }}" method="POST" class="space-y-6">
+    <form id="editEkskulForm" action="{{ route('wali_kelas.ekstrakurikuler.update', $nilaiEkstrakurikuler->id) }}" x-data="formProtection" @submit="handleSubmit" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 

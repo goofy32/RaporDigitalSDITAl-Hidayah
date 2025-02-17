@@ -74,7 +74,7 @@
         </div>
 
         <!-- Form -->
-        <form id="createClassForm" action="{{ route('kelas.store') }}" method="POST" class="w-full">  <!-- Tambahkan w-full -->
+        <form id="createClassForm" action="{{ route('kelas.store') }}" method="POST"  @submit="handleSubmit" x-data="formProtection" class="w-full">  <!-- Tambahkan w-full -->
             @csrf
             <div class="space-y-6 w-full">  <!-- Tambahkan w-full -->
                 <!-- Nomor Kelas -->

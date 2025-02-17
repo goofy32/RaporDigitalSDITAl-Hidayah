@@ -287,6 +287,82 @@ Alpine.data('reportManager', () => ({
     }
 }));
 
+Alpine.store('formProtection', {
+    formChanged: false,
+    isSubmitting: false, // Tambah flag untuk menandai proses submit
+    
+    init() {
+        this.setupBeforeUnloadListener();
+    },
+    
+    setupBeforeUnloadListener() {
+        window.addEventListener('beforeunload', (e) => {
+            // Cek jika form berubah dan tidak sedang dalam proses submit
+            if (this.formChanged && !this.isSubmitting) {
+                e.preventDefault();
+                e.returnValue = 'Anda memiliki perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
+                return e.returnValue;
+            }
+        });
+    },
+    
+    markAsChanged() {
+        this.formChanged = true;
+    },
+    
+    startSubmitting() {
+        this.isSubmitting = true;
+    },
+    
+    reset() {
+        this.formChanged = false;
+        this.isSubmitting = false;
+    }
+});
+
+// Tambahkan Alpine component untuk form protection
+Alpine.data('formProtection', () => ({
+    init() {
+        // Setup listeners untuk form inputs
+        this.$el.querySelectorAll('input, select, textarea').forEach(element => {
+            element.addEventListener('change', () => {
+                this.$store.formProtection.markAsChanged();
+            });
+            element.addEventListener('keyup', () => {
+                this.$store.formProtection.markAsChanged();
+            });
+        });
+
+        // Setup listener untuk tombol kembali
+        const backButtons = this.$el.querySelectorAll('[data-back-button]');
+        backButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                if (this.$store.formProtection.formChanged) {
+                    e.preventDefault();
+                    if (confirm('Anda memiliki perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
+                        this.$store.formProtection.reset();
+                        window.history.back();
+                    }
+                }
+            });
+        });
+    },
+
+    // Method untuk digunakan pada form submission
+    handleSubmit() {
+        // Reset form protection state saat form berhasil disubmit
+        this.$store.formProtection.reset();
+    },
+
+    // Method untuk konfirmasi saat membersihkan form
+    confirmClear() {
+        if (this.$store.formProtection.formChanged) {
+            return confirm('Apakah Anda yakin ingin membersihkan form? Perubahan yang belum disimpan akan hilang.');
+        }
+        return true;
+    }
+}));
+
 // Notification Store dengan Real-time Updates
 Alpine.store('notification', {
     items: [],

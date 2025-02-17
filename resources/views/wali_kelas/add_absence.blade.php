@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="createAbsenceForm" action="{{ route('wali_kelas.absence.store') }}" method="POST" class="space-y-6">
+    <form id="createAbsenceForm" action="{{ route('wali_kelas.absence.store') }}" method="POST" x-data="formProtection" @submit="handleSubmit" class="space-y-6">
         @csrf
 
         <!-- NIS dan Nama Siswa -->

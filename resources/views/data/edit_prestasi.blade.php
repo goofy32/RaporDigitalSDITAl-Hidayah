@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form Edit Data Prestasi -->
-    <form id="updatePrestasiForm" action="{{ route('achievement.update', $prestasi->id) }}" method="post" class="space-y-6">
+    <form id="updatePrestasiForm" action="{{ route('achievement.update', $prestasi->id) }}"  @submit="handleSubmit" x-data="formProtection" method="post" class="space-y-6">
         @csrf
         @method('PUT')
 

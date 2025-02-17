@@ -13,14 +13,14 @@
                 <button onclick="window.history.back()" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Kembali
                 </button>
-                <button onclick="saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button @click="handleAjaxSubmit" onclick="saveData()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                     Simpan
                 </button>
             </div>
         </div>
         
         <!-- Form -->
-        <form id="addTPForm" class="space-y-6">
+        <form id="addTPForm" x-data="formProtection" class="space-y-6">
             @csrf
             <!-- Mata Pelajaran -->
             <div>
@@ -185,6 +185,8 @@
     }
 
     function saveData() {
+        Alpine.store('formProtection').startSubmitting();
+
         const saveButton = document.querySelector('button[onclick="saveData()"]');
         saveButton.disabled = true;
         saveButton.innerHTML = 'Menyimpan...';
@@ -223,14 +225,18 @@
         })
         .then(data => {
             console.log('Success:', data); // Debug log
+            Alpine.store('formProtection').reset(); // Reset setelah berhasil
             if (data.success) {
                 alert('Data berhasil disimpan!');
                 window.location.href = '{{ route('pengajar.subject.index') }}';
             } else {
+                Alpine.store('formProtection').isSubmitting = false; // Reset flag jika gagal
+
                 throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data.');
             }
         })
         .catch(error => {
+            Alpine.store('formProtection').isSubmitting = false;
             console.error('Error:', error);
             alert('Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
         })

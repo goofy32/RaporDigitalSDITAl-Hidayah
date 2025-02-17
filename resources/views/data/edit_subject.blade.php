@@ -19,7 +19,7 @@
         </div>
 
         <!-- Form -->
-        <form id="editSubjectForm" action="{{ route('subject.update', $subject->id) }}" method="POST" class="space-y-6">
+        <form id="editSubjectForm" action="{{ route('subject.update', $subject->id) }}"  @submit="handleSubmit" x-data="formProtection" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
 
