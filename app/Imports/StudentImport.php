@@ -19,38 +19,54 @@ class StudentImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
     use Importable, SkipsFailures;
 
     private $importErrors = [];
+    private $rowCount = 0;
+
+    private function isEmptyRow(array $row): bool
+    {
+        return count(array_filter($row, function($value) {
+            return !empty($value) || $value === '0';
+        })) === 0;
+    }
 
     public function model(array $row)
     {
-        // Tambahkan pengecekan dan validasi tambahan
-        if (!$this->validateRow($row)) {
-            return null;
-        }
-
         try {
-
-            Log::info('Processing row:', $row);
-
+            // 1. Log data mentah yang diterima
+            \Log::info('Attempting to process row:', $row);
+            
+            // 2. Validasi data
+            if (!isset($row['nis']) || !isset($row['nisn']) || !isset($row['nama']) || !isset($row['kelas'])) {
+                \Log::warning('Required fields missing:', array_keys($row));
+                return null;
+            }
+    
+            // 3. Proses kelas
             $kelasParts = explode(' - ', $row['kelas']);
-            $nomor_kelas = trim($kelasParts[0]);
-            $nama_kelas = trim($kelasParts[1]);
-            $wali_kelas = $row['wali_kelas'];
+            if (count($kelasParts) !== 2) {
+                \Log::error('Invalid kelas format', ['kelas' => $row['kelas']]);
+                return null;
+            }
     
             $kelas = Kelas::firstOrCreate(
-                ['nomor_kelas' => $nomor_kelas, 'nama_kelas' => $nama_kelas],
-                ['wali_kelas' => $wali_kelas]
+                [
+                    'nomor_kelas' => trim($kelasParts[0]),
+                    'nama_kelas' => trim($kelasParts[1])
+                ]
             );
-
-
-            // Generate nama foto unik jika kosong
-            $photoName = $row['photo'] ?? Str::slug($row['nama']) . '_' . uniqid() . '.png';
-
-            // Proses data siswa
-            return new Siswa([
+    
+            // 4. Log info kelas
+            \Log::info('Kelas created/found:', [
+                'id' => $kelas->id,
+                'nomor' => $kelas->nomor_kelas,
+                'nama' => $kelas->nama_kelas
+            ]);
+    
+            // 5. Buat siswa
+            $siswa = new Siswa([
                 'nis' => $row['nis'],
                 'nisn' => $row['nisn'],
                 'nama' => $row['nama'],
-                'tanggal_lahir' => $this->convertTanggalLahir($row['tanggal_lahir']),
+                'tanggal_lahir' => \Carbon\Carbon::parse($row['tanggal_lahir'])->format('Y-m-d'),
                 'jenis_kelamin' => $row['jenis_kelamin'],
                 'agama' => $row['agama'],
                 'alamat' => $row['alamat'],
@@ -60,79 +76,57 @@ class StudentImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
                 'pekerjaan_ayah' => $row['pekerjaan_ayah'],
                 'pekerjaan_ibu' => $row['pekerjaan_ibu'],
                 'alamat_orangtua' => $row['alamat_orangtua'],
-                'photo' => $photoName,
-                'wali_kelas' => $wali_kelas,
+                'photo' => $row['photo'] ?? null
             ]);
-
-            Log::info('Siswa to be saved:', $siswa->toArray());
-
-            return $siswa;
-        } catch (\Exception $e) {
-            Log::error('Import Model Error: ' . $e->getMessage());
-            Log::error('Row data: ' . json_encode($row));
-            Log::error('Trace: ' . $e->getTraceAsString());
     
-            $this->importErrors[] = "Kesalahan pada baris: " . $e->getMessage();
+            // 6. Log data siswa sebelum disimpan
+            \Log::info('Attempting to save student:', $siswa->toArray());
+    
+            // 7. Simpan dan log hasilnya
+            if ($siswa->save()) {
+                \Log::info('Student saved successfully:', [
+                    'id' => $siswa->id,
+                    'nis' => $siswa->nis
+                ]);
+            } else {
+                \Log::error('Failed to save student');
+            }
+    
+            $this->rowCount++;
+            return $siswa;
+    
+        } catch (\Exception $e) {
+            \Log::error('Exception in model():', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'row' => $row
+            ]);
             return null;
         }
     }
-
-    private function validateRow(array $row): bool
+    
+    public function headingRow(): int
     {
-        $requiredFields = [
-            'nis', 'nisn', 'nama', 'kelas', 'tanggal_lahir', 
-            'jenis_kelamin', 'agama', 'alamat', 
-            'nama_ayah', 'nama_ibu', 'pekerjaan_ayah', 
-            'pekerjaan_ibu', 'alamat_orangtua'
-        ];
-
-        foreach ($requiredFields as $field) {
-            if (!isset($row[$field]) || empty(trim($row[$field]))) {
-                $this->importErrors[] = "Kolom {$field} kosong atau tidak valid";
-                return false;
-            }
-        }
-
-        // Validasi format kelas
-        if (!preg_match('/^\d+ - [a-zA-Z\s]+$/', $row['kelas'])) {
-            $this->importErrors[] = "Format kelas tidak valid: " . $row['kelas'];
-            return false;
-        }
-
-        return true;
+        return 1; // Row pertama adalah header
     }
-
-    protected function convertTanggalLahir($tanggal)
-    {
-        try {
-            if (is_numeric($tanggal)) {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tanggal)->format('Y-m-d');
-            }
-            return \Carbon\Carbon::parse($tanggal)->format('Y-m-d');
-        } catch (\Exception $e) {
-            $this->importErrors[] = "Format tanggal lahir tidak valid: $tanggal";
-            return now(); // Fallback ke tanggal hari ini
-        }
-    }
-
+    
     public function rules(): array
     {
         return [
-            'kelas' => 'required|regex:/^\d+ - [a-zA-Z\s]+$/',
-            'nis' => 'required|unique:siswas,nis',
-            'nisn' => 'required|unique:siswas,nisn',
-            'nama' => 'required',
-            'tanggal_lahir' => 'required',
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
-            'agama' => 'required',
-            'alamat' => 'required',
-            'nama_ayah' => 'required',
-            'nama_ibu' => 'required',
-            'pekerjaan_ayah' => 'required',
-            'pekerjaan_ibu' => 'required',
-            'alamat_orangtua' => 'required',
-            'wali_kelas' => 'required',
+            '*.nis' => ['required', 'distinct'],
+            '*.nisn' => ['required', 'distinct'],
+            '*.nama' => ['required'],
+            '*.kelas' => ['required'],
+            '*.tanggal_lahir' => ['required'],
+            '*.jenis_kelamin' => ['required'],
+            '*.agama' => ['required'],
+            '*.alamat' => ['required']
         ];
+    }
+
+    public function getRowCount()
+    {
+        return $this->rowCount;
     }
 
     public function getErrors()

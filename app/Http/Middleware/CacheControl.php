@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CacheControl
 {
@@ -12,6 +13,11 @@ class CacheControl
     {
         $response = $next($request);
     
+        // Skip jika response adalah BinaryFileResponse (file download)
+        if ($response instanceof BinaryFileResponse) {
+            return $response;
+        }
+
         // Cache gambar icon dengan aggressive caching
         if ($request->is('images/icons/*')) {
             return $response

@@ -99,7 +99,7 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
         'destroy' => 'student.destroy',
     ]);
     
-    Route::get('students/template', [StudentController::class, 'downloadTemplate'])->name('student.template');
+    Route::get('template/student', [StudentController::class, 'downloadTemplate'])->name('student.template');
     Route::get('students/upload', [StudentController::class, 'uploadPage'])->name('student.upload');
     Route::post('students/import', [StudentController::class, 'importExcel'])->name('student.import');
 

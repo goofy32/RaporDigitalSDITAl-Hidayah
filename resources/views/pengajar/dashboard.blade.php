@@ -76,6 +76,11 @@
                                 </div>
                             </div>
                         </template>
+                        <template x-if="$store.notification.items.length === 0">
+                            <div class="flex items-center justify-center h-[150px]">
+                                <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>

@@ -101,22 +101,59 @@
             {{ $students->withQueryString()->links('vendor.pagination.custom') }}
         </div>
 
-        <div id="uploadModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+        <div id="uploadModal" 
+            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+            aria-labelledby="modal-title" 
+            role="dialog" 
+            aria-modal="true">
             <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                <div class="mt-3 text-center">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Upload Data Siswa</h3>
-                    <form action="{{ route('student.import') }}" method="POST" enctype="multipart/form-data" class="mt-4">
+                <div class="mt-3">
+                    <div class="flex justify-between items-center pb-3">
+                        <h3 class="text-lg font-medium text-gray-900" id="modal-title">
+                            Upload Data Siswa
+                        </h3>
+                        <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+                            <span class="sr-only">Close</span>
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form action="{{ route('student.import') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                         @csrf
                         <div class="mt-2">
-                            <input type="file" name="file" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none" accept=".xlsx,.xls">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Pilih File Excel
+                            </label>
+                            <input type="file" 
+                                name="file" 
+                                accept=".xlsx,.xls" 
+                                class="block w-full text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-md file:border-0
+                                        file:text-sm file:font-medium
+                                        file:bg-green-50 file:text-green-700
+                                        hover:file:bg-green-100
+                                        border border-gray-300 rounded-lg cursor-pointer
+                                        focus:outline-none">
                             <p class="mt-1 text-sm text-gray-500">File Excel (.xlsx, .xls)</p>
                         </div>
+
                         @error('file')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
-                        <div class="flex justify-between mt-4">
-                            <button type="button" id="closeModal" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">Tutup</button>
-                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upload</button>
+
+                        <div class="flex justify-end space-x-3 mt-4">
+                            <button type="button" 
+                                    id="closeModalBtn"
+                                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300">
+                                Batal
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                Upload
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -125,38 +162,43 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
 <script>
-    document.addEventListener('turbo:load', function () {
-        const uploadButton = document.querySelector('#uploadButton');
-        const uploadModal = document.querySelector('#uploadModal');
-        const closeModal = document.querySelector('#closeModal');
+document.addEventListener('turbo:load', function () {
+    const modal = document.getElementById('uploadModal');
+    const uploadButton = document.getElementById('uploadButton');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const closeModalX = document.getElementById('closeModal');
 
-        // Pastikan elemen ditemukan sebelum menambahkan event listener
-        if (uploadButton) {
-            uploadButton.addEventListener('click', () => {
-                if (uploadModal) {
-                    uploadModal.classList.remove('hidden');
-                }
-            });
-        }
+    function openModal() {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
 
-        if (closeModal) {
-            closeModal.addEventListener('click', () => {
-                if (uploadModal) {
-                    uploadModal.classList.add('hidden');
-                }
-            });
-        }
+    function closeModal() {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto'; // Enable scrolling
+    }
 
-        if (uploadModal) {
-            uploadModal.addEventListener('click', (e) => {
-                if (e.target === uploadModal) {
-                    uploadModal.classList.add('hidden');
-                }
-            });
+    uploadButton?.addEventListener('click', openModal);
+    closeModalBtn?.addEventListener('click', closeModal);
+    closeModalX?.addEventListener('click', closeModal);
+
+    // Close when clicking outside
+    modal?.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
         }
     });
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+    });
+ 
+</script>
 
 @endsection

@@ -349,49 +349,77 @@ class StudentController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|mimes:xlsx,xls|max:2048',
         ]);
     
         try {
             DB::beginTransaction();
     
+            // 1. Log start import
+            \Log::info('Starting import process', [
+                'file' => $request->file('file')->getClientOriginalName()
+            ]);
+    
+            // 2. Baca file terlebih dahulu
+            $data = Excel::toArray(new StudentImport, $request->file('file'));
+            
+            // 3. Log data yang dibaca
+            \Log::info('Excel data read:', [
+                'sheets' => count($data),
+                'rows' => isset($data[0]) ? count($data[0]) : 0
+            ]);
+    
+            // 4. Lakukan import
             $import = new StudentImport();
             Excel::import($import, $request->file('file'));
     
-            // Ambil error dari import
-            $importErrors = $import->getErrors();
+            // 5. Cek jumlah row yang diproses
+            \Log::info('Rows processed:', [
+                'count' => $import->getRowCount()
+            ]);
     
-            if (!empty($importErrors)) {
+            // 6. Cek error
+            $errors = $import->getErrors();
+            if (!empty($errors)) {
+                \Log::error('Import errors found:', $errors);
                 DB::rollBack();
-                Log::error('Import Errors:', $importErrors);
-                return back()->with('error', $importErrors);
+                return back()->with('error', $errors);
             }
     
+            // 7. Commit jika berhasil
             DB::commit();
+            \Log::info('Import completed and committed');
     
             return redirect()->route('student')
                 ->with('success', 'Data siswa berhasil diimpor!');
+    
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Import Exception: ' . $e->getMessage());
-            Log::error('Import Trace: ' . $e->getTraceAsString());
-    
-            return back()->with('error', [
-                'Terjadi kesalahan saat mengimpor data: ' . $e->getMessage()
+            \Log::error('Import failed:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            return back()->with('error', 'Gagal import: ' . $e->getMessage());
         }
     }
-
-
-
     public function downloadTemplate()
     {
-        $filePath = public_path('templates/Student_Template_with_Data.xlsx');
-
-        if (!file_exists($filePath)) {
-            abort(404, 'File template tidak ditemukan.');
+        try {
+            // Ubah path ke public_path() untuk mengakses folder public langsung
+            $filePath = public_path('templates/Student_Template_with_Data.xlsx');
+    
+            if (!file_exists($filePath)) {
+                return back()->with('error', 'File template tidak ditemukan di ' . $filePath);
+            }
+    
+            // Gunakan nama file yang lebih user-friendly saat didownload
+            return response()->download($filePath, 'Template_Import_Siswa.xlsx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
+    
+        } catch (\Exception $e) {
+            \Log::error('Error downloading template: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat mengunduh template.');
         }
-
-        return response()->download($filePath, 'Student_Template.xlsx');
     }
 }
