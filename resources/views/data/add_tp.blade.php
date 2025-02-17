@@ -55,7 +55,7 @@
             </div>
 
             <!-- Tambah Button -->
-            <button type="button"  @click="handleAjaxSubmit" onclick="addRow()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <button type="button"  onclick="addRow()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                 Tambah
             </button>
         </form>
