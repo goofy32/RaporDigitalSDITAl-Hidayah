@@ -4,7 +4,7 @@
 
 @section('content')
 
-<div class="p-4 bg-white mt-14 shadow-md rounded-lg">
+<div class="p-4 bg-white mt-14 rounded-lg">
             <!-- Header -->
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-green-700 mb-4">Data Pembelajaran</h2>

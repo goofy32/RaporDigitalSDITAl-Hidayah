@@ -7,6 +7,25 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="turbo-cache-control" content="no-preview">
     <meta name="turbo-visit-control" content="reload">
+
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/dashboard-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/score.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+
+    <link rel="preload" 
+        href="{{ asset('images/icons/subject-icon.png') }}" 
+        as="image" 
+        fetchpriority="high">
+
+
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     

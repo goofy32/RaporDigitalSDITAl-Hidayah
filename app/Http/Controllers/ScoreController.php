@@ -310,12 +310,28 @@ class ScoreController extends Controller
     public function previewScore($id)
     {
         try {
+            // Load mata pelajaran dengan relasi yang diperlukan
             $mataPelajaran = MataPelajaran::with([
                 'kelas.siswas' => function($query) {
                     $query->orderBy('nama', 'asc');
                 },
                 'lingkupMateris.tujuanPembelajarans',
-                'lingkupMateris.nilais',
+                'lingkupMateris.nilais' => function($query) {
+                    $query->select(
+                        'nilais.*',
+                        'siswa_id',
+                        'lingkup_materi_id',
+                        'tujuan_pembelajaran_id',
+                        'nilai_tp',
+                        'nilai_lm',
+                        'na_tp',
+                        'na_lm',
+                        'nilai_tes',
+                        'nilai_non_tes',
+                        'nilai_akhir_semester',
+                        'nilai_akhir_rapor'
+                    );
+                }
             ])->findOrFail($id);
     
             // Validasi akses guru
@@ -356,25 +372,56 @@ class ScoreController extends Controller
                 }
             }
     
-            // Isi struktur data dengan nilai yang ada
-            foreach ($mataPelajaran->lingkupMateris as $lm) {
-                foreach ($lm->nilais as $nilai) {
-                    if (isset($existingScores[$nilai->siswa_id])) {
-                        if ($nilai->tujuan_pembelajaran_id) {
-                            $existingScores[$nilai->siswa_id]['tp'][$lm->id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
-                        }
-                        $existingScores[$nilai->siswa_id]['lm'][$lm->id] = $nilai->nilai_lm;
-                        $existingScores[$nilai->siswa_id]['na_tp'] = $nilai->na_tp;
-                        $existingScores[$nilai->siswa_id]['na_lm'] = $nilai->na_lm;
-                        $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
-                        $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
-                        $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
-                        $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
+            // Ambil semua nilai secara efisien dengan single query
+            $nilais = Nilai::where('mata_pelajaran_id', $id)
+                ->with(['lingkupMateri', 'tujuanPembelajaran'])
+                ->get()
+                ->groupBy('siswa_id');
+    
+            // Isi nilai-nilai
+            foreach ($nilais as $siswaId => $siswaNilais) {
+                if (!isset($existingScores[$siswaId])) continue;
+    
+                foreach ($siswaNilais as $nilai) {
+                    // Isi nilai TP jika ada
+                    if ($nilai->nilai_tp !== null && $nilai->tujuan_pembelajaran_id && $nilai->lingkup_materi_id) {
+                        $existingScores[$siswaId]['tp'][$nilai->lingkup_materi_id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
+                    }
+    
+                    // Isi nilai LM
+                    if ($nilai->nilai_lm !== null && $nilai->lingkup_materi_id) {
+                        $existingScores[$siswaId]['lm'][$nilai->lingkup_materi_id] = $nilai->nilai_lm;
+                    }
+    
+                    // Update nilai aggregat jika belum diset atau nilai baru lebih besar
+                    if ($nilai->na_tp !== null) {
+                        $existingScores[$siswaId]['na_tp'] = $nilai->na_tp;
+                    }
+                    if ($nilai->na_lm !== null) {
+                        $existingScores[$siswaId]['na_lm'] = $nilai->na_lm;
+                    }
+                    if ($nilai->nilai_tes !== null) {
+                        $existingScores[$siswaId]['nilai_tes'] = $nilai->nilai_tes;
+                    }
+                    if ($nilai->nilai_non_tes !== null) {
+                        $existingScores[$siswaId]['nilai_non_tes'] = $nilai->nilai_non_tes;
+                    }
+                    if ($nilai->nilai_akhir_semester !== null) {
+                        $existingScores[$siswaId]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
+                    }
+                    if ($nilai->nilai_akhir_rapor !== null) {
+                        $existingScores[$siswaId]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
                     }
                 }
             }
     
-            Log::info('Existing Scores:', $existingScores);
+            // Log untuk debugging
+            Log::info('Preview Scores Data:', [
+                'mata_pelajaran' => $mataPelajaran->nama_pelajaran,
+                'total_students' => count($students),
+                'total_nilais' => $nilais->count(),
+                'scores_sample' => array_slice($existingScores, 0, 2)
+            ]);
     
             return view('pengajar.preview_score', compact('mataPelajaran', 'existingScores', 'students'));
         } catch (\Exception $e) {
@@ -383,7 +430,6 @@ class ScoreController extends Controller
                 ->with('error', 'Terjadi kesalahan saat memuat data: ' . $e->getMessage());
         }
     }
-    
     public function deleteNilai(Request $request)
     {
         try {

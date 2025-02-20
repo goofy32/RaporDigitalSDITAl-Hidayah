@@ -6,7 +6,7 @@
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700 flex items-center gap-2">
-            <span>{{ $subject['class'] }} - </span>      
+            <span>{{ $subject['class'] }} - </span>       
             <select class="border border-gray-300 rounded-lg px-4 py-2" 
                     onchange="window.location.href=this.value">
                 @foreach($mataPelajaranList as $mapel)
@@ -19,14 +19,13 @@
         </h2>
 
         <div class="flex gap-4">
-            <button form="saveForm" 
-                    type="button" 
-                    @click="handleAjaxSubmit" 
-                    name="preview" 
-                    value="true"
-                    class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
-                Simpan & Preview
-            </button>
+        <button type="button" 
+                x-data
+                @click="window.saveData()"
+                x-bind:disabled="$store.formProtection.isSubmitting"
+                class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
+            <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpan & Preview'"></span>
+        </button>
         </div>
     </div>
 
@@ -318,35 +317,35 @@
     }
 
     window.saveData = async function() {
-        try {
-            if (!validateForm()) {
-                return;
+    try {
+        if (!validateForm()) {
+            return;
+        }
+
+        Swal.fire({
+            title: 'Menyimpan Nilai...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
             }
+        });
 
-            Swal.fire({
-                title: 'Menyimpan Nilai...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+        const formData = new FormData(document.getElementById('saveForm'));
+        
+        const response = await fetch('{{ route("pengajar.score.save_scores", $subject["id"]) }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        });
 
-            const formData = new FormData(document.getElementById('saveForm'));
+        const data = await response.json();
+        
+        if (data.success) {
+            Alpine.store('formProtection').reset();
             
-            const response = await fetch('{{ route("pengajar.score.save_scores", $subject["id"]) }}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            });
-
-            const data = await response.json();
-            
-            if (data.success) {
-                Alpine.store('formProtection').reset();
-                
-                let detailMessage = '<ul class="text-left">';
+            let detailMessage = '<ul class="text-left">';
                 data.details.forEach(student => {
                     detailMessage += `<li class="mb-2"><strong>${student.nama}</strong>:<br>`;
                     student.nilai.forEach(nilai => {

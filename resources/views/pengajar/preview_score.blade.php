@@ -40,7 +40,6 @@
                     <th colspan="2" class="px-4 py-2 border text-center">Sumatif Akhir Semester</th>
                     <th rowspan="2" class="px-4 py-2 border">NA Sumatif Akhir Semester</th>
                     <th rowspan="2" class="px-4 py-2 border">Nilai Akhir (Rapor)</th>
-                    <th rowspan="2" class="px-4 py-2 border">Aksi</th>
                 </tr>
                 <tr>
                     @foreach($mataPelajaran->lingkupMateris as $lm)

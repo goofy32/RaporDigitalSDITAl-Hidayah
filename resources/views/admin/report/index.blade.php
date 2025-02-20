@@ -3,114 +3,123 @@
 @section('title', 'Manajemen Template Rapor')
 
 @section('content')
-<div class="container mx-auto px-4" 
-     x-data="reportManager" 
-     x-init="initData('{{ $type }}')"
-     data-type="{{ $type }}"><!-- Pindahkan x-data ke sini -->
+<div class="container mx-auto px-4">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-semibold">Template Rapor {{ $type }}</h1>
-        <button @click="openPlaceholderGuide()" 
+        <button onclick="openPlaceholderGuide()" 
                 class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
             Panduan Placeholder
         </button>
     </div>
 
-
-    <div x-init="initData('{{ $type }}')"
-         class="space-y-6">
-        <!-- Alert Feedback -->
-        <div x-show="feedback.message" 
-            x-transition
-            :class="{'bg-green-100 border-green-400 text-green-700': feedback.type === 'success', 
-                    'bg-red-100 border-red-400 text-red-700': feedback.type === 'error'}"
-            class="fixed top-4 right-4 p-4 rounded-lg border shadow-lg z-50 max-w-md">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <svg x-show="feedback.type === 'success'" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                    </svg>
-                    <svg x-show="feedback.type === 'error'" class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
-                    </svg>
-                    <p x-text="feedback.message"></p>
-                </div>
-                <button @click="feedback.message = ''" class="ml-4 text-current hover:text-gray-600">×</button>
-            </div>
-        </div>
-
+    <div class="space-y-6">
         <!-- Upload Section -->
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
             <h2 class="text-lg font-medium mb-4">Upload Template Baru</h2>
-            <div class="mb-4">
-                <input type="file" 
-                       @change="handleFileUpload"
-                       accept=".docx"
-                       :disabled="loading"
-                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <p class="mt-1 text-sm text-gray-500">Format yang diterima: .docx</p>
-            </div>
-            <div x-show="loading" class="mt-2">
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-            </div>
+            <form action="{{ route('report.template.upload') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="type" value="{{ $type }}">
+                <div class="mb-4">
+                    <input type="file" 
+                           name="template"
+                           accept=".docx"
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <p class="mt-1 text-sm text-gray-500">Format yang diterima: .docx</p>
+                </div>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Upload Template
+                </button>
+            </form>
         </div>
 
-        <!-- Active Template Section -->
+        <!-- Templates List -->
         <div class="bg-white rounded-lg shadow-sm p-6">
-            <h2 class="text-lg font-medium mb-4">Template Aktif</h2>
-            <template x-if="currentTemplate">
-                <div class="border rounded-lg p-4">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 class="font-medium" x-text="currentTemplate.filename"></h3>
-                            <p class="text-sm text-gray-500" x-text="formatDate(currentTemplate.created_at)"></p>
-                        </div>
-                        <span x-show="currentTemplate.is_active" 
-                              class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                            Aktif
-                        </span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button @click="previewTemplate"
-                                :disabled="loading"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                            Preview
-                        </button>
-                        <template x-if="!currentTemplate.is_active">
-                            <button @click="activateTemplate"
-                                    :disabled="loading"
-                                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                                Aktifkan
-                            </button>
-                        </template>
-                        <button @click="deleteTemplate"
-                                :disabled="loading"
-                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                            Hapus
-                        </button>
-                    </div>
-                </div>
-            </template>
-            <template x-if="!currentTemplate">
-                <p class="text-gray-500">Belum ada template yang diupload</p>
-            </template>
-        </div>
-
-        <!-- Modal Panduan Placeholder -->
-        <div x-show="showPlaceholderGuide" 
-            x-transition.opacity
-            class="fixed inset-0 z-50 overflow-y-auto"
-            @keydown.escape.window="showPlaceholderGuide = false"
-            x-cloak>
-            <div class="flex items-center justify-center min-h-screen p-4">
-                <!-- Overlay yang bisa diklik untuk menutup -->
-                <div class="fixed inset-0 bg-black opacity-50" @click="showPlaceholderGuide = false"></div>
-                <div class="relative bg-white rounded-lg max-w-4xl w-full mx-auto">
-                    @include('admin.report.placeholder_guide')
-                </div>
+            <h2 class="text-lg font-medium mb-4">Daftar Template</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3">No</th>
+                            <th class="px-6 py-3">Nama File</th>
+                            <th class="px-6 py-3">Tanggal Upload</th>
+                            <th class="px-6 py-3">Status</th>
+                            <th class="px-6 py-3">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($templates as $index => $template)
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-6 py-4">{{ $index + 1 }}</td>
+                            <td class="px-6 py-4">{{ $template->filename }}</td>
+                            <td class="px-6 py-4">{{ \Carbon\Carbon::parse($template->created_at)->format('d M Y H:i') }}</td>
+                            <td class="px-6 py-4">
+                                @if($template->is_active)
+                                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                        Aktif
+                                    </span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                                        Tidak Aktif
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex gap-2">
+                                    <a href="{{ route('report.template.preview', $template->id) }}" 
+                                       target="_blank"
+                                       class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                                        Preview
+                                    </a>
+                                    
+                                    @if(!$template->is_active)
+                                        <form action="{{ route('report.template.activate', $template->id) }}" 
+                                              method="POST" 
+                                              class="inline">
+                                            @csrf
+                                            <button type="submit" 
+                                                    class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition">
+                                                Aktifkan
+                                            </button>
+                                        </form>
+                                    @endif
+                                    
+                                    <form action="{{ route('report.template.destroy', $template->id) }}" 
+                                          method="POST" 
+                                          class="inline"
+                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus template ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                                            Hapus
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center">Belum ada template yang diupload</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Modal Panduan Placeholder -->
+<div id="placeholderGuide" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="fixed inset-0 bg-black opacity-50"></div>
+        <div class="relative bg-white rounded-lg max-w-4xl w-full mx-auto">
+            @include('admin.report.placeholder_guide')
+        </div>
+    </div>
+</div>
+
 
 @push('scripts')
 <script>

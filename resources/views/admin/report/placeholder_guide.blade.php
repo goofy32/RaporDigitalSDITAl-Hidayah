@@ -3,7 +3,7 @@
     @php
         \Log::info("Placeholders in view:", ['data' => $placeholders ?? 'Not set']);
     @endphp
-@if(isset($placeholders) && is_array($placeholders))
+    @if(isset($placeholders) && $placeholders->count() > 0)
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-bold">Panduan Placeholder Rapor</h2>
         <button @click="showPlaceholderGuide = false" 
@@ -29,9 +29,9 @@
     @endif
 
     <!-- Category Tabs -->
-    <div x-data="{ activeCategory: 'siswa' }">
+    <div x-data="{ activeCategory: '{{ $placeholders->keys()->first() }}' }">
         <div class="flex space-x-2 mb-4 overflow-x-auto pb-2">
-            @foreach(array_keys($placeholders) as $category)
+            @foreach($placeholders->keys() as $category)
                 <button @click="activeCategory = '{{ $category }}'"
                         :class="{'bg-blue-100': activeCategory === '{{ $category }}'}"
                         class="px-3 py-1 rounded whitespace-nowrap">
@@ -41,7 +41,7 @@
         </div>
 
         @foreach($placeholders as $category => $items)
-        <div x-show="activeCategory === '{{ $category }}'" class="space-y-2">
+            <div x-show="activeCategory === '{{ $category }}'" class="space-y-2">
             <h3 class="font-medium mb-2">{{ ucwords(str_replace('_', ' ', $category)) }}</h3>
             
             @if($category === 'nilai')
@@ -88,16 +88,16 @@
         @endforeach
     </div>
 
-@else
-        <div class="text-red-500">
-            Data placeholder tidak tersedia.
-            @if(isset($placeholders))
-                (Debug: {{ gettype($placeholders) }})
-            @else
-                (Debug: Variabel tidak terset)
-            @endif
-        </div>
-    @endif
+    @else
+    <div class="text-red-500">
+        Data placeholder tidak tersedia atau kosong.
+        @if(isset($placeholders))
+            (Debug: {{ $placeholders->count() }} items)
+        @else
+            (Debug: Variabel tidak terset)
+        @endif
+    </div>
+@endif
     <!-- Download Template -->
     <div class="mt-8 pt-4 border-t">
         <h3 class="font-medium mb-2">Template Contoh</h3>

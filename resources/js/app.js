@@ -24,6 +24,25 @@ document.addEventListener('alpine:init', () => {
             }
         }
     });
+
+    Alpine.data('placeholderGuide', () => ({
+        placeholderSearch: '',
+        activeCategory: 'siswa',
+        
+        init() {
+            // Initialize any required data
+        },
+        
+        copyPlaceholder(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    this.showFeedback('success', 'Placeholder berhasil disalin');
+                })
+                .catch(() => {
+                    this.showFeedback('error', 'Gagal menyalin placeholder');
+                });
+        }
+    }));
 });
 
 // Alpine Stores
@@ -193,90 +212,134 @@ Alpine.store('report', {
 });
 
 // Tambahkan component untuk manajemen rapor
-// Tambahkan component untuk manajemen rapor
-Alpine.data('reportManager', () => ({
-    currentTemplate: null,
+Alpine.data('reportTemplateManager', (config) => ({
+    type: config.type,
+    templates: config.templates || [],
+    activeTemplate: config.activeTemplate,
+    loading: false,
+    showPlaceholderGuide: false,
     feedback: {
         type: '',
         message: ''
     },
-    loading: false,
-    showPlaceholderGuide: false,
-    placeholderSearch: '',
 
-    async initData(type) {
-        try {
-            const response = await fetch(`/admin/report-template/current?type=${type}`, {
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            if (data.success) {
-                this.currentTemplate = data.template;
-            }
-        } catch (error) {
-            console.error('Error fetching template:', error);
-        }
-    },
-
-    // Hapus duplikasi fungsi openPlaceholderGuide
-    openPlaceholderGuide() {
-        this.showPlaceholderGuide = true;
-    },
-
-    copyPlaceholder(text) {
-        navigator.clipboard.writeText(text)
-            .then(() => {
-                this.showFeedback('success', 'Placeholder berhasil disalin');
-            })
-            .catch(() => {
-                this.showFeedback('error', 'Gagal menyalin placeholder');
-            });
+    init() {
+        console.log('Initializing with:', {
+            type: this.type,
+            templatesCount: this.templates.length,
+            templates: this.templates
+        });
     },
 
     async handleFileUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-    
+
         if (!file.name.endsWith('.docx')) {
             this.showFeedback('error', 'File harus berformat .docx');
             return;
         }
-    
+
         const formData = new FormData();
         formData.append('template', file);
-        formData.append('type', this.$root.dataset.type); // Ambil type dari data attribute
-    
+        formData.append('type', this.type);
+
         try {
             this.loading = true;
-            console.log('Uploading...', { type: this.$root.dataset.type }); // Debug log
-    
             const response = await fetch('/admin/report-template/upload', {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
             });
-    
+
             const result = await response.json();
             
             if (result.success) {
-                this.currentTemplate = result.template;
+                // Tambahkan template baru ke daftar
+                this.templates = [result.template, ...this.templates];
                 this.showFeedback('success', 'Template berhasil diupload');
                 event.target.value = '';
             } else {
                 throw new Error(result.message);
             }
         } catch (error) {
-            console.error('Upload error:', error);
             this.showFeedback('error', error.message || 'Gagal mengupload template');
         } finally {
             this.loading = false;
         }
+    },
+
+    async activateTemplate(template) {
+        try {
+            this.loading = true;
+            const response = await fetch(`/admin/report-template/${template.id}/activate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Update status aktif untuk semua template
+                this.templates = this.templates.map(t => ({
+                    ...t,
+                    is_active: t.id === template.id
+                }));
+                this.activeTemplate = template;
+                this.showFeedback('success', 'Template berhasil diaktifkan');
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            this.showFeedback('error', error.message || 'Gagal mengaktifkan template');
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async deleteTemplate(template) {
+        if (!confirm('Anda yakin ingin menghapus template ini?')) return;
+
+        try {
+            this.loading = true;
+            const response = await fetch(`/admin/report-template/${template.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Hapus template dari daftar
+                this.templates = this.templates.filter(t => t.id !== template.id);
+                if (this.activeTemplate?.id === template.id) {
+                    this.activeTemplate = null;
+                }
+                this.showFeedback('success', 'Template berhasil dihapus');
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            this.showFeedback('error', error.message || 'Gagal menghapus template');
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    previewTemplate(template) {
+        window.open(`/admin/report-template/${template.id}/preview`, '_blank');
+    },
+
+    openPlaceholderGuide() {
+        this.showPlaceholderGuide = true;
     },
 
     showFeedback(type, message) {
@@ -284,23 +347,52 @@ Alpine.data('reportManager', () => ({
         setTimeout(() => {
             this.feedback.message = '';
         }, 3000);
+    },
+
+    formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
     }
 }));
 
 Alpine.store('formProtection', {
     formChanged: false,
-    isSubmitting: false, // Tambah flag untuk menandai proses submit
+    isSubmitting: false,
     
     init() {
-        this.setupBeforeUnloadListener();
+        // Tambahkan pengecualian untuk halaman login
+        if (this.isLoginPage()) {
+            return; // Tidak menerapkan form protection di halaman login
+        }
+
+        // Hanya setup untuk halaman dengan form yang membutuhkan protection
+        if (document.querySelector('form[data-needs-protection]')) {
+            this.setupFormChangeListeners();
+            this.setupNavigationProtection();
+        }
     },
     
-    setupBeforeUnloadListener() {
+    isLoginPage() {
+        // Cek apakah ini halaman login
+        return window.location.pathname === '/login' || 
+               document.querySelector('form[action*="login"]') !== null;
+    },
+    
+    setupFormChangeListeners() {
+        document.querySelectorAll('form[data-needs-protection] input, form[data-needs-protection] select, form[data-needs-protection] textarea').forEach(element => {
+            element.addEventListener('change', () => this.formChanged = true);
+            element.addEventListener('keyup', () => this.formChanged = true);
+        });
+    },
+    
+    setupNavigationProtection() {
         window.addEventListener('beforeunload', (e) => {
-            // Cek jika form berubah dan tidak sedang dalam proses submit
             if (this.formChanged && !this.isSubmitting) {
                 e.preventDefault();
-                e.returnValue = 'Anda memiliki perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
+                e.returnValue = 'Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
                 return e.returnValue;
             }
         });
@@ -320,10 +412,14 @@ Alpine.store('formProtection', {
     }
 });
 
-// Tambahkan Alpine component untuk form protection
+// Improved FormProtection Component
 Alpine.data('formProtection', () => ({
     init() {
-        // Setup listeners untuk form inputs
+        if (!this.$el.tagName === 'FORM') {
+            return; // Only initialize on form elements
+        }
+
+        // Setup form specific listeners
         this.$el.querySelectorAll('input, select, textarea').forEach(element => {
             element.addEventListener('change', () => {
                 this.$store.formProtection.markAsChanged();
@@ -333,47 +429,22 @@ Alpine.data('formProtection', () => ({
             });
         });
 
-        // Setup listener untuk tombol kembali
-        const backButtons = this.$el.querySelectorAll('[data-back-button]');
-        backButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                if (this.$store.formProtection.formChanged) {
-                    e.preventDefault();
-                    if (confirm('Anda memiliki perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')) {
-                        this.$store.formProtection.reset();
-                        window.history.back();
-                    }
-                }
-            });
+        // Handle form submission
+        this.$el.addEventListener('submit', () => {
+            this.$store.formProtection.startSubmitting();
         });
     },
+
     handleSubmit(e) {
-        e.preventDefault();
         if (this.$store.formProtection.formChanged) {
-            if (confirm('Apakah Anda yakin ingin menyimpan perubahan?')) {
-                this.$store.formProtection.startSubmitting();
-                e.target.submit();
+            if (!confirm('Apakah Anda yakin ingin menyimpan perubahan?')) {
+                e.preventDefault();
+                return;
             }
-        } else {
-            e.target.submit();
         }
-    },
-
-    // Method untuk handle AJAX submit
-    async handleAjaxSubmit() {
         this.$store.formProtection.startSubmitting();
-        try {
-            if (typeof window.saveData === 'function') {
-                await window.saveData();
-            }
-            this.$store.formProtection.reset();
-        } catch (error) {
-            console.error('Error:', error);
-            this.$store.formProtection.isSubmitting = false;
-        }
     },
 
-    // Method untuk konfirmasi saat membersihkan form
     confirmClear() {
         if (this.$store.formProtection.formChanged) {
             return confirm('Apakah Anda yakin ingin membersihkan form? Perubahan yang belum disimpan akan hilang.');

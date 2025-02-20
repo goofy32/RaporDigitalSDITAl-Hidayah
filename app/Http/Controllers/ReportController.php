@@ -13,42 +13,97 @@ use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
+
 class ReportController extends Controller
 {
     public function index($type = 'UTS')
     {
-        if (!in_array($type, ['UTS', 'UAS'])) {
-            return redirect()->route('report.template.index', 'UTS')
-                ->with('error', 'Tipe rapor tidak valid');
+        try {
+            // 1. Validasi tipe rapor
+            if (!in_array($type, ['UTS', 'UAS'])) {
+                return redirect()->route('report.template.index', 'UTS')
+                    ->with('error', 'Tipe rapor tidak valid');
+            }
+        
+            // 2. Mengambil semua template berdasarkan tipe
+            $templates = ReportTemplate::where('type', $type)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        
+            // 3. Mengambil template yang aktif
+            $activeTemplate = ReportTemplate::where([
+                'type' => $type,
+                'is_active' => true
+            ])->first();
+    
+            // Debug logging
+            \Log::info('Report Template Data:', [
+                'type' => $type,
+                'templates_count' => $templates->count(),
+                'templates' => $templates->toArray(),
+                'active_template' => $activeTemplate ? $activeTemplate->toArray() : null
+            ]);
+        
+            // 4. Mengirim data ke view
+            return view('admin.report.index', [
+                'templates' => $templates,
+                'type' => $type,
+                'activeTemplate' => $activeTemplate
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in report template index:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return view('admin.report.index', [
+                'templates' => collect([]),
+                'type' => $type,
+                'activeTemplate' => null
+            ])->with('error', 'Terjadi kesalahan saat memuat data template');
         }
-
-        $templates = ReportTemplate::where('type', $type)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return view('admin.report.index', compact('templates', 'type'));
     }
-
+    
+    
     public function getCurrentTemplate(Request $request)
     {
         try {
-            $template = ReportTemplate::where('type', $request->type)
-                ->where('is_active', true)
-                ->first();
-
-            // Tambahkan header untuk memastikan response JSON
+            $type = $request->type ?? 'UTS';
+            
+            \Log::info('getCurrentTemplate request:', [
+                'type' => $type,
+                'all_params' => $request->all()
+            ]);
+    
+            $templates = ReportTemplate::where('type', $type)
+                ->orderBy('created_at', 'desc')
+                ->get();
+    
+            $activeTemplate = $templates->where('is_active', true)->first();
+    
+            \Log::info('getCurrentTemplate response:', [
+                'templates_count' => $templates->count(),
+                'templates' => $templates->toArray(),
+                'active_template' => $activeTemplate ? $activeTemplate->toArray() : null
+            ]);
+    
             return response()->json([
                 'success' => true,
-                'template' => $template
+                'templates' => $templates,
+                'activeTemplate' => $activeTemplate
             ])->header('Content-Type', 'application/json');
         } catch (\Exception $e) {
+            \Log::error('Error in getCurrentTemplate:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+    
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengambil template: ' . $e->getMessage()
             ], 500)->header('Content-Type', 'application/json');
         }
     }
-
     public function upload(Request $request)
     {
         try {
@@ -62,7 +117,7 @@ class ReportController extends Controller
             $file = $request->file('template');
             $filename = time() . '_' . $file->getClientOriginalName();
             
-            // Validasi template
+            // Validate template
             $tempPath = $file->getRealPath();
             $validation = $this->validateTemplate($tempPath);
             
@@ -83,10 +138,16 @@ class ReportController extends Controller
                 ], 422);
             }
     
-            // Simpan file
-            $path = $file->storeAs('templates/rapor', $filename, 'public');
+            // Save file to storage and make sure it's public
+            $path = 'templates/rapor/' . $filename;
+            Storage::disk('public')->put($path, file_get_contents($tempPath));
+            
+            // Create symbolic link if it doesn't exist
+            if (!file_exists(public_path('storage'))) {
+                Artisan::call('storage:link');
+            }
     
-            // Simpan record ke database
+            // Save record to database
             $template = ReportTemplate::create([
                 'filename' => $filename,
                 'path' => $path,
@@ -234,27 +295,27 @@ class ReportController extends Controller
             $phpWord = new TemplateProcessor($filePath);
             $existingVariables = $phpWord->getVariables();
             
-            // Load required placeholders
+            // Ambil semua placeholder dari database
+            $validPlaceholders = ReportPlaceholder::pluck('placeholder_key')
+                ->toArray();
+    
+            // Ambil placeholder yang wajib
             $requiredPlaceholders = ReportPlaceholder::where('is_required', true)
                 ->pluck('placeholder_key')
                 ->toArray();
-
-            // Get all valid placeholders
-            $validPlaceholders = ReportPlaceholder::pluck('placeholder_key')
-                ->toArray();
-
-            // Check missing required placeholders
+    
+            // Cek placeholder yang tidak ada tapi wajib
             $missingPlaceholders = array_diff($requiredPlaceholders, $existingVariables);
             
-            // Check invalid placeholders
+            // Cek placeholder yang tidak valid
             $invalidPlaceholders = array_diff($existingVariables, $validPlaceholders);
-
+    
             return [
                 'is_valid' => empty($missingPlaceholders) && empty($invalidPlaceholders),
-                'missing_placeholders' => $missingPlaceholders,
-                'invalid_placeholders' => $invalidPlaceholders
+                'missing_placeholders' => array_values($missingPlaceholders),
+                'invalid_placeholders' => array_values($invalidPlaceholders)
             ];
-
+    
         } catch (\Exception $e) {
             return [
                 'is_valid' => false,
@@ -305,64 +366,32 @@ class ReportController extends Controller
 
     public function placeholderGuide()
     {
-        $placeholders = [
-            'siswa' => [
-                ['key' => 'nama_siswa', 'description' => 'Nama lengkap siswa'],
-                ['key' => 'nis', 'description' => 'Nomor Induk Siswa'],
-                ['key' => 'nisn', 'description' => 'NISN'],
-                ['key' => 'kelas', 'description' => 'Nama kelas'],
-                ['key' => 'jenis_kelamin', 'description' => 'Jenis kelamin siswa'],
-                ['key' => 'tempat_lahir', 'description' => 'Tempat lahir siswa'],
-                ['key' => 'tanggal_lahir', 'description' => 'Tanggal lahir siswa']
-            ],
-            'orangtua' => [
-                ['key' => 'nama_ayah', 'description' => 'Nama ayah siswa'],
-                ['key' => 'nama_ibu', 'description' => 'Nama ibu siswa'],
-                ['key' => 'pekerjaan_ayah', 'description' => 'Pekerjaan ayah'],
-                ['key' => 'pekerjaan_ibu', 'description' => 'Pekerjaan ibu'],
-                ['key' => 'alamat_ortu', 'description' => 'Alamat orang tua'],
-                ['key' => 'wali_siswa', 'description' => 'Nama wali siswa (jika ada)'],
-                ['key' => 'pekerjaan_wali', 'description' => 'Pekerjaan wali (jika ada)']
-            ],
-            'nilai' => [
-                ['key' => 'nilai_matematika_tp1', 'description' => 'Nilai TP 1 Matematika'],
-                ['key' => 'nilai_matematika_tp2', 'description' => 'Nilai TP 2 Matematika'],
-                ['key' => 'nilai_matematika_akhir', 'description' => 'Nilai Akhir Matematika'],
-                ['key' => 'predikat_matematika', 'description' => 'Predikat Nilai Matematika'],
-                ['key' => 'capaian_matematika', 'description' => 'Deskripsi Capaian Matematika'],
-                // Tambahkan mata pelajaran lain
-            ],
-            'ekskul' => [
-                ['key' => 'ekskul1_nama', 'description' => 'Nama Ekstrakurikuler 1'],
-                ['key' => 'ekskul1_nilai', 'description' => 'Nilai Ekstrakurikuler 1'],
-                ['key' => 'ekskul1_deskripsi', 'description' => 'Deskripsi Ekstrakurikuler 1'],
-                ['key' => 'ekskul2_nama', 'description' => 'Nama Ekstrakurikuler 2'],
-                ['key' => 'ekskul2_nilai', 'description' => 'Nilai Ekstrakurikuler 2'],
-                ['key' => 'ekskul2_deskripsi', 'description' => 'Deskripsi Ekstrakurikuler 2']
-            ],
-            'kehadiran' => [
-                ['key' => 'sakit', 'description' => 'Jumlah hari tidak hadir karena sakit'],
-                ['key' => 'izin', 'description' => 'Jumlah hari tidak hadir karena izin'],
-                ['key' => 'tanpa_keterangan', 'description' => 'Jumlah hari tidak hadir tanpa keterangan'],
-                ['key' => 'total_absen', 'description' => 'Total ketidakhadiran']
-            ],
-            'sekolah' => [
-                ['key' => 'nama_sekolah', 'description' => 'Nama sekolah'],
-                ['key' => 'kepala_sekolah', 'description' => 'Nama kepala sekolah'],
-                ['key' => 'nip_kepsek', 'description' => 'NIP kepala sekolah'],
-                ['key' => 'wali_kelas', 'description' => 'Nama wali kelas'],
-                ['key' => 'nip_wali', 'description' => 'NIP wali kelas'],
-                ['key' => 'tahun_ajaran', 'description' => 'Tahun ajaran'],
-                ['key' => 'semester', 'description' => 'Semester']
-            ]
-        ];
-        
-        \Log::info('Accessing placeholderGuide', [
-            'request_type' => request()->wantsJson() ? 'ajax' : 'regular',
-            'placeholders_count' => count($placeholders)
-        ]);
+        try {
+            // Get placeholders grouped by category
+            $placeholders = ReportPlaceholder::get()
+                ->groupBy('category')
+                ->map(function($group) {
+                    return $group->map(function($item) {
+                        return [
+                            'key' => $item->placeholder_key,
+                            'description' => $item->description,
+                            'is_required' => $item->is_required
+                        ];
+                    });
+                });
     
-        // Selalu kirim data ke view
-        return view('admin.report.placeholder_guide', compact('placeholders'));
+            // Log for debugging
+            \Log::info('Placeholders data:', ['data' => $placeholders]);
+    
+            // Return view with collection
+            return view('admin.report.placeholder_guide', [
+                'placeholders' => $placeholders
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in placeholderGuide:', ['error' => $e->getMessage()]);
+            return view('admin.report.placeholder_guide', [
+                'placeholders' => collect([])
+            ])->with('error', 'Terjadi kesalahan saat memuat panduan placeholder');
+        }
     }
 }
