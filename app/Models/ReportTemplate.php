@@ -16,8 +16,15 @@ class ReportTemplate extends Model
     ];
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'semester' => 'integer'
     ];
+
+    // Accessor untuk mendapatkan label semester
+    public function getSemesterLabelAttribute()
+    {
+        return $this->semester == 1 ? 'Ganjil' : 'Genap';
+    }
 
     public function mappings()
     {

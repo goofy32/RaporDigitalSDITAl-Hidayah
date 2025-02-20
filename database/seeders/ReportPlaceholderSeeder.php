@@ -75,6 +75,12 @@ class ReportPlaceholderSeeder extends Seeder
             ['placeholder_key' => 'sakit', 'description' => 'Jumlah Sakit', 'category' => 'kehadiran', 'is_required' => true],
             ['placeholder_key' => 'izin', 'description' => 'Jumlah Izin', 'category' => 'kehadiran', 'is_required' => false],
             ['placeholder_key' => 'tanpa_keterangan', 'description' => 'Jumlah Tanpa Keterangan', 'category' => 'kehadiran', 'is_required' => false],
+
+            ['placeholder_key' => 'nama_mulok1', 'description' => 'Nama Muatan Lokal 1', 'category' => 'nilai', 'is_required' => false],
+            ['placeholder_key' => 'nama_mulok2', 'description' => 'Nama Muatan Lokal 2', 'category' => 'nilai', 'is_required' => false],
+            ['placeholder_key' => 'nama_mulok3', 'description' => 'Nama Muatan Lokal 3', 'category' => 'nilai', 'is_required' => false],
+            ['placeholder_key' => 'nama_mulok4', 'description' => 'Nama Muatan Lokal 4', 'category' => 'nilai', 'is_required' => false],
+            ['placeholder_key' => 'nama_mulok5', 'description' => 'Nama Muatan Lokal 5', 'category' => 'nilai', 'is_required' => false],
             
             // Lainnya
             ['placeholder_key' => 'catatan_guru', 'description' => 'Catatan Guru', 'category' => 'lainnya', 'is_required' => false],

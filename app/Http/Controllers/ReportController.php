@@ -109,7 +109,10 @@ class ReportController extends Controller
         try {
             $request->validate([
                 'template' => 'required|file|mimes:docx',
-                'type' => 'required|in:UTS,UAS'
+                'type' => 'required|in:UTS,UAS',
+                'tahun_ajaran' => 'required|string',
+                // Ubah validasi semester untuk menerima nilai 1 atau 2
+                'semester' => 'required|in:1,2' 
             ]);
     
             DB::beginTransaction();
@@ -153,8 +156,8 @@ class ReportController extends Controller
                 'path' => $path,
                 'type' => $request->type,
                 'is_active' => false,
-                'tahun_ajaran' => session('tahun_ajaran'),
-                'semester' => session('semester')
+                'tahun_ajaran' => $request->tahun_ajaran,
+                'semester' => $request->semester // Nilai akan berupa 1 atau 2
             ]);
     
             DB::commit();
@@ -166,6 +169,13 @@ class ReportController extends Controller
     
         } catch (ValidationException $e) {
             DB::rollBack();
+            // Tambahkan pesan khusus untuk error semester
+            if (isset($e->errors()['semester'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nilai semester harus 1 (Ganjil) atau 2 (Genap)'
+                ], 422);
+            }
             return response()->json([
                 'success' => false,
                 'message' => $e->errors()
@@ -235,22 +245,22 @@ class ReportController extends Controller
     {
         try {
             DB::beginTransaction();
-
+    
             // Nonaktifkan semua template dengan tipe yang sama
             ReportTemplate::where('type', $template->type)
                 ->where('id', '!=', $template->id)
                 ->update(['is_active' => false]);
-
+    
             // Aktifkan template yang dipilih
             $template->update(['is_active' => true]);
-
+    
             DB::commit();
-
+    
             return response()->json([
                 'success' => true,
                 'message' => 'Template berhasil diaktifkan'
             ]);
-
+    
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -328,39 +338,118 @@ class ReportController extends Controller
     {
         $sampleData = [
             // Data Siswa
-            'nama_siswa' => 'John Doe',
-            'nisn' => '1234567890',
-            'nis' => '987654321',
+            'nama_siswa' => 'Muhammad Azzam',
+            'nisn' => '0123456789',
+            'nis' => '210001',
             'kelas' => '6A',
-            'jenis_kelamin' => 'Laki-laki',
-            'tempat_lahir' => 'Jakarta',
-            'tanggal_lahir' => '15 Juni 2012',
+            'tahun_ajaran' => '2024/2025',
             
-            // Data Orang Tua
-            'nama_ayah' => 'James Doe',
-            'nama_ibu' => 'Jane Doe',
-            'pekerjaan_ayah' => 'Wiraswasta',
-            'pekerjaan_ibu' => 'Guru',
+            // === MATA PELAJARAN ===
+            // PAI
+            'nilai_pai' => '90',
+            'capaian_pai' => 'Sangat baik dalam memahami dan menerapkan nilai-nilai agama Islam dalam kehidupan sehari-hari',
             
-            // Nilai Akademik (contoh untuk beberapa mata pelajaran)
-            'nilai_matematika_tp1' => '85',
-            'nilai_matematika_tp2' => '88',
-            'nilai_matematika_akhir' => '87',
-            'predikat_matematika' => 'A',
-            'capaian_matematika' => 'Sangat baik dalam pemahaman konsep matematika',
+            // PPKN
+            'nilai_ppkn' => '88',
+            'capaian_ppkn' => 'Menunjukkan pemahaman yang baik tentang nilai-nilai Pancasila dan kewarganegaraan',
             
-            // Kehadiran
+            // Bahasa Indonesia
+            'nilai_bahasa_indonesia' => '85',
+            'capaian_bahasa_indonesia' => 'Mampu berkomunikasi dengan baik secara lisan dan tulisan dalam Bahasa Indonesia',
+            
+            // Matematika
+            'nilai_matematika' => '92',
+            'capaian_matematika' => 'Sangat baik dalam pemecahan masalah matematika dan penerapan konsep perhitungan',
+            
+            // PJOK
+            'nilai_pjok' => '87',
+            'capaian_pjok' => 'Aktif dalam kegiatan olahraga dan menunjukkan sportivitas yang baik',
+            
+            // Seni Musik
+            'nilai_seni_musik' => '88',
+            
+            // Bahasa Inggris
+            'nilai_bahasa_inggris' => '86',
+            'capaian_bahasa_inggris' => 'Baik dalam memahami dan menggunakan Bahasa Inggris dasar',
+            
+            
+            // === MUATAN LOKAL ===
+            'nama_mulok1' => 'Tahfidz',
+            'nama_mulok2' => 'Bahasa Arab',
+            'nama_mulok3' => 'BTQ',
+            'nama_mulok4' => 'Komputer', 
+            'nama_mulok5' => 'Conversation',
+
+            // Tahfidz
+            'nilai_mulok1' => '89',
+            'capaian_mulok1' => 'Hafalan sangat baik dan tajwid yang tepat',
+            
+            // Bahasa Arab
+            'nilai_mulok2' => '85',
+            'capaian_mulok2' => 'Mampu memahami kosakata dasar dan percakapan sederhana',
+            
+            // BTQ
+            'nilai_mulok3' => '88',
+            'capaian_mulok3' => 'Bacaan Al-Quran lancar dan sesuai tajwid',
+            
+            // Komputer
+            'nilai_mulok4' => '90',
+            'capaian_mulok4' => 'Sangat baik dalam mengoperasikan komputer dan aplikasi dasar',
+            
+            // Conversation
+            'nilai_mulok5' => '87',
+            'capaian_mulok5' => 'Aktif dalam percakapan Bahasa Inggris sederhana',
+            
+            // === EKSTRAKURIKULER ===
+            'ekskul1_nama' => 'Pramuka',
+            'ekskul1_keterangan' => 'Sangat aktif dan menunjukkan jiwa kepemimpinan',
+            
+            'ekskul2_nama' => 'Tahfidz',
+            'ekskul2_keterangan' => 'Berhasil menghafal juz 30 dengan baik',
+            
+            'ekskul3_nama' => 'Futsal',
+            'ekskul3_keterangan' => 'Menunjukkan kerja sama tim yang baik',
+            
+            'ekskul4_nama' => 'English Club',
+            'ekskul4_keterangan' => 'Aktif dalam kegiatan percakapan Bahasa Inggris',
+            
+            'ekskul5_nama' => 'Seni Kaligrafi',
+            'ekskul5_keterangan' => 'Mampu membuat kaligrafi dengan indah',
+            
+            'ekskul6_nama' => 'Robotika',
+            'ekskul6_keterangan' => 'Menunjukkan minat dan kreativitas dalam pemrograman dasar',
+            
+            // === KEHADIRAN ===
             'sakit' => '2',
             'izin' => '1',
             'tanpa_keterangan' => '0',
             
-            // Dan seterusnya...
+            // === LAINNYA ===
+            'catatan_guru' => 'Siswa menunjukkan perkembangan yang sangat baik dalam akademik maupun perilaku. Perlu ditingkatkan lagi dalam kegiatan diskusi kelompok.',
+            'nomor_telepon' => '(021) 7123456'
         ];
-
+    
+        // Get available variables in template
+        $variables = $template->getVariables();
+        
+        // Log untuk debugging
+        \Log::info('Variables in template:', [
+            'found_variables' => $variables
+        ]);
+    
+        // Only set values for variables that exist in template
         foreach ($sampleData as $key => $value) {
-            if ($template->valueExists($key)) {
+            if (in_array($key, $variables)) {
                 $template->setValue($key, $value);
             }
+        }
+        
+        // Log placeholders yang tidak ada di sample data
+        $missingPlaceholders = array_diff($variables, array_keys($sampleData));
+        if (!empty($missingPlaceholders)) {
+            \Log::warning('Placeholders without sample data:', [
+                'missing' => $missingPlaceholders
+            ]);
         }
     }
 
