@@ -6,6 +6,13 @@ import Alpine from 'alpinejs';
 
 const cleanupHandlers = new Set();
 
+document.addEventListener('turbo:before-render', () => {
+    // Bersihkan state Alpine
+    Alpine.store('report').showPreview = false;
+    Alpine.store('report').previewContent = '';
+    Alpine.store('report').closePreview();
+});
+
 document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
         dropdownState: {
@@ -62,6 +69,49 @@ Alpine.store('report', {
     loading: false,
     error: null,
     feedback: null,
+    previewContent: '',
+    showPreview: false,
+
+    async downloadPdf(siswaId) {
+        try {
+            const response = await fetch(`/wali-kelas/rapor/download-pdf/${siswaId}`);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rapor_${siswaId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            this.setFeedback('Gagal mengunduh PDF', 'error');
+        }
+    },
+    showPreviewModal(siswaId) {
+        return this.handleAsync(async () => {
+            const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.previewContent = data.html;
+                this.showPreview = true;
+            } else {
+                throw new Error(data.message);
+            }
+        });
+    },
+
+    async handleAsync(operation) {
+        try {
+            this.loading = true;
+            await operation();
+        } catch (error) {
+            this.setFeedback(error.message, 'error');
+        } finally {
+            this.loading = false;
+        }
+    },
     
     // Fetch template aktif
     async fetchActiveTemplate(type) {
@@ -161,53 +211,15 @@ Alpine.store('report', {
         }
     },
 
-    // Generate rapor
-    async generateReport(siswaId, type) {
-        if (this.loading) return;
-
-        this.loading = true;
-        try {
-            const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({ type })
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message);
-            }
-
-            // Handle file download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `rapor_${type.toLowerCase()}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            this.setFeedback('Rapor berhasil digenerate', 'success');
-            return true;
-        } catch (error) {
-            this.setFeedback(error.message, 'error');
-            return false;
-        } finally {
-            this.loading = false;
-        }
+    closePreview() {
+        this.showPreview = false;
+        this.previewContent = '';
     },
 
     // Helper untuk feedback
     setFeedback(message, type = 'success') {
         this.feedback = { message, type };
-        setTimeout(() => {
-            this.feedback = null;
-        }, 3000);
+        setTimeout(() => this.feedback = null, 3000);
     }
 });
 

@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'check.wali.kelas' => \App\Http\Middleware\CheckWaliKelas::class,
             'check.report.template' => \App\Http\Middleware\CheckReportTemplate::class,
+            'check.rapor.access' => \App\Http\Middleware\CheckRaporAccess::class,
         ]);
 
         // Konfigurasi CSRF

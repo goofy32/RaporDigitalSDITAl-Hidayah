@@ -289,13 +289,15 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
 
     Route::prefix('rapor')->name('rapor.')->group(function () {
         Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
-        Route::get('/preview/{siswa}', [ReportController::class, 'previewWaliKelas'])->name('preview');
-        Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
-        Route::get('/download/{siswa}', [ReportController::class, 'downloadReport'])->name('download');
-        Route::get('/print/{siswa}', [ReportController::class, 'printReport'])->name('print');
         
-        // Tambahan untuk melihat history rapor
-        Route::get('/history/{siswa}', [ReportController::class, 'reportHistory'])->name('history');
-        Route::get('/batch-generate', [ReportController::class, 'batchGenerate'])->name('batch.generate');
+        // Gunakan model binding dan middleware
+        Route::middleware('check.rapor.access')->group(function () {
+            Route::get('/preview/{siswa}', [ReportController::class, 'previewRapor'])->name('preview');
+            Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
+            Route::get('/download/{siswa}/{type}', [ReportController::class, 'downloadReport'])->name('download');
+        });
+        
+        Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
+        Route::get('download-pdf/{siswa}', [ReportController::class, 'downloadPdf']) ->name('rapor.download-pdf');
     });
 });

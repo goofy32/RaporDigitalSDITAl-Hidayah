@@ -37,8 +37,21 @@ class Kelas extends Model
             ->withPivot('role');
     }
 
-    
-    
+    public function getProgressKelas()
+    {
+        $total_siswa = $this->siswas()->count();
+        $completed_siswa = $this->siswas()
+            ->whereHas('nilais', function($q) {
+                $q->whereNotNull('nilai_akhir_rapor');
+            })->count();
+        
+        return [
+            'total' => $total_siswa,
+            'completed' => $completed_siswa,
+            'percentage' => $total_siswa > 0 ? ($completed_siswa / $total_siswa) * 100 : 0
+        ];
+    }
+
     // Guru pengajar
     public function guruPengajar()
     {

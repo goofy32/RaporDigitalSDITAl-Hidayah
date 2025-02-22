@@ -9,7 +9,7 @@ class ReportTemplate extends Model
     protected $fillable = [
         'filename',
         'path',
-        'type',
+        'type', 
         'is_active',
         'tahun_ajaran',
         'semester'
@@ -25,6 +25,14 @@ class ReportTemplate extends Model
     {
         return $this->semester == 1 ? 'Ganjil' : 'Genap';
     }
+
+    public function getReportStatus($siswaId) {
+        // hanya cek nilai dan absensi
+        if (!$siswa->nilais()->exists()) return 'incomplete';
+        if (!$siswa->absensi) return 'incomplete';
+        return 'ready';
+    }
+    
 
     public function mappings()
     {

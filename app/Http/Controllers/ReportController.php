@@ -12,6 +12,9 @@ use Illuminate\Http\Request;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\RaporTemplateProcessor;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 
 class ReportController extends Controller
@@ -104,6 +107,9 @@ class ReportController extends Controller
             ], 500)->header('Content-Type', 'application/json');
         }
     }
+
+
+    
     public function upload(Request $request)
     {
         try {
@@ -194,15 +200,29 @@ class ReportController extends Controller
         $path = storage_path('app/public/samples/template_rapor_sample.docx');
         return response()->download($path);
     }
-    public function previewWaliKelas(Siswa $siswa)
-    {
-        $nilaiRapor = $siswa->nilaiRapor()
-            ->with('mataPelajaran')
-            ->get();
-        
-        return view('wali_kelas.rapor.preview', compact('siswa', 'nilaiRapor'));
-    }
 
+    public function downloadPdf(Siswa $siswa) {
+        $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
+        return $pdf->download("rapor_{$siswa->nis}.pdf");
+    }
+    
+    public function previewRapor($siswa_id) {
+        $siswa = Siswa::with([
+            'kelas',
+            'nilais.mataPelajaran',
+            'nilaiEkstrakurikuler.ekstrakurikuler',
+            'absensi'
+        ])->findOrFail($siswa_id);
+    
+        // Generate PDF menggunakan dompdf
+        $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
+        
+        return response()->json([
+            'success' => true,
+            'pdf' => base64_encode($pdf->output())
+        ]);
+    }
+    
     public function preview(ReportTemplate $template)
     {
         try {
@@ -235,10 +255,70 @@ class ReportController extends Controller
         }
     }
 
+    public function generateReport(Request $request, Siswa $siswa)
+    {
+        try {
+            // Validasi akses wali kelas
+            if (!$siswa->isInKelasWali(auth()->id())) {
+                throw new \Exception('Anda tidak memiliki akses untuk generate rapor siswa ini');
+            }
+            if (!$siswa->nilais()->exists()) {
+                throw new \Exception('Data nilai belum lengkap');
+            }
+            
+            if (!$siswa->absensi) {
+                throw new \Exception('Data kehadiran belum lengkap');
+            }
+    
+            // Cek template aktif dengan log
+            $template = ReportTemplate::where([
+                'type' => $request->type ?? 'UTS',
+                'is_active' => true
+            ])->first();
+    
+            \Log::info('Template yang digunakan:', [
+                'template' => $template ? $template->toArray() : null
+            ]);
+    
+            if (!$template) {
+                throw new \Exception('Template aktif tidak ditemukan');
+            }
+    
+            // Create processor instance langsung di sini
+            $processor = new RaporTemplateProcessor($template, $siswa, $request->type ?? 'UTS');
+            $result = $processor->generate();
+    
+            return response()->download(
+                storage_path('app/public/' . $result['path']), 
+                $result['filename']
+            );
+    
+        } catch (\Exception $e) {
+            \Log::error('Error generating report:', [
+                'error' => $e->getMessage(),
+                'siswa_id' => $siswa->id,
+                'type' => $request->type
+            ]);
+    
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
     public function indexWaliKelas()
     {
-        $siswa = auth()->user()->kelasWali->siswas;
-        return view('wali_kelas.rapor.index', compact('siswa'));
+        $guru = auth()->user();
+        $kelas = $guru->kelasWali;
+        
+        if (!$kelas) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
+        }
+        
+        $siswa = $kelas->siswas()->with(['nilais', 'absensi'])->get();
+        $placeholders = ReportPlaceholder::all()->groupBy('category');
+        
+        return view('wali_kelas.rapor.index', compact('siswa', 'placeholders'));
     }
 
     public function activate(ReportTemplate $template)
@@ -267,6 +347,75 @@ class ReportController extends Controller
                 'success' => false,
                 'message' => 'Gagal mengaktifkan template: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function generateBatchReport(Request $request)
+    {
+        try {
+            $siswaIds = $request->input('siswa_ids', []);
+            $type = $request->input('type', 'UTS');
+            
+            // Validasi siswa
+            $guru = auth()->user();
+            $kelas = $guru->kelasWali;
+            
+            if (!$kelas) {
+                throw new \Exception('Anda tidak memiliki kelas yang diwalikan');
+            }
+            
+            // Cek template aktif
+            $template = ReportTemplate::where([
+                'type' => $type,
+                'is_active' => true
+            ])->firstOrFail();
+            
+            // Generate rapor untuk setiap siswa
+            $files = [];
+            foreach ($siswaIds as $siswaId) {
+                $siswa = Siswa::find($siswaId);
+                if ($siswa && $siswa->kelas_id == $kelas->id) {
+                    $processor = new RaporTemplateProcessor($template, $siswa, $type);
+                    $result = $processor->generate();
+                    $files[] = [
+                        'path' => storage_path('app/public/' . $result['path']),
+                        'name' => $result['filename']
+                    ];
+                }
+            }
+            
+            if (empty($files)) {
+                throw new \Exception('Tidak ada rapor yang dapat digenerate');
+            }
+            
+            // Buat zip
+            $zipName = "rapor_batch_{$kelas->nama_kelas}_{$type}_" . time() . ".zip";
+            $zipPath = storage_path("app/public/generated/{$zipName}");
+            
+            $zip = new ZipArchive();
+            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                foreach ($files as $file) {
+                    $zip->addFile($file['path'], $file['name']);
+                }
+                $zip->close();
+                
+                // Hapus file individual setelah di-zip
+                foreach ($files as $file) {
+                    if (file_exists($file['path'])) {
+                        unlink($file['path']);
+                    }
+                }
+                
+                return response()->download($zipPath)->deleteFileAfterSend(true);
+            }
+            
+            throw new \Exception('Gagal membuat file zip');
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 
