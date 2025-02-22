@@ -55,14 +55,17 @@
             <!-- Information Items -->
             <div class="rounded-lg border border-gray-200 shadow-sm">
                 <div class="h-[150px] overflow-y-auto">
-                    <div class="relative pl-6 border-l-2 border-gray-200 p-4">
-                        <template x-for="item in $store.notification.items" :key="item.id">
-                            <div class="mb-4 relative h-[60px]">
-                                <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                    </svg>
-                                </div>
+                  <div class="relative pl-8 border-l-2 border-gray-200"> <!-- Ubah pl-6 menjadi pl-8 -->
+                    <template x-for="item in $store.notification.items" :key="item.id">
+                        <div class="mb-4 relative h-[80px]">
+                            <!-- Ubah posisi dan ukuran bulatan -->
+                            <div class="absolute -left-[20px] top-3 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center"> <!-- Ubah ukuran dan posisi -->
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <!-- Sesuaikan ukuran ikon -->
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <!-- Content tetap sama -->
+                            <div class="bg-white rounded-lg border shadow-sm p-3">
                                 <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
                                     class="bg-white rounded-lg border shadow-sm p-3"
                                     :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">

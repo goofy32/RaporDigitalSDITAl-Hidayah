@@ -59,12 +59,12 @@ class SubjectController extends Controller
 
     public function create()
     {
-        $classes = Kelas::all();
-        $teachers = Guru::all();
-        $students = Siswa::all();
-        return view('data.add_subject', compact('classes', 'teachers', 'students'));
+        $classes = Kelas::orderBy('nomor_kelas')
+                        ->orderBy('nama_kelas')
+                        ->get();
+        $teachers = Guru::orderBy('nama')->get();
+        return view('data.add_subject', compact('classes', 'teachers'));
     }
-
     public function store(Request $request)
     {
         $validated = $request->validate([

@@ -43,6 +43,7 @@
                         <th class="px-6 py-3">No</th>
                         <th class="px-6 py-3">NIS</th>
                         <th class="px-6 py-3">Nama</th>
+                        <th class="px-6 py-3">Semester</th>
                         <th class="px-6 py-3">Sakit</th>
                         <th class="px-6 py-3">Izin</th>
                         <th class="px-6 py-3">Tanpa Keterangan</th>
@@ -50,11 +51,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($absensis as $index => $absensi)
+                  @forelse($absensis as $index => $absensi)
                     <tr class="bg-white border-b hover:bg-gray-50">
                         <td class="px-6 py-4">{{ $loop->iteration }}</td>
                         <td class="px-6 py-4">{{ $absensi->siswa->nis }}</td>
                         <td class="px-6 py-4">{{ $absensi->siswa->nama }}</td>
+                        <td class="px-6 py-4">Semester {{ $absensi->semester }}</td>
                         <td class="px-6 py-4">{{ $absensi->sakit }}</td>
                         <td class="px-6 py-4">{{ $absensi->izin }}</td>
                         <td class="px-6 py-4">{{ $absensi->tanpa_keterangan }}</td>
@@ -76,7 +78,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-4 text-center">Tidak ada data absensi</td>
+                        <td colspan="8" class="px-6 py-4 text-center">Tidak ada data absensi</td>
                     </tr>
                     @endforelse
                 </tbody>

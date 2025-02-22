@@ -79,12 +79,32 @@
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Jabatan</th>
-                                <td class="px-4 py-2">{{ $teacher->jabatan ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">
+                                    @if($teacher->kelasWali->count() > 0)
+                                        Guru dan Wali Kelas
+                                    @else
+                                        Guru
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
+                                <td class="px-4 py-2">
+                                    @forelse($teacher->kelas()->where('role', 'pengajar')->get() as $kelas)
+                                        {{ $kelas->nomor_kelas }} - {{ $kelas->nama_kelas }}@if(!$loop->last), @endif
+                                    @empty
+                                        Belum ada kelas yang diampu
+                                    @endforelse
+                                </td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Wali Kelas</th>
                                 <td class="px-4 py-2">
-                                    {{ $teacher->kelasPengajar->nomor_kelas ?? '-' }} - {{ $teacher->kelasPengajar->nama_kelas ?? 'Belum Diisi' }}
+                                    @if($teacher->kelasWali->first())
+                                        {{ $teacher->kelasWali->first()->nomor_kelas }} - {{ $teacher->kelasWali->first()->nama_kelas }}
+                                    @else
+                                        Bukan Wali Kelas
+                                    @endif
                                 </td>
                             </tr>
                             <tr class="border-b">

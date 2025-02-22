@@ -26,10 +26,30 @@ class ReportTemplate extends Model
         return $this->semester == 1 ? 'Ganjil' : 'Genap';
     }
 
-    public function getReportStatus($siswaId) {
-        // hanya cek nilai dan absensi
-        if (!$siswa->nilais()->exists()) return 'incomplete';
-        if (!$siswa->absensi) return 'incomplete';
+    public function getReportStatus($siswaId) 
+    {
+        $siswa = Siswa::find($siswaId);
+        if (!$siswa) return 'not_found';
+        
+        $semester = $this->type === 'UTS' ? 1 : 2;
+        
+        // Cek nilai untuk semester yang sesuai
+        $hasNilai = $siswa->nilais()
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('nilai_akhir_rapor', '!=', null)
+            ->exists();
+            
+        if (!$hasNilai) return 'incomplete';
+        
+        // Cek absensi untuk semester yang sesuai
+        $hasAbsensi = $siswa->absensi()
+            ->where('semester', $semester)
+            ->exists();
+            
+        if (!$hasAbsensi) return 'incomplete';
+        
         return 'ready';
     }
     

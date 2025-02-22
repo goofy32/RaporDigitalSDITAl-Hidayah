@@ -307,20 +307,20 @@ class ReportController extends Controller
         }
     }
     public function indexWaliKelas()
-    {
-        $guru = auth()->user();
-        $kelas = $guru->kelasWali;
-        
-        if (!$kelas) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
+        {
+            $guru = auth()->user();
+            $kelas = $guru->kelasWali;
+            
+            if (!$kelas) {
+                return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
+            }
+            
+            $siswa = $kelas->siswas()
+                ->with(['nilais.mataPelajaran', 'absensi'])
+                ->get();
+                
+            return view('wali_kelas.rapor.index', compact('siswa'));
         }
-        
-        $siswa = $kelas->siswas()->with(['nilais', 'absensi'])->get();
-        $placeholders = ReportPlaceholder::all()->groupBy('category');
-        
-        return view('wali_kelas.rapor.index', compact('siswa', 'placeholders'));
-    }
-
     public function activate(ReportTemplate $template)
     {
         try {

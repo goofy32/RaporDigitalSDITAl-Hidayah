@@ -43,9 +43,8 @@
                     <select id="kelas" name="kelas" required
                         class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
                         <option value="">Pilih Kelas</option>
-                        <!-- Loop through classes -->
                         @foreach($classes as $class)
-                        <option value="{{ $class->id }}">{{ $class->nama_kelas }}</option> // Menggunakan nama_kelas
+                        <option value="{{ $class->id }}">{{ $class->nomor_kelas }} - {{ $class->nama_kelas }}</option>
                         @endforeach
                     </select>
                 </div>

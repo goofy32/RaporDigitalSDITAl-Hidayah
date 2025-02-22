@@ -29,6 +29,18 @@
                    class="block w-full p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-900" readonly>
         </div>
 
+
+        <div>
+            <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
+            <select id="semester" name="semester" required class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900">
+                <option value="1" {{ old('semester', $absensi->semester ?? '') == 1 ? 'selected' : '' }}>Semester 1 (Ganjil)</option>
+                <option value="2" {{ old('semester', $absensi->semester ?? '') == 2 ? 'selected' : '' }}>Semester 2 (Genap)</option>
+            </select>
+            @error('semester')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+
         <!-- Sakit -->
         <div>
             <label for="sakit" class="block mb-2 text-sm font-medium text-gray-900">Sakit (Hari)</label>

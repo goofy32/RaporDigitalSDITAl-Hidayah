@@ -72,16 +72,23 @@ class Siswa extends Model
     {
         return $this->kelas && $this->kelas->wali_kelas == $guruId;
     }
+
     public function hasCompleteData($type = 'UTS')
     {
-        // Cek nilai berdasarkan tipe rapor (UTS/UAS)
-        $hasNilai = $this->nilais()
-            ->whereHas('mataPelajaran', function($q) use ($type) {
-                $q->where('semester', $type === 'UTS' ? 1 : 2);
-            })->exists();
+        $semester = $type === 'UTS' ? 1 : 2;
         
-        // Cek kehadiran
-        $hasAbsensi = $this->absensi()->exists();
+        // Cek nilai berdasarkan semester
+        $hasNilai = $this->nilais()
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('nilai_akhir_rapor', '!=', null)
+            ->exists();
+        
+        // Cek kehadiran semester yang sesuai
+        $hasAbsensi = $this->absensi()
+            ->where('semester', $semester)
+            ->exists();
         
         return $hasNilai && $hasAbsensi;
     }

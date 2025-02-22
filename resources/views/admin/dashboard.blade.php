@@ -85,7 +85,7 @@
                     <div class="relative pl-6 border-l-2 border-gray-200">
                         <template x-for="item in $store.notification.items" :key="item.id">
                             <div class="mb-4 relative h-[80px]">
-                                <div class="absolute -left-8 top-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                <div class="absolute -left-[32px] top-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
                                     <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                     </svg>
@@ -196,7 +196,7 @@
                     <div class="p-4">
                         <form @submit.prevent="submitNotification">
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-medium text-gray-900">Judul informasi</label>
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Nama Anda</label>
                                 <input type="text" 
                                     x-model="notificationForm.title"
                                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 

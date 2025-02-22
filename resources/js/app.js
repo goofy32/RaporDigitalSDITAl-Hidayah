@@ -13,6 +13,19 @@ document.addEventListener('turbo:before-render', () => {
     Alpine.store('report').closePreview();
 });
 
+document.addEventListener('turbo:load', () => {
+    Alpine.start();
+    if (typeof initFlowbite === 'function') {
+        initFlowbite();
+    }
+});
+
+document.addEventListener('turbo:render', () => {
+    if (window.Alpine) {
+        window.Alpine.initTree(document.body);
+    }
+});
+
 document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
         dropdownState: {

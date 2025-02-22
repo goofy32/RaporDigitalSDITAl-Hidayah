@@ -16,13 +16,17 @@ class AbsensiController extends Controller
                 $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
             });
     
-        // Tambah fitur pencarian
         if ($request->has('search')) {
             $search = $request->search;
             $query->whereHas('siswa', function($q) use ($search) {
                 $q->where('nama', 'LIKE', "%{$search}%")
                   ->orWhere('nis', 'LIKE', "%{$search}%");
             });
+        }
+
+        // Tambah filter semester
+        if ($request->has('semester')) {
+            $query->where('semester', $request->semester);
         }
     
         $absensis = $query->orderBy('created_at', 'desc')->paginate(10);
@@ -46,7 +50,19 @@ class AbsensiController extends Controller
             'sakit' => 'required|integer|min:0',
             'izin' => 'required|integer|min:0',
             'tanpa_keterangan' => 'required|integer|min:0',
+            'semester' => 'required|in:1,2'
         ]);
+
+        // Cek apakah sudah ada data absensi untuk siswa dan semester ini
+        $existingAbsensi = Absensi::where('siswa_id', $request->siswa_id)
+                                 ->where('semester', $request->semester)
+                                 ->first();
+
+        if ($existingAbsensi) {
+            return redirect()->back()
+                           ->withInput()
+                           ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
+        }
 
         Absensi::create($request->all());
 
@@ -72,9 +88,23 @@ class AbsensiController extends Controller
             'sakit' => 'required|integer|min:0',
             'izin' => 'required|integer|min:0',
             'tanpa_keterangan' => 'required|integer|min:0',
+            'semester' => 'required|in:1,2'
         ]);
 
         $absensi = Absensi::findOrFail($id);
+        
+        // Cek duplikasi kecuali untuk record yang sedang diedit
+        $existingAbsensi = Absensi::where('siswa_id', $absensi->siswa_id)
+                                 ->where('semester', $request->semester)
+                                 ->where('id', '!=', $id)
+                                 ->first();
+
+        if ($existingAbsensi) {
+            return redirect()->back()
+                           ->withInput()
+                           ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
+        }
+
         $absensi->update($request->all());
 
         return redirect()->route('wali_kelas.absence.index')

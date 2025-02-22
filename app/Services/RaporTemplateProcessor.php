@@ -64,6 +64,7 @@ class RaporTemplateProcessor
     }
     protected function collectAllData()
     {
+        $semester = $this->type === 'UTS' ? 1 : 2;
         // Data Siswa
         $data = [
             'nama_siswa' => $this->siswa->nama,
@@ -76,8 +77,8 @@ class RaporTemplateProcessor
         // Data Nilai
         $nilaiQuery = $this->siswa->nilais()
             ->with(['mataPelajaran'])
-            ->whereHas('mataPelajaran', function($q) {
-                $q->where('semester', $this->type === 'UTS' ? 1 : 2);
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
             });
             
         $nilai = $nilaiQuery->get()->groupBy('mataPelajaran.nama_pelajaran');
@@ -137,7 +138,7 @@ class RaporTemplateProcessor
         }
 
         // Data Kehadiran
-        $absensi = $this->siswa->absensi;
+        $absensi = $this->siswa->absensi()->where('semester', $semester)->first();
         if ($absensi) {
             $data['sakit'] = $absensi->sakit;
             $data['izin'] = $absensi->izin;
@@ -189,21 +190,26 @@ class RaporTemplateProcessor
 
     protected function validateData()
     {
+        $semester = $this->type === 'UTS' ? 1 : 2;
+
         // Cek nilai akademik
         $hasNilai = $this->siswa->nilais()
-            ->whereHas('mataPelajaran', function($q) {
-                $q->where('semester', $this->type === 'UTS' ? 1 : 2);
-            })->exists();
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('nilai_akhir_rapor', '!=', null)
+            ->exists();
 
         if (!$hasNilai) {
-            throw new Exception('Data nilai akademik belum lengkap');
+            throw new Exception('Data nilai semester ' . $semester . ' belum lengkap');
         }
 
         // Cek kehadiran
-        if (!$this->siswa->absensi) {
-            throw new Exception('Data kehadiran belum lengkap');
+        if (!$this->siswa->absensi()->where('semester', $semester)->exists()) {
+            throw new Exception('Data kehadiran semester ' . $semester . ' belum lengkap');
         }
     }
+    
 
     protected function generateFilename()
     {
