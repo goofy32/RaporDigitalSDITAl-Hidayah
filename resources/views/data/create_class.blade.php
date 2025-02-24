@@ -120,20 +120,27 @@
 </div>
 @push('scripts')
 <script>
-document.getElementById('nomor_kelas').addEventListener('input', function(e) {
-    // Hapus angka 0 di depan
-    if(this.value.length > 0) {
-        this.value = parseInt(this.value.replace(/^0+/, '')) || '';
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Pastikan elemen nomor_kelas ada sebelum menambahkan event listener
+    const nomorKelasInput = document.getElementById('nomor_kelas');
     
-    // Jika nilai 0, kosongkan input
-    if(this.value === '0') {
-        this.value = '';
-    }
-    
-    // Batasi input maksimal 99
-    if(parseInt(this.value) > 99) {
-        this.value = '99';
+    if (nomorKelasInput) {
+        nomorKelasInput.addEventListener('input', function(e) {
+            // Hapus angka 0 di depan
+            if(this.value.length > 0) {
+                this.value = parseInt(this.value.replace(/^0+/, '')) || '';
+            }
+            
+            // Jika nilai 0, kosongkan input
+            if(this.value === '0') {
+                this.value = '';
+            }
+            
+            // Batasi input maksimal 99
+            if(parseInt(this.value) > 99) {
+                this.value = '99';
+            }
+        });
     }
 });
 </script>

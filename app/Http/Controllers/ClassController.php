@@ -10,6 +10,7 @@ use App\Models\MataPelajaran;
 use App\Models\Nilai;
 use App\Models\Ekstrakurikuler;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ClassController extends Controller
 {
@@ -56,18 +57,18 @@ class ClassController extends Controller
     // Menampilkan form tambah data kelas
     public function create()
     {
-        // Ambil hanya guru yang:
-        // 1. Jabatannya guru_wali
-        // 2. Belum menjadi wali kelas dimanapun
-        $guruList = Guru::where('jabatan', 'guru_wali')
-                        ->whereDoesntHave('kelas', function($query) {
-                            $query->where('guru_kelas.is_wali_kelas', true)
-                                  ->where('guru_kelas.role', 'wali_kelas');
-                        })
-                        ->get();
-    
+        // Dapatkan guru yang hanya memiliki jabatan 'guru' saja (bukan guru_wali)
+        // dan belum menjadi wali kelas di kelas manapun
+        $guruList = Guru::where('jabatan', 'guru')
+            ->whereDoesntHave('kelas', function($query) {
+                $query->where('guru_kelas.is_wali_kelas', true)
+                      ->where('guru_kelas.role', 'wali_kelas');
+            })
+            ->get();
+
         return view('data.create_class', compact('guruList'));
     }
+    
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -84,43 +85,63 @@ class ClassController extends Controller
     
         DB::beginTransaction();
         try {
-            // Cek apakah kombinasi nomor_kelas dan nama_kelas sudah ada
-            $existingClass = Kelas::where('nomor_kelas', $validated['nomor_kelas'])
-                                 ->where('nama_kelas', $validated['nama_kelas'])
-                                 ->first();
-            if ($existingClass) {
-                return back()
-                    ->withInput()
-                    ->with('error', 'Kelas ' . $validated['nomor_kelas'] . ' ' . $validated['nama_kelas'] . ' sudah ada. Silakan gunakan nama kelas yang berbeda.');
-            }
-    
             // Buat kelas baru
             $kelas = Kelas::create([
-                'nomor_kelas' => $validated['nomor_kelas'],
-                'nama_kelas' => $validated['nama_kelas']
+                'nomor_kelas' => $request->nomor_kelas,
+                'nama_kelas' => $request->nama_kelas
             ]);
+    
+            // Jika ada wali kelas yang dipilih
+            if ($request->filled('wali_kelas_id')) {
+                // Ambil data guru
+                $guru = Guru::find($request->wali_kelas_id);
+                
+                if (!$guru) {
+                    throw new \Exception('Guru tidak ditemukan');
+                }
+                
+                // Attach guru sebagai wali kelas
+                $kelas->guru()->attach($request->wali_kelas_id, [
+                    'is_wali_kelas' => true,
+                    'role' => 'wali_kelas'
+                ]);
+    
+                // Update jabatan guru menjadi guru_wali
+                $guru->jabatan = 'guru_wali';
+                $guru->save();
+                
+                // Tambahkan logging untuk debugging
+                \Log::info('Mengubah jabatan guru', [
+                    'guru_id' => $guru->id,
+                    'nama' => $guru->nama,
+                    'jabatan_baru' => 'guru_wali'
+                ]);
+            }
     
             DB::commit();
             return redirect()->route('kelas.index')
                 ->with('success', 'Data kelas berhasil ditambahkan');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()
-                ->withInput()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            \Log::error('Error saat membuat kelas: ' . $e->getMessage(), [
+                'stacktrace' => $e->getTraceAsString()
+            ]);
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
+    
     // Menampilkan form edit data kelas
     public function edit($id)
     {
         $kelas = Kelas::findOrFail($id);
-        $waliKelas = $kelas->guru()  // Perbaiki dari $kelAs menjadi $kelas
+        $waliKelas = $kelas->guru()
                           ->whereRaw('guru_kelas.is_wali_kelas = 1')
                           ->whereRaw("guru_kelas.role = 'wali_kelas'")
                           ->first();
         
         return view('data.edit_class', compact('kelas', 'waliKelas'));
     }
+    
     // Mengupdate data kelas
     public function update(Request $request, $id)
     {
@@ -172,11 +193,45 @@ class ClassController extends Controller
     public function destroy($id)
     {
         $kelas = Kelas::findOrFail($id);
-        $kelas->delete();
-
-        return redirect()->route('kelas.index')->with('success', 'Data kelas berhasil dihapus.');
+        
+        // Ambil wali kelas jika ada
+        $waliKelas = $kelas->guru()
+            ->wherePivot('is_wali_kelas', true)
+            ->wherePivot('role', 'wali_kelas')
+            ->first();
+        
+        DB::beginTransaction();
+        try {
+            // Jika ada wali kelas, update jabatannya kembali menjadi 'guru'
+            if ($waliKelas) {
+                // Hitung apakah guru masih menjadi wali kelas di kelas lain
+                $otherWaliKelasCount = DB::table('guru_kelas')
+                    ->where('guru_id', $waliKelas->id)
+                    ->where('kelas_id', '!=', $id)
+                    ->where('is_wali_kelas', true)
+                    ->where('role', 'wali_kelas')
+                    ->count();
+                
+                // Jika tidak menjadi wali kelas di kelas lain, ubah jabatan menjadi 'guru'
+                if ($otherWaliKelasCount == 0) {
+                    $waliKelas->jabatan = 'guru';
+                    $waliKelas->save();
+                }
+            }
+            
+            $kelas->delete();
+            
+            DB::commit();
+            return redirect()->route('kelas.index')
+                ->with('success', 'Data kelas berhasil dihapus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->route('kelas.index')
+                ->with('error', 'Terjadi kesalahan saat menghapus kelas: ' . $e->getMessage());
+        }
     }
 
+    // Fungsi-fungsi lainnya tetap seperti sebelumnya
     public function adminDashboard()
     {
         $totalStudents = Siswa::count();

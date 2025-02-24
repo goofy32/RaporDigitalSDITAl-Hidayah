@@ -19,12 +19,6 @@
         fetchpriority="high">
 
     <link rel="preload" 
-        href="{{ asset('images/icons/score.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-
-    <link rel="preload" 
         href="{{ asset('images/icons/subject-icon.png') }}" 
         as="image" 
         fetchpriority="high">
