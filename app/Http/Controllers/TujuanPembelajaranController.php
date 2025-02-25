@@ -3,180 +3,182 @@
 namespace App\Http\Controllers;
 
 use App\Models\TujuanPembelajaran;
+use App\Models\LingkupMateri;
 use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
-
 
 class TujuanPembelajaranController extends Controller
 {
-    public function view($mata_pelajaran_id)
+    // Method untuk menampilkan halaman tambah tujuan pembelajaran
+    public function create($mataPelajaranId)
     {
-        // Cek jika user adalah guru, gunakan view pengajar
-        if (auth()->guard('guru')->check()) {
-            $guru = auth()->guard('guru')->user();
-            $mataPelajaran = MataPelajaran::with('lingkupMateris.tujuanPembelajarans')
-                ->where('guru_id', $guru->id)
-                ->findOrFail($mata_pelajaran_id);
+        $mataPelajaran = MataPelajaran::with('lingkupMateris')->findOrFail($mataPelajaranId);
+        return view('data.add_tp', compact('mataPelajaran'));
+    }
+    // Method untuk mengambil semua tujuan pembelajaran berdasarkan mata pelajaran
+    public function listByMataPelajaran($mataPelajaranId)
+    {
+        try {
+            $mataPelajaran = MataPelajaran::with(['lingkupMateris.tujuanPembelajarans'])->findOrFail($mataPelajaranId);
             
-                return view('pengajar.view_tp', compact('mataPelajaran'));
-
+            // Kumpulkan semua tujuan pembelajaran dari semua lingkup materi
+            $tujuanPembelajarans = collect();
+            foreach ($mataPelajaran->lingkupMateris as $lingkupMateri) {
+                // Ambil setiap tujuan pembelajaran dan tambahkan lingkupMateri
+                foreach ($lingkupMateri->tujuanPembelajarans as $tp) {
+                    $tp->lingkupMateri; // Load relasi untuk setiap item
+                    $tujuanPembelajarans->push($tp);
+                }
             }
-
-        // Jika admin, gunakan view admin
-        $mataPelajaran = MataPelajaran::with('lingkupMateris.tujuanPembelajarans')
-            ->findOrFail($mata_pelajaran_id);
-        return view('data.add_tp', compact('mataPelajaran'));
-    }
-
-    public function create($mata_pelajaran_id)
-    {
-        // Cek jika user adalah guru
-        if (auth()->guard('guru')->check()) {
-            $guru = auth()->guard('guru')->user();
-            $mataPelajaran = MataPelajaran::with('lingkupMateris')
-                ->where('guru_id', $guru->id)
-                ->findOrFail($mata_pelajaran_id);
             
-            return view('pengajar.add_tp', compact('mataPelajaran'));
+            return response()->json([
+                'success' => true,
+                'tujuanPembelajarans' => $tujuanPembelajarans
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        // Jika admin
-        $mataPelajaran = MataPelajaran::with('lingkupMateris')
-            ->findOrFail($mata_pelajaran_id);
+    // Method untuk menampilkan view semua tujuan pembelajaran
+    public function view($mataPelajaranId)
+    {
+        $mataPelajaran = MataPelajaran::with(['lingkupMateris.tujuanPembelajarans', 'kelas'])->findOrFail($mataPelajaranId);
         return view('data.add_tp', compact('mataPelajaran'));
     }
 
-    public function teacherCreate($mata_pelajaran_id)
-    {
-        $guru = auth()->guard('guru')->user();
-        $mataPelajaran = MataPelajaran::with('lingkupMateris')
-            ->where('guru_id', $guru->id)
-            ->findOrFail($mata_pelajaran_id);
-        
-        return view('pengajar.add_tp', compact('mataPelajaran'));
-    }
-
+    // Method untuk menyimpan tujuan pembelajaran
     public function store(Request $request)
     {
-        $tpData = $request->input('tpData');
-        $mataPelajaranId = $request->input('mataPelajaranId');
-    
-        // Log data yang diterima untuk debugging
-        Log::info('tpData:', $tpData);
-        Log::info('mataPelajaranId:', [$mataPelajaranId]);
-    
-        // Validasi
-        if (!is_array($tpData) || empty($tpData) || !$mataPelajaranId) {
-            return response()->json(['success' => false, 'message' => 'Data tidak valid'], 400);
-        }
+        $request->validate([
+            'tpData' => 'required|array',
+            'mataPelajaranId' => 'required|exists:mata_pelajarans,id'
+        ]);
 
-        // Jika user adalah guru, validasi kepemilikan mata pelajaran
-        if (auth()->guard('guru')->check()) {
-            $guru = auth()->guard('guru')->user();
-            $mataPelajaran = MataPelajaran::where('guru_id', $guru->id)
-                ->where('id', $mataPelajaranId)
-                ->first();
+        try {
+            DB::beginTransaction();
 
-            if (!$mataPelajaran) {
-                return response()->json([
-                    'success' => false, 
-                    'message' => 'Anda tidak memiliki akses ke mata pelajaran ini'
-                ], 403);
+            foreach ($request->tpData as $tp) {
+                // Verifikasi lingkup materi terkait dengan mata pelajaran
+                $lingkupMateri = LingkupMateri::where('id', $tp['lingkupMateriId'])
+                    ->where('mata_pelajaran_id', $request->mataPelajaranId)
+                    ->firstOrFail();
+
+                // Cek apakah kode TP sudah ada untuk lingkup materi ini
+                $existingTP = TujuanPembelajaran::where('lingkup_materi_id', $tp['lingkupMateriId'])
+                    ->where('kode_tp', $tp['kodeTP'])
+                    ->first();
+
+                if ($existingTP) {
+                    throw new \Exception("Kode TP {$tp['kodeTP']} sudah ada untuk lingkup materi ini.");
+                }
+
+                // Simpan tujuan pembelajaran baru
+                TujuanPembelajaran::create([
+                    'lingkup_materi_id' => $tp['lingkupMateriId'],
+                    'kode_tp' => $tp['kodeTP'],
+                    'deskripsi_tp' => $tp['deskripsiTP']
+                ]);
             }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Data berhasil disimpan!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-    
-        // Simpan setiap Tujuan Pembelajaran
-        foreach ($tpData as $tp) {
-            TujuanPembelajaran::create([
-                'lingkup_materi_id' => $tp['lingkupMateriId'],
-                'kode_tp' => $tp['kodeTP'],
-                'deskripsi_tp' => $tp['deskripsiTP'],
+    }
+    // Method untuk hapus tujuan pembelajaran
+    public function destroy($id)
+    {
+        try {
+            $tp = TujuanPembelajaran::findOrFail($id);
+            
+            // Cek apakah tujuan pembelajaran ini sudah digunakan dalam nilai
+            $hasNilai = $tp->nilais()->exists();
+            
+            if ($hasNilai) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tujuan pembelajaran ini sudah digunakan dalam penilaian dan tidak dapat dihapus.'
+                ], 400);
+            }
+            
+            $tp->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tujuan pembelajaran berhasil dihapus!'
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting data: ' . $e->getMessage()
+            ], 500);
         }
-    
-        return response()->json(['success' => true]);
+    }
+    // Method untuk guru
+    public function teacherCreate($mataPelajaranId)
+    {
+        $guruId = Auth::guard('guru')->id();
+        
+        $mataPelajaran = MataPelajaran::with('lingkupMateris')
+            ->where('id', $mataPelajaranId)
+            ->where('guru_id', $guruId)
+            ->firstOrFail();
+            
+        return view('pengajar.add_tp', compact('mataPelajaran'));
     }
 
     public function teacherStore(Request $request)
     {
-       Log::info('Request received:', $request->all());
-       
-       try {
-           $guru = auth()->guard('guru')->user();
-           // Parse data dari request body
-           $data = json_decode($request->getContent(), true);
-           Log::info('Parsed JSON data:', $data);
-           
-           if (!isset($data['tpData']) || !isset($data['mataPelajaranId'])) {
-               return response()->json([
-                   'success' => false,
-                   'message' => 'Data tidak lengkap'
-               ], 400);
-           }
-    
-           $tpData = $data['tpData'];
-           $mataPelajaranId = $data['mataPelajaranId'];
-    
-           // Validasi
-           if (!is_array($tpData) || empty($tpData) || !$mataPelajaranId) {
-               return response()->json([
-                   'success' => false,
-                   'message' => 'Data tidak valid'
-               ], 400);
-           }
-    
-           // Validasi kepemilikan mata pelajaran
-           $mataPelajaran = MataPelajaran::where('guru_id', $guru->id)
-               ->where('id', $mataPelajaranId)
-               ->first();
-    
-           if (!$mataPelajaran) {
-               return response()->json([
-                   'success' => false,
-                   'message' => 'Anda tidak memiliki akses ke mata pelajaran ini'
-               ], 403);
-           }
-    
-           DB::beginTransaction();
-           try {
-               // Simpan setiap Tujuan Pembelajaran
-               foreach ($tpData as $tp) {
-                   if (!isset($tp['lingkupMateriId']) || !isset($tp['kodeTP']) || !isset($tp['deskripsiTP'])) {
-                       throw new \Exception('Data TP tidak lengkap');
-                   }
-    
-                   TujuanPembelajaran::create([
-                       'lingkup_materi_id' => $tp['lingkupMateriId'],
-                       'kode_tp' => $tp['kodeTP'],
-                       'deskripsi_tp' => $tp['deskripsiTP']
-                   ]);
-               }
-               
-               DB::commit();
-               
-               return response()->json([
-                   'success' => true,
-                   'message' => 'Data berhasil disimpan'
-               ]);
-               
-           } catch (\Exception $e) {
-               DB::rollback();
-               throw $e;
-           }
-           
-       } catch (\Exception $e) {
-           Log::error('Error in teacherStore:', [
-               'error' => $e->getMessage(),
-               'trace' => $e->getTraceAsString()
-           ]);
-           
-           return response()->json([
-               'success' => false,
-               'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-           ], 500);
-       }
+        $request->validate([
+            'tpData' => 'required|array',
+            'mataPelajaranId' => 'required|exists:mata_pelajarans,id'
+        ]);
+
+        try {
+            $guruId = Auth::guard('guru')->id();
+            
+            // Verify teacher owns the mata pelajaran
+            $mataPelajaran = MataPelajaran::where('id', $request->mataPelajaranId)
+                ->where('guru_id', $guruId)
+                ->firstOrFail();
+                
+            DB::beginTransaction();
+
+            foreach ($request->tpData as $tp) {
+                // Verify lingkup materi belongs to this mata pelajaran
+                $lingkupMateri = LingkupMateri::where('id', $tp['lingkupMateriId'])
+                    ->where('mata_pelajaran_id', $request->mataPelajaranId)
+                    ->firstOrFail();
+
+                // Check if kode TP already exists
+                $existingTP = TujuanPembelajaran::where('lingkup_materi_id', $tp['lingkupMateriId'])
+                    ->where('kode_tp', $tp['kodeTP'])
+                    ->first();
+
+                if ($existingTP) {
+                    throw new \Exception("Kode TP {$tp['kodeTP']} sudah ada untuk lingkup materi ini.");
+                }
+
+                TujuanPembelajaran::create([
+                    'lingkup_materi_id' => $tp['lingkupMateriId'],
+                    'kode_tp' => $tp['kodeTP'],
+                    'deskripsi_tp' => $tp['deskripsiTP']
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Data berhasil disimpan!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

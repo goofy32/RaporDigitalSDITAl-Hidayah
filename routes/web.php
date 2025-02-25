@@ -143,6 +143,8 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
         Route::get('/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'create'])->name('create');
         Route::post('/store', [TujuanPembelajaranController::class, 'store'])->name('store');
         Route::get('/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])->name('view');
+        Route::get('/{mata_pelajaran_id}/list', [TujuanPembelajaranController::class, 'listByMataPelajaran'])->name('list');
+        Route::delete('/{id}', [TujuanPembelajaranController::class, 'destroy'])->name('destroy');
     });
     
     // Extracurricular

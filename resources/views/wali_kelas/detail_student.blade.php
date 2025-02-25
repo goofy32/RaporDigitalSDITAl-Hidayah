@@ -23,15 +23,17 @@
         <!-- Photo Section -->
         <div class="w-full md:w-1/4">
             <div class="bg-gray-100 rounded-lg p-4">
-                <div class="flex items-center justify-center w-full h-48 bg-gray-200 rounded-lg">
+                <div class="flex items-start justify-center w-64 h-80 bg-gray-200 rounded-lg shadow-md overflow-hidden">
                     @if($student->photo)
                         <img src="{{ asset('storage/' . $student->photo) }}" 
                              alt="{{ $student->nama }}" 
                              class="object-cover w-full h-full rounded-lg">
                     @else
-                        <svg class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
-                        </svg>
+                        <div class="flex items-center justify-center w-full h-full">
+                            <svg class="w-32 h-32 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
                     @endif
                 </div>
                 <h3 class="text-center mt-4 font-semibold text-lg">{{ $student->nama }}</h3>

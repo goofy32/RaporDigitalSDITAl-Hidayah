@@ -107,8 +107,8 @@ class TeacherController extends Controller
             if ($request->jabatan === 'guru_wali') {
                 $rules['wali_kelas_id'] = 'required|exists:kelas,id';
             }
-
-
+    
+    
             $validated = $request->validate($rules, [
                 'nuptk.required' => 'NUPTK wajib diisi',
                 'nuptk.numeric' => 'NUPTK harus berupa angka',
@@ -138,67 +138,68 @@ class TeacherController extends Controller
                 'photo.mimes' => 'Format file harus JPG atau PNG',
                 'photo.max' => 'Ukuran file maksimal 2MB',
             ]);
-
-
-            $validated = $request->validate($rules);
-
+    
             // Handle password dan photo seperti sebelumnya
             $validated['password'] = Hash::make($validated['password']);
             $validated['password_plain'] = $request->password;
-
+    
             if ($request->hasFile('photo')) {
                 $validated['photo'] = $request->file('photo')->store('teacher-photos', 'public');
             }
-
+    
             // Buat guru baru
             $guru = Guru::create($validated);
-
-            // Array untuk menyimpan kelas yang sudah di-attach
-            $attachedKelas = [];
-
-            // Proses kelas yang diajar
-            if (!empty($validated['kelas_ids'])) {
-                foreach ($validated['kelas_ids'] as $kelasId) {
-                    // Skip jika kelas sudah di-attach
-                    if (in_array($kelasId, $attachedKelas)) {
-                        continue;
-                    }
-
-                    $isWaliKelas = ($request->jabatan === 'guru_wali' && $request->wali_kelas_id == $kelasId);
-                    
-                    // Cek apakah sudah ada relasi yang sama
-                    $existingRelation = DB::table('guru_kelas')
-                        ->where('guru_id', $guru->id)
-                        ->where('kelas_id', $kelasId)
-                        ->where('is_wali_kelas', $isWaliKelas)
-                        ->where('role', $isWaliKelas ? 'wali_kelas' : 'pengajar')
-                        ->exists();
-
-                    if (!$existingRelation) {
-                        $guru->kelas()->attach($kelasId, [
-                            'is_wali_kelas' => $isWaliKelas,
-                            'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
-                        ]);
-                        $attachedKelas[] = $kelasId;
-                    }
+    
+            // Pastikan kelas wali masuk ke daftar kelas yang diajar jika jabatan guru_wali
+            $kelas_ids = $validated['kelas_ids'];
+            if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
+                // Pastikan kelas wali masuk ke daftar kelas yang diajar
+                if (!in_array($request->wali_kelas_id, $kelas_ids)) {
+                    $kelas_ids[] = $request->wali_kelas_id;
                 }
             }
-
-            // Proses wali kelas jika perlu
-            if ($request->jabatan === 'guru_wali' && 
-                !in_array($request->wali_kelas_id, $attachedKelas)) {
+    
+            // Array untuk menyimpan kelas yang sudah di-attach
+            $attachedKelas = [];
+    
+            // Proses kelas yang diajar
+            foreach ($kelas_ids as $kelasId) {
+                // Skip jika kelas sudah di-attach
+                if (in_array($kelasId, $attachedKelas)) {
+                    continue;
+                }
+    
+                $isWaliKelas = ($request->jabatan === 'guru_wali' && $request->wali_kelas_id == $kelasId);
                 
-                $guru->kelas()->attach($request->wali_kelas_id, [
-                    'is_wali_kelas' => true,
-                    'role' => 'wali_kelas'
-                ]);
+                // Cek apakah sudah ada relasi yang sama
+                $existingRelation = DB::table('guru_kelas')
+                    ->where('guru_id', $guru->id)
+                    ->where('kelas_id', $kelasId)
+                    ->where('is_wali_kelas', $isWaliKelas)
+                    ->where('role', $isWaliKelas ? 'wali_kelas' : 'pengajar')
+                    ->exists();
+    
+                if (!$existingRelation) {
+                    $guru->kelas()->attach($kelasId, [
+                        'is_wali_kelas' => $isWaliKelas,
+                        'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
+                    ]);
+                    $attachedKelas[] = $kelasId;
+                }
             }
-
+    
+            \Log::info('Guru baru ditambahkan', [
+                'id' => $guru->id,
+                'nama' => $guru->nama,
+                'jabatan' => $guru->jabatan,
+                'wali_kelas' => $request->jabatan === 'guru_wali' ? $request->wali_kelas_id : 'tidak ada'
+            ]);
+    
             return redirect()->route('teacher')
                 ->with('success', 'Data guru berhasil ditambahkan');
         });
     }
-
+    
     public function showPassword($id)
     {
         try {
@@ -274,7 +275,7 @@ class TeacherController extends Controller
         DB::beginTransaction();
         try {
             $teacher = Guru::findOrFail($id);
-
+    
             // Validasi dasar
             $rules = [
                 'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,'.$id,
@@ -288,30 +289,30 @@ class TeacherController extends Controller
                 'kelas_ids' => 'required|array',
                 'username' => 'required|string|max:255|unique:gurus,username,'.$id,
             ];
-
+    
             if ($request->jabatan === 'guru_wali') {
                 $rules['wali_kelas_id'] = 'required|exists:kelas,id';
             }
-
+    
             // Validasi password jika diisi
             if ($request->filled('password')) {
                 $rules['current_password'] = 'required';
                 $rules['password'] = 'required|min:6|confirmed';
             }
-
+    
             $validated = $request->validate($rules);
-
+    
             // Update data guru
             $dataToUpdate = collect($validated)
                 ->except(['password', 'current_password', 'kelas_ids', 'wali_kelas_id'])
                 ->toArray();
-
+    
             // Update password jika ada
             if ($request->filled('password')) {
                 $dataToUpdate['password'] = Hash::make($request->password);
                 $dataToUpdate['password_plain'] = $request->password;
             }
-
+    
             // Update photo jika ada
             if ($request->hasFile('photo')) {
                 // Hapus photo lama jika ada
@@ -320,25 +321,34 @@ class TeacherController extends Controller
                 }
                 $dataToUpdate['photo'] = $request->file('photo')->store('teacher-photos', 'public');
             }
-
+    
             $teacher->update($dataToUpdate);
-
+    
             // Hapus semua relasi kelas yang ada
             $teacher->kelas()->detach();
-
+    
             // Array untuk tracking kelas yang sudah di-attach
             $attachedClasses = [];
-
+    
+            // Pastikan kelas wali masuk ke daftar kelas yang diajar jika jabatan guru_wali
+            $kelas_ids = $validated['kelas_ids'];
+            if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
+                // Pastikan kelas wali masuk ke daftar kelas yang diajar
+                if (!in_array($request->wali_kelas_id, $kelas_ids)) {
+                    $kelas_ids[] = $request->wali_kelas_id;
+                }
+            }
+    
             // Attach kelas mengajar terlebih dahulu
-            foreach ($validated['kelas_ids'] as $kelasId) {
+            foreach ($kelas_ids as $kelasId) {
                 // Skip jika kelas sudah di-attach
                 if (in_array($kelasId, $attachedClasses)) {
                     continue;
                 }
-
+    
                 $isWaliKelas = ($request->jabatan === 'guru_wali' && 
                             $request->wali_kelas_id == $kelasId);
-
+    
                 $teacher->kelas()->attach($kelasId, [
                     'is_wali_kelas' => $isWaliKelas,
                     'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
@@ -346,39 +356,20 @@ class TeacherController extends Controller
                 
                 $attachedClasses[] = $kelasId;
             }
-
-            // Jika guru_wali, attach kelas wali jika belum di-attach
-            if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
-                $waliKelasId = $request->wali_kelas_id;
-                
-                if (!in_array($waliKelasId, $attachedClasses)) {
-                    $teacher->kelas()->attach($waliKelasId, [
-                        'is_wali_kelas' => true,
-                        'role' => 'wali_kelas'
-                    ]);
-                } else {
-                    // Update role untuk kelas yang sudah di-attach
-                    DB::table('guru_kelas')
-                        ->where('guru_id', $teacher->id)
-                        ->where('kelas_id', $waliKelasId)
-                        ->update([
-                            'is_wali_kelas' => true,
-                            'role' => 'wali_kelas'
-                        ]);
-                }
-            }
-
+    
             // Logging untuk debugging
             \Log::info('Update guru berhasil', [
                 'id' => $teacher->id,
                 'nama' => $teacher->nama,
-                'jabatan' => $request->jabatan
+                'jabatan' => $request->jabatan,
+                'kelas_ids' => $kelas_ids,
+                'wali_kelas_id' => $request->wali_kelas_id ?? null
             ]);
-
+    
             DB::commit();
             return redirect()->route('teacher')
                 ->with('success', 'Data guru berhasil diperbarui');
-
+    
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error update guru', [
@@ -390,7 +381,6 @@ class TeacherController extends Controller
                 ->withInput();
         }
     }
-
     public function showProfile()
     {
         // Karena kita menggunakan auth guard 'guru',

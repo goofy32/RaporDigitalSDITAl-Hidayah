@@ -81,8 +81,10 @@
                        <!-- NUPTK -->
                        <div>
                            <label class="block text-sm font-medium text-gray-700">NUPTK</label>
-                           <input type="text" name="nuptk" value="{{ old('nuptk', $teacher->nuptk) }}" required
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                           <input type="number" name="nuptk" value="{{ old('nuptk', $teacher->nuptk) }}" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 15);">
+                          <p class="mt-1 text-sm text-gray-500">Masukkan hanya angka (9-15 digit)</p>
                        </div>
 
                        <!-- Nama -->
@@ -112,8 +114,10 @@
                        <!-- No. Handphone -->
                        <div>
                            <label class="block text-sm font-medium text-gray-700">No. Handphone</label>
-                           <input type="text" name="no_handphone" value="{{ old('no_handphone', $teacher->no_handphone) }}" required
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                           <input type="number" name="no_handphone" value="{{ old('no_handphone', $teacher->no_handphone) }}" required
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 15);">
+                           <p class="mt-1 text-sm text-gray-500">Masukkan hanya angka (10-15 digit)</p>
                        </div>
 
                        <!-- Email -->
@@ -146,35 +150,55 @@
                        <!-- Kelas Mengajar -->
                        <div id="kelas_mengajar_section">
                            <label class="block text-sm font-medium text-gray-700">Kelas yang Diajar</label>
-                           <select name="kelas_ids[]" multiple required
+                           
+                           @php
+                               // Ambil semua kelas yang diajar (pengajar), kecuali yang sudah diwalikan
+                               $kelasAjar = $teacher->kelas()->wherePivot('role', 'pengajar')->pluck('kelas.id')->toArray();
+                               
+                               // Ambil kelas yang diwalikan
+                               $kelasWali = $teacher->kelas()->wherePivot('is_wali_kelas', true)
+                                                            ->wherePivot('role', 'wali_kelas')
+                                                            ->first();
+                           @endphp
+                           
+                           <select name="kelas_ids[]" multiple required id="kelas_mengajar"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[120px]">
                                @foreach($kelasList as $kelas)
                                    <option value="{{ $kelas->id }}" 
-                                       {{ in_array($kelas->id, $teacher->kelas->pluck('id')->toArray()) ? 'selected' : '' }}>
+                                       {{ in_array($kelas->id, $kelasAjar) ? 'selected' : '' }}>
                                        Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
                                    </option>
                                @endforeach
                            </select>
                            <p class="mt-1 text-sm text-gray-500">Tekan CTRL untuk memilih beberapa kelas yang akan diajar</p>
+                           
+                           @if($kelasWali)
+                               <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                   <p class="text-sm text-blue-800">
+                                       <span class="font-medium">Catatan:</span> Guru ini menjadi wali kelas untuk Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}. 
+                                       Kelas wali tidak perlu dipilih di daftar kelas mengajar, karena akan otomatis ditambahkan.
+                                   </p>
+                               </div>
+                           @endif
                        </div>
 
                        <!-- Wali Kelas -->
                        <div id="wali_kelas_section" style="{{ $teacher->jabatan === 'guru_wali' ? '' : 'display:none;' }}">
                            <label class="block text-sm font-medium text-gray-700">Wali Kelas Untuk</label>
-                           <select name="wali_kelas_id" 
+                           <select name="wali_kelas_id" id="wali_kelas_id"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                                <option value="">Pilih Kelas</option>
                                @foreach($availableKelas as $kelas)
                                    <option value="{{ $kelas->id }}" 
-                                       {{ $currentWaliKelas && $currentWaliKelas->id === $kelas->id ? 'selected' : '' }}>
+                                       {{ ($kelasWali && $kelasWali->id === $kelas->id) ? 'selected' : '' }}>
                                        Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
                                    </option>
                                @endforeach
                            </select>
-                           @if($currentWaliKelas)
+                           @if($kelasWali)
                                <p class="mt-1 text-sm text-gray-600">
                                    Saat ini menjadi wali kelas: 
-                                   Kelas {{ $currentWaliKelas->nomor_kelas }} {{ $currentWaliKelas->nama_kelas }}
+                                   Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
                                </p>
                            @endif
                        </div>
@@ -245,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
             kelasMengajarSection.style.display = 'block';
             if(waliKelasSelect) waliKelasSelect.required = false;
             if(kelasMengajarSelect) kelasMengajarSelect.required = true;
+            if(waliKelasSelect) waliKelasSelect.value = '';
         } else {
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'none';
@@ -259,23 +284,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmPassword = document.querySelector('input[name="password_confirmation"]');
     const currentPassword = document.querySelector('input[name="current_password"]');
 
-    passwordForm.addEventListener('submit', function(e) {
-        if (newPassword.value) {
-            if (!currentPassword.value) {
-                e.preventDefault();
-                alert('Password saat ini harus diisi untuk mengubah password');
-                currentPassword.focus();
-                return;
-            }
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            if (newPassword.value) {
+                if (!currentPassword.value) {
+                    e.preventDefault();
+                    alert('Password saat ini harus diisi untuk mengubah password');
+                    currentPassword.focus();
+                    return;
+                }
 
-            if (newPassword.value !== confirmPassword.value) {
-                e.preventDefault();
-                alert('Konfirmasi password tidak cocok');
-                confirmPassword.focus();
-                return;
+                if (newPassword.value !== confirmPassword.value) {
+                    e.preventDefault();
+                    alert('Konfirmasi password tidak cocok');
+                    confirmPassword.focus();
+                    return;
+                }
             }
-        }
-    });
+        });
+    }
 
     // Form validation
     const form = document.querySelector('form');
@@ -284,12 +311,26 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         let hasError = false;
         requiredFields.forEach(field => {
-            if (!field.value.trim()) {
+            if (field.multiple && field.selectedOptions.length === 0) {
+                hasError = true;
+                field.classList.add('border-red-500');
+                addErrorMessage(field, 'Pilih minimal satu kelas');
+            } else if (!field.multiple && !field.value.trim()) {
                 hasError = true;
                 field.classList.add('border-red-500');
                 addErrorMessage(field, `${field.getAttribute('placeholder') || field.getAttribute('name')} wajib diisi`);
             }
         });
+
+        // Validasi khusus untuk guru_wali
+        const jabatan = document.getElementById('jabatan').value;
+        const waliKelasId = document.getElementById('wali_kelas_id');
+        
+        if (jabatan === 'guru_wali' && (!waliKelasId.value || waliKelasId.value === '')) {
+            hasError = true;
+            waliKelasId.classList.add('border-red-500');
+            addErrorMessage(waliKelasId, 'Wali kelas harus dipilih untuk guru dengan jabatan Guru dan Wali Kelas');
+        }
 
         if (hasError) {
             e.preventDefault();
@@ -309,14 +350,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         errorDiv.textContent = message;
     }
-
-    // NUPTK and phone number validation
-    const numericInputs = document.querySelectorAll('input[name="nuptk"], input[name="no_handphone"]');
-    numericInputs.forEach(input => {
-        input.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 15);
-        });
-    });
 
     // File validation
     const photoInput = document.querySelector('input[type="file"]');

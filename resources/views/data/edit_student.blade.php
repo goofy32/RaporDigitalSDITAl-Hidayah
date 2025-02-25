@@ -7,7 +7,7 @@
     <div class="p-4 bg-white mt-14">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-green-700">Form Edit Data Siswa</h2>
-            <!-- Pindahkan tombol ke sini -->
+            <!-- Tombol aksi -->
             <div class="flex space-x-2">
                 <button type="submit" form="editStudentForm" class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
                     Update Data
@@ -18,7 +18,7 @@
             </div>
         </div>
 
-        <form id="editStudentForm" action="{{ route('student.update', $student->id) }}"  @submit="handleSubmit" x-data="formProtection" method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form id="editStudentForm" action="{{ route('student.update', $student->id) }}" @submit="handleSubmit" x-data="formProtection" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
             @method('PUT')
             
@@ -145,8 +145,10 @@
                         <div>
                             <label for="photo" class="block text-sm font-medium text-gray-700 mb-1">Foto Siswa</label>
                             @if($student->photo)
-                                <img src="{{ asset('storage/' . $student->photo) }}" alt="Current photo" 
-                                    class="w-32 h-32 object-cover rounded-lg mb-2 border shadow-sm">
+                                <div class="mb-2">
+                                    <img src="{{ asset('storage/' . $student->photo) }}" alt="Current photo" 
+                                        class="w-32 h-32 object-cover rounded-lg border shadow-sm">
+                                </div>
                             @endif
                             <input type="file" id="photo" name="photo" 
                                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('photo') border-red-500 @enderror"
@@ -160,6 +162,7 @@
                                     <li>Background foto bebas dan formal</li>
                                 </ul>
                             </div>
+                            <!-- Preview foto akan ditampilkan di sini -->
                             <div id="photo-preview" class="mt-2"></div>
                             @error('photo')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -249,24 +252,22 @@
 </div>
 
 <script>
+// Utilitas validasi
+function numbersOnly(input) {
+    input.value = input.value.replace(/[^0-9]/g, '');
+}
 
+function lettersOnly(input) {
+    input.value = input.value.replace(/[^a-zA-Z\s]/g, '');
+}
+
+function maxLength(input, max) {
+    if (input.value.length > max) {
+        input.value = input.value.slice(0, max);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Fungsi validasi
-    function numbersOnly(input) {
-        input.value = input.value.replace(/[^0-9]/g, '');
-    }
-
-    function lettersOnly(input) {
-        input.value = input.value.replace(/[^a-zA-Z\s]/g, '');
-    }
-
-    function maxLength(input, max) {
-        if (input.value.length > max) {
-            input.value = input.value.slice(0, max);
-        }
-    }
-
     // NIS dan NISN validasi
     const nisInput = document.getElementById('nis');
     const nisnInput = document.getElementById('nisn');
@@ -310,41 +311,45 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
     });
-});
 
-document.getElementById('photo').onchange = function(evt) {
-    const preview = document.getElementById('photo-preview');
-    preview.innerHTML = '';
-    
-    const [file] = this.files;
-    if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-            preview.innerHTML = '<p class="text-red-500 text-sm">Ukuran file terlalu besar. Maksimal 2MB.</p>';
-            this.value = '';
-            return;
-        }
+    // Validasi dan preview foto
+    const photoInput = document.getElementById('photo');
+    if (photoInput) {
+        photoInput.addEventListener('change', function() {
+            const preview = document.getElementById('photo-preview');
+            preview.innerHTML = '';
+            
+            const [file] = this.files;
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    preview.innerHTML = '<p class="text-red-500 text-sm">Ukuran file terlalu besar. Maksimal 2MB.</p>';
+                    this.value = '';
+                    return;
+                }
 
-        if (!['image/jpeg', 'image/png'].includes(file.type)) {
-            preview.innerHTML = '<p class="text-red-500 text-sm">Format file tidak sesuai. Gunakan JPG/JPEG/PNG.</p>';
-            this.value = '';
-            return;
-        }
+                if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                    preview.innerHTML = '<p class="text-red-500 text-sm">Format file tidak sesuai. Gunakan JPG/JPEG/PNG.</p>';
+                    this.value = '';
+                    return;
+                }
 
-        const previewContainer = document.createElement('div');
-        previewContainer.className = 'mt-4 relative';
+                const previewContainer = document.createElement('div');
+                previewContainer.className = 'mt-4 relative';
 
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        img.className = 'max-w-xs rounded-lg shadow-sm';
-        img.style.maxHeight = '200px';
-        
-        previewContainer.appendChild(img);
-        preview.appendChild(previewContainer);
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'max-w-xs rounded-lg shadow-sm';
+                img.style.maxHeight = '200px';
+                
+                previewContainer.appendChild(img);
+                preview.appendChild(previewContainer);
 
-        img.onload = function() {
-            URL.revokeObjectURL(this.src);
-        }
+                img.onload = function() {
+                    URL.revokeObjectURL(this.src);
+                }
+            }
+        });
     }
-};
+});
 </script>
 @endsection

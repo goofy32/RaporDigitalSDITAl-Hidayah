@@ -17,7 +17,7 @@ class TujuanPembelajaran extends Model
         'deskripsi_tp',
     ];
 
-    // Relasi yang sudah ada
+    // Relasi ke LingkupMateri
     public function lingkupMateri()
     {
         return $this->belongsTo(LingkupMateri::class, 'lingkup_materi_id');
@@ -55,7 +55,7 @@ class TujuanPembelajaran extends Model
             ->count();
     }
 
-    // Event deleting yang sudah ada
+    // Event deleting untuk menghapus data terkait
     protected static function booted()
     {
         static::deleting(function ($tujuanPembelajaran) {
