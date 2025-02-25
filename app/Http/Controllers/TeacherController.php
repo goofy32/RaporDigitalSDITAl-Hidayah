@@ -274,7 +274,7 @@ class TeacherController extends Controller
         DB::beginTransaction();
         try {
             $teacher = Guru::findOrFail($id);
-    
+
             // Validasi dasar
             $rules = [
                 'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,'.$id,
@@ -288,48 +288,76 @@ class TeacherController extends Controller
                 'kelas_ids' => 'required|array',
                 'username' => 'required|string|max:255|unique:gurus,username,'.$id,
             ];
-    
+
             if ($request->jabatan === 'guru_wali') {
                 $rules['wali_kelas_id'] = 'required|exists:kelas,id';
             }
-    
+
+            // Validasi password jika diisi
+            if ($request->filled('password')) {
+                $rules['current_password'] = 'required';
+                $rules['password'] = 'required|min:6|confirmed';
+            }
+
             $validated = $request->validate($rules);
-    
-            // Update guru basic info
-            $teacher->update($validated);
-    
+
+            // Update data guru
+            $dataToUpdate = collect($validated)
+                ->except(['password', 'current_password', 'kelas_ids', 'wali_kelas_id'])
+                ->toArray();
+
+            // Update password jika ada
+            if ($request->filled('password')) {
+                $dataToUpdate['password'] = Hash::make($request->password);
+                $dataToUpdate['password_plain'] = $request->password;
+            }
+
+            // Update photo jika ada
+            if ($request->hasFile('photo')) {
+                // Hapus photo lama jika ada
+                if ($teacher->photo) {
+                    Storage::disk('public')->delete($teacher->photo);
+                }
+                $dataToUpdate['photo'] = $request->file('photo')->store('teacher-photos', 'public');
+            }
+
+            $teacher->update($dataToUpdate);
+
             // Hapus semua relasi kelas yang ada
             $teacher->kelas()->detach();
-    
+
             // Array untuk tracking kelas yang sudah di-attach
             $attachedClasses = [];
-    
+
             // Attach kelas mengajar terlebih dahulu
             foreach ($validated['kelas_ids'] as $kelasId) {
                 // Skip jika kelas sudah di-attach
                 if (in_array($kelasId, $attachedClasses)) {
                     continue;
                 }
-    
+
+                $isWaliKelas = ($request->jabatan === 'guru_wali' && 
+                            $request->wali_kelas_id == $kelasId);
+
                 $teacher->kelas()->attach($kelasId, [
-                    'is_wali_kelas' => false,
-                    'role' => 'pengajar'
+                    'is_wali_kelas' => $isWaliKelas,
+                    'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
                 ]);
+                
                 $attachedClasses[] = $kelasId;
             }
-    
-            // Jika guru_wali, attach kelas wali secara terpisah
+
+            // Jika guru_wali, attach kelas wali jika belum di-attach
             if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
                 $waliKelasId = $request->wali_kelas_id;
                 
-                // Jika kelas wali belum di-attach sebagai pengajar
                 if (!in_array($waliKelasId, $attachedClasses)) {
                     $teacher->kelas()->attach($waliKelasId, [
                         'is_wali_kelas' => true,
                         'role' => 'wali_kelas'
                     ]);
                 } else {
-                    // Jika sudah ada sebagai pengajar, update role-nya
+                    // Update role untuk kelas yang sudah di-attach
                     DB::table('guru_kelas')
                         ->where('guru_id', $teacher->id)
                         ->where('kelas_id', $waliKelasId)
@@ -339,13 +367,24 @@ class TeacherController extends Controller
                         ]);
                 }
             }
-    
+
+            // Logging untuk debugging
+            \Log::info('Update guru berhasil', [
+                'id' => $teacher->id,
+                'nama' => $teacher->nama,
+                'jabatan' => $request->jabatan
+            ]);
+
             DB::commit();
             return redirect()->route('teacher')
                 ->with('success', 'Data guru berhasil diperbarui');
-    
+
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Error update guru', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
                 ->withInput();

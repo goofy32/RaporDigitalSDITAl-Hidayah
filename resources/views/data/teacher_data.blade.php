@@ -31,7 +31,7 @@
             <!-- Detail Pengajar -->
             <div class="flex space-x-8">
                 <!-- Foto Placeholder -->
-                <div class="flex items-start justify-center w-64 h-80 bg-gray-200 rounded-lg shadow-md overflow-hidden"> <!-- Ukuran diperbesar -->
+                <div class="flex items-start justify-center w-64 h-80 bg-gray-200 rounded-lg shadow-md overflow-hidden">
                 @if($teacher->photo)
                     <img src="{{ asset('storage/' . $teacher->photo) }}" 
                         alt="Foto Pengajar" 
@@ -63,7 +63,15 @@
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Tanggal Lahir</th>
-                                <td class="px-4 py-2">{{ $teacher->tanggal_lahir ?? 'Belum Diisi' }}</td>
+                                <td class="px-4 py-2">
+                                    @if($teacher->tanggal_lahir instanceof \Carbon\Carbon)
+                                        {{ $teacher->tanggal_lahir->format('d-m-Y') }}
+                                    @elseif(is_string($teacher->tanggal_lahir) && !empty($teacher->tanggal_lahir))
+                                        {{ date('d-m-Y', strtotime($teacher->tanggal_lahir)) }}
+                                    @else
+                                        Belum Diisi
+                                    @endif
+                                </td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">No Handphone</th>
@@ -80,7 +88,7 @@
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Jabatan</th>
                                 <td class="px-4 py-2">
-                                    @if($teacher->kelasWali->count() > 0)
+                                    @if($teacher->jabatan == 'guru_wali')
                                         Guru dan Wali Kelas
                                     @else
                                         Guru
@@ -90,8 +98,11 @@
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
                                 <td class="px-4 py-2">
-                                    @forelse($teacher->kelas()->where('role', 'pengajar')->get() as $kelas)
-                                        {{ $kelas->nomor_kelas }} - {{ $kelas->nama_kelas }}@if(!$loop->last), @endif
+                                    @php
+                                        $kelasAjar = $teacher->kelas()->wherePivot('role', 'pengajar')->get();
+                                    @endphp
+                                    @forelse($kelasAjar as $kelas)
+                                        {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}@if(!$loop->last), @endif
                                     @empty
                                         Belum ada kelas yang diampu
                                     @endforelse
@@ -100,8 +111,14 @@
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Wali Kelas</th>
                                 <td class="px-4 py-2">
-                                    @if($teacher->kelasWali->first())
-                                        {{ $teacher->kelasWali->first()->nomor_kelas }} - {{ $teacher->kelasWali->first()->nama_kelas }}
+                                    @php
+                                        $kelasWali = $teacher->kelas()
+                                            ->wherePivot('is_wali_kelas', true)
+                                            ->wherePivot('role', 'wali_kelas')
+                                            ->first();
+                                    @endphp
+                                    @if($kelasWali)
+                                        {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
                                     @else
                                         Bukan Wali Kelas
                                     @endif
