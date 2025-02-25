@@ -159,31 +159,29 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
 
     // Report Format
     Route::prefix('report-template')->name('report.template.')->group(function () {
-        // Route untuk placeholder guide harus di atas route dengan parameter opsional
+        // Sample template download route
+        Route::get('/sample', [ReportController::class, 'downloadSampleTemplate'])
+            ->name('sample');
+            
+        // Other existing routes...
         Route::get('/placeholder-guide', [ReportController::class, 'placeholderGuide'])
             ->name('placeholder.guide');
             
-        // Route untuk mendapatkan template saat ini
         Route::get('/current', [ReportController::class, 'getCurrentTemplate'])
             ->name('current');
             
-        // Route untuk upload template
         Route::post('/upload', [ReportController::class, 'upload'])
             ->name('upload');
             
-        // Route untuk preview template
         Route::get('/{template}/preview', [ReportController::class, 'preview'])
             ->name('preview');
             
-        // Route untuk aktivasi template
         Route::post('/{template}/activate', [ReportController::class, 'activate'])
             ->name('activate');
             
-        // Route untuk hapus template
         Route::delete('/{template}', [ReportController::class, 'destroy'])
             ->name('destroy');
             
-        // Route index harus di bawah karena memiliki parameter opsional
         Route::get('/{type?}', [ReportController::class, 'index'])
             ->name('index');
     });

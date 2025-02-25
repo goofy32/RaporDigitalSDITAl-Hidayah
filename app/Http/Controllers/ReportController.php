@@ -9,22 +9,29 @@ use App\Models\Siswa;
 use App\Services\RaporTemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ProfilSekolah;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB; // Add this import for DB facade
 
 class ReportController extends Controller
 {
     // Modify the index method to pass school profile to the view
-    public function index($type = 'UTS')
+    public function index()
     {
-        $templates = ReportTemplate::where('type', $type)
-            ->orderBy('created_at', 'desc')
+        // Get all templates (both UTS and UAS) sorted by creation date
+        $templates = ReportTemplate::orderBy('created_at', 'desc')
             ->get();
-            
+        
         $schoolProfile = ProfilSekolah::first();
         
-        return view('admin.report.index', compact('templates', 'type', 'schoolProfile'));
+        return view('admin.report.index', compact('templates', 'schoolProfile'));
     }
-    
     // Modify the upload method to use school profile data
+    /**
+     * Upload a new template and validate placeholders.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
     public function upload(Request $request)
     {
         $request->validate([
@@ -37,7 +44,42 @@ class ReportController extends Controller
         try {
             $file = $request->file('template');
             $filename = $file->getClientOriginalName();
-            $path = $file->store('templates', 'public');
+            $tempPath = $file->store('temp', 'public');
+            $fullTempPath = storage_path('app/public/' . $tempPath);
+            
+            // Validate template placeholders
+            $validationResult = $this->validateTemplate($fullTempPath, $request->type);
+            
+            if (!$validationResult['is_valid']) {
+                // Delete the temporary file
+                Storage::disk('public')->delete($tempPath);
+                
+                // Prepare error message
+                $errorMessage = 'Template tidak valid: ';
+                
+                if (!empty($validationResult['missing_placeholders'])) {
+                    $errorMessage .= 'Placeholder wajib yang tidak ditemukan: ' . 
+                        implode(', ', $validationResult['missing_placeholders']);
+                }
+                
+                if (!empty($validationResult['invalid_placeholders'])) {
+                    $errorMessage .= (!empty($validationResult['missing_placeholders']) ? '. ' : '') . 
+                        'Placeholder tidak valid: ' . implode(', ', $validationResult['invalid_placeholders']);
+                }
+                
+                if (isset($validationResult['error'])) {
+                    $errorMessage .= 'Error: ' . $validationResult['error'];
+                }
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 400);
+            }
+            
+            // Move from temp to final location
+            $path = 'templates/' . time() . '_' . $filename;
+            Storage::disk('public')->move($tempPath, $path);
             
             $template = ReportTemplate::create([
                 'filename' => $filename,
@@ -54,12 +96,18 @@ class ReportController extends Controller
                 'template' => $template
             ]);
         } catch (\Exception $e) {
+            \Log::error('Upload template error:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal upload template: ' . $e->getMessage()
             ], 500);
         }
     }
+
     
     public function getCurrentTemplate(Request $request)
     {
@@ -101,11 +149,57 @@ class ReportController extends Controller
         }
     }
 
-    public function downloadSampleTemplate()
-    {
-        $path = storage_path('app/public/samples/template_rapor_sample.docx');
-        return response()->download($path);
+     /**
+ * Download sample template with correct placeholders
+ * 
+ * @param Request $request
+ * @return \Illuminate\Http\Response
+ */
+public function downloadSampleTemplate(Request $request)
+{
+    $type = $request->input('type', 'UTS');
+    
+    // Ensure valid type
+    if (!in_array($type, ['UTS', 'UAS'])) {
+        $type = 'UTS';
     }
+    
+    // Define the correct file path based on type
+    $sampleFileName = $type === 'UTS' 
+        ? 'sample_template_uts.docx'
+        : 'sample_template_uas.docx';
+        
+    $filePath = storage_path('app/public/samples/' . $sampleFileName);
+    
+    // Check if the file exists
+    if (!file_exists($filePath)) {
+        // If the specific file doesn't exist, try to use a generic sample
+        $filePath = storage_path('app/public/samples/template_rapor_sample.docx');
+        
+        // If even the generic sample doesn't exist, create it
+        if (!file_exists($filePath)) {
+            // Make sure the directory exists
+            if (!is_dir(storage_path('app/public/samples'))) {
+                mkdir(storage_path('app/public/samples'), 0755, true);
+            }
+            
+            // Copy from the original template file if it exists
+            if ($type === 'UTS') {
+                // Copy from a known template or create minimal template
+                $this->createSampleTemplate($filePath, $type);
+            } else {
+                // Create minimal UAS template
+                $this->createSampleTemplate($filePath, $type);
+            }
+        }
+    }
+    
+    // Generate a filename for download
+    $downloadFilename = "template_{$type}_sample.docx";
+    
+    // Return the file for download
+    return response()->download($filePath, $downloadFilename);
+}
 
     public function downloadPdf(Siswa $siswa) {
         $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
@@ -354,39 +448,157 @@ class ReportController extends Controller
         }
     }
 
-    protected function validateTemplate($filePath)
+    protected function validateTemplate($filePath, $type = 'UTS')
     {
         try {
-            $phpWord = new TemplateProcessor($filePath);
+            $phpWord = new \PhpOffice\PhpWord\TemplateProcessor($filePath);
             $existingVariables = $phpWord->getVariables();
             
-            // Ambil semua placeholder dari database
-            $validPlaceholders = ReportPlaceholder::pluck('placeholder_key')
-                ->toArray();
-    
-            // Ambil placeholder yang wajib
-            $requiredPlaceholders = ReportPlaceholder::where('is_required', true)
-                ->pluck('placeholder_key')
-                ->toArray();
-    
-            // Cek placeholder yang tidak ada tapi wajib
+            // Get required placeholders for specified type
+            $requiredPlaceholders = $this->getRequiredPlaceholders($type);
+            
+            // Get all valid placeholders
+            $validPlaceholders = ReportPlaceholder::pluck('placeholder_key')->toArray();
+            
+            // Check for missing required placeholders
             $missingPlaceholders = array_diff($requiredPlaceholders, $existingVariables);
             
-            // Cek placeholder yang tidak valid
+            // Check for unknown/invalid placeholders
             $invalidPlaceholders = array_diff($existingVariables, $validPlaceholders);
-    
+            
             return [
-                'is_valid' => empty($missingPlaceholders) && empty($invalidPlaceholders),
-                'missing_placeholders' => array_values($missingPlaceholders),
-                'invalid_placeholders' => array_values($invalidPlaceholders)
+                'is_valid' => empty($missingPlaceholders),
+                'missing_placeholders' => $missingPlaceholders,
+                'invalid_placeholders' => $invalidPlaceholders,
             ];
-    
         } catch (\Exception $e) {
+            \Log::error('Template validation error:', [
+                'error' => $e->getMessage(),
+                'file_path' => $filePath
+            ]);
+            
             return [
                 'is_valid' => false,
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+
+/**
+ * Create a basic sample template if none exists
+ *
+ * @param string $outputPath
+ * @param string $type
+ * @return void
+ */
+protected function createSampleTemplate($outputPath, $type = 'UTS')
+{
+    try {
+        // Create a new Word document
+        $phpWord = new \PhpOffice\PhpWord\PhpWord();
+        
+        // Add a section
+        $section = $phpWord->addSection();
+        
+        // Add header with school name
+        $header = $section->addHeader();
+        $header->addText('TEMPLATE RAPOR ' . $type, ['bold' => true, 'size' => 16], ['alignment' => 'center']);
+        
+        // Add student information
+        $section->addText('IDENTITAS SISWA:', ['bold' => true, 'size' => 14]);
+        $section->addText('Nama: ${nama_siswa}', ['size' => 12]);
+        $section->addText('NISN: ${nisn}', ['size' => 12]);
+        $section->addText('NIS: ${nis}', ['size' => 12]);
+        $section->addText('Kelas: ${kelas}', ['size' => 12]);
+        $section->addText('Tahun Ajaran: ${tahun_ajaran}', ['size' => 12]);
+        
+        $section->addTextBreak(1);
+        
+        // Add subject information
+        $section->addText('NILAI MATA PELAJARAN:', ['bold' => true, 'size' => 14]);
+        
+        // Create table for subjects
+        $table = $section->addTable();
+        
+        // Add header row
+        $table->addRow();
+        $table->addCell(2000)->addText('Mata Pelajaran', ['bold' => true]);
+        $table->addCell(1000)->addText('Nilai', ['bold' => true]);
+        $table->addCell(5000)->addText('Capaian Kompetensi', ['bold' => true]);
+        
+        // PAI
+        $table->addRow();
+        $table->addCell(2000)->addText('Pendidikan Agama Islam');
+        $table->addCell(1000)->addText('${nilai_pai}');
+        $table->addCell(5000)->addText('${capaian_pai}');
+        
+        // Matematika
+        $table->addRow();
+        $table->addCell(2000)->addText('Matematika');
+        $table->addCell(1000)->addText('${nilai_matematika}');
+        $table->addCell(5000)->addText('${capaian_matematika}');
+        
+        // Bahasa Indonesia
+        $table->addRow();
+        $table->addCell(2000)->addText('Bahasa Indonesia');
+        $table->addCell(1000)->addText('${nilai_bahasa_indonesia}');
+        $table->addCell(5000)->addText('${capaian_bahasa_indonesia}');
+        
+        $section->addTextBreak(1);
+        
+        // Add attendance information
+        $section->addText('KEHADIRAN:', ['bold' => true, 'size' => 14]);
+        $section->addText('Sakit: ${sakit} hari', ['size' => 12]);
+        $section->addText('Izin: ${izin} hari', ['size' => 12]);
+        $section->addText('Tanpa Keterangan: ${tanpa_keterangan} hari', ['size' => 12]);
+        
+        // Save to file
+        $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+        $objWriter->save($outputPath);
+        
+        return true;
+    } catch (\Exception $e) {
+        \Log::error('Error creating sample template:', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return false;
+    }
+}
+   
+    /**
+     * Get required placeholders based on template type
+     * 
+     * @param string $type
+     * @return array
+     */
+    protected function getRequiredPlaceholders($type = 'UTS')
+    {
+        // Basic required placeholders for all template types
+        $required = [
+            'nama_siswa',
+            'nisn',
+            'nis',
+            'kelas',
+            'tahun_ajaran',
+            'nilai_matematika',
+            'sakit'
+        ];
+        
+        // Add UTS specific placeholders
+        if ($type === 'UTS') {
+            // Currently no additional UTS-specific required placeholders
+        }
+        
+        // Add UAS specific placeholders 
+        if ($type === 'UAS') {
+            // Additional required placeholders for UAS
+            // $required[] = 'additional_uas_placeholder';
+        }
+        
+        return $required;
     }
 
     protected function fillTemplateSampleData($template)
