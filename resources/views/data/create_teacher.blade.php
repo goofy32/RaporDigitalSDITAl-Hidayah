@@ -62,8 +62,10 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">NUPTK</label>
-                        <input type="text" name="nuptk" value="{{ old('nuptk') }}" required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 @error('nuptk') border-red-500 @enderror">
+                        <input type="number" name="nuptk" id="nuptk" value="{{ old('nuptk') }}" required min="0" pattern="[0-9]+" inputmode="numeric" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 @error('nuptk') border-red-500 @enderror"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        <p class="mt-1 text-sm text-gray-500">Masukkan hanya angka (9-15 digit)</p>
                         @error('nuptk')
                             <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                         @enderror
@@ -80,8 +82,8 @@
                         <select name="jenis_kelamin" required
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                             <option value="">Pilih Jenis Kelamin</option>
-                            <option value="Laki-laki">Laki-laki</option>
-                            <option value="Perempuan">Perempuan</option>
+                            <option value="Laki-laki" {{ old('jenis_kelamin') == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                            <option value="Perempuan" {{ old('jenis_kelamin') == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                         </select>
                     </div>
 
@@ -93,8 +95,10 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">No. Handphone</label>
-                        <input type="text" name="no_handphone" value="{{ old('no_handphone') }}" required maxlength="15"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                        <input type="number" name="no_handphone" id="no_handphone" value="{{ old('no_handphone') }}" required min="0" pattern="[0-9]+" inputmode="numeric"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 15) this.value = this.value.slice(0, 15);">
+                        <p class="mt-1 text-sm text-gray-500">Masukkan hanya angka (10-15 digit)</p>
                     </div>
 
                     <div>
@@ -117,8 +121,8 @@
                         <select name="jabatan" id="jabatan" onchange="handleJabatanChange()" required
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                             <option value="">Pilih Jabatan</option>
-                            <option value="guru">Guru</option>
-                            <option value="guru_wali">Guru & Wali Kelas</option>
+                            <option value="guru" {{ old('jabatan') == 'guru' ? 'selected' : '' }}>Guru</option>
+                            <option value="guru_wali" {{ old('jabatan') == 'guru_wali' ? 'selected' : '' }}>Guru & Wali Kelas</option>
                         </select>
                     </div>
 
@@ -127,7 +131,7 @@
                         <select name="kelas_ids[]" multiple required
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[120px]">
                             @foreach($kelasForMengajar as $kelas)
-                                <option value="{{ $kelas->id }}">
+                                <option value="{{ $kelas->id }}" {{ (is_array(old('kelas_ids')) && in_array($kelas->id, old('kelas_ids'))) ? 'selected' : '' }}>
                                     Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
                                 </option>
                             @endforeach
@@ -140,7 +144,7 @@
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                             <option value="">Pilih Kelas</option>
                             @foreach($kelasForWali as $kelas)
-                                <option value="{{ $kelas->id }}">
+                                <option value="{{ $kelas->id }}" {{ old('wali_kelas_id') == $kelas->id ? 'selected' : '' }}>
                                     Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
                                 </option>
                             @endforeach
@@ -154,7 +158,7 @@
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Username</label>
-                                <input type="text" name="username" required
+                                <input type="text" name="username" value="{{ old('username') }}" required
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                             </div>
 
@@ -187,6 +191,72 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Tambahkan validasi untuk input numerik
+    const numericInputs = document.querySelectorAll('input[type="number"]');
+    numericInputs.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            // Pastikan hanya karakter angka yang bisa dimasukkan
+            if (!/^\d*$/.test(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        // Hapus karakter non-angka saat paste
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            this.value = pastedText.replace(/[^\d]/g, '');
+        });
+    });
+
+    // Validasi NUPTK - harus 9-15 digit angka
+    const nuptkInput = document.getElementById('nuptk');
+    if (nuptkInput) {
+        nuptkInput.addEventListener('blur', function() {
+            const value = this.value.trim();
+            if (value && (value.length < 9 || value.length > 15)) {
+                this.classList.add('border-red-500');
+                let errorDiv = this.parentElement.querySelector('.error-message');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('p');
+                    errorDiv.className = 'error-message text-red-500 text-xs mt-1';
+                    this.parentElement.appendChild(errorDiv);
+                }
+                errorDiv.textContent = 'NUPTK harus antara 9-15 digit';
+            } else {
+                this.classList.remove('border-red-500');
+                const errorDiv = this.parentElement.querySelector('.error-message');
+                if (errorDiv) {
+                    errorDiv.textContent = '';
+                }
+            }
+        });
+    }
+
+    // Validasi No. Handphone - harus 10-15 digit angka
+    const phoneInput = document.getElementById('no_handphone');
+    if (phoneInput) {
+        phoneInput.addEventListener('blur', function() {
+            const value = this.value.trim();
+            if (value && (value.length < 10 || value.length > 15)) {
+                this.classList.add('border-red-500');
+                let errorDiv = this.parentElement.querySelector('.error-message');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('p');
+                    errorDiv.className = 'error-message text-red-500 text-xs mt-1';
+                    this.parentElement.appendChild(errorDiv);
+                }
+                errorDiv.textContent = 'No. Handphone harus antara 10-15 digit';
+            } else {
+                this.classList.remove('border-red-500');
+                const errorDiv = this.parentElement.querySelector('.error-message');
+                if (errorDiv) {
+                    errorDiv.textContent = '';
+                }
+            }
+        });
+    }
+
     // Function untuk handle perubahan jabatan
     window.handleJabatanChange = function() {
         const jabatan = document.getElementById('jabatan').value;
@@ -195,9 +265,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const waliKelasSelect = document.querySelector('[name="wali_kelas_id"]');
         const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
 
-        // Reset form saat ganti jabatan
-        if(waliKelasSelect) waliKelasSelect.value = '';
-        if(kelasMengajarSelect) kelasMengajarSelect.selectedIndex = -1;
+        // Reset form saat ganti jabatan jika belum ada nilai dari old()
+        if(!kelasMengajarSelect.options.selected && !waliKelasSelect.options.selected) {
+            if(waliKelasSelect) waliKelasSelect.value = '';
+            if(kelasMengajarSelect) kelasMengajarSelect.selectedIndex = -1;
+        }
 
         if (jabatan === 'guru_wali') {
             // Tampilkan kedua section
@@ -240,6 +312,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 addErrorMessage(field, `${field.getAttribute('placeholder') || field.getAttribute('name')} wajib diisi`);
             }
         });
+        
+        // Validasi panjang NUPTK
+        const nuptk = document.getElementById('nuptk');
+        if (nuptk && nuptk.value.trim()) {
+            const nuptkValue = nuptk.value.trim();
+            if (nuptkValue.length < 9 || nuptkValue.length > 15) {
+                hasError = true;
+                nuptk.classList.add('border-red-500');
+                addErrorMessage(nuptk, 'NUPTK harus antara 9-15 digit');
+            }
+        }
+        
+        // Validasi panjang No. Handphone
+        const phone = document.getElementById('no_handphone');
+        if (phone && phone.value.trim()) {
+            const phoneValue = phone.value.trim();
+            if (phoneValue.length < 10 || phoneValue.length > 15) {
+                hasError = true;
+                phone.classList.add('border-red-500');
+                addErrorMessage(phone, 'No. Handphone harus antara 10-15 digit');
+            }
+        }
 
         if (hasError) {
             e.preventDefault();
@@ -263,7 +357,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // File validation
     const photoInput = document.querySelector('input[type="file"]');
     if (photoInput) {
-        photoInput.addEventListener('change', validateFile);
+        photoInput.addEventListener('change', function() {
+            validateFile(this);
+        });
     }
 
     // Set initial state
