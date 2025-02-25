@@ -136,13 +136,28 @@ class SubjectController extends Controller
                 'semester' => $validated['semester'],
             ]);
     
-            // Update Lingkup Materi
-            $subject->lingkupMateris()->delete();
-            foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
-                LingkupMateri::create([
-                    'mata_pelajaran_id' => $subject->id,
-                    'judul_lingkup_materi' => $judulLingkupMateri,
-                ]);
+            // Dapatkan lingkup materi yang sudah ada
+            $existingLingkupMateriTitles = $subject->lingkupMateris()->pluck('judul_lingkup_materi')->toArray();
+            $newLingkupMateriTitles = $validated['lingkup_materi'];
+            
+            // Lingkup materi yang akan dihapus (ada di existing tapi tidak ada di input baru)
+            $toBeDeletedTitles = array_diff($existingLingkupMateriTitles, $newLingkupMateriTitles);
+            
+            // Hapus lingkup materi yang tidak ada lagi
+            if (!empty($toBeDeletedTitles)) {
+                $subject->lingkupMateris()
+                    ->whereIn('judul_lingkup_materi', $toBeDeletedTitles)
+                    ->delete();
+            }
+            
+            // Tambahkan lingkup materi baru yang belum ada
+            foreach ($newLingkupMateriTitles as $judulLingkupMateri) {
+                if (!in_array($judulLingkupMateri, $existingLingkupMateriTitles)) {
+                    LingkupMateri::create([
+                        'mata_pelajaran_id' => $subject->id,
+                        'judul_lingkup_materi' => $judulLingkupMateri,
+                    ]);
+                }
             }
     
             DB::commit();
@@ -267,30 +282,52 @@ class SubjectController extends Controller
         try {
             DB::beginTransaction();
 
+            $subject = MataPelajaran::findOrFail($id);
+
+            $validated = $request->validate([
+                'mata_pelajaran' => 'required|string|max:255',
+                'kelas' => 'required|exists:kelas,id',
+                'semester' => 'required|integer|min:1|max:2',
+                'lingkup_materi' => 'required|array',
+                'lingkup_materi.*' => 'required|string|max:255',
+            ]);
+
             $subject->update([
                 'nama_pelajaran' => $validated['mata_pelajaran'],
                 'kelas_id' => $validated['kelas'],
                 'semester' => $validated['semester'],
             ]);
 
-            // Update Lingkup Materi
-            $subject->lingkupMateris()->delete();
-            foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
-                LingkupMateri::create([
-                    'mata_pelajaran_id' => $subject->id,
-                    'judul_lingkup_materi' => $judulLingkupMateri,
-                ]);
+            // Dapatkan lingkup materi yang sudah ada
+            $existingLingkupMateriTitles = $subject->lingkupMateris()->pluck('judul_lingkup_materi')->toArray();
+            $newLingkupMateriTitles = $validated['lingkup_materi'];
+            
+            // Lingkup materi yang akan dihapus (ada di existing tapi tidak ada di input baru)
+            $toBeDeletedTitles = array_diff($existingLingkupMateriTitles, $newLingkupMateriTitles);
+            
+            // Hapus lingkup materi yang tidak ada lagi
+            if (!empty($toBeDeletedTitles)) {
+                $subject->lingkupMateris()
+                    ->whereIn('judul_lingkup_materi', $toBeDeletedTitles)
+                    ->delete();
+            }
+            
+            // Tambahkan lingkup materi baru yang belum ada
+            foreach ($newLingkupMateriTitles as $judulLingkupMateri) {
+                if (!in_array($judulLingkupMateri, $existingLingkupMateriTitles)) {
+                    LingkupMateri::create([
+                        'mata_pelajaran_id' => $subject->id,
+                        'judul_lingkup_materi' => $judulLingkupMateri,
+                    ]);
+                }
             }
 
             DB::commit();
-            return redirect()->route('pengajar.subject.index')
-                ->with('success', 'Mata Pelajaran berhasil diperbarui!');
+            return redirect()->route('pengajar.subject.index')->with('success', 'Mata Pelajaran berhasil diperbarui!');
 
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()
-                ->with('error', 'Terjadi kesalahan saat memperbarui data.')
-                ->withInput();
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
 

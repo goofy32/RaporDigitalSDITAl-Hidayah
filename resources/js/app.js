@@ -29,7 +29,7 @@ document.addEventListener('turbo:render', () => {
 document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
         dropdownState: {
-            formatRapor: false
+
         },
         
         toggleDropdown(name) {

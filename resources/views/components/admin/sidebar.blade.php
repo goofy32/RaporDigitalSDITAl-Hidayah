@@ -79,43 +79,12 @@
                 </a>
             </li>
             <li>
-                <button type="button"
-                    @click="$store.sidebar.toggleDropdown('formatRapor')"
-                    class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100">
-                    <img src="{{ asset('images/icons/report-icon.png') }}" 
-                        class="w-5 h-5"
-                        loading="lazy">
-                    <span class="flex-1 ms-3 text-left rtl:text-right whitespace-nowrap">Format Rapor</span>
-                    <svg class="w-3 h-3 transition-transform" 
-                        :class="{'rotate-180': $store.sidebar.dropdownState.formatRapor }" 
-                        aria-hidden="true">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
-                    </svg>
-                </button>
-                <ul x-show="$store.sidebar.dropdownState.formatRapor"
-                    x-cloak
-                    x-transition:enter="transition ease-out duration-100"
-                    x-transition:enter-start="transform opacity-0 scale-95"
-                    x-transition:enter-end="transform opacity-100 scale-100"
-                    x-transition:leave="transition ease-in duration-75"
-                    x-transition:leave-start="transform opacity-100 scale-100"
-                    x-transition:leave-end="transform opacity-0 scale-95"
-                    class="py-2 space-y-2">
-                        <li>
-                            <a href="{{ route('report.template.index', 'UTS') }}"
-                            class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100">
-                                UTS
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('report.template.index', 'UAS') }}"
-                            class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100">
-                                UAS
-                            </a>
-                        </li>
-                    </ul>
-                    </li>
-                </ul>
+                <a href="{{ route('report.template.index') }}" 
+                data-path="report-template"
+                class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
+                    <img src="{{ asset('images/icons/report-icon.png') }}" class="w-5 h-5" alt="Format Rapor" />
+                    <span class="flex-1 ml-3 whitespace-nowrap">Format Rapor</span>
+                </a>
             </li>
         </ul>
     </div>

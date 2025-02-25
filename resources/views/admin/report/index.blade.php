@@ -124,42 +124,31 @@
             <form id="uploadForm" action="{{ route('report.template.upload') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="type" value="{{ $type }}">
+                
+                @if(!$schoolProfile)
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+                    <p>Tahun ajaran dan semester akan diambil dari Profil Sekolah, namun profil sekolah belum diisi.</p>
+                    <a href="{{ route('profile.edit') }}" class="text-blue-600 hover:underline">Isi Profil Sekolah</a>
+                </div>
+                @else
+                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4">
+                    <p>Tahun Ajaran: <strong>{{ $schoolProfile->tahun_pelajaran }}</strong></p>
+                    <p>Semester: <strong>{{ $schoolProfile->semester == 1 ? 'Ganjil' : 'Genap' }}</strong></p>
+                    <p class="text-xs mt-2">Data diambil dari Profil Sekolah</p>
+                </div>
+                <!-- Add hidden fields to pass the values from school profile -->
+                <input type="hidden" name="tahun_ajaran" value="{{ $schoolProfile->tahun_pelajaran }}">
+                <input type="hidden" name="semester" value="{{ $schoolProfile->semester }}">
+                @endif
 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
-                        <select name="tahun_ajaran" required 
-                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
-                            <option value="">Pilih Tahun Ajaran</option>
-                            @php
-                                $currentYear = date('Y');
-                                for($i = $currentYear - 1; $i <= $currentYear + 1; $i++) {
-                                    $tahunAjaran = $i . '/' . ($i + 1);
-                                    echo "<option value='{$tahunAjaran}'>{$tahunAjaran}</option>";
-                                }
-                            @endphp
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                        <select name="semester" required 
-                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
-                            <option value="">Pilih Semester</option>
-                            <option value="1">Ganjil</option>
-                            <option value="2">Genap</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">File Template</label>
-                        <input type="file" 
-                               name="template"
-                               required
-                               accept=".docx"
-                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <p class="mt-1 text-sm text-gray-500">Format yang diterima: .docx</p>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">File Template</label>
+                    <input type="file" 
+                           name="template"
+                           required
+                           accept=".docx"
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <p class="mt-1 text-sm text-gray-500">Format yang diterima: .docx</p>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
@@ -169,7 +158,8 @@
                         Batal
                     </button>
                     <button type="submit" 
-                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            {{ !$schoolProfile ? 'disabled' : '' }}
+                            class="{{ !$schoolProfile ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700' }} px-4 py-2 text-white rounded-lg transition">
                         Upload
                     </button>
                 </div>
@@ -177,7 +167,6 @@
         </div>
     </div>
 </div>
-
 <!-- Modal Panduan -->
 <div id="placeholderGuide" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">

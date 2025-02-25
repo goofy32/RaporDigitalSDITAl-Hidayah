@@ -2,71 +2,64 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\ReportTemplate;
 use App\Models\ReportPlaceholder;
 use App\Models\Siswa;
-use App\Models\Nilai;
-use App\Models\Absensi;
-use App\Models\NilaiEkstrakurikuler;
-use Illuminate\Http\Request;
-use PhpOffice\PhpWord\TemplateProcessor;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
 use App\Services\RaporTemplateProcessor;
-use Barryvdh\DomPDF\Facade\Pdf;
-
-
+use Illuminate\Support\Facades\Storage;
+use App\Models\ProfilSekolah;
 
 class ReportController extends Controller
 {
+    // Modify the index method to pass school profile to the view
     public function index($type = 'UTS')
     {
-        try {
-            // 1. Validasi tipe rapor
-            if (!in_array($type, ['UTS', 'UAS'])) {
-                return redirect()->route('report.template.index', 'UTS')
-                    ->with('error', 'Tipe rapor tidak valid');
-            }
-        
-            // 2. Mengambil semua template berdasarkan tipe
-            $templates = ReportTemplate::where('type', $type)
-                ->orderBy('created_at', 'desc')
-                ->get();
-        
-            // 3. Mengambil template yang aktif
-            $activeTemplate = ReportTemplate::where([
-                'type' => $type,
-                'is_active' => true
-            ])->first();
-    
-            // Debug logging
-            \Log::info('Report Template Data:', [
-                'type' => $type,
-                'templates_count' => $templates->count(),
-                'templates' => $templates->toArray(),
-                'active_template' => $activeTemplate ? $activeTemplate->toArray() : null
-            ]);
-        
-            // 4. Mengirim data ke view
-            return view('admin.report.index', [
-                'templates' => $templates,
-                'type' => $type,
-                'activeTemplate' => $activeTemplate
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Error in report template index:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+        $templates = ReportTemplate::where('type', $type)
+            ->orderBy('created_at', 'desc')
+            ->get();
             
-            return view('admin.report.index', [
-                'templates' => collect([]),
-                'type' => $type,
-                'activeTemplate' => null
-            ])->with('error', 'Terjadi kesalahan saat memuat data template');
-        }
+        $schoolProfile = ProfilSekolah::first();
+        
+        return view('admin.report.index', compact('templates', 'type', 'schoolProfile'));
     }
     
+    // Modify the upload method to use school profile data
+    public function upload(Request $request)
+    {
+        $request->validate([
+            'template' => 'required|file|mimes:docx',
+            'type' => 'required|in:UTS,UAS',
+            'tahun_ajaran' => 'required',
+            'semester' => 'required|in:1,2',
+        ]);
+        
+        try {
+            $file = $request->file('template');
+            $filename = $file->getClientOriginalName();
+            $path = $file->store('templates', 'public');
+            
+            $template = ReportTemplate::create([
+                'filename' => $filename,
+                'path' => $path,
+                'type' => $request->type,
+                'tahun_ajaran' => $request->tahun_ajaran,
+                'semester' => $request->semester,
+                'is_active' => false, // Default inactive
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Template berhasil diupload',
+                'template' => $template
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal upload template: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     
     public function getCurrentTemplate(Request $request)
     {
@@ -105,93 +98,6 @@ class ReportController extends Controller
                 'success' => false,
                 'message' => 'Gagal mengambil template: ' . $e->getMessage()
             ], 500)->header('Content-Type', 'application/json');
-        }
-    }
-
-
-    
-    public function upload(Request $request)
-    {
-        try {
-            $request->validate([
-                'template' => 'required|file|mimes:docx',
-                'type' => 'required|in:UTS,UAS',
-                'tahun_ajaran' => 'required|string',
-                // Ubah validasi semester untuk menerima nilai 1 atau 2
-                'semester' => 'required|in:1,2' 
-            ]);
-    
-            DB::beginTransaction();
-    
-            $file = $request->file('template');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            
-            // Validate template
-            $tempPath = $file->getRealPath();
-            $validation = $this->validateTemplate($tempPath);
-            
-            if (!$validation['is_valid']) {
-                $message = "Template tidak valid:\n";
-                if (!empty($validation['missing_placeholders'])) {
-                    $message .= "Placeholder yang wajib tapi tidak ada:\n- " . 
-                        implode("\n- ", $validation['missing_placeholders']) . "\n";
-                }
-                if (!empty($validation['invalid_placeholders'])) {
-                    $message .= "Placeholder yang tidak dikenal:\n- " . 
-                        implode("\n- ", $validation['invalid_placeholders']);
-                }
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => $message
-                ], 422);
-            }
-    
-            // Save file to storage and make sure it's public
-            $path = 'templates/rapor/' . $filename;
-            Storage::disk('public')->put($path, file_get_contents($tempPath));
-            
-            // Create symbolic link if it doesn't exist
-            if (!file_exists(public_path('storage'))) {
-                Artisan::call('storage:link');
-            }
-    
-            // Save record to database
-            $template = ReportTemplate::create([
-                'filename' => $filename,
-                'path' => $path,
-                'type' => $request->type,
-                'is_active' => false,
-                'tahun_ajaran' => $request->tahun_ajaran,
-                'semester' => $request->semester // Nilai akan berupa 1 atau 2
-            ]);
-    
-            DB::commit();
-    
-            return response()->json([
-                'success' => true,
-                'template' => $template
-            ]);
-    
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            // Tambahkan pesan khusus untuk error semester
-            if (isset($e->errors()['semester'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Nilai semester harus 1 (Ganjil) atau 2 (Genap)'
-                ], 422);
-            }
-            return response()->json([
-                'success' => false,
-                'message' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengunggah template: ' . $e->getMessage()
-            ], 500);
         }
     }
 
