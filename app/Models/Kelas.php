@@ -91,8 +91,37 @@ class Kelas extends Model
     {
         return $this->hasMany(MataPelajaran::class, 'kelas_id');
     }
+
+    public function isWaliKelas($guruId)
+    {
+        return $this->belongsToMany(Guru::class, 'guru_kelas')
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('guru_kelas.guru_id', $guruId)
+            ->exists();
+    }
+
+    public function getWaliKelasId()
+    {
+        $waliKelas = $this->getWaliKelas();
+        return $waliKelas ? $waliKelas->id : null;
+    }
     
-    
+    public static function getWaliKelasMap()
+    {
+        $result = [];
+        $allKelas = self::all();
+        
+        foreach ($allKelas as $kelas) {
+            $waliKelasId = $kelas->getWaliKelasId();
+            if ($waliKelasId) {
+                $result[$kelas->id] = $waliKelasId;
+            }
+        }
+        
+        return json_encode($result);
+    }
+
     public function toArray()
     {
         $array = parent::toArray();
@@ -107,5 +136,29 @@ class Kelas extends Model
             ->where('guru_kelas.is_wali_kelas', true)
             ->where('guru_kelas.role', 'wali_kelas')
             ->exists();
+    }
+
+    /**
+     * Ambil wali kelas dengan format yang mudah digunakan untuk JavaScript
+     * 
+     * @return array
+     */
+    public static function getWaliKelasMapping()
+    {
+        $result = [];
+        $allKelas = self::all();
+        
+        foreach ($allKelas as $kelas) {
+            $waliKelasId = $kelas->getWaliKelasId();
+            if ($waliKelasId) {
+                $result[$kelas->id] = [
+                    'id' => $waliKelasId,
+                    'kelas' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}",
+                    'nama' => optional($kelas->getWaliKelas())->nama
+                ];
+            }
+        }
+        
+        return $result;
     }
 }

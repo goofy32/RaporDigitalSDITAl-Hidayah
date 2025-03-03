@@ -17,6 +17,7 @@ class TujuanPembelajaranController extends Controller
         $mataPelajaran = MataPelajaran::with('lingkupMateris')->findOrFail($mataPelajaranId);
         return view('data.add_tp', compact('mataPelajaran'));
     }
+    
     // Method untuk mengambil semua tujuan pembelajaran berdasarkan mata pelajaran
     public function listByMataPelajaran($mataPelajaranId)
     {
@@ -93,6 +94,7 @@ class TujuanPembelajaranController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+    
     // Method untuk hapus tujuan pembelajaran
     public function destroy($id)
     {
@@ -122,6 +124,7 @@ class TujuanPembelajaranController extends Controller
             ], 500);
         }
     }
+    
     // Method untuk guru
     public function teacherCreate($mataPelajaranId)
     {
@@ -179,6 +182,81 @@ class TujuanPembelajaranController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    // Method untuk melengkapi implementasi view TP untuk guru
+    public function teacherView($mataPelajaranId)
+    {
+        $guruId = Auth::guard('guru')->id();
+        
+        $mataPelajaran = MataPelajaran::with(['lingkupMateris.tujuanPembelajarans', 'kelas'])
+            ->where('id', $mataPelajaranId)
+            ->where('guru_id', $guruId)
+            ->firstOrFail();
+            
+        return view('pengajar.add_tp', compact('mataPelajaran'));
+    }
+    
+    // Method untuk hapus tujuan pembelajaran khusus guru
+    public function teacherDestroy($id)
+    {
+        try {
+            $guruId = Auth::guard('guru')->id();
+            $tp = TujuanPembelajaran::findOrFail($id);
+            
+            // Verifikasi kepemilikan
+            if (!$tp->belongsToGuru($guruId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk menghapus data ini.'
+                ], 403);
+            }
+            
+            // Cek apakah tujuan pembelajaran ini sudah digunakan dalam nilai
+            $hasNilai = $tp->nilais()->exists();
+            
+            if ($hasNilai) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tujuan pembelajaran ini sudah digunakan dalam penilaian dan tidak dapat dihapus.'
+                ], 400);
+            }
+            
+            $tp->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tujuan pembelajaran berhasil dihapus!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Check for TPs that are dependent on a Lingkup Materi
+     * This is used to determine if a Lingkup Materi can be safely deleted
+     */
+    public function checkLingkupMateriDependencies($lingkupMateriId)
+    {
+        try {
+            $lingkupMateri = LingkupMateri::findOrFail($lingkupMateriId);
+            $hasTPs = $lingkupMateri->tujuanPembelajarans()->exists();
+            
+            return response()->json([
+                'success' => true,
+                'hasDependents' => $hasTPs
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking dependencies: ' . $e->getMessage(),
+                'hasDependents' => true // Assume there are dependents in case of error (safer)
+            ], 500);
         }
     }
 }

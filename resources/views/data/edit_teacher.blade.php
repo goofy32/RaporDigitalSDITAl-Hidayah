@@ -264,11 +264,22 @@ document.addEventListener('DOMContentLoaded', function() {
             kelasMengajarSection.style.display = 'block';
             if(waliKelasSelect) waliKelasSelect.required = true;
             if(kelasMengajarSelect) kelasMengajarSelect.required = true;
+            
+            // Tambahkan event listener untuk perubahan pada wali kelas
+            if(waliKelasSelect) {
+                waliKelasSelect.addEventListener('change', function() {
+                    updateKelasMengajarForWali();
+                });
+            }
         } else if (jabatan === 'guru') {
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'block';
             if(waliKelasSelect) waliKelasSelect.required = false;
             if(kelasMengajarSelect) kelasMengajarSelect.required = true;
+            
+            // Enable semua opsi kelas mengajar
+            enableAllKelasMengajarOptions();
+            
             if(waliKelasSelect) waliKelasSelect.value = '';
         } else {
             waliKelasSection.style.display = 'none';
@@ -276,7 +287,60 @@ document.addEventListener('DOMContentLoaded', function() {
             if(waliKelasSelect) waliKelasSelect.required = false;
             if(kelasMengajarSelect) kelasMengajarSelect.required = false;
         }
+        
+        // Update kelas mengajar berdasarkan kelas wali jika sudah dipilih
+        if(jabatan === 'guru_wali' && waliKelasSelect && waliKelasSelect.value) {
+            updateKelasMengajarForWali();
+        }
     };
+    
+    // Function untuk update kelas mengajar berdasarkan kelas wali
+    function updateKelasMengajarForWali() {
+        const waliKelasId = document.querySelector('[name="wali_kelas_id"]').value;
+        const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
+        
+        if(waliKelasId && kelasMengajarSelect) {
+            // Disable semua opsi terlebih dahulu
+            Array.from(kelasMengajarSelect.options).forEach(option => {
+                option.disabled = true;
+                option.selected = false;
+            });
+            
+            // Enable dan select hanya kelas yang menjadi wali kelas
+            Array.from(kelasMengajarSelect.options).forEach(option => {
+                if(option.value === waliKelasId) {
+                    option.disabled = false;
+                    option.selected = true;
+                }
+            });
+            
+            // Tambahkan pesan informasi
+            let infoText = document.getElementById('kelas_mengajar_info');
+            if(!infoText) {
+                infoText = document.createElement('p');
+                infoText.id = 'kelas_mengajar_info';
+                infoText.className = 'mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800';
+                kelasMengajarSelect.parentElement.appendChild(infoText);
+            }
+            infoText.innerHTML = '<span class="font-medium">Info:</span> Karena Anda terpilih sebagai wali kelas, Anda hanya dapat mengajar di kelas wali yang dipilih.';
+        }
+    }
+    
+    // Function untuk enable semua opsi kelas mengajar
+    function enableAllKelasMengajarOptions() {
+        const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
+        if(kelasMengajarSelect) {
+            Array.from(kelasMengajarSelect.options).forEach(option => {
+                option.disabled = false;
+            });
+            
+            // Hapus pesan informasi jika ada
+            const infoText = document.getElementById('kelas_mengajar_info');
+            if(infoText) {
+                infoText.remove();
+            }
+        }
+    }
 
     // Password validation
     const passwordForm = document.getElementById('editTeacherForm');
@@ -382,6 +446,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Set initial state
     handleJabatanChange();
+    
+    // Event listener untuk perubahan pada wali kelas di awal load
+    const waliKelasSelect = document.querySelector('[name="wali_kelas_id"]');
+    const jabatan = document.getElementById('jabatan').value;
+    if(jabatan === 'guru_wali' && waliKelasSelect && waliKelasSelect.value) {
+        updateKelasMengajarForWali();
+    }
 });
 </script>
 @endpush

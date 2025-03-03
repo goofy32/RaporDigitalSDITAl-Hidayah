@@ -98,16 +98,19 @@ class TeacherController extends Controller
                 'email' => 'required|email|max:255|unique:gurus,email',
                 'alamat' => 'required|string|max:500',
                 'jabatan' => 'required|in:guru,guru_wali',
-                'kelas_ids' => 'required|array',
                 'username' => 'required|string|max:255|unique:gurus,username',
                 'password' => 'required|string|min:6|confirmed',
                 'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ];
-            // Tambah validasi wali_kelas_id jika jabatan guru_wali
-            if ($request->jabatan === 'guru_wali') {
+            
+            // Tambah validasi kelas_ids dan wali_kelas_id berdasarkan jabatan
+            if ($request->jabatan === 'guru') {
+                $rules['kelas_ids'] = 'required|array';
+            } else if ($request->jabatan === 'guru_wali') {
                 $rules['wali_kelas_id'] = 'required|exists:kelas,id';
+                // Untuk guru_wali, kelas_ids bisa hanya berisi wali_kelas_id saja
+                $rules['kelas_ids'] = 'nullable|array';
             }
-    
     
             $validated = $request->validate($rules, [
                 'nuptk.required' => 'NUPTK wajib diisi',
@@ -150,13 +153,16 @@ class TeacherController extends Controller
             // Buat guru baru
             $guru = Guru::create($validated);
     
-            // Pastikan kelas wali masuk ke daftar kelas yang diajar jika jabatan guru_wali
-            $kelas_ids = $validated['kelas_ids'];
+            // Tentukan kelas yang akan diajar
+            $kelas_ids = [];
+            
+            // Jika guru_wali, pastikan hanya mengajar di kelas wali
             if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
-                // Pastikan kelas wali masuk ke daftar kelas yang diajar
-                if (!in_array($request->wali_kelas_id, $kelas_ids)) {
-                    $kelas_ids[] = $request->wali_kelas_id;
-                }
+                $kelas_ids = [$request->wali_kelas_id];
+            } 
+            // Jika guru biasa, gunakan kelas_ids yang dipilih
+            else if ($request->jabatan === 'guru') {
+                $kelas_ids = $validated['kelas_ids'] ?? [];
             }
     
             // Array untuk menyimpan kelas yang sudah di-attach
@@ -286,12 +292,16 @@ class TeacherController extends Controller
                 'email' => 'required|email|max:255|unique:gurus,email,'.$id,
                 'alamat' => 'required|string|max:500',
                 'jabatan' => 'required|in:guru,guru_wali',
-                'kelas_ids' => 'required|array',
                 'username' => 'required|string|max:255|unique:gurus,username,'.$id,
             ];
     
-            if ($request->jabatan === 'guru_wali') {
+            // Tambah validasi berdasarkan jabatan
+            if ($request->jabatan === 'guru') {
+                $rules['kelas_ids'] = 'required|array';
+            } else if ($request->jabatan === 'guru_wali') {
                 $rules['wali_kelas_id'] = 'required|exists:kelas,id';
+                // Untuk guru_wali, kelas_ids bisa hanya berisi wali_kelas_id saja
+                $rules['kelas_ids'] = 'nullable|array';
             }
     
             // Validasi password jika diisi
@@ -330,16 +340,19 @@ class TeacherController extends Controller
             // Array untuk tracking kelas yang sudah di-attach
             $attachedClasses = [];
     
-            // Pastikan kelas wali masuk ke daftar kelas yang diajar jika jabatan guru_wali
-            $kelas_ids = $validated['kelas_ids'];
+            // Tentukan kelas yang akan diajar
+            $kelas_ids = [];
+            
+            // Jika guru_wali, pastikan hanya mengajar di kelas wali
             if ($request->jabatan === 'guru_wali' && $request->filled('wali_kelas_id')) {
-                // Pastikan kelas wali masuk ke daftar kelas yang diajar
-                if (!in_array($request->wali_kelas_id, $kelas_ids)) {
-                    $kelas_ids[] = $request->wali_kelas_id;
-                }
+                $kelas_ids = [$request->wali_kelas_id];
+            } 
+            // Jika guru biasa, gunakan kelas_ids yang dipilih
+            else if ($request->jabatan === 'guru') {
+                $kelas_ids = $request->kelas_ids ?? [];
             }
     
-            // Attach kelas mengajar terlebih dahulu
+            // Attach kelas
             foreach ($kelas_ids as $kelasId) {
                 // Skip jika kelas sudah di-attach
                 if (in_array($kelasId, $attachedClasses)) {

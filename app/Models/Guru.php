@@ -142,6 +142,61 @@ class Guru extends Authenticatable
         )->get();
     }
 
+
+   public function canTeachClass($kelasId)
+   {
+       // Jika guru ini adalah wali kelas dari kelas tersebut
+       $waliKelasId = $this->getWaliKelasId();
+       if ($waliKelasId && $waliKelasId == $kelasId) {
+           return true;
+       }
+       
+       // Jika guru ini ditugaskan sebagai pengajar di kelas tersebut
+       return $this->kelasAjar()
+           ->where('kelas.id', $kelasId)
+           ->exists();
+   }
+
+    /**
+     * Get all teachable classes for this guru
+     */
+    public function getTeachableClasses()
+    {
+        $guruId = $this->id;
+        
+        // Query untuk mendapatkan kelas yang bisa diajar
+        $classesQuery = Kelas::query();
+        
+        // Jika guru ini adalah wali kelas, sertakan kelas wali
+        if ($this->isWaliKelas()) {
+            $kelasWali = $this->kelasWali()->first();
+            
+            // Ambil kelas yang diajar oleh guru (sebagai pengajar) atau kelas wali
+            $classesQuery->where(function($query) use ($guruId, $kelasWali) {
+                $query->whereHas('guru', function($q) use ($guruId) {
+                    $q->where('guru_id', $guruId)
+                    ->where('guru_kelas.role', 'pengajar');
+                });
+                
+                // Jika punya kelas wali, tambahkan sebagai OR condition
+                if ($kelasWali) {
+                    $query->orWhere('id', $kelasWali->id);
+                }
+            });
+        } else {
+            // Jika bukan wali kelas, hanya ambil kelas yang diajar sebagai pengajar biasa
+            $classesQuery->whereHas('guru', function($query) use ($guruId) {
+                $query->where('guru_id', $guruId)
+                    ->where('guru_kelas.role', 'pengajar');
+            });
+        }
+        
+        // Ambil hasil query dan urutkan
+        return $classesQuery->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+    }
+   
     /**
      * Get jumlah kelas yang diajar
      */
@@ -196,6 +251,15 @@ class Guru extends Authenticatable
     {
         $nama = explode(' ', $this->nama);
         return strtoupper(substr($nama[0], 0, 1) . (isset($nama[1]) ? substr($nama[1], 0, 1) : ''));
+    }
+
+    /**
+     * Get kelas wali ID jika guru adalah wali kelas
+     */
+    public function getWaliKelasId()
+    {
+        $kelasWali = $this->kelasWali()->first();
+        return $kelasWali ? $kelasWali->id : null;
     }
 
     /**

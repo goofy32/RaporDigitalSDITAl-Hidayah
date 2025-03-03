@@ -229,9 +229,11 @@ Route::middleware(['auth:guru', 'role:guru'])
 
     // Learning Objectives
     Route::prefix('tujuan-pembelajaran')->name('tujuan_pembelajaran.')->group(function () {
-        Route::get('/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'view'])->name('view');
         Route::get('/create/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'teacherCreate'])->name('create');
         Route::post('/store', [TujuanPembelajaranController::class, 'teacherStore'])->name('store');
+        Route::get('/{mata_pelajaran_id}', [TujuanPembelajaranController::class, 'teacherView'])->name('view');
+        Route::get('/{mata_pelajaran_id}/list', [TujuanPembelajaranController::class, 'listByMataPelajaran'])->name('list');
+        Route::delete('/{id}', [TujuanPembelajaranController::class, 'teacherDestroy'])->name('destroy');
     });
 });
 
@@ -247,6 +249,7 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
+    
 
     Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])
     ->middleware('check.wali.kelas')  // Tambah middleware baru
@@ -287,6 +290,17 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         'destroy' => 'absence.destroy',
     ]);
 
+    Route::get('/lingkup-materi/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkLingkupMateriDependencies'])
+    ->name('lingkup_materi.check_dependencies');
+    
+    // Add route for updating lingkup materi (if needed)
+    Route::post('/lingkup-materi/{id}/update', [SubjectController::class, 'updateLingkupMateri'])
+        ->name('lingkup_materi.update');
+        
+    // Ensure this route exists for tujuan pembelajaran view
+    Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}/view', [TujuanPembelajaranController::class, 'teacherView'])
+        ->name('tujuan_pembelajaran.view');
+        
     Route::prefix('rapor')->name('rapor.')->group(function () {
         Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
         
