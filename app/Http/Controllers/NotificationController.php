@@ -59,12 +59,15 @@ class NotificationController extends Controller
                 'id' => $notification->id,
                 'title' => $notification->title,
                 'content' => $notification->content,
+                'target' => $notification->target,
+                'specific_users' => $notification->specific_users,
                 'created_at' => $notification->created_at->diffForHumans()
             ];
         });
-
+    
         return response()->json(['items' => $notifications]);
     }
+    
     public function index()
     {
         $guru = Auth::guard('guru')->user();

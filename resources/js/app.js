@@ -728,6 +728,35 @@ Alpine.data('notificationHandler', () => ({
         this.$store.notification.startAutoRefresh();
     },
 
+    // Fungsi untuk mendapatkan teks target berdasarkan data notifikasi
+    getTargetText(item) {
+        if (!item.target) return 'Semua';
+
+        switch(item.target) {
+            case 'all':
+                return 'Semua';
+            case 'guru':
+                return 'Semua Guru';
+            case 'wali_kelas':
+                return 'Semua Wali Kelas';
+            case 'specific':
+                // Jika ada data pengguna spesifik
+                if (item.specific_users && item.specific_users.length === 1) {
+                    // Coba cari guru berdasarkan ID
+                    const guruId = item.specific_users[0];
+                    const selectedOption = document.querySelector(`select[x-model="notificationForm.sender_id"] option[value="${guruId}"]`);
+                    
+                    if (selectedOption) {
+                        return selectedOption.textContent.trim();
+                    }
+                    return 'Guru Tertentu';
+                }
+                return 'Guru Tertentu';
+            default:
+                return 'Semua';
+        }
+    },
+
     updateFromSenderSelection() {
         if (this.notificationForm.sender_id) {
             // Dapatkan elemen option yang dipilih
@@ -738,7 +767,7 @@ Alpine.data('notificationHandler', () => ({
                 const guruNama = selectedOption.getAttribute('data-nama');
                 this.notificationForm.title = guruNama || selectedOption.textContent.trim();
                 
-                // Otomatis set target ke 'specific' dan specific_users ke guru yang dipilih
+                // Set target ke "specific" (guru tertentu)
                 this.notificationForm.target = 'specific';
                 this.notificationForm.specific_users = [this.notificationForm.sender_id];
                 
@@ -748,8 +777,6 @@ Alpine.data('notificationHandler', () => ({
         } else {
             // Reset kembali ke label Nama Anda jika dropdown kosong
             this.notificationForm.showGuruDropdown = false;
-            this.notificationForm.target = '';
-            this.notificationForm.specific_users = [];
         }
     },
 
@@ -804,6 +831,7 @@ Alpine.data('notificationHandler', () => ({
         this.$store.notification.stopAutoRefresh();
     }
 }));
+
 // Utility Functions
 function debounce(func, wait) {
     let timeout;

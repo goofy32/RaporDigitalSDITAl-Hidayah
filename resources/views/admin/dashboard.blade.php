@@ -100,6 +100,11 @@
                                 <div class="bg-white rounded-lg border shadow-sm p-3">
                                     <div class="flex justify-between items-start">
                                         <div>
+                                            <!-- Informasi penerima notifikasi -->
+                                            <p class="text-xs text-gray-500 mb-1">
+                                                <span class="font-medium">Untuk: </span>
+                                                <span x-text="getTargetText(item)"></span>
+                                            </p>
                                             <h3 class="text-sm font-medium" x-text="item.title"></h3>
                                             <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
                                         </div>
