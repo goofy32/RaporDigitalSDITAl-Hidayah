@@ -74,74 +74,137 @@ class SubjectController extends Controller
     
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'mata_pelajaran' => 'required|string|max:255',
-            'kelas' => 'required|exists:kelas,id',
-            'guru_pengampu' => 'required|exists:gurus,id',
-            'semester' => 'required|integer|min:1|max:2',
-            'lingkup_materi' => 'required|array',
-            'lingkup_materi.*' => 'required|string|max:255',
-        ]);
+        \Log::info('Subject store method called with data:', $request->all());
     
-        // Ambil data kelas
-        $kelas = Kelas::find($validated['kelas']);
-        $guru = Guru::find($validated['guru_pengampu']);
-        
-        // Validasi:
-        // 1. Jika kelas memiliki wali kelas, maka guru pengampu harus wali kelas tersebut
-        if ($kelas && $kelas->hasWaliKelas()) {
-            $waliKelasId = $kelas->getWaliKelasId();
-            
-            if ($waliKelasId && $waliKelasId != $validated['guru_pengampu']) {
-                return back()->withErrors([
-                    'guru_pengampu' => 'Kelas ini memiliki wali kelas. Guru pengampu harus wali kelas tersebut.'
-                ])->withInput();
-            }
-        } 
-        // 2. Jika guru adalah wali kelas dari kelas lain, maka tidak bisa mengajar di kelas selain kelasnya
-        else if ($guru) {
-            // Cek apakah guru ini adalah wali kelas
-            $kelasWali = Kelas::whereHas('waliKelas', function($query) use ($guru) {
-                $query->where('guru_id', $guru->id);
-            })->first();
-            
-            if ($kelasWali && $kelasWali->id != $validated['kelas']) {
-                return back()->withErrors([
-                    'guru_pengampu' => 'Guru ini adalah wali kelas dari kelas lain dan hanya dapat mengajar di kelasnya sendiri.'
-                ])->withInput();
-            }
-        }
-        
-        // 3. Cek duplikasi nama mata pelajaran dalam satu kelas untuk semester yang sama
-        $exists = MataPelajaran::where('kelas_id', $validated['kelas'])
-            ->where('nama_pelajaran', $validated['mata_pelajaran'])
-            ->where('semester', $validated['semester'])
-            ->exists();
-            
-        if ($exists) {
-            return back()->withErrors([
-                'mata_pelajaran' => 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.'
-            ])->withInput();
-        }
-    
-        // Simpan Mata Pelajaran
-        $mataPelajaran = MataPelajaran::create([
-            'nama_pelajaran' => $validated['mata_pelajaran'],
-            'kelas_id' => $validated['kelas'],
-            'guru_id' => $validated['guru_pengampu'],
-            'semester' => $validated['semester'],
-        ]);
-    
-        // Simpan Lingkup Materi
-        foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
-            LingkupMateri::create([
-                'mata_pelajaran_id' => $mataPelajaran->id,
-                'judul_lingkup_materi' => $judulLingkupMateri,
+        try {
+            $validated = $request->validate([
+                'mata_pelajaran' => 'required|string|max:255',
+                'kelas' => 'required|exists:kelas,id',
+                'guru_pengampu' => 'required|exists:gurus,id',
+                'semester' => 'required|integer|min:1|max:2',
+                'is_muatan_lokal' => 'sometimes',
+                'lingkup_materi' => 'required|array',
+                'lingkup_materi.*' => 'required|string|max:255',
             ]);
-        }
     
-        return redirect()->route('subject.index')
-            ->with('success', 'Mata Pelajaran dan Lingkup Materi berhasil ditambahkan!');
+            // Convert checkbox value to boolean 
+            $isMuatanLokal = $request->has('is_muatan_lokal');
+    
+            \Log::info('Validation passed, proceeding with save');
+    
+            // Ambil data kelas dan guru
+            $kelas = Kelas::find($validated['kelas']);
+            $guru = Guru::find($validated['guru_pengampu']);
+            
+            // Validasi sesuai status muatan lokal
+            if ($isMuatanLokal) {
+                // Jika ini adalah mata pelajaran muatan lokal: 
+                // Hanya guru biasa (bukan wali kelas) yang dapat mengajar
+                if ($guru && $guru->jabatan == 'guru_wali') {
+                    return back()->withErrors([
+                        'guru_pengampu' => 'Mata pelajaran muatan lokal hanya dapat diajar oleh guru dengan jabatan guru (bukan wali kelas).'
+                    ])->withInput();
+                }
+            } else {
+                // Ini adalah mata pelajaran biasa (bukan muatan lokal):
+                // Jika kelas memiliki wali kelas, guru pengampu harus wali kelas tersebut
+                if ($kelas && $kelas->hasWaliKelas()) {
+                    $waliKelasId = $kelas->getWaliKelasId();
+                    
+                    if ($waliKelasId && $waliKelasId != $validated['guru_pengampu']) {
+                        return back()->withErrors([
+                            'guru_pengampu' => 'Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.'
+                        ])->withInput();
+                    }
+                }
+                // Jika guru adalah wali kelas dari kelas lain, tidak bisa mengajar di kelas selain kelasnya
+                else if ($guru && $guru->jabatan == 'guru_wali') {
+                    // Cek apakah guru ini adalah wali kelas
+                    $kelasWali = Kelas::whereHas('waliKelas', function($query) use ($guru) {
+                        $query->where('guru_id', $guru->id);
+                    })->first();
+                    
+                    if ($kelasWali && $kelasWali->id != $validated['kelas']) {
+                        return back()->withErrors([
+                            'guru_pengampu' => 'Guru ini adalah wali kelas dari kelas lain dan hanya dapat mengajar di kelasnya sendiri untuk mata pelajaran wajib.'
+                        ])->withInput();
+                    }
+                }
+            }
+            
+            // 3. Cek duplikasi nama mata pelajaran dalam satu kelas untuk semester yang sama
+            $exists = MataPelajaran::where('kelas_id', $validated['kelas'])
+                ->where('nama_pelajaran', $validated['mata_pelajaran'])
+                ->where('semester', $validated['semester'])
+                ->exists(); // Tidak perlu kecualikan ID karena ini method store
+                
+            if ($exists) {
+                return back()->withErrors([
+                    'mata_pelajaran' => 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.'
+                ])->withInput();
+            }
+    
+            // Simpan Mata Pelajaran
+            $mataPelajaran = MataPelajaran::create([
+                'nama_pelajaran' => $validated['mata_pelajaran'],
+                'kelas_id' => $validated['kelas'],
+                'guru_id' => $validated['guru_pengampu'],
+                'semester' => $validated['semester'],
+                'is_muatan_lokal' => $isMuatanLokal, // Use the boolean value
+            ]);
+    
+            // Simpan Lingkup Materi
+            foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
+                LingkupMateri::create([
+                    'mata_pelajaran_id' => $mataPelajaran->id,
+                    'judul_lingkup_materi' => $judulLingkupMateri,
+                ]);
+            }
+    
+            return redirect()->route('subject.index')
+                ->with('success', 'Mata Pelajaran dan Lingkup Materi berhasil ditambahkan!');
+        } catch (\Exception $e) {
+            \Log::error('Error in subject store method:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->withInput()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function checkLingkupMateriDependencies($id)
+    {
+        try {
+            $lingkupMateri = LingkupMateri::findOrFail($id);
+            
+            // Verify permission
+            if (auth()->guard('guru')->check()) {
+                $guru = auth()->guard('guru')->user();
+                $mataPelajaran = $lingkupMateri->mataPelajaran;
+                
+                if ($mataPelajaran->guru_id != $guru->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Tidak memiliki izin untuk memeriksa data ini'
+                    ], 403);
+                }
+            }
+            
+            // Cek apakah ada tujuan pembelajaran terkait
+            $hasDependents = $lingkupMateri->tujuanPembelajarans()->exists();
+            
+            return response()->json([
+                'success' => true,
+                'hasDependents' => $hasDependents
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     public function deleteLingkupMateri($id)
@@ -162,22 +225,27 @@ class SubjectController extends Controller
                 }
             }
             
-            // Check if there are any TPs associated with this Lingkup Materi
+            // Mulai transaksi database untuk memastikan semua operasi berhasil atau gagal bersama
+            DB::beginTransaction();
+            
+            // Hapus semua tujuan pembelajaran terkait terlebih dahulu
             if ($lingkupMateri->tujuanPembelajarans()->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Lingkup materi ini memiliki tujuan pembelajaran dan tidak dapat dihapus. Hapus tujuan pembelajaran terlebih dahulu.'
-                ], 400);
+                $lingkupMateri->tujuanPembelajarans()->delete();
             }
             
+            // Kemudian hapus lingkup materi
             $lingkupMateri->delete();
+            
+            DB::commit();
             
             return response()->json([
                 'success' => true,
-                'message' => 'Lingkup materi berhasil dihapus'
+                'message' => 'Lingkup materi dan semua tujuan pembelajaran terkait berhasil dihapus'
             ]);
             
         } catch (\Exception $e) {
+            DB::rollBack();
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
@@ -256,36 +324,50 @@ class SubjectController extends Controller
                 'lingkup_materi' => 'required|array',
                 'lingkup_materi.*' => 'required|string|max:255',
             ]);
+    
+            // Convert checkbox value to boolean
+            $isMuatanLokal = $request->has('is_muatan_lokal');
             
             // Ambil data kelas dan guru
             $kelas = Kelas::find($validated['kelas']);
             $guru = Guru::find($validated['guru_pengampu']);
             
-            // Validasi:
-            // 1. Jika kelas memiliki wali kelas, maka guru pengampu harus wali kelas tersebut
-            if ($kelas && $kelas->hasWaliKelas()) {
-                $waliKelasId = $kelas->getWaliKelasId();
-                
-                if ($waliKelasId && $waliKelasId != $validated['guru_pengampu']) {
+            // Validasi sesuai status muatan lokal
+            if ($isMuatanLokal) {
+                // Jika ini adalah mata pelajaran muatan lokal: 
+                // Hanya guru biasa (bukan wali kelas) yang dapat mengajar
+                if ($guru && $guru->jabatan == 'guru_wali') {
                     return back()->withErrors([
-                        'guru_pengampu' => 'Kelas ini memiliki wali kelas. Guru pengampu harus wali kelas tersebut.'
+                        'guru_pengampu' => 'Mata pelajaran muatan lokal hanya dapat diajar oleh guru dengan jabatan guru (bukan wali kelas).'
                     ])->withInput();
                 }
-            } 
-            // 2. Jika guru adalah wali kelas dari kelas lain, maka tidak bisa mengajar di kelas selain kelasnya
-            else if ($guru) {
-                // Cek apakah guru ini adalah wali kelas
-                $kelasWali = Kelas::whereHas('waliKelas', function($query) use ($guru) {
-                    $query->where('guru_id', $guru->id);
-                })->first();
-                
-                if ($kelasWali && $kelasWali->id != $validated['kelas']) {
-                    return back()->withErrors([
-                        'guru_pengampu' => 'Guru ini adalah wali kelas dari kelas lain dan hanya dapat mengajar di kelasnya sendiri.'
-                    ])->withInput();
+            } else {
+                // Ini adalah mata pelajaran biasa (bukan muatan lokal):
+                // Jika kelas memiliki wali kelas, guru pengampu harus wali kelas tersebut
+                if ($kelas && $kelas->hasWaliKelas()) {
+                    $waliKelasId = $kelas->getWaliKelasId();
+                    
+                    if ($waliKelasId && $waliKelasId != $validated['guru_pengampu']) {
+                        return back()->withErrors([
+                            'guru_pengampu' => 'Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.'
+                        ])->withInput();
+                    }
+                }
+                // Jika guru adalah wali kelas dari kelas lain, tidak bisa mengajar di kelas selain kelasnya
+                else if ($guru && $guru->jabatan == 'guru_wali') {
+                    // Cek apakah guru ini adalah wali kelas
+                    $kelasWali = Kelas::whereHas('waliKelas', function($query) use ($guru) {
+                        $query->where('guru_id', $guru->id);
+                    })->first();
+                    
+                    if ($kelasWali && $kelasWali->id != $validated['kelas']) {
+                        return back()->withErrors([
+                            'guru_pengampu' => 'Guru ini adalah wali kelas dari kelas lain dan hanya dapat mengajar di kelasnya sendiri untuk mata pelajaran wajib.'
+                        ])->withInput();
+                    }
                 }
             }
-            
+    
             // 3. Cek duplikasi nama mata pelajaran dalam satu kelas untuk semester yang sama
             // Kecuali mata pelajaran yang sedang diedit
             $exists = MataPelajaran::where('kelas_id', $validated['kelas'])
@@ -306,6 +388,7 @@ class SubjectController extends Controller
                 'kelas_id' => $validated['kelas'],
                 'guru_id' => $validated['guru_pengampu'],
                 'semester' => $validated['semester'],
+                'is_muatan_lokal' => $isMuatanLokal, // Use the converted boolean value
             ]);
     
             // Dapatkan lingkup materi yang sudah ada
@@ -411,7 +494,7 @@ class SubjectController extends Controller
     public function teacherStore(Request $request)
     {
         $guru = auth()->guard('guru')->user();
-        
+    
         $validated = $request->validate([
             'mata_pelajaran' => 'required|string|max:255',
             'kelas' => 'required|exists:kelas,id',
@@ -419,32 +502,50 @@ class SubjectController extends Controller
             'lingkup_materi' => 'required|array',
             'lingkup_materi.*' => 'required|string|max:255',
         ]);
-
+    
         try {
             DB::beginTransaction();
-
+    
+            // Atur status muatan lokal berdasarkan jabatan guru
+            // Jika guru biasa (jabatan = 'guru'), maka muatan lokal = true
+            // Jika guru wali kelas, maka muatan lokal = false
+            $isMuatanLokal = ($guru->jabatan == 'guru');
+    
+            // Cek duplikasi mata pelajaran
+            $exists = MataPelajaran::where('kelas_id', $validated['kelas'])
+                ->where('nama_pelajaran', $validated['mata_pelajaran'])
+                ->where('semester', $validated['semester'])
+                ->exists();
+                
+            if ($exists) {
+                return back()->withErrors([
+                    'mata_pelajaran' => 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.'
+                ])->withInput();
+            }
+    
             $mataPelajaran = MataPelajaran::create([
                 'nama_pelajaran' => $validated['mata_pelajaran'],
                 'kelas_id' => $validated['kelas'],
                 'guru_id' => $guru->id,
                 'semester' => $validated['semester'],
+                'is_muatan_lokal' => $isMuatanLokal,
             ]);
-
+            
             foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
                 LingkupMateri::create([
                     'mata_pelajaran_id' => $mataPelajaran->id,
                     'judul_lingkup_materi' => $judulLingkupMateri,
                 ]);
             }
-
+    
             DB::commit();
             return redirect()->route('pengajar.subject.index')
                 ->with('success', 'Mata Pelajaran berhasil ditambahkan!');
-
+    
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan saat menyimpan data.')
+                ->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage())
                 ->withInput();
         }
     }
@@ -503,7 +604,7 @@ class SubjectController extends Controller
         $guru = auth()->guard('guru')->user();
         $subject = MataPelajaran::where('guru_id', $guru->id)
             ->findOrFail($id);
-    
+
         $validated = $request->validate([
             'mata_pelajaran' => 'required|string|max:255',
             'kelas' => 'required|exists:kelas,id',
@@ -511,85 +612,78 @@ class SubjectController extends Controller
             'lingkup_materi' => 'required|array',
             'lingkup_materi.*' => 'required|string|max:255',
         ]);
-    
-        // Verifikasi guru bisa mengajar di kelas yang dipilih
+
+        // Atur status muatan lokal berdasarkan jabatan guru
+        // Jika guru biasa (jabatan = 'guru'), maka muatan lokal = true
+        // Jika guru wali kelas, maka muatan lokal = false
+        $isMuatanLokal = ($guru->jabatan == 'guru');
+
+        // Check for duplicates excluding current record
+        $exists = MataPelajaran::where('kelas_id', $validated['kelas'])
+            ->where('nama_pelajaran', $validated['mata_pelajaran'])
+            ->where('semester', $validated['semester'])
+            ->where('id', '!=', $id) // This is critical - exclude the current record
+            ->exists();
+            
+        if ($exists) {
+            return back()->withErrors([
+                'mata_pelajaran' => 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.'
+            ])->withInput();
+        }
+
+        // Verify teacher can teach in selected class
         $kelasId = $validated['kelas'];
         if (!$guru->canTeachClass($kelasId)) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki akses untuk mengajar di kelas ini.'
-                ], 403);
-            }
-            return back()->withErrors(['kelas' => 'Anda tidak memiliki akses untuk mengajar di kelas ini.'])->withInput();
+            return back()->withErrors([
+                'kelas' => 'Anda tidak memiliki akses untuk mengajar di kelas ini.'
+            ])->withInput();
         }
-    
+
         try {
             DB::beginTransaction();
-    
-            // Update the subject's main data
+
+            // Update the subject
             $subject->update([
                 'nama_pelajaran' => $validated['mata_pelajaran'],
                 'kelas_id' => $validated['kelas'],
                 'semester' => $validated['semester'],
+                'is_muatan_lokal' => $isMuatanLokal,
             ]);
-    
-            // Get existing lingkup materi items
+            
+            // Handle lingkup materi updates
             $existingLingkupMateris = $subject->lingkupMateris()->get();
             $existingTitles = $existingLingkupMateris->pluck('judul_lingkup_materi')->toArray();
             $newTitles = $validated['lingkup_materi'];
             
-            // 1. Update existing items if they're still in the new list
+            // Process existing entries
             foreach ($existingLingkupMateris as $existingLM) {
-                // Find this item's position in the new array, if it exists
                 $newTitleIndex = array_search($existingLM->judul_lingkup_materi, $newTitles);
                 
                 if ($newTitleIndex !== false) {
-                    // If the title exists in the new array, remove it from the new titles list
-                    // (so we know which ones to create later)
+                    // Keep and remove from new titles list
                     unset($newTitles[$newTitleIndex]);
                 } else {
-                    // If it doesn't exist in the new array, delete it
+                    // Delete if not in new list
                     $existingLM->delete();
                 }
             }
             
-            // 2. Add new items that weren't in the original list
+            // Add new entries
             foreach ($newTitles as $newTitle) {
                 LingkupMateri::create([
                     'mata_pelajaran_id' => $subject->id,
                     'judul_lingkup_materi' => $newTitle,
                 ]);
             }
-    
+
             DB::commit();
-            
-            // Periksa tipe request dan kembalikan respons yang sesuai
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Mata Pelajaran berhasil diperbarui!'
-                ]);
-            }
-            
-            // Untuk request normal, kembalikan redirect
             return redirect()->route('pengajar.subject.index')
                 ->with('success', 'Mata Pelajaran berhasil diperbarui!');
-    
         } catch (\Exception $e) {
             DB::rollback();
-            
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-                ], 500);
-            }
-            
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
-    
     public function teacherDestroy($id)
     {
         $guru = auth()->guard('guru')->user();

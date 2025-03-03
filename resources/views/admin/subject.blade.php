@@ -51,7 +51,7 @@
                 <tbody>
                     @forelse($subjects as $index => $subject)
                     <tr class="bg-white border-b hover:bg-gray-50">
-                        <td class="px-6 py-4">{{ $index + 1 }}</td>
+                        <td class="px-6 py-4">{{ ($subjects->currentPage() - 1) * $subjects->perPage() + $loop->iteration }}</td>
                         <td class="px-6 py-4">{{ $subject->nama_pelajaran }}</td>
                         <td class="px-6 py-4">{{ $subject->kelas->nomor_kelas }}-{{ $subject->kelas->nama_kelas }}</td>
                         <td class="px-6 py-4">Semester {{ $subject->semester }}</td>

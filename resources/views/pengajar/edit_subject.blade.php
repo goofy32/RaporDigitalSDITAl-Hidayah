@@ -60,7 +60,8 @@
             action="{{ route('pengajar.subject.update', $subject->id) }}" 
             x-data="formProtection"
             method="POST" 
-            class="space-y-6">
+            class="space-y-6"
+            data-subject-id="{{ $subject->id }}">
             @csrf
             @method('PUT')
 
@@ -73,6 +74,23 @@
                     <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                 @enderror
             </div>
+
+            <!-- Hanya tampilkan informasi muatan lokal untuk guru biasa -->
+            @if(auth()->guard('guru')->user()->jabatan == 'guru')
+            <div class="mt-4">
+                <div class="flex items-center">
+                    <input id="is_muatan_lokal" type="checkbox" 
+                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        checked disabled>
+                    <label for="is_muatan_lokal" class="ml-2 block text-sm text-gray-900">
+                        Tandai sebagai Muatan Lokal
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Sebagai guru biasa, mata pelajaran Anda ditetapkan sebagai muatan lokal secara otomatis.</p>
+                <!-- Hidden input untuk memastikan nilai is_muatan_lokal tetap terkirim saat form disubmit -->
+                <input type="hidden" name="is_muatan_lokal" value="1">
+            </div>
+            @endif
 
             <!-- Kelas Dropdown -->
             <div>
@@ -140,11 +158,11 @@
                     @if($index == 0)
                         <button type="button" onclick="addLingkupMateri()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
                             </svg>
                         </button>
                     @else
-                        <button type="button" onclick="confirmDeleteLingkupMateri(this, {{ $lm->id }})" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <button type="button" onclick="confirmDeleteLingkupMateri(this, {{ $lm->id }})" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                             </svg>
@@ -197,13 +215,13 @@
         
         // Mark form as changed for protection
         if (window.Alpine) {
-            Alpine.store('formProtection').markAsChanged();
+            document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
         }
         
         // Add change listener for the new input
         div.querySelector('input').addEventListener('change', () => {
             if (window.Alpine) {
-                Alpine.store('formProtection').markAsChanged();
+                document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
             }
         });
     }
@@ -212,51 +230,64 @@
         // For new items that haven't been saved to DB
         button.closest('.flex.items-center').remove();
         if (window.Alpine) {
-            Alpine.store('formProtection').markAsChanged();
+            document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
         }
     }
     
     function confirmDeleteLingkupMateri(button, id) {
-        // First check if this lingkup materi has any tujuan pembelajaran
-        checkForDependentData(id)
-            .then(hasDependents => {
-                if (hasDependents) {
-                    showMessage('Lingkup materi ini memiliki tujuan pembelajaran dan tidak dapat dihapus. Hapus tujuan pembelajaran terlebih dahulu.', 'error');
-                    return;
-                }
-                
-                if (confirm('Apakah Anda yakin ingin menghapus Lingkup Materi ini?')) {
-                    deleteLingkupMateri(button, id);
-                }
-            })
-            .catch(error => {
-                console.error("Error checking dependencies:", error);
-                showMessage('Terjadi kesalahan saat memeriksa data terkait.', 'error');
-            });
+        if (confirm('Apakah Anda yakin ingin menghapus Lingkup Materi ini? Semua tujuan pembelajaran terkait juga akan dihapus.')) {
+            deleteLingkupMateri(button, id);
+        }
     }
-    
+
     async function checkForDependentData(lingkupMateriId) {
         try {
-            // This would be a new endpoint you need to create
+            // Gunakan route pengajar (bukan wali kelas)
             const response = await fetch(`/pengajar/lingkup-materi/${lingkupMateriId}/check-dependencies`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
             });
             
-            const data = await response.json();
-            return data.hasDependents;
+            // Periksa respons terlebih dahulu
+            if (!response.ok) {
+                console.error("Server returned error:", response.status);
+                // Jika response error, kita langsung lewati pengecekan dependensi
+                return false;
+            }
+            
+            // Parse JSON response
+            try {
+                const data = await response.json();
+                return data.hasDependents;
+            } catch (jsonError) {
+                console.error("JSON parsing error:", jsonError);
+                // Jika gagal parsing JSON, skip pengecekan dependensi
+                return false;
+            }
         } catch (error) {
-            console.error("Error:", error);
-            // In case of error, assume there are dependents to be safe
-            return true;
+            console.error("Error checking dependencies:", error);
+            // Jika ada error, kita asumsikan tidak ada dependensi agar bisa langsung hapus
+            return false;
         }
     }
     
     function deleteLingkupMateri(button, id) {
-        if (window.Alpine) {
-            Alpine.store('formProtection').startSubmitting(); // Tandai sedang submit
+        // Periksa Alpine.js dengan lebih aman
+        let alpineComponent = document.querySelector('[x-data="formProtection"]');
+        if (window.Alpine && alpineComponent && alpineComponent.__x) {
+            try {
+                alpineComponent.__x.$data.formChanged = true;
+                // Gunakan isSubmitting, bukan startSubmitting (mungkin tidak ada di Alpine data)
+                if ('isSubmitting' in alpineComponent.__x.$data) {
+                    alpineComponent.__x.$data.isSubmitting = true;
+                }
+            } catch (error) {
+                console.error("Alpine data error:", error);
+                // Lanjutkan meskipun ada error di Alpine
+            }
         }
         
         fetch(`/pengajar/subject/lingkup-materi/${id}`, {
@@ -276,9 +307,16 @@
         .then(data => {
             if (data.success) {
                 button.closest('.flex.items-center').remove();
-                if (window.Alpine) {
-                    Alpine.store('formProtection').markAsChanged(); // Tandai form berubah
+                
+                // Update Alpine data dengan aman
+                if (window.Alpine && alpineComponent && alpineComponent.__x) {
+                    try {
+                        alpineComponent.__x.$data.formChanged = true;
+                    } catch (error) {
+                        console.error("Alpine data update error:", error);
+                    }
                 }
+                
                 showMessage('Lingkup materi berhasil dihapus', 'success');
             } else {
                 showMessage(data.message || 'Gagal menghapus Lingkup Materi', 'error');
@@ -289,11 +327,19 @@
             showMessage('Terjadi kesalahan saat menghapus Lingkup Materi', 'error');
         })
         .finally(() => {
-            if (window.Alpine) {
-                Alpine.store('formProtection').isSubmitting = false; // Reset flag submit
+            // Reset Alpine data dengan aman
+            if (window.Alpine && alpineComponent && alpineComponent.__x) {
+                try {
+                    if ('isSubmitting' in alpineComponent.__x.$data) {
+                        alpineComponent.__x.$data.isSubmitting = false;
+                    }
+                } catch (error) {
+                    console.error("Alpine data reset error:", error);
+                }
             }
         });
     }
+
     
     function showMessage(message, type) {
         const statusMessageElement = document.getElementById('statusMessage');
@@ -326,6 +372,57 @@
     
     // Add event listeners
     document.addEventListener('DOMContentLoaded', function() {
+        // Setup form protection
+        if (window.Alpine) {
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('formProtection', () => ({
+                    formChanged: false,
+                    isSubmitting: false,
+                    
+                    init() {
+                        this.setupFormChangeListeners();
+                        this.setupNavigationProtection();
+                    },
+                    
+                    setupFormChangeListeners() {
+                        this.$el.querySelectorAll('input, select, textarea').forEach(element => {
+                            element.addEventListener('change', () => {
+                                this.formChanged = true;
+                            });
+                            
+                            if (element.tagName === 'INPUT' && element.type !== 'checkbox' && element.type !== 'radio') {
+                                element.addEventListener('keyup', () => {
+                                    this.formChanged = true;
+                                });
+                            }
+                        });
+                    },
+                    
+                    setupNavigationProtection() {
+                        window.addEventListener('beforeunload', (e) => {
+                            if (this.formChanged && !this.isSubmitting) {
+                                e.preventDefault();
+                                e.returnValue = 'Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
+                                return e.returnValue;
+                            }
+                        });
+                    },
+                    
+                    handleSubmit(e) {
+                        if (!checkDuplication()) {
+                            e.preventDefault();
+                            alert('Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.');
+                            validateMataPelajaran();
+                            return false;
+                        }
+                        
+                        this.isSubmitting = true;
+                        return true;
+                    }
+                }));
+            });
+        }
+
         const mataPelajaranInput = document.getElementById('mata_pelajaran');
         const kelasSelect = document.getElementById('kelas');
         const semesterSelect = document.getElementById('semester');
@@ -437,7 +534,7 @@
                     if (currentValue !== originalValue) {
                         // Flag this for update
                         if (window.Alpine) {
-                            Alpine.store('formProtection').markAsChanged();
+                            document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
                         }
                     }
                 }
@@ -448,14 +545,21 @@
         mataPelajaranInput.addEventListener('input', function() {
             validateMataPelajaran();
             if (window.Alpine) {
-                Alpine.store('formProtection').markAsChanged();
+                document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
             }
         });
         
         semesterSelect.addEventListener('change', function() {
             validateMataPelajaran();
             if (window.Alpine) {
-                Alpine.store('formProtection').markAsChanged();
+                document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
+            }
+        });
+        
+        kelasSelect.addEventListener('change', function() {
+            validateMataPelajaran();
+            if (window.Alpine) {
+                document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
             }
         });
         
@@ -479,78 +583,10 @@
             
             // Jika validasi lolos, biarkan form submit normal
             if (window.Alpine) {
-                Alpine.store('formProtection').startSubmitting();
+                document.querySelector('[x-data="formProtection"]').__x.$data.isSubmitting = true;
             }
             return true;
         }, true); // true untuk capture phase (akan dijalankan sebelum event handler lain)
-
-        // Alpine form protection setup
-        if (window.Alpine) {
-            document.addEventListener('alpine:init', () => {
-                Alpine.data('formProtection', () => ({
-                    handleSubmit(event) {
-                        // If we fail validation, don't submit
-                        if (!checkDuplication()) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            
-                            // Show error message
-                            alert('Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.');
-                            
-                            // Visual validation
-                            validateMataPelajaran();
-                            
-                            return false;
-                        }
-
-                        // If using AJAX, uncomment this code
-                        /*
-                        event.preventDefault();
-                        this.$store.formProtection.startSubmitting();
-                        
-                        // Get form data
-                        const form = event.target;
-                        const formData = new FormData(form);
-                        
-                        // Submit the form
-                        fetch(form.action, {
-                            method: form.method,
-                            body: formData,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        })
-                        .then(response => {
-                            if (!response.ok) throw new Error('Network response was not ok');
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.success) {
-                                this.$store.formProtection.reset();
-                                showMessage('Mata pelajaran berhasil diperbarui', 'success');
-                                
-                                // Redirect after a short delay
-                                setTimeout(() => {
-                                    window.location.href = "{{ route('pengajar.subject.index') }}";
-                                }, 1500);
-                            } else {
-                                throw new Error(data.message || 'Terjadi kesalahan saat menyimpan data');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            showMessage(error.message || 'Terjadi kesalahan saat menyimpan data', 'error');
-                            this.$store.formProtection.isSubmitting = false;
-                        });
-                        */
-
-                        // For normal form submission
-                        this.$store.formProtection.startSubmitting();
-                        return true;
-                    }
-                }));
-            });
-        }
     });
 </script>
 

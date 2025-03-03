@@ -69,6 +69,23 @@
                 @enderror
             </div>
 
+            <!-- Hanya tampilkan informasi muatan lokal untuk guru biasa -->
+            @if(auth()->guard('guru')->user()->jabatan == 'guru')
+            <div class="mt-4">
+                <div class="flex items-center">
+                    <input id="is_muatan_lokal" type="checkbox" 
+                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        checked disabled>
+                    <label for="is_muatan_lokal" class="ml-2 block text-sm text-gray-900">
+                        Tandai sebagai Muatan Lokal
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Sebagai guru biasa, mata pelajaran Anda ditetapkan sebagai muatan lokal secara otomatis.</p>
+                <!-- Hidden input untuk memastikan nilai is_muatan_lokal tetap terkirim saat form disubmit -->
+                <input type="hidden" name="is_muatan_lokal" value="1">
+            </div>
+            @endif
+
             <!-- Kelas Dropdown -->
             <div>
                 <label for="kelas" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
@@ -147,8 +164,58 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Setup form protection
+    if (window.Alpine) {
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('formProtection', () => ({
+                formChanged: false,
+                isSubmitting: false,
+                
+                init() {
+                    this.setupFormChangeListeners();
+                    this.setupNavigationProtection();
+                },
+                
+                setupFormChangeListeners() {
+                    this.$el.querySelectorAll('input, select, textarea').forEach(element => {
+                        element.addEventListener('change', () => {
+                            this.formChanged = true;
+                        });
+                        
+                        if (element.tagName === 'INPUT' && element.type !== 'checkbox' && element.type !== 'radio') {
+                            element.addEventListener('keyup', () => {
+                                this.formChanged = true;
+                            });
+                        }
+                    });
+                },
+                
+                setupNavigationProtection() {
+                    window.addEventListener('beforeunload', (e) => {
+                        if (this.formChanged && !this.isSubmitting) {
+                            e.preventDefault();
+                            e.returnValue = 'Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
+                            return e.returnValue;
+                        }
+                    });
+                },
+                
+                handleSubmit(e) {
+                    if (!checkDuplication()) {
+                        e.preventDefault();
+                        alert('Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.');
+                        validateMataPelajaran();
+                        return false;
+                    }
+                    
+                    this.isSubmitting = true;
+                    return true;
+                }
+            }));
+        });
+    }
+
     const kelasSelect = document.getElementById('kelas');
-    const guruSelect = document.getElementById('guru_pengampu');
     
     // Simpan data wali kelas untuk setiap kelas
     const kelasWali = {
@@ -206,28 +273,6 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (infoElement) {
             infoElement.style.display = 'none';
         }
-    }
-
-    function addLingkupMateri() {
-        const container = document.getElementById('lingkupMateriContainer');
-        const div = document.createElement('div');
-        div.className = 'flex items-center mb-2';
-        
-        div.innerHTML = `
-            <input type="text" name="lingkup_materi[]" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-            <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-            </button>
-        `;
-        
-        container.appendChild(div);
-    }
-    
-    function removeLingkupMateri(button) {
-        button.parentElement.remove();
     }
 
     // Definisikan array data mata pelajaran yang sudah ada
@@ -370,10 +415,19 @@ function addLingkupMateri() {
     `;
     
     container.appendChild(div);
+    
+    // Mark form as changed for protection
+    if (window.Alpine) {
+        document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
+    }
 }
 
 function removeLingkupMateri(button) {
     button.parentElement.remove();
+    // Mark form as changed for protection
+    if (window.Alpine) {
+        document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
+    }
 }
 </script>
 

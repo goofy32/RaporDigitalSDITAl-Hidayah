@@ -225,6 +225,8 @@ Route::middleware(['auth:guru', 'role:guru'])
         Route::put('/{id}', [SubjectController::class, 'teacherUpdate'])->name('update');
         Route::delete('/{id}', [SubjectController::class, 'teacherDestroy'])->name('destroy');
         Route::delete('/lingkup-materi/{id}', [SubjectController::class, 'deleteLingkupMateri'])->name('lingkup_materi.destroy');
+        Route::get('/lingkup-materi/{id}/check-dependencies', [SubjectController::class, 'checkLingkupMateriDependencies'])
+        ->name('lingkup_materi.check_dependencies');
     });
 
     // Learning Objectives

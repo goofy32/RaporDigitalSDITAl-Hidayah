@@ -1,18 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    <title>Tambah Data Mata Pelajaran</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body>
-    <x-admin.topbar></x-admin.topbar>
-    <x-admin.sidebar></x-admin.sidebar>
+@extends('layouts.app')
 
-    <div class="p-4 sm:ml-64">
-        <div class="p-6 bg-white mt-14">
+@section('title', 'Tambah Data Mata Pelajaran')
+
+@section('content')
+<div>
+    <div class="p-4 bg-white mt-14">
             <!-- Header -->
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Mata Pelajaran</h2>
@@ -51,6 +43,18 @@
                     @error('mata_pelajaran')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
+                </div>
+
+                <div class="mt-4">
+                    <div class="flex items-center">
+                        <input id="is_muatan_lokal" name="is_muatan_lokal" type="checkbox" 
+                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                            {{ old('is_muatan_lokal') ? 'checked' : '' }}>
+                        <label for="is_muatan_lokal" class="ml-2 block text-sm text-gray-900">
+                            Tandai sebagai Muatan Lokal
+                        </label>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Muatan lokal hanya dapat diajar oleh guru dengan jabatan guru (bukan wali kelas)</p>
                 </div>
 
                 <!-- Kelas Dropdown -->
@@ -92,8 +96,8 @@
                         <option value="">Pilih Guru</option>
                         <!-- Loop through teachers -->
                         @foreach($teachers as $teacher)
-                        <option value="{{ $teacher->id }}" {{ old('guru_pengampu') == $teacher->id ? 'selected' : '' }}>
-                            {{ $teacher->nama }}
+                        <option value="{{ $teacher->id }}" data-jabatan="{{ $teacher->jabatan }}" {{ old('guru_pengampu') == $teacher->id ? 'selected' : '' }}>
+                            {{ $teacher->nama }} ({{ $teacher->jabatan == 'guru_wali' ? 'Wali Kelas' : 'Guru' }})
                         </option>
                         @endforeach
                     </select>
@@ -124,248 +128,409 @@
         </div>
     </div>
 
-    <!-- Flowbite JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
+
+@push('scripts')
+<script>
+// JavaScript for dynamic Lingkup Materi
+function addLingkupMateri() {
+    const container = document.getElementById('lingkupMateriContainer');
+    const div = document.createElement('div');
+    div.className = 'flex items-center mb-2';
     
-    <!-- JavaScript for dynamic Lingkup Materi -->
-    <script>
-    function addLingkupMateri() {
-        const container = document.getElementById('lingkupMateriContainer');
-        const div = document.createElement('div');
-        div.className = 'flex items-center mb-2';
-        
-        div.innerHTML = `
-            <input type="text" name="lingkup_materi[]" required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-            <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-            </button>
-        `;
-        
-        container.appendChild(div);
-    }
+    div.innerHTML = `
+        <input type="text" name="lingkup_materi[]" required
+            class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+        <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+        </button>
+    `;
+    
+    container.appendChild(div);
+}
 
-    function removeLingkupMateri(button) {
-        button.parentElement.remove();
-    }
+function removeLingkupMateri(button) {
+    button.parentElement.remove();
+}
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const kelasSelect = document.getElementById('kelas');
-        const guruSelect = document.getElementById('guru_pengampu');
-        
-        // Simpan data wali kelas untuk setiap kelas
-        const kelasWali = {
-            @foreach($classes as $class)
-                @if($class->hasWaliKelas() && $class->getWaliKelas())
-                    {{ $class->id }}: {{ $class->getWaliKelasId() }},
-                @endif
-            @endforeach
-        };
-        
-        // Database guru wali kelas (ID guru yang sudah menjadi wali kelas)
-        const guruWaliList = [
-            @foreach($classes as $class)
-                @if($class->hasWaliKelas() && $class->getWaliKelas())
-                    {{ $class->getWaliKelasId() }},
-                @endif
-            @endforeach
-        ];
-        
-        // Fungsi untuk mengatur guru pengampu berdasarkan kelas yang dipilih
-        function updateGuruOptions() {
-            if (!kelasSelect || !guruSelect) return;
+document.addEventListener('DOMContentLoaded', function() {
+    const kelasSelect = document.getElementById('kelas');
+    const guruSelect = document.getElementById('guru_pengampu');
+    const muatanLokalCheckbox = document.getElementById('is_muatan_lokal');
+    
+    // Make sure we have the required elements before proceeding
+    if (!kelasSelect || !guruSelect || !muatanLokalCheckbox) {
+        console.error('Required form elements not found');
+        return;
+    }
+    
+    // Store all teachers' roles
+    const guruRoles = {};
+    Array.from(guruSelect.options).forEach(option => {
+        if (option.value) {
+            // Check if data-jabatan attribute exists, otherwise use text content to determine role
+            const isWaliKelas = option.hasAttribute('data-jabatan') 
+                ? option.getAttribute('data-jabatan') === 'guru_wali'
+                : option.textContent.includes('Wali Kelas');
             
-            const selectedKelasId = kelasSelect.value;
-            const waliKelasId = kelasWali[selectedKelasId];
-            
-            // Reset state dari dropdown guru
-            Array.from(guruSelect.options).forEach(option => {
-                option.disabled = false;
-            });
-            
-            // Jika tidak ada kelas yang dipilih, jangan lakukan apa-apa
-            if (!selectedKelasId) {
-                showWaliKelasInfo(false);
-                return;
-            }
-            
-            // Jika kelas yang dipilih memiliki wali kelas
-            if (waliKelasId) {
-                // Pilih otomatis wali kelas tersebut
-                guruSelect.value = waliKelasId;
-                
-                // Buat semua opsi disabled kecuali wali kelas
-                Array.from(guruSelect.options).forEach(option => {
-                    if (option.value && option.value != waliKelasId) {
-                        option.disabled = true;
-                    }
-                });
-                
-                // Tampilkan pesan informasi
-                showWaliKelasInfo(true);
-            } else {
-                // Kelas tanpa wali kelas
-                // Nonaktifkan semua guru yang sudah menjadi wali kelas
-                Array.from(guruSelect.options).forEach(option => {
-                    if (option.value && guruWaliList.includes(parseInt(option.value))) {
-                        option.disabled = true;
-                    }
-                });
-                
-                // Sembunyikan pesan informasi wali kelas
-                showWaliKelasInfo(false);
-            }
+            guruRoles[option.value] = isWaliKelas ? 'wali_kelas' : 'guru';
         }
-        
-        // Tambahkan event listener untuk perubahan pada dropdown kelas
-        if (kelasSelect) {
-            kelasSelect.addEventListener('change', updateGuruOptions);
-            
-            // Juga jalankan saat halaman pertama kali dimuat
-            updateGuruOptions();
-        }
-        
-        function showWaliKelasInfo(show) {
-            let infoElement = document.getElementById('wali-kelas-info');
-            let waliRuleInfo = document.getElementById('wali-rule-info');
-            
-            // Info untuk kelas yang memiliki wali kelas
-            if (show) {
-                if (!infoElement) {
-                    infoElement = document.createElement('div');
-                    infoElement.id = 'wali-kelas-info';
-                    infoElement.className = 'mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md';
-                    infoElement.innerHTML = '<p class="text-sm text-blue-800"><span class="font-medium">Info:</span> Guru dipilih otomatis karena merupakan wali kelas untuk kelas ini. Guru pengampu tidak dapat diubah dalam kasus ini.</p>';
-                    
-                    // Tambahkan info setelah dropdown guru
-                    guruSelect.parentNode.appendChild(infoElement);
-                } else {
-                    infoElement.style.display = 'block';
-                }
-            } else if (infoElement) {
-                infoElement.style.display = 'none';
-            }
-            
-            // Selalu tampilkan informasi tentang aturan wali kelas
-            if (!waliRuleInfo) {
-                waliRuleInfo = document.createElement('div');
-                waliRuleInfo.id = 'wali-rule-info';
-                waliRuleInfo.className = 'mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md';
-                waliRuleInfo.innerHTML = '<p class="text-sm text-yellow-800"><span class="font-medium">Penting:</span> Guru yang sudah menjadi wali kelas hanya dapat mengajar di kelas yang diwalikannya. Guru yang menjadi wali kelas di kelas lain tidak dapat dipilih.</p>';
+    });
+    
+    // List of wali kelas IDs
+    const guruWaliList = Object.entries(guruRoles)
+        .filter(([_, role]) => role === 'wali_kelas')
+        .map(([id, _]) => parseInt(id));
+    
+    // List of regular guru IDs
+    const guruBiasaList = Object.entries(guruRoles)
+        .filter(([_, role]) => role === 'guru')
+        .map(([id, _]) => parseInt(id));
+    
+    // Data of wali kelas for each class
+    const kelasWali = {};
+    // We'll populate this dynamically from the options
+    Array.from(kelasSelect.options).forEach(option => {
+        if (option.value && option.textContent.includes('Wali Kelas:')) {
+            // Extract the wali kelas ID from option text if possible
+            const match = option.textContent.match(/Wali Kelas: (.+)\)/);
+            if (match) {
+                // Find the teacher ID by name
+                const teacherName = match[1].trim();
+                const teacherOption = Array.from(guruSelect.options).find(opt => 
+                    opt.textContent.includes(teacherName)
+                );
                 
-                // Tambahkan info setelah dropdown guru (atau setelah info wali kelas jika ada)
-                if (infoElement && infoElement.style.display !== 'none') {
-                    infoElement.after(waliRuleInfo);
-                } else {
-                    guruSelect.parentNode.appendChild(waliRuleInfo);
+                if (teacherOption) {
+                    kelasWali[option.value] = parseInt(teacherOption.value);
                 }
             }
         }
     });
-    </script>
-
-    <!-- Validasi Duplikasi -->
-    <script>
-    // Definisikan array data mata pelajaran terlebih dahulu
-    window.mapelData = [
-        @foreach(App\Models\MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')->get() as $mapel)
-        {
-            id: {{ $mapel->id }},
-            nama: "{{ $mapel->nama_pelajaran }}",
-            kelas_id: {{ $mapel->kelas_id }},
-            semester: {{ $mapel->semester }}
-        },
-        @endforeach
-    ];
-
-    // Tunggu dokumen sepenuhnya dimuat
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM fully loaded');
+    
+    // In the updateFormState function in add_subject.blade.php
+    function updateFormState() {
+        const isMuatanLokal = muatanLokalCheckbox.checked;
+        const selectedKelasId = kelasSelect.value;
+        const waliKelasId = kelasWali[selectedKelasId]; // Wali kelas untuk kelas yang dipilih
         
-        // Dapatkan elemen-elemen yang dibutuhkan
-        const mataPelajaranInput = document.getElementById('mata_pelajaran');
-        const kelasSelect = document.getElementById('kelas');
-        const semesterSelect = document.getElementById('semester');
-        const submitButton = document.querySelector('button[type="submit"]');
+        // Reset semua opsi
+        Array.from(guruSelect.options).forEach(option => {
+            option.disabled = false;
+        });
         
-        // Jika ada elemen yang tidak ditemukan, hentikan eksekusi
-        if (!mataPelajaranInput || !kelasSelect || !semesterSelect || !submitButton) {
-            console.error('Required elements not found');
-            return;
-        }
-        
-        // Fungsi untuk memeriksa duplikasi
-        function checkDuplication() {
-            const mataPelajaran = mataPelajaranInput.value.trim();
-            const kelasId = parseInt(kelasSelect.value);
-            const semester = parseInt(semesterSelect.value);
-            
-            // Jika salah satu field kosong, lewati validasi
-            if (!mataPelajaran || !kelasId || isNaN(semester)) return true;
-            
-            // Periksa duplikasi
-            const duplicate = window.mapelData.find(subject => 
-                subject.nama.toLowerCase() === mataPelajaran.toLowerCase() && 
-                subject.kelas_id === kelasId && 
-                subject.semester === semester
-            );
-            
-            return !duplicate;
-        }
-        
-        // Real-time validation
-        function validateMataPelajaran() {
-            if (!checkDuplication()) {
-                mataPelajaranInput.classList.add('border-red-500');
+        // Jika kelas dipilih
+        if (selectedKelasId) {
+            if (isMuatanLokal) {
+                // Untuk mata pelajaran muatan lokal:
+                // Hanya guru biasa (bukan wali kelas) yang bisa mengajar
+                Array.from(guruSelect.options).forEach(option => {
+                    if (option.value) {
+                        const guruId = parseInt(option.value);
+                        if (guruWaliList.includes(guruId)) {
+                            option.disabled = true;
+                        }
+                    }
+                });
                 
-                // Buat pesan error di bawah input jika belum ada
-                let errorElement = document.getElementById('mata-pelajaran-error');
-                if (!errorElement) {
-                    errorElement = document.createElement('p');
-                    errorElement.id = 'mata-pelajaran-error';
-                    errorElement.className = 'mt-1 text-sm text-red-500';
-                    errorElement.textContent = 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.';
-                    mataPelajaranInput.parentNode.appendChild(errorElement);
+                // Tampilkan info muatan lokal
+                showMuatanLokalInfo(true);
+                showWaliKelasInfo(false);
+                showNoWaliKelasInfo(false);
+                
+                // Reset pilihan jika wali kelas terpilih
+                if (waliKelasId && guruSelect.value == waliKelasId) {
+                    guruSelect.value = '';
                 }
-                
-                return false;
             } else {
-                // Hapus class error dan pesan error jika validasi berhasil
-                mataPelajaranInput.classList.remove('border-red-500');
-                const errorElement = document.getElementById('mata-pelajaran-error');
-                if (errorElement) {
-                    errorElement.remove();
+                // Untuk mata pelajaran wajib (bukan muatan lokal):
+                if (waliKelasId) {
+                    // Jika kelas memiliki wali kelas, hanya wali kelas yang bisa mengajar
+                    Array.from(guruSelect.options).forEach(option => {
+                        if (option.value && parseInt(option.value) != waliKelasId) {
+                            option.disabled = true;
+                        }
+                    });
+                    
+                    // Auto-select wali kelas
+                    guruSelect.value = waliKelasId;
+                    
+                    // Tampilkan info
+                    showWaliKelasInfo(true, selectedKelasId);
+                    showMuatanLokalInfo(false);
+                    showNoWaliKelasInfo(false);
+                } else {
+                    // Jika kelas tidak memiliki wali kelas:
+                    // Semua guru tidak bisa dipilih karena tidak ada wali kelas
+                    Array.from(guruSelect.options).forEach(option => {
+                        if (option.value) {
+                            option.disabled = true;
+                        }
+                    });
+                    
+                    // Reset pilihan guru
+                    guruSelect.value = '';
+                    
+                    // Tampilkan peringatan
+                    showWaliKelasInfo(false);
+                    showMuatanLokalInfo(false);
+                    showNoWaliKelasInfo(true);
                 }
-                
-                return true;
             }
+        } else {
+            // Jika tidak ada kelas yang dipilih, sembunyikan semua info
+            hideAllInfoElements();
         }
+    }
+    
+    // Function to update the selected teacher based on form state
+    function updateSelectedTeacher() {
+        const selectedGuruId = parseInt(guruSelect.value);
+        if (!selectedGuruId) return;
         
-        // Event listener untuk input dan perubahan
-        mataPelajaranInput.addEventListener('input', validateMataPelajaran);
-        kelasSelect.addEventListener('change', validateMataPelajaran);
-        semesterSelect.addEventListener('change', validateMataPelajaran);
+        const isMuatanLokal = muatanLokalCheckbox.checked;
+        const isGuruWali = guruWaliList.includes(selectedGuruId);
         
-        // Form submit handler dengan capture phase
-        document.getElementById('addSubjectForm').addEventListener('submit', function(event) {
+        // If the selected teacher doesn't match the muatan lokal state
+        if ((isMuatanLokal && isGuruWali) || (!isMuatanLokal && !isGuruWali)) {
+            // Reset the selection
+            guruSelect.value = '';
+        }
+    }
+    
+    // Function to show info when a class has a wali kelas
+    function showWaliKelasInfo(show, kelasId) {
+        let infoElement = document.getElementById('wali-kelas-info');
+        
+        if (show) {
+            // Get class info for the message
+            let kelasInfo = '';
+            if (kelasId) {
+                const kelasOption = kelasSelect.querySelector(`option[value="${kelasId}"]`);
+                if (kelasOption) {
+                    kelasInfo = kelasOption.textContent;
+                }
+            }
+            
+            if (!infoElement) {
+                infoElement = document.createElement('div');
+                infoElement.id = 'wali-kelas-info';
+                infoElement.className = 'mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md';
+                infoElement.innerHTML = `<p class="text-sm text-blue-800"><span class="font-medium">Info:</span> Kelas ${kelasInfo} memiliki wali kelas. Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.</p>`;
+                
+                guruSelect.parentNode.appendChild(infoElement);
+            } else {
+                infoElement.innerHTML = `<p class="text-sm text-blue-800"><span class="font-medium">Info:</span> Kelas ${kelasInfo} memiliki wali kelas. Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.</p>`;
+                infoElement.style.display = 'block';
+            }
+        } else if (infoElement) {
+            infoElement.style.display = 'none';
+        }
+    }
+    
+    // Function to show info when a class doesn't have a wali kelas
+    function showNoWaliKelasInfo(show) {
+        let infoElement = document.getElementById('no-wali-kelas-info');
+        
+        if (show) {
+            if (!infoElement) {
+                infoElement = document.createElement('div');
+                infoElement.id = 'no-wali-kelas-info';
+                infoElement.className = 'mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md';
+                infoElement.innerHTML = '<p class="text-sm text-yellow-800"><span class="font-medium">Perhatian:</span> Kelas ini tidak memiliki wali kelas. Untuk mata pelajaran wajib (bukan muatan lokal), Anda harus menambahkan wali kelas terlebih dahulu.</p>';
+                
+                guruSelect.parentNode.appendChild(infoElement);
+            } else {
+                infoElement.style.display = 'block';
+            }
+        } else if (infoElement) {
+            infoElement.style.display = 'none';
+        }
+    }
+    
+    // Function to show muatan lokal info
+    function showMuatanLokalInfo(show) {
+        let infoElement = document.getElementById('muatan-lokal-info');
+        
+        if (show) {
+            if (!infoElement) {
+                infoElement = document.createElement('div');
+                infoElement.id = 'muatan-lokal-info';
+                infoElement.className = 'mt-2 p-2 bg-green-50 border border-green-200 rounded-md';
+                infoElement.innerHTML = '<p class="text-sm text-green-800"><span class="font-medium">Info:</span> Mata pelajaran muatan lokal hanya dapat diajar oleh guru dengan jabatan guru biasa (bukan wali kelas).</p>';
+                
+                guruSelect.parentNode.appendChild(infoElement);
+            } else {
+                infoElement.style.display = 'block';
+            }
+        } else if (infoElement) {
+            infoElement.style.display = 'none';
+        }
+    }
+    
+    // Function to hide all info elements
+    function hideAllInfoElements() {
+        const infoElements = [
+            document.getElementById('wali-kelas-info'),
+            document.getElementById('no-wali-kelas-info'),
+            document.getElementById('muatan-lokal-info')
+        ];
+        
+        infoElements.forEach(element => {
+            if (element) {
+                element.style.display = 'none';
+            }
+        });
+    }
+    
+    // Add event listeners
+    if (kelasSelect) {
+        kelasSelect.addEventListener('change', updateFormState);
+    }
+    
+    if (muatanLokalCheckbox) {
+        muatanLokalCheckbox.addEventListener('change', updateFormState);
+    }
+    
+    if (guruSelect) {
+        guruSelect.addEventListener('change', function() {
+            // If user manually selects a teacher, update muatan lokal checkbox accordingly
+            const selectedGuruId = parseInt(guruSelect.value);
+            if (selectedGuruId) {
+                const isWaliKelas = guruWaliList.includes(selectedGuruId);
+                muatanLokalCheckbox.checked = !isWaliKelas;
+            }
+            
+            // Update the form state
+            updateFormState();
+        });
+    }
+    
+    // Run initial setup
+    updateFormState();
+});
+
+// Validasi Duplikasi
+window.mapelData = [
+    @foreach(App\Models\MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')->get() as $mapel)
+    {
+        id: {{ $mapel->id }},
+        nama: "{{ $mapel->nama_pelajaran }}",
+        kelas_id: {{ $mapel->kelas_id }},
+        semester: {{ $mapel->semester }}
+    },
+    @endforeach
+];
+
+// Tunggu dokumen sepenuhnya dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    // Dapatkan elemen-elemen yang dibutuhkan
+    const mataPelajaranInput = document.getElementById('mata_pelajaran');
+    const kelasSelect = document.getElementById('kelas');
+    const semesterSelect = document.getElementById('semester');
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    // Get current subject ID if editing (will be undefined for add page)
+    const currentId = document.getElementById('editSubjectForm') ? 
+        parseInt(document.getElementById('editSubjectForm').getAttribute('data-subject-id')) : 
+        undefined;
+    
+    // Jika ada elemen yang tidak ditemukan, hentikan eksekusi
+    if (!mataPelajaranInput || !kelasSelect || !semesterSelect || !submitButton) {
+        console.error('Required elements not found');
+        return;
+    }
+    
+    // Fungsi untuk memeriksa duplikasi
+    function checkDuplication() {
+        const mataPelajaran = mataPelajaranInput.value.trim();
+        const kelasId = parseInt(kelasSelect.value);
+        const semester = parseInt(semesterSelect.value);
+        
+        // Jika salah satu field kosong, lewati validasi
+        if (!mataPelajaran || !kelasId || isNaN(semester)) return true;
+        
+        // Periksa duplikasi, kecuali untuk mata pelajaran yang sedang diedit
+        // dan memastikan semester sama (bukan berbeda)
+        const duplicate = window.mapelData.find(subject => 
+            subject.nama.toLowerCase() === mataPelajaran.toLowerCase() && 
+            subject.kelas_id === kelasId && 
+            subject.semester === semester && 
+            subject.id !== currentId
+        );
+        
+        return !duplicate;
+    }
+    // Real-time validation
+    function validateMataPelajaran() {
+        if (!checkDuplication()) {
+            mataPelajaranInput.classList.add('border-red-500');
+            
+            // Buat pesan error di bawah input jika belum ada
+            let errorElement = document.getElementById('mata-pelajaran-error');
+            if (!errorElement) {
+                errorElement = document.createElement('p');
+                errorElement.id = 'mata-pelajaran-error';
+                errorElement.className = 'mt-1 text-sm text-red-500';
+                errorElement.textContent = 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.';
+                mataPelajaranInput.parentNode.appendChild(errorElement);
+            }
+            
+            return false;
+        } else {
+            // Hapus class error dan pesan error jika validasi berhasil
+            mataPelajaranInput.classList.remove('border-red-500');
+            const errorElement = document.getElementById('mata-pelajaran-error');
+            if (errorElement) {
+                errorElement.remove();
+            }
+            
+            return true;
+        }
+    }
+    
+    // Event listener untuk input dan perubahan
+    mataPelajaranInput.addEventListener('input', validateMataPelajaran);
+    kelasSelect.addEventListener('change', validateMataPelajaran);
+    semesterSelect.addEventListener('change', validateMataPelajaran);
+
+    
+    // Form submit handler
+    const form = document.getElementById('addSubjectForm');
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            // Debug: Log form data
+            console.log('Form submission attempt:');
+            console.log('Mata Pelajaran:', mataPelajaranInput.value);
+            console.log('Kelas:', kelasSelect.value);
+            console.log('Semester:', semesterSelect.value);
+            console.log('Guru:', document.getElementById('guru_pengampu').value);
+            
+            // Continue with validation...
             if (!checkDuplication()) {
                 event.preventDefault();
                 event.stopPropagation();
                 
-                // Tampilkan pesan error
                 alert('Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.');
-                
-                // Validasi visual
                 validateMataPelajaran();
-                
                 return false;
             }
             
+            // Form is valid
+            console.log('Form validation passed, submitting...');
             return true;
-        }, true); // true untuk capture phase
+        });
+    }
+});
+</script>
+
+@if(session('error'))
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        alert("{{ session('error') }}");
     });
-    </script>
-</body>
-</html>
+</script>
+@endif
+@endpush
+@endsection
