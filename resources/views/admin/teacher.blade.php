@@ -73,9 +73,14 @@
                         @endif
                     </td>
                     <td class="px-6 py-4">
-                        {{ $teacher->kelasAjar->map(function($kelas) {
-                            return "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}";
-                        })->join(', ') ?: '-' }}
+                        @php
+                            // Ambil semua kelas terkait guru (baik sebagai pengajar maupun wali kelas)
+                            $kelasAll = $teacher->kelas->map(function($kelas) {
+                                $roleInfo = $kelas->pivot->is_wali_kelas ? ' (Wali Kelas)' : '';
+                                return "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}{$roleInfo}";
+                            })->join(', ');
+                        @endphp
+                        {{ $kelasAll ?: '-' }}
                     </td>
                     <td class="px-1 py-4">
                         <div class="flex space-x-2">

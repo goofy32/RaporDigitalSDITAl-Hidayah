@@ -82,14 +82,21 @@
 
                 <!-- Information Items -->
                 <div class="h-[150px] overflow-y-auto">
-                    <div class="relative pl-6 border-l-2 border-gray-200">
+                    <div class="relative pl-14">
+                        <!-- Garis vertikal di tengah icon -->
+                        <div class="absolute left-5 top-0 bottom-0 w-[2px] bg-gray-200"></div>
+                        
+                        <!-- Daftar notifikasi -->
                         <template x-for="item in $store.notification.items" :key="item.id">
-                            <div class="mb-4 relative h-[80px]">
-                                <div class="absolute -left-[32px] top-3 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="mb-4 relative min-h-[80px]">
+                                <!-- Ikon amplop di tengah garis -->
+                                <div class="absolute -left-12 top-3 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center z-10">
+                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                     </svg>
                                 </div>
+                                
+                                <!-- Konten notifikasi -->
                                 <div class="bg-white rounded-lg border shadow-sm p-3">
                                     <div class="flex justify-between items-start">
                                         <div>
@@ -107,13 +114,16 @@
                                 </div>
                             </div>
                         </template>
+                        
+                        <!-- Tampilan saat tidak ada notifikasi -->
                         <template x-if="$store.notification.items.length === 0">
                             <div class="flex items-center justify-center h-[150px]">
-                                <p class="text-gray-500 text-sm">Belum membuat notifikasi</p>
+                                <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
                             </div>
                         </template>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -196,7 +206,7 @@
                     <div class="p-4">
                         <form @submit.prevent="submitNotification">
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-medium text-gray-900">Nama Anda</label>
+                                <label class="block mb-2 text-sm font-medium text-gray-900" x-text="notificationForm.showGuruDropdown ? 'Judul' : 'Nama Anda'"></label>
                                 <input type="text" 
                                     x-model="notificationForm.title"
                                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
@@ -205,10 +215,30 @@
                             </div>
 
                             <div class="mb-4">
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru (Opsional)</label>
+                                <select x-model="notificationForm.sender_id" 
+                                    @change="updateFromSenderSelection()"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                                    <option value="">-- Pilih Guru --</option>
+                                    @foreach($guru as $g)
+                                    <option value="{{ $g->id }}" data-nama="{{ $g->nama }}" data-jabatan="{{ $g->jabatan }}">
+                                        {{ $g->nama }} 
+                                        @if($g->jabatan == 'guru_wali')
+                                            (Wali Kelas {{ $g->kelasWali->first()->nomor_kelas ?? '' }}{{ $g->kelasWali->first()->nama_kelas ?? '' }})
+                                        @else
+                                            (Guru)
+                                        @endif
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">*Jika dipilih, notifikasi akan otomatis dikirim ke guru yang dipilih</p>
+                            </div>
+
+                            <div class="mb-4" x-show="!notificationForm.sender_id">
                                 <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
                                 <select x-model="notificationForm.target"
-                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
-                                        required>
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
+                                    required>
                                     <option value="">-- Pilih --</option>
                                     <option value="all">Semua</option>
                                     <option value="guru">Semua Guru</option>
@@ -227,7 +257,7 @@
                             </div>
 
                             <!-- Specific teachers container -->
-                            <div x-show="notificationForm.target === 'specific'" class="mb-4">
+                            <div x-show="notificationForm.target === 'specific' && !notificationForm.sender_id" class="mb-4">
                                 <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
                                 <div class="max-h-40 overflow-y-auto">
                                     @foreach($guru as $g)
@@ -238,8 +268,8 @@
                                             class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
                                             <label class="ml-2 text-sm text-gray-900">
                                             {{ $g->nama }} 
-                                            @if($g->jabatan == 'wali_kelas')
-                                                (Wali Kelas {{ $g->kelasPengajar->nama_kelas ?? '' }})
+                                            @if($g->jabatan == 'guru_wali')
+                                                (Wali Kelas {{ $g->kelasWali->first()->nomor_kelas ?? '' }}{{ $g->kelasWali->first()->nama_kelas ?? '' }})
                                             @else
                                                 (Guru {{ implode(', ', $g->mataPelajarans->pluck('nama_pelajaran')->toArray()) }})
                                             @endif
@@ -247,6 +277,14 @@
                                     </div>
                                     @endforeach
                                 </div>
+                            </div>
+
+                            <!-- Tampilkan info target saat guru dipilih dari dropdown -->
+                            <div x-show="notificationForm.sender_id" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <p class="text-sm">
+                                    <span class="font-medium">Target: </span>
+                                    <span class="text-green-600">Guru yang Dipilih</span> - Notifikasi akan dikirim hanya ke guru yang dipilih di dropdown
+                                </p>
                             </div>
 
                             <!-- Success/Error Messages -->
@@ -259,6 +297,7 @@
                             </button>
                         </form>
                     </div>
+
                 </div>
             </div>
         </div>

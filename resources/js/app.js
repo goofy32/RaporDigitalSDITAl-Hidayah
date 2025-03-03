@@ -708,9 +708,6 @@ Alpine.data('sessionTimeout', () => ({
 }));
 
 
-
-
-// Notification Handler Component
 Alpine.data('notificationHandler', () => ({
     showModal: false,
     isOpen: false,
@@ -718,9 +715,11 @@ Alpine.data('notificationHandler', () => ({
     successMessage: '',
     notificationForm: {
         title: '',
+        sender_id: '',
         content: '',
         target: '',
-        specific_users: []
+        specific_users: [],
+        showGuruDropdown: false
     },
 
     init() {
@@ -729,8 +728,39 @@ Alpine.data('notificationHandler', () => ({
         this.$store.notification.startAutoRefresh();
     },
 
+    updateFromSenderSelection() {
+        if (this.notificationForm.sender_id) {
+            // Dapatkan elemen option yang dipilih
+            const selectedOption = document.querySelector(`select[x-model="notificationForm.sender_id"] option[value="${this.notificationForm.sender_id}"]`);
+            
+            if (selectedOption) {
+                // Set title berdasarkan nama guru
+                const guruNama = selectedOption.getAttribute('data-nama');
+                this.notificationForm.title = guruNama || selectedOption.textContent.trim();
+                
+                // Otomatis set target ke 'specific' dan specific_users ke guru yang dipilih
+                this.notificationForm.target = 'specific';
+                this.notificationForm.specific_users = [this.notificationForm.sender_id];
+                
+                // Tampilkan label Judul alih-alih Nama Anda
+                this.notificationForm.showGuruDropdown = true;
+            }
+        } else {
+            // Reset kembali ke label Nama Anda jika dropdown kosong
+            this.notificationForm.showGuruDropdown = false;
+            this.notificationForm.target = '';
+            this.notificationForm.specific_users = [];
+        }
+    },
+
     async submitNotification() {
         try {
+            // Jika dropdown guru dipilih, pastikan target dan specific_users sudah benar
+            if (this.notificationForm.sender_id) {
+                this.notificationForm.target = 'specific';
+                this.notificationForm.specific_users = [this.notificationForm.sender_id];
+            }
+
             const result = await this.$store.notification.addNotification(this.notificationForm);
             
             if (result) {
@@ -752,13 +782,14 @@ Alpine.data('notificationHandler', () => ({
         }, 3000);
     },
 
-
     resetForm() {
         this.notificationForm = {
             title: '',
+            sender_id: '',
             content: '',
             target: '',
-            specific_users: []
+            specific_users: [],
+            showGuruDropdown: false
         };
     },
 
@@ -773,7 +804,6 @@ Alpine.data('notificationHandler', () => ({
         this.$store.notification.stopAutoRefresh();
     }
 }));
-
 // Utility Functions
 function debounce(func, wait) {
     let timeout;
