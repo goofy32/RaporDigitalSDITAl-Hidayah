@@ -15,13 +15,16 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Siswa::with('kelas')->orderBy('kelas_id', 'asc');
+        $query = Siswa::with(['kelas' => function($query) {
+            $query->orderBy('nomor_kelas', 'asc')
+                  ->orderBy('nama_kelas', 'asc');
+        }]);
      
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
             
-            $query->where(function($q) use ($terms, $search) { // Tambahkan $search ke use
+            $query->where(function($q) use ($terms, $search) {
                 // Jika kata pertama adalah "kelas"
                 if (count($terms) > 0 && $terms[0] === 'kelas') {
                     $q->whereHas('kelas', function($kelasQ) use ($terms) {
@@ -46,14 +49,14 @@ class StudentController extends Controller
                     });
                 }
             });
-            
-            // Jika pencarian dimulai dengan "kelas" tapi tidak ada nomor spesifik
-            if (str_starts_with($search, 'kelas') && count($terms) === 1) {
-                $query->join('kelas', 'siswas.kelas_id', '=', 'kelas.id')
-                      ->orderBy('kelas.nomor_kelas', 'asc')
-                      ->select('siswas.*');
-            }
         }
+        
+        // Default sorting: mengurutkan berdasarkan kelas (nomor kelas ASC) kemudian nama siswa
+        $query->join('kelas', 'siswas.kelas_id', '=', 'kelas.id')
+              ->orderBy('kelas.nomor_kelas', 'asc')
+              ->orderBy('kelas.nama_kelas', 'asc')
+              ->orderBy('siswas.nama', 'asc')
+              ->select('siswas.*');
         
         $students = $query->paginate(10);
         return view('admin.student', compact('students'));

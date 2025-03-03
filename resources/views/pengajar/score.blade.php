@@ -50,50 +50,51 @@
                         </td>
                     </tr>
                 @else
-                @foreach($kelasData as $index => $kelas)
-                    @foreach($kelas->mataPelajarans as $mapel)
-                        <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="px-6 py-4">{{ $loop->parent->iteration }}</td>
-                            <td class="px-6 py-4">{{ $kelas->nama_kelas }}</td>
-                            <td class="px-6 py-4">{{ $mapel->nama_pelajaran }}</td>
-                            <td class="px-6 py-4">
-                                <div class="flex gap-2">
-                                @if($mapel->lingkupMateris->every(function($lm) { return $lm->tujuanPembelajarans->isNotEmpty(); }))
-                                    @if(!$mapel->nilais()->exists())
-                                    <a href="{{ route('pengajar.score.input_score', $mapel->id) }}"
-                                    class="text-green-600 hover:text-green-800">
-                                            <img src="{{ asset('images/icons/edit.png') }}" alt="Input Icon" class="w-5 h-5">
-                                        </a>
-                                    @else
-                                    <a href="{{ route('pengajar.score.preview_score', $mapel->id) }}" 
-                                    class="text-blue-600 hover:text-blue-800">
-                                            <img src="{{ asset('images/icons/detail.png') }}" alt="View Icon" class="w-5 h-5">
-                                        </a>
-                                    @endif
-                                    @else
-                                        <button type="button" 
-                                                class="text-yellow-600 hover:text-yellow-800"
-                                                onclick="alert('Harap isi Tujuan Pembelajaran untuk mata pelajaran ini terlebih dahulu.')">
-                                            <img src="{{ asset('images/icons/warning.png') }}" alt="Warning Icon" class="w-5 h-5">
-                                        </button>
-                                    @endif
-
-                                        <form action="{{ route('pengajar.subject.destroy', $mapel->id) }}" 
-                                            method="POST" 
-                                            onsubmit="return confirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-800">
-                                                <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
+                    @php $nomor = 1; @endphp <!-- Counter terpisah untuk nomor urut -->
+                    @foreach($kelasData as $kelas)
+                        @foreach($kelas->mataPelajarans as $mapel)
+                            <tr class="bg-white border-b hover:bg-gray-50">
+                                <td class="px-6 py-4">{{ $nomor++ }}</td> <!-- Increment counter di sini -->
+                                <td class="px-6 py-4">{{ $kelas->nama_kelas }}</td>
+                                <td class="px-6 py-4">{{ $mapel->nama_pelajaran }}</td>
+                                <td class="px-6 py-4">
+                                    <div class="flex gap-2">
+                                    @if($mapel->lingkupMateris->every(function($lm) { return $lm->tujuanPembelajarans->isNotEmpty(); }))
+                                        @if(!$mapel->nilais()->exists())
+                                        <a href="{{ route('pengajar.score.input_score', $mapel->id) }}"
+                                        class="text-green-600 hover:text-green-800">
+                                                <img src="{{ asset('images/icons/edit.png') }}" alt="Input Icon" class="w-5 h-5">
+                                            </a>
+                                        @else
+                                        <a href="{{ route('pengajar.score.preview_score', $mapel->id) }}" 
+                                        class="text-blue-600 hover:text-blue-800">
+                                                <img src="{{ asset('images/icons/detail.png') }}" alt="View Icon" class="w-5 h-5">
+                                            </a>
+                                        @endif
+                                        @else
+                                            <button type="button" 
+                                                    class="text-yellow-600 hover:text-yellow-800"
+                                                    onclick="alert('Harap isi Tujuan Pembelajaran untuk mata pelajaran ini terlebih dahulu.')">
+                                                <img src="{{ asset('images/icons/warning.png') }}" alt="Warning Icon" class="w-5 h-5">
                                             </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
+                                        @endif
+
+                                            <form action="{{ route('pengajar.subject.destroy', $mapel->id) }}" 
+                                                method="POST" 
+                                                onsubmit="return confirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800">
+                                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
                         @endforeach
-                    @endforeach
-                @endif
-            </tbody>
+                    @endif
+                </tbody>
         </table>
     </div>
 </div>

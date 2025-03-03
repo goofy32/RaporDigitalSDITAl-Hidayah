@@ -15,8 +15,11 @@ class SubjectController extends Controller
 {
     public function index(Request $request)
     {
-        $query = MataPelajaran::with(['kelas', 'guru']);
-        
+        // Gunakan join untuk memastikan kita bisa mengurutkan berdasarkan kolom dari tabel kelas
+        $query = MataPelajaran::join('kelas', 'mata_pelajarans.kelas_id', '=', 'kelas.id')
+            ->select('mata_pelajarans.*') // Pastikan hanya mengambil kolom dari mata_pelajarans
+            ->with(['kelas', 'guru']); // Load relasi kelas dan guru
+            
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
@@ -32,7 +35,7 @@ class SubjectController extends Controller
                     });
                 } else {
                     // Pencarian normal
-                    $q->where('nama_pelajaran', 'LIKE', "%{$search}%")
+                    $q->where('mata_pelajarans.nama_pelajaran', 'LIKE', "%{$search}%")
                       ->orWhereHas('kelas', function($kelasQ) use ($search) {
                           $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
                                 ->orWhere('nomor_kelas', 'LIKE', "%{$search}%");
@@ -44,14 +47,10 @@ class SubjectController extends Controller
             });
         }
     
-        // Default ordering berdasarkan kelas
-        if (!$request->has('search') || 
-            (count($terms) === 1 && $terms[0] === 'kelas')) {
-            $query->whereHas('kelas', function($q) {
-                $q->orderBy('nomor_kelas', 'asc')
-                  ->orderBy('nama_kelas', 'asc');
-            });
-        }
+        // Default sorting: urutkan berdasarkan nomor kelas (ascending) lalu nama kelas
+        $query->orderBy('kelas.nomor_kelas', 'asc')
+              ->orderBy('kelas.nama_kelas', 'asc')
+              ->orderBy('mata_pelajarans.nama_pelajaran', 'asc');
         
         $subjects = $query->paginate(10);
         return view('admin.subject', compact('subjects'));
@@ -354,9 +353,15 @@ class SubjectController extends Controller
     public function teacherIndex()
     {
         $guru = auth()->guard('guru')->user();
-        $subjects = MataPelajaran::with(['kelas', 'guru', 'lingkupMateris'])
-            ->where('guru_id', $guru->id)
-            ->orderBy('kelas_id')
+        
+        // Gunakan join dengan tabel kelas untuk memungkinkan pengurutan yang lebih baik
+        $subjects = MataPelajaran::join('kelas', 'mata_pelajarans.kelas_id', '=', 'kelas.id')
+            ->select('mata_pelajarans.*') // Pastikan hanya mengambil kolom dari mata pelajaran
+            ->with(['kelas', 'guru', 'lingkupMateris'])
+            ->where('mata_pelajarans.guru_id', $guru->id)
+            ->orderBy('kelas.nomor_kelas', 'asc') // Urutkan berdasarkan nomor kelas
+            ->orderBy('kelas.nama_kelas', 'asc')  // Kemudian nama kelas (A, B, C, dll)
+            ->orderBy('mata_pelajarans.nama_pelajaran', 'asc') // Terakhir berdasarkan nama mata pelajaran
             ->paginate(10);
         
         return view('pengajar.subject', compact('subjects'));

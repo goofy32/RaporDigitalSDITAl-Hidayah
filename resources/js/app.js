@@ -11,12 +11,37 @@ document.addEventListener('turbo:before-render', () => {
     Alpine.store('report').showPreview = false;
     Alpine.store('report').previewContent = '';
     Alpine.store('report').closePreview();
+
+    if (window.Alpine) {
+        window.Alpine.flushAndStopDeferring();
+    }
+});
+
+document.addEventListener('turbo:request-timeout', () => {
+    Alpine.store('pageLoading').stopLoading();
+    console.warn('Turbo request timed out');
+});
+
+document.addEventListener('turbo:before-fetch-request', (event) => {
+    // Set timeout untuk fetch lebih lama untuk jaringan lambat
+    event.detail.fetchOptions.timeout = 10000; // 10 detik
 });
 
 document.addEventListener('turbo:load', () => {
     Alpine.start();
     if (typeof initFlowbite === 'function') {
         initFlowbite();
+    }
+    setTimeout(() => {
+        Alpine.store('pageLoading').stopLoading();
+    }, 100);
+});
+
+document.addEventListener('turbo:before-fetch-response', (event) => {
+    const response = event.detail.fetchResponse;
+    if (!response.succeeded) {
+        Alpine.store('pageLoading').stopLoading();
+        console.error('Turbo fetch failed:', response.statusCode);
     }
 });
 
@@ -832,6 +857,52 @@ Alpine.data('notificationHandler', () => ({
     }
 }));
 
+Alpine.store('pageLoading', {
+    isLoading: false,
+    elementStates: {}, // Track state per element
+    
+    startLoading() {
+        this.isLoading = true;
+    },
+    
+    stopLoading() {
+        this.isLoading = false;
+    },
+    
+    // Untuk tracking preload komponen tertentu
+    markComponentLoaded(id) {
+        this.elementStates[id] = true;
+    },
+    
+    isComponentLoaded(id) {
+        return this.elementStates[id] || false;
+    }
+});
+
+function preloadPermanentComponents() {
+    const permanentElements = document.querySelectorAll('[data-turbo-permanent]');
+    
+    permanentElements.forEach(element => {
+        const elementId = element.id;
+        if (!elementId) return;
+        
+        if (Alpine.store('pageLoading').isComponentLoaded(elementId)) {
+            return; // Komponen sudah dipreload
+        }
+        
+        // Set opacity 1 untuk mencegah "flash"
+        element.style.opacity = '1';
+        
+        // Tandai komponen sebagai sudah di-preload
+        Alpine.store('pageLoading').markComponentLoaded(elementId);
+    });
+}
+
+
+document.addEventListener('turbo:before-visit', () => {
+    Alpine.store('pageLoading').startLoading();
+});
+
 // Utility Functions
 function debounce(func, wait) {
     let timeout;
@@ -883,7 +954,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('turbo:render', updateSidebarActiveState);
 document.addEventListener('turbo:visit', debouncedUpdateSidebar);
-
+document.addEventListener('DOMContentLoaded', preloadPermanentComponents);
+document.addEventListener('turbo:load', preloadPermanentComponents);
 // Cleanup listeners
 document.addEventListener('turbo:before-cache', () => {
     const notificationHandler = document.querySelector('[x-data="notificationHandler"]');
