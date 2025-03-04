@@ -285,6 +285,7 @@ function raporManager() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
@@ -292,14 +293,38 @@ function raporManager() {
                     })
                 });
 
+                // Cek status respons
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Gagal generate rapor');
+                    // Jika response adalah JSON, ambil pesan error
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        const error = await response.json();
+                        
+                        // Tampilkan pesan error yang spesifik
+                        let errorMessage = error.message || 'Gagal generate rapor';
+                        
+                        // Tambahkan instruksi berdasarkan error_type
+                        if (error.error_type === 'template_missing' || error.error_type === 'template_invalid') {
+                            errorMessage += '. Hubungi admin untuk perbaiki template rapor.';
+                        } else if (error.error_type === 'data_incomplete') {
+                            errorMessage += '. Pastikan semua data nilai dan kehadiran sudah dilengkapi.';
+                        }
+                        
+                        throw new Error(errorMessage);
+                    } else {
+                        throw new Error(`Gagal generate rapor (${response.status})`);
+                    }
                 }
 
+                // Jika sukses, akan mendapatkan file blob
                 const blob = await response.blob();
                 await this.downloadFile(blob, `rapor_${this.activeTab.toLowerCase()}_${siswaId}.docx`);
+                
+                // Tampilkan notifikasi sukses
+                alert('Rapor berhasil digenerate dan diunduh');
+                
             } catch (error) {
+                console.error('Error:', error);
                 alert(error.message);
             } finally {
                 this.loading = false;

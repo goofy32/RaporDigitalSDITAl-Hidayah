@@ -258,54 +258,72 @@ public function downloadSampleTemplate(Request $request)
     public function generateReport(Request $request, Siswa $siswa)
     {
         try {
-            // Validasi akses wali kelas
-            if (!$siswa->isInKelasWali(auth()->id())) {
-                throw new \Exception('Anda tidak memiliki akses untuk generate rapor siswa ini');
-            }
-            if (!$siswa->nilais()->exists()) {
-                throw new \Exception('Data nilai belum lengkap');
-            }
+            // Dapatkan data guru dan siswa
+            $guru = auth()->user();
+            $guruId = $guru->id;
+            $siswaKelasId = $siswa->kelas_id;
             
-            if (!$siswa->absensi) {
-                throw new \Exception('Data kehadiran belum lengkap');
+            // Log untuk debugging
+            \Log::info('Generating report', [
+                'guru_id' => $guruId,
+                'siswa_id' => $siswa->id,
+                'siswa_kelas_id' => $siswaKelasId
+            ]);
+            
+            // Cek akses dengan query langsung ke tabel pivot
+            $isWaliKelas = \DB::table('guru_kelas')
+                ->where('guru_id', $guruId)
+                ->where('kelas_id', $siswaKelasId)
+                ->where('is_wali_kelas', 1)
+                ->where('role', 'wali_kelas')
+                ->exists();
+                
+            \Log::info('Wali kelas check result', ['is_wali_kelas' => $isWaliKelas]);
+            
+            // Validasi akses
+            if (!$isWaliKelas) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk generate rapor siswa ini'
+                ], 403);
             }
     
-            // Cek template aktif dengan log
-            $template = ReportTemplate::where([
+            // Cek template aktif
+            $template = \App\Models\ReportTemplate::where([
                 'type' => $request->type ?? 'UTS',
                 'is_active' => true
             ])->first();
     
-            \Log::info('Template yang digunakan:', [
-                'template' => $template ? $template->toArray() : null
-            ]);
-    
             if (!$template) {
-                throw new \Exception('Template aktif tidak ditemukan');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template aktif tidak ditemukan. Hubungi admin untuk mengaktifkan template.'
+                ], 400);
             }
     
-            // Create processor instance langsung di sini
-            $processor = new RaporTemplateProcessor($template, $siswa, $request->type ?? 'UTS');
+            // Generate rapor
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $request->type ?? 'UTS');
             $result = $processor->generate();
     
             return response()->download(
                 storage_path('app/public/' . $result['path']), 
                 $result['filename']
             );
-    
         } catch (\Exception $e) {
             \Log::error('Error generating report:', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'siswa_id' => $siswa->id,
                 'type' => $request->type
             ]);
     
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+                'message' => 'Gagal generate rapor: ' . $e->getMessage()
+            ], 500);
         }
     }
+    
     public function indexWaliKelas()
         {
             $guru = auth()->user();

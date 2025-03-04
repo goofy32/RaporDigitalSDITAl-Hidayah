@@ -982,3 +982,8 @@ document.addEventListener('turbo:before-cache', () => {
 // Initialize Alpine
 window.Alpine = Alpine;
 Alpine.start();
+
+if (!window.alpineInitialized) {
+    Alpine.start();
+    window.alpineInitialized = true;
+}

@@ -35,13 +35,16 @@ class Guru extends Authenticatable
             ->withPivot('is_wali_kelas', 'role')
             ->withTimestamps();
     }
-    // Kelas yang diwali
+ 
+    /**
+     * Kelas yang diwali
+     */
     public function kelasWali()
     {
         return $this->belongsToMany(Kelas::class, 'guru_kelas')
+            ->select('kelas.*') // Tambahkan ini untuk menghindari ambiguitas
             ->wherePivot('is_wali_kelas', true)
-            ->where('role', 'wali_kelas')  // Tambahkan ini
-            ->withTimestamps();
+            ->wherePivot('role', 'wali_kelas');
     }
     // Kelas yang diajar
     public function kelasAjar()
@@ -57,7 +60,9 @@ class Guru extends Authenticatable
         return $this->kelasWali()->exists();
     }
 
-    // Get kelas wali if exists
+    /**
+     * Get kelas wali if exists
+     */
     public function getKelasWaliAttribute()
     {
         return $this->kelasWali()->first();
