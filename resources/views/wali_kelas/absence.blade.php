@@ -62,9 +62,9 @@
                         <td class="px-6 py-4">{{ $absensi->tanpa_keterangan }}</td>
                         <td class="px-6 py-4">
                             <div class="flex justify-center gap-2">
-                                <a href="{{ route('wali_kelas.absence.edit', $absensi->id) }}" class="text-yellow-600 hover:text-yellow-800">
-                                    <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
-                                </a>
+                            <a href="{{ route('wali_kelas.absence.edit', $absensi->id) }}" class="text-yellow-600 hover:text-yellow-800">
+                                <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
+                            </a>
                                 <form action="{{ route('wali_kelas.absence.destroy', $absensi->id) }}" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')

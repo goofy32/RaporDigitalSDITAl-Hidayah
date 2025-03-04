@@ -103,13 +103,17 @@ class EkstrakurikulerController extends Controller
     {
         // Ambil data wali kelas yang sedang login
         $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
         
-        // Query nilai ekstrakulikuler dengan relasi
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
+        
         $query = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
-            ->whereHas('siswa', function($query) use ($waliKelas) {
-                $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
+            ->whereHas('siswa', function($query) use ($kelasWaliId) {
+                $query->where('kelas_id', $kelasWaliId);
             });
-    
+
         // Tambah fitur pencarian
         if ($request->has('search')) {
             $search = $request->search;
@@ -130,16 +134,17 @@ class EkstrakurikulerController extends Controller
 
     public function waliKelasCreate()
     {
-        // Ambil data wali kelas yang sedang login
         $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
         
-        // Ambil daftar ekstrakurikuler
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
+        
         $ekstrakurikuler = Ekstrakurikuler::all();
-        
-        // Ambil hanya siswa dari kelas yang diajar
-        $siswa = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
-                      ->orderBy('nama')
-                      ->get();
+        $siswa = Siswa::where('kelas_id', $kelasWaliId)
+                    ->orderBy('nama')
+                    ->get();
         
         return view('wali_kelas.add_ekstrakurikuler', compact('ekstrakurikuler', 'siswa'));
     }
@@ -147,15 +152,20 @@ class EkstrakurikulerController extends Controller
     public function waliKelasStore(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
+        
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
         
         // Validasi bahwa siswa berada di kelas yang diajar
         $validated = $request->validate([
             'siswa_id' => [
                 'required',
                 'exists:siswas,id',
-                function ($attribute, $value, $fail) use ($waliKelas) {
+                function ($attribute, $value, $fail) use ($kelasWaliId) {
                     $siswa = Siswa::find($value);
-                    if ($siswa->kelas_id !== $waliKelas->kelas_pengajar_id) {
+                    if ($siswa->kelas_id !== $kelasWaliId) {
                         $fail('Siswa tidak terdaftar di kelas Anda.');
                     }
                 },
@@ -179,31 +189,58 @@ class EkstrakurikulerController extends Controller
         return redirect()->route('wali_kelas.ekstrakurikuler.index')
             ->with('success', 'Data ekstrakurikuler berhasil ditambahkan');
     }
+
     public function waliKelasEdit($id)
     {
         $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
         
-        // Query nilai ekstrakulikuler dan pastikan siswa berada di kelas yang diajar
-        $nilaiEkstrakurikuler = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
-            ->whereHas('siswa', function($query) use ($waliKelas) {
-                $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
-            })
-            ->findOrFail($id);
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
         
-        return view('wali_kelas.edit_ekstrakurikuler', compact('nilaiEkstrakurikuler'));
+        try {
+            $nilaiEkstrakurikuler = NilaiEkstrakurikuler::with(['siswa', 'ekstrakurikuler'])
+                ->whereHas('siswa', function($query) use ($kelasWaliId) {
+                    $query->where('kelas_id', $kelasWaliId);
+                })
+                ->findOrFail($id);
+            
+            return view('wali_kelas.edit_ekstrakurikuler', compact('nilaiEkstrakurikuler'));
+        } catch (\Exception $e) {
+            \Log::error('Error editing ekstrakurikuler: ' . $e->getMessage());
+            return redirect()->route('wali_kelas.ekstrakurikuler.index')
+                ->with('error', 'Data ekstrakurikuler tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function waliKelasUpdate(Request $request, $id)
     {
+        $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
+        
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
+        
         $validated = $request->validate([
             'predikat' => 'required|string',
             'deskripsi' => 'nullable|string',
         ]);
-
-        $nilaiEkstrakurikuler = NilaiEkstrakurikuler::findOrFail($id);
-        $nilaiEkstrakurikuler->update($validated);
-
-        return redirect()->route('wali_kelas.ekstrakurikuler.index')
-            ->with('success', 'Data ekstrakurikuler berhasil diperbarui');
+    
+        try {
+            $nilaiEkstrakurikuler = NilaiEkstrakurikuler::whereHas('siswa', function($query) use ($kelasWaliId) {
+                $query->where('kelas_id', $kelasWaliId);
+            })->findOrFail($id);
+            
+            $nilaiEkstrakurikuler->update($validated);
+    
+            return redirect()->route('wali_kelas.ekstrakurikuler.index')
+                ->with('success', 'Data ekstrakurikuler berhasil diperbarui');
+        } catch (\Exception $e) {
+            \Log::error('Error updating ekstrakurikuler: ' . $e->getMessage());
+            return redirect()->route('wali_kelas.ekstrakurikuler.index')
+                ->with('error', 'Data ekstrakurikuler tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 }

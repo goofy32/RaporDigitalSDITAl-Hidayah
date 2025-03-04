@@ -11,9 +11,15 @@ class AbsensiController extends Controller
     public function index(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId(); // Gunakan metode dari model
+        
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
+        
         $query = Absensi::with('siswa')
-            ->whereHas('siswa', function($query) use ($waliKelas) {
-                $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
+            ->whereHas('siswa', function($query) use ($kelasWaliId) {
+                $query->where('kelas_id', $kelasWaliId);
             });
     
         if ($request->has('search')) {
@@ -36,10 +42,16 @@ class AbsensiController extends Controller
     public function create()
     {
         $waliKelas = auth()->guard('guru')->user();
-        $siswa = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
-                     ->orderBy('nama')
-                     ->get();
-
+        $kelasWaliId = $waliKelas->getWaliKelasId();
+        
+        if (!$kelasWaliId) {
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+        }
+        
+        $siswa = Siswa::where('kelas_id', $kelasWaliId)
+                 ->orderBy('nama')
+                 ->get();
+        
         return view('wali_kelas.add_absence', compact('siswa'));
     }
 
@@ -72,16 +84,29 @@ class AbsensiController extends Controller
 
     public function edit($id)
     {
-        $waliKelas = auth()->guard('guru')->user();
-        $absensi = Absensi::with('siswa')
-            ->whereHas('siswa', function($query) use ($waliKelas) {
-                $query->where('kelas_id', $waliKelas->kelas_pengajar_id);
-            })
-            ->findOrFail($id);
-
-        return view('wali_kelas.edit_absence', compact('absensi'));
+        try {
+            $waliKelas = auth()->guard('guru')->user();
+            $kelasWaliId = $waliKelas->getWaliKelasId();
+            
+            \Log::info('Editing absensi', [
+                'id' => $id,
+                'kelasWaliId' => $kelasWaliId
+            ]);
+            
+            $absensi = Absensi::with('siswa')
+                ->whereHas('siswa', function($query) use ($kelasWaliId) {
+                    $query->where('kelas_id', $kelasWaliId);
+                })
+                ->findOrFail($id);
+            
+            return view('wali_kelas.edit_absence', compact('absensi'));
+        } catch (\Exception $e) {
+            \Log::error('Error editing absensi: ' . $e->getMessage());
+            return redirect()->route('wali_kelas.absence.index')
+                ->with('error', 'Data absensi tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
-
+    
     public function update(Request $request, $id)
     {
         $request->validate([
