@@ -108,6 +108,200 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Buat template sampel dinamis dengan placeholder terbaru
+     * 
+     * @param string $outputPath Path untuk menyimpan file
+     * @param string $type Tipe template (UTS/UAS)
+     * @return bool
+     */
+    protected function createDynamicSampleTemplate($outputPath, $type = 'UTS')
+    {
+        try {
+            // Create a new Word document
+            $phpWord = new \PhpOffice\PhpWord\PhpWord();
+            
+            // Add styles
+            $phpWord->addTitleStyle(1, ['bold' => true, 'size' => 16], ['alignment' => 'center']);
+            $phpWord->addTitleStyle(2, ['bold' => true, 'size' => 14], ['alignment' => 'center']);
+            
+            // Add a section
+            $section = $phpWord->addSection();
+            
+            // Add header with school info
+            $header = $section->addHeader();
+            $header->addText('PEMERINTAH KABUPATEN', ['bold' => true], ['alignment' => 'center']);
+            $header->addText('KOORDINATOR WILAYAH DIKPORA KECAMATAN', ['bold' => true], ['alignment' => 'center']);
+            $header->addText('SD IT AL-HIDAYAH LOGAM', ['bold' => true, 'size' => 14], ['alignment' => 'center']);
+            $header->addText('Telp. ${nomor_telepon}', [], ['alignment' => 'center']);
+            
+            // Add title
+            $section->addTitle($type === 'UTS' ? 'RAPOR TENGAH SEMESTER 1' : 'RAPOR AKHIR SEMESTER', 1);
+            
+            // Add student info
+            $tableStyle = ['borderSize' => 6, 'borderColor' => '000000'];
+            $cellStyle = ['valign' => 'center'];
+            
+            $infoTable = $section->addTable($tableStyle);
+            
+            $infoTable->addRow();
+            $infoTable->addCell(2000, $cellStyle)->addText('Nama Siswa');
+            $infoTable->addCell(500, $cellStyle)->addText(':');
+            $infoTable->addCell(3000, $cellStyle)->addText('${nama_siswa}');
+            $infoTable->addCell(1500, $cellStyle)->addText('Kelas');
+            $infoTable->addCell(500, $cellStyle)->addText(':');
+            $infoTable->addCell(1500, $cellStyle)->addText('${kelas}');
+            
+            $infoTable->addRow();
+            $infoTable->addCell(2000, $cellStyle)->addText('NISN/NIS');
+            $infoTable->addCell(500, $cellStyle)->addText(':');
+            $infoTable->addCell(3000, $cellStyle)->addText('${nisn}/${nis}');
+            $infoTable->addCell(1500, $cellStyle)->addText('Tahun Pelajaran');
+            $infoTable->addCell(500, $cellStyle)->addText(':');
+            $infoTable->addCell(1500, $cellStyle)->addText('${tahun_ajaran}');
+            
+            $section->addTextBreak(1);
+            
+            // Add mata pelajaran table
+            $section->addText('DAFTAR NILAI MATA PELAJARAN', ['bold' => true], ['alignment' => 'center']);
+            
+            $mapelTable = $section->addTable($tableStyle);
+            
+            // Table header
+            $mapelTable->addRow(null, ['tblHeader' => true, 'cantSplit' => true]);
+            $mapelTable->addCell(600, ['bgColor' => 'D3D3D3'])->addText('No.', ['bold' => true], ['alignment' => 'center']);
+            $mapelTable->addCell(3000, ['bgColor' => 'D3D3D3'])->addText('Mata Pelajaran', ['bold' => true], ['alignment' => 'center']);
+            $mapelTable->addCell(1000, ['bgColor' => 'D3D3D3'])->addText('Nilai', ['bold' => true], ['alignment' => 'center']);
+            $mapelTable->addCell(5000, ['bgColor' => 'D3D3D3'])->addText('Capaian Kompetensi', ['bold' => true], ['alignment' => 'center']);
+            
+            // Add mata pelajaran rows (dynamic placeholders)
+            for ($i = 1; $i <= 7; $i++) {
+                $mapelTable->addRow();
+                $mapelTable->addCell(600)->addText($i, [], ['alignment' => 'center']);
+                $mapelTable->addCell(3000)->addText('${nama_matapelajaran' . $i . '}');
+                $mapelTable->addCell(1000)->addText('${nilai_matapelajaran' . $i . '}', [], ['alignment' => 'center']);
+                $mapelTable->addCell(5000)->addText('${capaian_matapelajaran' . $i . '}');
+            }
+            
+            $section->addTextBreak(1);
+            
+            // Add muatan lokal table
+            $section->addText('MUATAN LOKAL', ['bold' => true], ['alignment' => 'center']);
+            
+            $mulokTable = $section->addTable($tableStyle);
+            
+            // Table header
+            $mulokTable->addRow(null, ['tblHeader' => true, 'cantSplit' => true]);
+            $mulokTable->addCell(600, ['bgColor' => 'D3D3D3'])->addText('No.', ['bold' => true], ['alignment' => 'center']);
+            $mulokTable->addCell(3000, ['bgColor' => 'D3D3D3'])->addText('Muatan Lokal', ['bold' => true], ['alignment' => 'center']);
+            $mulokTable->addCell(1000, ['bgColor' => 'D3D3D3'])->addText('Nilai', ['bold' => true], ['alignment' => 'center']);
+            $mulokTable->addCell(5000, ['bgColor' => 'D3D3D3'])->addText('Capaian Kompetensi', ['bold' => true], ['alignment' => 'center']);
+            
+            // Add muatan lokal rows
+            for ($i = 1; $i <= 5; $i++) {
+                $mulokTable->addRow();
+                $mulokTable->addCell(600)->addText($i, [], ['alignment' => 'center']);
+                $mulokTable->addCell(3000)->addText('${nama_mulok' . $i . '}');
+                $mulokTable->addCell(1000)->addText('${nilai_mulok' . $i . '}', [], ['alignment' => 'center']);
+                $mulokTable->addCell(5000)->addText('${capaian_mulok' . $i . '}');
+            }
+            
+            $section->addTextBreak(1);
+            
+            // Add ekstrakurikuler table
+            $section->addText('EKSTRAKURIKULER', ['bold' => true], ['alignment' => 'center']);
+            
+            $ekskulTable = $section->addTable($tableStyle);
+            
+            // Table header
+            $ekskulTable->addRow(null, ['tblHeader' => true, 'cantSplit' => true]);
+            $ekskulTable->addCell(600, ['bgColor' => 'D3D3D3'])->addText('No.', ['bold' => true], ['alignment' => 'center']);
+            $ekskulTable->addCell(3000, ['bgColor' => 'D3D3D3'])->addText('Kegiatan Ekstrakurikuler', ['bold' => true], ['alignment' => 'center']);
+            $ekskulTable->addCell(6000, ['bgColor' => 'D3D3D3'])->addText('Keterangan', ['bold' => true], ['alignment' => 'center']);
+            
+            // Add ekstrakurikuler rows
+            for ($i = 1; $i <= 5; $i++) {
+                $ekskulTable->addRow();
+                $ekskulTable->addCell(600)->addText($i, [], ['alignment' => 'center']);
+                $ekskulTable->addCell(3000)->addText('${ekskul' . $i . '_nama}');
+                $ekskulTable->addCell(6000)->addText('${ekskul' . $i . '_keterangan}');
+            }
+            
+            $section->addTextBreak(1);
+            
+            // Add catatan guru
+            $section->addText('CATATAN GURU', ['bold' => true], ['alignment' => 'center']);
+            
+            $catatanTable = $section->addTable($tableStyle);
+            $catatanTable->addRow(800);
+            $catatanTable->addCell(9600)->addText('${catatan_guru}');
+            
+            $section->addTextBreak(1);
+            
+            // Add ketidakhadiran
+            $section->addText('KETIDAKHADIRAN', ['bold' => true], ['alignment' => 'center']);
+            
+            $kehadiranTable = $section->addTable($tableStyle);
+            
+            $kehadiranTable->addRow();
+            $kehadiranTable->addCell(9600)->addText('Sakit : ${sakit} Hari');
+            
+            $kehadiranTable->addRow();
+            $kehadiranTable->addCell(9600)->addText('Izin : ${izin} Hari');
+            
+            $kehadiranTable->addRow();
+            $kehadiranTable->addCell(9600)->addText('Tanpa Keterangan : ${tanpa_keterangan} Hari');
+            
+            $section->addTextBreak(2);
+            
+            // Add signature section
+            $signatureTable = $section->addTable();
+            $signatureTable->addRow();
+            $signatureTable->addCell(3000)->addText('Mengetahui:', ['bold' => true], ['alignment' => 'center']);
+            $signatureTable->addCell(3000);
+            $signatureTable->addCell(3000);
+            
+            $signatureTable->addRow();
+            $signatureTable->addCell(3000)->addText('Orang Tua/Wali,', ['bold' => true], ['alignment' => 'center']);
+            $signatureTable->addCell(3000)->addText('Kepala Sekolah,', ['bold' => true], ['alignment' => 'center']);
+            $signatureTable->addCell(3000)->addText('Wali Kelas,', ['bold' => true], ['alignment' => 'center']);
+            
+            $signatureTable->addRow(1000); // Space for signature
+            $signatureTable->addCell(3000);
+            $signatureTable->addCell(3000);
+            $signatureTable->addCell(3000);
+            
+            $signatureTable->addRow();
+            $signatureTable->addCell(3000)->addText('____________________');
+            $signatureTable->addCell(3000)->addText('${kepala_sekolah}');
+            $signatureTable->addCell(3000)->addText('${wali_kelas}');
+            
+            $signatureTable->addRow();
+            $signatureTable->addCell(3000);
+            $signatureTable->addCell(3000)->addText('NIP. ${nip_kepala_sekolah}');
+            $signatureTable->addCell(3000)->addText('NIP. ${nip_wali_kelas}');
+            
+            // Save to file
+            $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+            
+            // Ensure the directory exists
+            $dir = dirname($outputPath);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            
+            $objWriter->save($outputPath);
+            
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Error creating dynamic sample template:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return false;
+        }
+    }
     
     public function getCurrentTemplate(Request $request)
     {
@@ -150,56 +344,38 @@ class ReportController extends Controller
     }
 
      /**
- * Download sample template with correct placeholders
- * 
- * @param Request $request
- * @return \Illuminate\Http\Response
- */
-public function downloadSampleTemplate(Request $request)
-{
-    $type = $request->input('type', 'UTS');
-    
-    // Ensure valid type
-    if (!in_array($type, ['UTS', 'UAS'])) {
-        $type = 'UTS';
-    }
-    
-    // Define the correct file path based on type
-    $sampleFileName = $type === 'UTS' 
-        ? 'sample_template_uts.docx'
-        : 'sample_template_uas.docx';
+     * Download sample template with correct placeholders
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadSampleTemplate(Request $request)
+    {
+        $type = $request->input('type', 'UTS');
         
-    $filePath = storage_path('app/public/samples/' . $sampleFileName);
-    
-    // Check if the file exists
-    if (!file_exists($filePath)) {
-        // If the specific file doesn't exist, try to use a generic sample
-        $filePath = storage_path('app/public/samples/template_rapor_sample.docx');
-        
-        // If even the generic sample doesn't exist, create it
-        if (!file_exists($filePath)) {
-            // Make sure the directory exists
-            if (!is_dir(storage_path('app/public/samples'))) {
-                mkdir(storage_path('app/public/samples'), 0755, true);
-            }
-            
-            // Copy from the original template file if it exists
-            if ($type === 'UTS') {
-                // Copy from a known template or create minimal template
-                $this->createSampleTemplate($filePath, $type);
-            } else {
-                // Create minimal UAS template
-                $this->createSampleTemplate($filePath, $type);
-            }
+        // Ensure valid type
+        if (!in_array($type, ['UTS', 'UAS'])) {
+            $type = 'UTS';
         }
+        
+        // Use dynamic sample template
+        $sampleFileName = $type === 'UTS' 
+            ? 'dynamic_template_uts.docx'
+            : 'dynamic_template_uas.docx';
+            
+        $filePath = storage_path('app/public/samples/' . $sampleFileName);
+        
+        // If the file doesn't exist, create it
+        if (!file_exists($filePath)) {
+            $this->createDynamicSampleTemplate($filePath, $type);
+        }
+        
+        // Generate a filename for download
+        $downloadFilename = "template_{$type}_sample.docx";
+        
+        // Return the file for download
+        return response()->download($filePath, $downloadFilename);
     }
-    
-    // Generate a filename for download
-    $downloadFilename = "template_{$type}_sample.docx";
-    
-    // Return the file for download
-    return response()->download($filePath, $downloadFilename);
-}
 
     public function downloadPdf(Siswa $siswa) {
         $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
@@ -323,7 +499,7 @@ public function downloadSampleTemplate(Request $request)
             ], 500);
         }
     }
-    
+
     public function indexWaliKelas()
         {
             $guru = auth()->user();
@@ -472,20 +648,61 @@ public function downloadSampleTemplate(Request $request)
             $phpWord = new \PhpOffice\PhpWord\TemplateProcessor($filePath);
             $existingVariables = $phpWord->getVariables();
             
-            // Get required placeholders for specified type
-            $requiredPlaceholders = $this->getRequiredPlaceholders($type);
-            
-            // Get all valid placeholders
+            // Get all valid placeholders from database
             $validPlaceholders = ReportPlaceholder::pluck('placeholder_key')->toArray();
             
-            // Check for missing required placeholders
-            $missingPlaceholders = array_diff($requiredPlaceholders, $existingVariables);
+            // Add dynamic placeholder patterns for regex validation
+            $dynamicPatterns = [
+                'nama_matapelajaran\d+',
+                'nilai_matapelajaran\d+',
+                'capaian_matapelajaran\d+',
+                'nama_mulok\d+',
+                'nilai_mulok\d+',
+                'capaian_mulok\d+',
+                'ekskul\d+_nama',
+                'ekskul\d+_keterangan'
+            ];
             
-            // Check for unknown/invalid placeholders
-            $invalidPlaceholders = array_diff($existingVariables, $validPlaceholders);
+            // Minimum required placeholders (minimal harus ada beberapa placeholder dasar)
+            $requiredPlaceholders = [
+                'nama_siswa', 
+                'nisn', 
+                'nis', 
+                'kelas',
+                'tahun_ajaran'
+            ];
+            
+            // Check if required placeholders exist
+            $missingPlaceholders = [];
+            foreach ($requiredPlaceholders as $required) {
+                if (!in_array($required, $existingVariables)) {
+                    $missingPlaceholders[] = $required;
+                }
+            }
+            
+            // Check if each template variable is valid
+            $invalidPlaceholders = [];
+            foreach ($existingVariables as $var) {
+                $isValid = in_array($var, $validPlaceholders);
+                
+                if (!$isValid) {
+                    // Check if it matches a dynamic pattern
+                    $isDynamic = false;
+                    foreach ($dynamicPatterns as $pattern) {
+                        if (preg_match('/^' . $pattern . '$/', $var)) {
+                            $isDynamic = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$isDynamic) {
+                        $invalidPlaceholders[] = $var;
+                    }
+                }
+            }
             
             return [
-                'is_valid' => empty($missingPlaceholders),
+                'is_valid' => empty($missingPlaceholders) && empty($invalidPlaceholders),
                 'missing_placeholders' => $missingPlaceholders,
                 'invalid_placeholders' => $invalidPlaceholders,
             ];
@@ -501,90 +718,88 @@ public function downloadSampleTemplate(Request $request)
             ];
         }
     }
-
-
-/**
- * Create a basic sample template if none exists
- *
- * @param string $outputPath
- * @param string $type
- * @return void
- */
-protected function createSampleTemplate($outputPath, $type = 'UTS')
-{
-    try {
-        // Create a new Word document
-        $phpWord = new \PhpOffice\PhpWord\PhpWord();
-        
-        // Add a section
-        $section = $phpWord->addSection();
-        
-        // Add header with school name
-        $header = $section->addHeader();
-        $header->addText('TEMPLATE RAPOR ' . $type, ['bold' => true, 'size' => 16], ['alignment' => 'center']);
-        
-        // Add student information
-        $section->addText('IDENTITAS SISWA:', ['bold' => true, 'size' => 14]);
-        $section->addText('Nama: ${nama_siswa}', ['size' => 12]);
-        $section->addText('NISN: ${nisn}', ['size' => 12]);
-        $section->addText('NIS: ${nis}', ['size' => 12]);
-        $section->addText('Kelas: ${kelas}', ['size' => 12]);
-        $section->addText('Tahun Ajaran: ${tahun_ajaran}', ['size' => 12]);
-        
-        $section->addTextBreak(1);
-        
-        // Add subject information
-        $section->addText('NILAI MATA PELAJARAN:', ['bold' => true, 'size' => 14]);
-        
-        // Create table for subjects
-        $table = $section->addTable();
-        
-        // Add header row
-        $table->addRow();
-        $table->addCell(2000)->addText('Mata Pelajaran', ['bold' => true]);
-        $table->addCell(1000)->addText('Nilai', ['bold' => true]);
-        $table->addCell(5000)->addText('Capaian Kompetensi', ['bold' => true]);
-        
-        // PAI
-        $table->addRow();
-        $table->addCell(2000)->addText('Pendidikan Agama Islam');
-        $table->addCell(1000)->addText('${nilai_pai}');
-        $table->addCell(5000)->addText('${capaian_pai}');
-        
-        // Matematika
-        $table->addRow();
-        $table->addCell(2000)->addText('Matematika');
-        $table->addCell(1000)->addText('${nilai_matematika}');
-        $table->addCell(5000)->addText('${capaian_matematika}');
-        
-        // Bahasa Indonesia
-        $table->addRow();
-        $table->addCell(2000)->addText('Bahasa Indonesia');
-        $table->addCell(1000)->addText('${nilai_bahasa_indonesia}');
-        $table->addCell(5000)->addText('${capaian_bahasa_indonesia}');
-        
-        $section->addTextBreak(1);
-        
-        // Add attendance information
-        $section->addText('KEHADIRAN:', ['bold' => true, 'size' => 14]);
-        $section->addText('Sakit: ${sakit} hari', ['size' => 12]);
-        $section->addText('Izin: ${izin} hari', ['size' => 12]);
-        $section->addText('Tanpa Keterangan: ${tanpa_keterangan} hari', ['size' => 12]);
-        
-        // Save to file
-        $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save($outputPath);
-        
-        return true;
-    } catch (\Exception $e) {
-        \Log::error('Error creating sample template:', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return false;
+    /**
+     * Create a basic sample template if none exists
+     *
+     * @param string $outputPath
+     * @param string $type
+     * @return void
+     */
+    protected function createSampleTemplate($outputPath, $type = 'UTS')
+    {
+        try {
+            // Create a new Word document
+            $phpWord = new \PhpOffice\PhpWord\PhpWord();
+            
+            // Add a section
+            $section = $phpWord->addSection();
+            
+            // Add header with school name
+            $header = $section->addHeader();
+            $header->addText('TEMPLATE RAPOR ' . $type, ['bold' => true, 'size' => 16], ['alignment' => 'center']);
+            
+            // Add student information
+            $section->addText('IDENTITAS SISWA:', ['bold' => true, 'size' => 14]);
+            $section->addText('Nama: ${nama_siswa}', ['size' => 12]);
+            $section->addText('NISN: ${nisn}', ['size' => 12]);
+            $section->addText('NIS: ${nis}', ['size' => 12]);
+            $section->addText('Kelas: ${kelas}', ['size' => 12]);
+            $section->addText('Tahun Ajaran: ${tahun_ajaran}', ['size' => 12]);
+            
+            $section->addTextBreak(1);
+            
+            // Add subject information
+            $section->addText('NILAI MATA PELAJARAN:', ['bold' => true, 'size' => 14]);
+            
+            // Create table for subjects
+            $table = $section->addTable();
+            
+            // Add header row
+            $table->addRow();
+            $table->addCell(2000)->addText('Mata Pelajaran', ['bold' => true]);
+            $table->addCell(1000)->addText('Nilai', ['bold' => true]);
+            $table->addCell(5000)->addText('Capaian Kompetensi', ['bold' => true]);
+            
+            // PAI
+            $table->addRow();
+            $table->addCell(2000)->addText('Pendidikan Agama Islam');
+            $table->addCell(1000)->addText('${nilai_pai}');
+            $table->addCell(5000)->addText('${capaian_pai}');
+            
+            // Matematika
+            $table->addRow();
+            $table->addCell(2000)->addText('Matematika');
+            $table->addCell(1000)->addText('${nilai_matematika}');
+            $table->addCell(5000)->addText('${capaian_matematika}');
+            
+            // Bahasa Indonesia
+            $table->addRow();
+            $table->addCell(2000)->addText('Bahasa Indonesia');
+            $table->addCell(1000)->addText('${nilai_bahasa_indonesia}');
+            $table->addCell(5000)->addText('${capaian_bahasa_indonesia}');
+            
+            $section->addTextBreak(1);
+            
+            // Add attendance information
+            $section->addText('KEHADIRAN:', ['bold' => true, 'size' => 14]);
+            $section->addText('Sakit: ${sakit} hari', ['size' => 12]);
+            $section->addText('Izin: ${izin} hari', ['size' => 12]);
+            $section->addText('Tanpa Keterangan: ${tanpa_keterangan} hari', ['size' => 12]);
+            
+            // Save to file
+            $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save($outputPath);
+            
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Error creating sample template:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return false;
+        }
     }
-}
    
     /**
      * Get required placeholders based on template type

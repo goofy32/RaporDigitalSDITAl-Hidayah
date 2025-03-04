@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminSeeder::class,
-            ReportPlaceholderSeeder::class,
+            ReportPlaceholdersSeeder::class,
             // ... seeder lainnya
         ]);
     }

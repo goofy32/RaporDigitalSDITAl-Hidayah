@@ -121,29 +121,18 @@ class RaporTemplateProcessor
             'mapel_count' => $nilai->count(),
             'mapel_list' => $nilai->keys()->toArray()
         ]);
-        
-        // Pengumpulan nilai per mata pelajaran
-        $mapelKeys = [
-            'pai' => 'Pendidikan Agama Islam',
-            'ppkn' => 'PPKN',
-            'bahasa_indonesia' => 'Bahasa Indonesia',
-            'matematika' => 'Matematika',
-            'pjok' => 'PJOK',
-            'seni_musik' => 'Seni Musik',
-            'bahasa_inggris' => 'Bahasa Inggris'
-        ];
 
         // Pisahkan mata pelajaran reguler dan muatan lokal
         $mapelReguler = $nilaiCollection->groupBy('mataPelajaran.nama_pelajaran')
             ->filter(function($value, $key) {
                 return $value->first() && $value->first()->mataPelajaran && 
-                       $value->first()->mataPelajaran->is_muatan_lokal == 0;
+                    $value->first()->mataPelajaran->is_muatan_lokal == 0;
             });
             
         $mulok = $nilaiCollection->groupBy('mataPelajaran.nama_pelajaran')
             ->filter(function($value, $key) {
                 return $value->first() && $value->first()->mataPelajaran && 
-                       $value->first()->mataPelajaran->is_muatan_lokal == 1;
+                    $value->first()->mataPelajaran->is_muatan_lokal == 1;
             });
             
         Log::info('Pembagian mata pelajaran:', [
@@ -153,21 +142,48 @@ class RaporTemplateProcessor
             'mulok_list' => $mulok->keys()->toArray()
         ]);
 
-        // Ambil nilai untuk mata pelajaran reguler sesuai definisi mapelKeys
-        foreach ($mapelKeys as $key => $nama) {
-            // Coba cari mata pelajaran yang memiliki nama yang mirip
+        // Definisi mata pelajaran wajib dengan urutan tertentu
+        $priorityMapel = [
+            'pai' => ['Pendidikan Agama Islam', 'PAI', 'Agama Islam', 'Pendidikan Agama dan Budi Pekerti'],
+            'ppkn' => ['PPKN', 'Pendidikan Pancasila', 'PKN', 'Pendidikan Kewarganegaraan'],
+            'bahasa_indonesia' => ['Bahasa Indonesia', 'B. Indonesia', 'BI'],
+            'matematika' => ['Matematika', 'MTK', 'Math'],
+            'pjok' => ['PJOK', 'Pendidikan Jasmani', 'Olahraga', 'Pendidikan Jasmani Olahraga dan Kesehatan'],
+            'seni_musik' => ['Seni Musik', 'Musik', 'Kesenian', 'Seni'],
+            'bahasa_inggris' => ['Bahasa Inggris', 'B. Inggris', 'English']
+        ];
+
+        // Urutan standar mata pelajaran
+        $mapelOrder = ['pai', 'ppkn', 'bahasa_indonesia', 'matematika', 'seni_musik', 'pjok', 'bahasa_inggris'];
+
+        // Penampung untuk mata pelajaran yang sudah diproses
+        $processedMapels = [];
+        
+        // 1. Proses placeholder spesifik untuk 4 mata pelajaran wajib terlebih dahulu
+        $priorityKeys = array_slice($mapelOrder, 0, 4); // pai, ppkn, bahasa_indonesia, matematika
+        
+        foreach ($priorityKeys as $key) {
+            $keywords = $priorityMapel[$key];
             $matchedMapel = null;
+            $matchedName = null;
             
-            foreach ($mapelReguler as $mapelName => $nilaiMapel) {
-                // Cek apakah nama mapel mengandung kata kunci (misalnya "Matematika", "Bahasa Indonesia", dll)
-                if (stripos($mapelName, $nama) !== false || 
-                    similar_text(strtolower($mapelName), strtolower($nama)) > 0.7 * strlen($nama)) {
-                    $matchedMapel = $nilaiMapel;
-                    break;
+            // Cari mata pelajaran yang sesuai berdasarkan keywords
+            foreach ($keywords as $keyword) {
+                foreach ($mapelReguler as $mapelName => $nilaiMapel) {
+                    if (!in_array($mapelName, $processedMapels) && 
+                        (stripos($mapelName, $keyword) !== false || 
+                        similar_text(strtolower($mapelName), strtolower($keyword)) > 0.7 * strlen($keyword))) {
+                        $matchedMapel = $nilaiMapel;
+                        $matchedName = $mapelName;
+                        break 2;
+                    }
                 }
             }
             
             if ($matchedMapel) {
+                // Tandai mata pelajaran ini sudah diproses
+                $processedMapels[] = $matchedName;
+                
                 // Cari nilai akhir rapor
                 $nilaiAkhir = $matchedMapel->where('nilai_akhir_rapor', '!=', null)->first();
                 
@@ -176,25 +192,158 @@ class RaporTemplateProcessor
                     $data["nilai_$key"] = number_format($nilaiValue, 1);
                     $data["capaian_$key"] = $nilaiAkhir->deskripsi ?? 
                         $this->generateSpecificCapaian($nilaiValue, $key);
+                        
+                    // Set juga placeholder dinamis untuk mata pelajaran prioritas (1-4)
+                    $idx = array_search($key, $priorityKeys) + 1;
+                    $data["nama_matapelajaran$idx"] = $matchedName;
+                    $data["nilai_matapelajaran$idx"] = $data["nilai_$key"];
+                    $data["capaian_matapelajaran$idx"] = $data["capaian_$key"];
+                    
+                    Log::info("Mata pelajaran prioritas $key ditemukan:", [
+                        'nama' => $matchedName,
+                        'nilai' => $nilaiValue
+                    ]);
                 } else {
                     // Jika tidak ada nilai_akhir_rapor, gunakan rata-rata nilai lain
                     $avgNilai = $matchedMapel->avg('nilai_tp');
                     if ($avgNilai) {
                         $data["nilai_$key"] = number_format($avgNilai, 1);
                         $data["capaian_$key"] = $this->generateSpecificCapaian($avgNilai, $key);
+                        
+                        // Set juga placeholder dinamis
+                        $idx = array_search($key, $priorityKeys) + 1;
+                        $data["nama_matapelajaran$idx"] = $matchedName;
+                        $data["nilai_matapelajaran$idx"] = $data["nilai_$key"];
+                        $data["capaian_matapelajaran$idx"] = $data["capaian_$key"];
+                    } else {
+                        $data["nilai_$key"] = '-';
+                        $data["capaian_$key"] = '-';
+                        
+                        // Set placeholder dinamis kosong
+                        $idx = array_search($key, $priorityKeys) + 1;
+                        $data["nama_matapelajaran$idx"] = $matchedName;
+                        $data["nilai_matapelajaran$idx"] = '-';
+                        $data["capaian_matapelajaran$idx"] = '-';
+                    }
+                }
+            } else {
+                $data["nilai_$key"] = '-';
+                $data["capaian_$key"] = '-';
+                
+                // Set placeholder dinamis kosong untuk yang tidak ditemukan
+                $idx = array_search($key, $priorityKeys) + 1;
+                $defaultNames = [
+                    'pai' => 'Pendidikan Agama dan Budi Pekerti',
+                    'ppkn' => 'Pendidikan Pancasila',
+                    'bahasa_indonesia' => 'Bahasa Indonesia',
+                    'matematika' => 'Matematika'
+                ];
+                $data["nama_matapelajaran$idx"] = $defaultNames[$key];
+                $data["nilai_matapelajaran$idx"] = '-';
+                $data["capaian_matapelajaran$idx"] = '-';
+                
+                Log::warning("Mata pelajaran prioritas $key tidak ditemukan");
+            }
+        }
+        
+        // 2. Proses mata pelajaran reguler lainnya untuk placeholder spesifik & dinamis
+        $mapelCount = 5; // Mulai dari 5 karena 1-4 sudah diproses di atas
+        
+        // Untuk mata pelajaran lain yang memiliki placeholder spesifik (pjok, seni_musik, bahasa_inggris)
+        $remainingKeys = array_slice($mapelOrder, 4); // pjok, seni_musik, bahasa_inggris
+        
+        foreach ($remainingKeys as $key) {
+            $keywords = $priorityMapel[$key];
+            $matchedMapel = null;
+            $matchedName = null;
+            
+            // Cari mata pelajaran yang sesuai
+            foreach ($keywords as $keyword) {
+                foreach ($mapelReguler as $mapelName => $nilaiMapel) {
+                    if (!in_array($mapelName, $processedMapels) && 
+                        (stripos($mapelName, $keyword) !== false || 
+                        similar_text(strtolower($mapelName), strtolower($keyword)) > 0.7 * strlen($keyword))) {
+                        $matchedMapel = $nilaiMapel;
+                        $matchedName = $mapelName;
+                        break 2;
+                    }
+                }
+            }
+            
+            if ($matchedMapel) {
+                // Tandai mata pelajaran ini sudah diproses
+                $processedMapels[] = $matchedName;
+                
+                // Cari nilai akhir rapor
+                $nilaiAkhir = $matchedMapel->where('nilai_akhir_rapor', '!=', null)->first();
+                
+                if ($nilaiAkhir) {
+                    $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
+                    $data["nilai_$key"] = number_format($nilaiValue, 1);
+                    $data["capaian_$key"] = $nilaiAkhir->deskripsi ?? 
+                        $this->generateSpecificCapaian($nilaiValue, $key);
+                        
+                    // Set juga placeholder dinamis
+                    $data["nama_matapelajaran$mapelCount"] = $matchedName;
+                    $data["nilai_matapelajaran$mapelCount"] = $data["nilai_$key"];
+                    $data["capaian_matapelajaran$mapelCount"] = $data["capaian_$key"];
+                    
+                    $mapelCount++;
+                } else {
+                    // Jika tidak ada nilai_akhir_rapor, gunakan rata-rata nilai lain
+                    $avgNilai = $matchedMapel->avg('nilai_tp');
+                    if ($avgNilai) {
+                        $data["nilai_$key"] = number_format($avgNilai, 1);
+                        $data["capaian_$key"] = $this->generateSpecificCapaian($avgNilai, $key);
+                        
+                        // Set juga placeholder dinamis
+                        $data["nama_matapelajaran$mapelCount"] = $matchedName;
+                        $data["nilai_matapelajaran$mapelCount"] = $data["nilai_$key"];
+                        $data["capaian_matapelajaran$mapelCount"] = $data["capaian_$key"];
+                        
+                        $mapelCount++;
                     } else {
                         $data["nilai_$key"] = '-';
                         $data["capaian_$key"] = '-';
                     }
                 }
             } else {
-                // Jika tidak menemukan mapel yang sesuai
                 $data["nilai_$key"] = '-';
                 $data["capaian_$key"] = '-';
             }
         }
+        
+        // 3. Proses mata pelajaran reguler yang belum diproses untuk placeholder dinamis
+        foreach ($mapelReguler as $mapelName => $nilaiMapel) {
+            if (!in_array($mapelName, $processedMapels) && $mapelCount <= 10) { // Maksimal 10 mata pelajaran
+                $nilaiAkhir = $nilaiMapel->where('nilai_akhir_rapor', '!=', null)->first();
+                
+                $data["nama_matapelajaran$mapelCount"] = $mapelName;
+                
+                if ($nilaiAkhir) {
+                    $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
+                    $data["nilai_matapelajaran$mapelCount"] = number_format($nilaiValue, 1);
+                    $data["capaian_matapelajaran$mapelCount"] = $nilaiAkhir->deskripsi ?? 
+                        $this->generateCapaianDeskripsi($nilaiValue, $mapelName);
+                } else {
+                    $avgNilai = $nilaiMapel->avg('nilai_tp');
+                    $data["nilai_matapelajaran$mapelCount"] = $avgNilai ? number_format($avgNilai, 1) : '-';
+                    $data["capaian_matapelajaran$mapelCount"] = $avgNilai ? 
+                        $this->generateCapaianDeskripsi($avgNilai, $mapelName) : '-';
+                }
+                
+                $mapelCount++;
+            }
+        }
+        
+        // 4. Isi placeholder dinamis yang tersisa dengan dash
+        for ($i = $mapelCount; $i <= 10; $i++) {
+            $data["nama_matapelajaran$i"] = '-';
+            $data["nilai_matapelajaran$i"] = '-';
+            $data["capaian_matapelajaran$i"] = '-';
+        }
 
-        // Muatan Lokal
+        // 5. Muatan Lokal
         $mulokCount = 1;
         foreach ($mulok as $nama => $nilaiMulok) {
             if ($mulokCount <= 5) {
@@ -227,7 +376,7 @@ class RaporTemplateProcessor
             $data["capaian_mulok$i"] = '-';
         }
 
-        // Data Ekstrakurikuler
+        // 6. Data Ekstrakurikuler
         $ekstrakurikuler = $this->siswa->nilaiEkstrakurikuler()
             ->with('ekstrakurikuler')
             ->get();
@@ -243,7 +392,7 @@ class RaporTemplateProcessor
             }
         }
 
-        // Data Kehadiran
+        // 7. Data Kehadiran
         $absensi = $this->siswa->absensi()->where('semester', $semester)->first();
         if ($absensi) {
             $data['sakit'] = $absensi->sakit ?: '0';
@@ -255,7 +404,7 @@ class RaporTemplateProcessor
             $data['tanpa_keterangan'] = '0';
         }
         
-        // Data sekolah
+        // 8. Data sekolah dan lainnya
         if ($this->schoolProfile) {
             $data['nomor_telepon'] = $this->schoolProfile->telepon ?: '-';
             $data['kepala_sekolah'] = $this->schoolProfile->kepala_sekolah ?: '-';
@@ -272,7 +421,7 @@ class RaporTemplateProcessor
             $data['tempat_terbit'] = '-';
         }
         
-        // Catatan guru (isi default jika tidak ada)
+        // 9. Catatan guru
         $data['catatan_guru'] = '-';
 
         return $data;
