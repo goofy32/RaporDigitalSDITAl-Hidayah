@@ -23,31 +23,55 @@
     </div>
 
     <!-- Nilai Akademik -->
-    <div>
-        <h3 class="text-lg font-semibold mb-3">Nilai Akademik</h3>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3">Mata Pelajaran</th>
-                        <th class="px-6 py-3">Nilai</th>
-                        <th class="px-6 py-3">Capaian Kompetensi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($siswa->nilais->groupBy('mataPelajaran.nama_pelajaran') as $mapel => $nilaiGroup)
-                    <tr class="bg-white border-b">
-                        <td class="px-6 py-4 font-medium text-gray-900">{{ $mapel }}</td>
-                        <td class="px-6 py-4">
-                            {{ number_format($nilaiGroup->avg('nilai_akhir_rapor'), 1) }}
-                        </td>
-                        <td class="px-6 py-4">{{ $nilaiGroup->first()->deskripsi ?? '-' }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+<!-- Nilai Akademik -->
+<div>
+    <h3 class="text-lg font-semibold mb-3">Nilai Akademik</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3">Mata Pelajaran</th>
+                    <th class="px-6 py-3">Nilai</th>
+                    <th class="px-6 py-3">Capaian Kompetensi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($siswa->nilais->groupBy('mataPelajaran.nama_pelajaran') as $mapel => $nilaiGroup)
+                @php
+                    // Get nilai akhir rapor if available
+                    $nilaiAkhir = $nilaiGroup->where('nilai_akhir_rapor', '!=', null)->first();
+                    $nilai = $nilaiAkhir ? $nilaiAkhir->nilai_akhir_rapor : $nilaiGroup->avg('nilai_tp');
+                    $nilai = number_format($nilai, 1);
+                    
+                    // Get capaian kompetensi
+                    $capaian = '';
+                    if ($nilaiAkhir && $nilaiAkhir->deskripsi) {
+                        $capaian = $nilaiAkhir->deskripsi;
+                    } else {
+                        // Generate capaian berdasarkan nilai
+                        if ($nilai >= 90) {
+                            $capaian = "Siswa menunjukkan penguasaan yang sangat baik dalam mata pelajaran {$mapel}. Mampu memahami konsep, menerapkan, dan menganalisis dengan sangat baik.";
+                        } elseif ($nilai >= 80) {
+                            $capaian = "Siswa menunjukkan penguasaan yang baik dalam mata pelajaran {$mapel}. Mampu memahami konsep dan menerapkannya dengan baik.";
+                        } elseif ($nilai >= 70) {
+                            $capaian = "Siswa menunjukkan penguasaan yang cukup dalam mata pelajaran {$mapel}. Sudah mampu memahami konsep dasar dengan baik.";
+                        } elseif ($nilai >= 60) {
+                            $capaian = "Siswa menunjukkan penguasaan yang sedang dalam mata pelajaran {$mapel}. Perlu meningkatkan pemahaman konsep dasar.";
+                        } else {
+                            $capaian = "Siswa perlu bimbingan lebih lanjut dalam mata pelajaran {$mapel}. Disarankan untuk mengulang pembelajaran materi dasar.";
+                        }
+                    }
+                @endphp
+                <tr class="bg-white border-b">
+                    <td class="px-6 py-4 font-medium text-gray-900">{{ $mapel }}</td>
+                    <td class="px-6 py-4">{{ $nilai }}</td>
+                    <td class="px-6 py-4">{{ $capaian }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
+</div>
 
     <!-- Ekstrakurikuler -->
     <div>

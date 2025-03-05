@@ -406,22 +406,28 @@ class ReportController extends Controller
     
     public function previewRapor($siswa_id) {
         try {
+            // Cari siswa dengan relasi yang dibutuhkan
             $siswa = Siswa::with([
                 'kelas',
                 'nilais.mataPelajaran',
                 'nilaiEkstrakurikuler.ekstrakurikuler',
                 'absensi'
             ])->findOrFail($siswa_id);
-        
-            // Generate preview HTML dulu
-            $html = view('rapor.preview', compact('siswa'))->render();
             
+            // Render view ke HTML
+            $html = view('wali_kelas.rapor.preview', compact('siswa'))->render();
+            
+            // Kembalikan sebagai JSON response
             return response()->json([
                 'success' => true,
                 'html' => $html
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in preview rapor: ' . $e->getMessage());
+            // Log error untuk debugging
+            \Log::error('Error in previewRapor: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            // Kirim respon error
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat memuat preview rapor: ' . $e->getMessage()
@@ -594,40 +600,103 @@ class ReportController extends Controller
                 'is_active' => true
             ])->firstOrFail();
             
-            // Generate rapor untuk setiap siswa
+            // Array untuk menyimpan siswa yang berhasil digenerate
+            $successSiswa = [];
+            $errorSiswa = [];
             $files = [];
+            
             foreach ($siswaIds as $siswaId) {
                 $siswa = Siswa::find($siswaId);
-                if ($siswa && $siswa->kelas_id == $kelas->id) {
+                if (!$siswa || $siswa->kelas_id != $kelas->id) {
+                    $errorSiswa[] = "Siswa ID $siswaId tidak ditemukan atau bukan dari kelas Anda";
+                    continue;
+                }
+                
+                // Validasi data siswa
+                $semester = $type === 'UTS' ? 1 : 2;
+                $hasNilai = $siswa->nilais()
+                    ->whereHas('mataPelajaran', function($q) use ($semester) {
+                        $q->where('semester', $semester);
+                    })
+                    ->exists();
+                    
+                $hasAbsensi = $siswa->absensi()
+                    ->where('semester', $semester)
+                    ->exists();
+                    
+                if (!$hasNilai || !$hasAbsensi) {
+                    $errorSiswa[] = "Siswa {$siswa->nama} tidak memiliki data nilai atau kehadiran lengkap";
+                    continue;
+                }
+                
+                // Generate rapor
+                try {
                     $processor = new RaporTemplateProcessor($template, $siswa, $type);
                     $result = $processor->generate();
                     $files[] = [
                         'path' => storage_path('app/public/' . $result['path']),
                         'name' => $result['filename']
                     ];
+                    $successSiswa[] = $siswa->nama;
+                } catch (\Exception $e) {
+                    \Log::error("Error generating report for siswa ID $siswaId: " . $e->getMessage());
+                    $errorSiswa[] = "Gagal generate rapor untuk {$siswa->nama}: " . $e->getMessage();
                 }
             }
             
             if (empty($files)) {
-                throw new \Exception('Tidak ada rapor yang dapat digenerate');
+                throw new \Exception('Tidak ada rapor yang dapat digenerate. ' . implode("\n", $errorSiswa));
             }
             
-            // Buat zip
+            // Buat zip file
             $zipName = "rapor_batch_{$kelas->nama_kelas}_{$type}_" . time() . ".zip";
             $zipPath = storage_path("app/public/generated/{$zipName}");
             
-            $zip = new ZipArchive();
-            if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+            // Pastikan direktori ada
+            if (!file_exists(dirname($zipPath))) {
+                mkdir(dirname($zipPath), 0755, true);
+            }
+            
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
                 foreach ($files as $file) {
-                    $zip->addFile($file['path'], $file['name']);
+                    if (file_exists($file['path'])) {
+                        $zip->addFile($file['path'], $file['name']);
+                    } else {
+                        \Log::warning("File not found: {$file['path']}");
+                    }
                 }
                 $zip->close();
                 
                 // Hapus file individual setelah di-zip
                 foreach ($files as $file) {
                     if (file_exists($file['path'])) {
-                        unlink($file['path']);
+                        @unlink($file['path']);
                     }
+                }
+                
+                // Jika ada error, tambahkan file log
+                if (!empty($errorSiswa)) {
+                    $logContent = "Laporan Error Batch Rapor\n";
+                    $logContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
+                    $logContent .= "Kelas: {$kelas->nama_kelas}\n";
+                    $logContent .= "Tipe: $type\n\n";
+                    $logContent .= "Siswa berhasil (" . count($successSiswa) . "):\n";
+                    $logContent .= implode("\n", $successSiswa) . "\n\n";
+                    $logContent .= "Siswa gagal (" . count($errorSiswa) . "):\n";
+                    $logContent .= implode("\n", $errorSiswa);
+                    
+                    $logFileName = "error_log_batch_rapor_{$kelas->nama_kelas}_{$type}_" . time() . ".txt";
+                    $logFilePath = storage_path("app/public/generated/{$logFileName}");
+                    file_put_contents($logFilePath, $logContent);
+                    
+                    // Tambahkan file log ke zip
+                    $zip->open($zipPath);
+                    $zip->addFile($logFilePath, $logFileName);
+                    $zip->close();
+                    
+                    // Hapus file log setelah disimpan dalam zip
+                    @unlink($logFilePath);
                 }
                 
                 return response()->download($zipPath)->deleteFileAfterSend(true);
@@ -636,6 +705,7 @@ class ReportController extends Controller
             throw new \Exception('Gagal membuat file zip');
             
         } catch (\Exception $e) {
+            \Log::error("Batch generate report error: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()

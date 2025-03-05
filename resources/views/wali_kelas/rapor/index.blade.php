@@ -198,17 +198,6 @@
             </button>
             
             <div x-html="previewContent" class="mt-4"></div>
-            
-            <div class="mt-4 flex justify-end space-x-3">
-                <button @click="printPreview()" 
-                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                    Print
-                </button>
-                <button @click="downloadPreview()" 
-                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-                    Download
-                </button>
-            </div>
         </div>
     </div>
 </div>
@@ -307,23 +296,31 @@ document.addEventListener('alpine:init', function() {
             
             try {
                 this.loading = true;
+                console.log('Fetching preview for siswa ID:', siswaId);
+                
                 const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}`);
+                console.log('Preview response status:', response.status);
+                
+                // Jika tidak sukses, tampilkan detail error
+                if (!response.ok) {
+                    // Coba ambil teks error
+                    const errorText = await response.text();
+                    console.error('Error response text:', errorText);
+                    throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}...`);
+                }
+                
+                // Parse response JSON
                 const data = await response.json();
+                console.log('Preview data received:', data);
                 
                 if (data.success) {
-                    if (data.pdf) {
-                        // Untuk PDF base64
-                        this.previewContent = `<embed width="100%" height="600px" 
-                                            src="data:application/pdf;base64,${data.pdf}" 
-                                            type="application/pdf">`;
-                    } else if (data.html) {
-                        // Untuk HTML
-                        this.previewContent = data.html;
-                    }
+                    this.previewContent = data.html;
                     this.showPreview = true;
+                } else {
+                    throw new Error(data.message || 'Preview tidak berhasil');
                 }
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Error in handlePreview:', error);
                 alert('Terjadi kesalahan saat memuat preview rapor: ' + error.message);
             } finally {
                 this.loading = false;
@@ -391,6 +388,37 @@ document.addEventListener('alpine:init', function() {
                 return;
             }
 
+            // Validasi sebelum mengirim request
+            const invalidSiswa = [];
+            document.querySelectorAll('tbody tr').forEach(row => {
+                // Ambil checkbox yang dicek
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    // Ambil status nilai dan kehadiran
+                    const hasNilai = row.querySelector('.bg-green-100.text-green-800') !== null;
+                    const hasAbsensi = row.querySelector('td:nth-child(6) .bg-green-100') !== null;
+                    
+                    if (!hasNilai || !hasAbsensi) {
+                        // Ambil nama siswa
+                        const namaSiswa = row.querySelector('td:nth-child(4)').textContent.trim();
+                        invalidSiswa.push(namaSiswa);
+                    }
+                }
+            });
+
+            // Jika ada siswa yang datanya belum lengkap
+            if (invalidSiswa.length > 0) {
+                let message = "Beberapa siswa belum memiliki data lengkap:\n";
+                invalidSiswa.forEach(nama => {
+                    message += `- ${nama}\n`;
+                });
+                message += "\nLanjutkan cetak hanya untuk siswa dengan data lengkap?";
+                
+                if (!confirm(message)) {
+                    return;
+                }
+            }
+
             try {
                 this.loading = true;
                 const response = await fetch('/wali-kelas/rapor/batch-generate', {
@@ -406,14 +434,22 @@ document.addEventListener('alpine:init', function() {
                 });
 
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Gagal generate batch rapor');
+                    // Coba ambil pesan error dalam format JSON
+                    try {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Gagal generate batch rapor');
+                    } catch (jsonError) {
+                        // Jika bukan JSON, ambil teks error
+                        const errorText = await response.text();
+                        throw new Error(`Gagal generate batch rapor (${response.status}): ${errorText.substring(0, 100)}...`);
+                    }
                 }
 
                 const blob = await response.blob();
                 await this.downloadFile(blob, `rapor_batch_${this.activeTab.toLowerCase()}.zip`);
             } catch (error) {
-                alert(error.message);
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mencetak rapor: ' + error.message);
             } finally {
                 this.loading = false;
             }

@@ -308,10 +308,12 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         
         // Gunakan model binding dan middleware
         Route::middleware('check.rapor.access')->group(function () {
-            Route::get('/preview/{siswa}', [ReportController::class, 'previewRapor'])->name('preview');
             Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
             Route::get('/download/{siswa}/{type}', [ReportController::class, 'downloadReport'])->name('download');
         });
+
+        Route::get('/preview/{siswa}', [ReportController::class, 'previewRapor'])->name('preview');
+
 
         Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])
         ->name('check-templates');
