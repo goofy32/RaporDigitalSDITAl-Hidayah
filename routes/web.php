@@ -312,6 +312,9 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
             Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
             Route::get('/download/{siswa}/{type}', [ReportController::class, 'downloadReport'])->name('download');
         });
+
+        Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])
+        ->name('check-templates');
         
         Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
         Route::get('download-pdf/{siswa}', [ReportController::class, 'downloadPdf']) ->name('rapor.download-pdf');

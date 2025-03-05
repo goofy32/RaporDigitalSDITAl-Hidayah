@@ -3,7 +3,11 @@
 @section('title', 'Manajemen Rapor')
 
 @section('content')
-<div x-data="raporManager()" class="p-4 bg-white mt-14">
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+
+<div x-data="raporManager" class="p-4 bg-white mt-14">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-800">Manajemen Rapor Kelas {{ auth()->user()->kelasWali->nama_kelas }}</h2>
@@ -14,25 +18,26 @@
         <div class="hidden sm:block">
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button @click="activeTab = 'UTS'"
+                    <button @click="setActiveTab('UTS')"
                             :class="{'border-blue-500 text-blue-600': activeTab === 'UTS',
                                     'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UTS'}"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
                             type="button">
                         Rapor UTS
                     </button>
-                    <button @click="activeTab = 'UAS'"
+                    <button @click="setActiveTab('UAS')"
                             :class="{'border-blue-500 text-blue-600': activeTab === 'UAS',
-                                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UAS'}"
+                                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UAS',
+                                    'cursor-not-allowed opacity-70': !templateUASActive}"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
                             type="button">
                         Rapor UAS
+                        <span x-show="!templateUASActive" x-cloak class="ml-1 text-xs text-red-500">(Nonaktif)</span>
                     </button>
                 </nav>
             </div>
         </div>
     </div>
-
     <!-- Bulk Actions -->
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <div class="flex gap-2">
@@ -210,20 +215,61 @@
 
 @push('scripts')
 <script>
-function raporManager() {
-    return {
+document.addEventListener('alpine:init', function() {
+    Alpine.data('raporManager', () => ({
         activeTab: 'UTS',
         loading: false,
         selectedSiswa: [],
         searchQuery: '',
         showPreview: false,
         previewContent: '',
+        templateUASActive: false,
         
         init() {
-            const savedTab = localStorage.getItem('activeRaporTab');
-            if (savedTab) {
-                this.activeTab = savedTab;
+            console.log('Initializing raporManager');
+            // Cek template yang aktif terlebih dahulu
+            this.checkActiveTemplates().then(() => {
+                // Baca tab yang tersimpan, tetapi validasi juga apakah tab tersebut aktif
+                const savedTab = localStorage.getItem('activeRaporTab');
+                if (savedTab) {
+                    // Hanya gunakan UAS jika template UAS aktif
+                    if (savedTab === 'UAS' && this.templateUASActive) {
+                        this.activeTab = 'UAS';
+                    } else if (savedTab === 'UTS') {
+                        this.activeTab = 'UTS';
+                    }
+                }
+            });
+        },
+        
+        async checkActiveTemplates() {
+            try {
+                const response = await fetch('/wali-kelas/rapor/check-templates');
+                const data = await response.json();
+                
+                this.templateUASActive = data.UAS_active;
+                return data;
+            } catch (error) {
+                console.error('Error checking templates:', error);
+                return { UTS_active: true, UAS_active: false };
             }
+        },
+        
+        setActiveTab(tab) {
+            // Validasi akses UAS
+            if (tab === 'UAS' && !this.templateUASActive) {
+                // Tampilkan pesan bahwa admin belum mengaktifkan rapor UAS
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Rapor UAS Belum Aktif',
+                    text: 'Admin belum mengaktifkan template rapor UAS. Silakan hubungi admin untuk mengaktifkan template UAS terlebih dahulu.',
+                    confirmButtonColor: '#3085d6',
+                });
+                return;
+            }
+            
+            this.activeTab = tab;
+            localStorage.setItem('activeRaporTab', tab);
         },
 
         handleCheckAll(event) {
@@ -265,12 +311,20 @@ function raporManager() {
                 const data = await response.json();
                 
                 if (data.success) {
-                    this.previewContent = data.html;
+                    if (data.pdf) {
+                        // Untuk PDF base64
+                        this.previewContent = `<embed width="100%" height="600px" 
+                                            src="data:application/pdf;base64,${data.pdf}" 
+                                            type="application/pdf">`;
+                    } else if (data.html) {
+                        // Untuk HTML
+                        this.previewContent = data.html;
+                    }
                     this.showPreview = true;
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat memuat preview rapor');
+                alert('Terjadi kesalahan saat memuat preview rapor: ' + error.message);
             } finally {
                 this.loading = false;
             }
@@ -398,8 +452,8 @@ function raporManager() {
                 this.downloadFile(blob, 'preview_rapor.html');
             }
         }
-    }
-}
+    }));
+});
 </script>
 @endpush
 @endsection

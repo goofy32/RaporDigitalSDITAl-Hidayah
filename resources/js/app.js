@@ -28,12 +28,19 @@ document.addEventListener('turbo:before-fetch-request', (event) => {
 });
 
 document.addEventListener('turbo:load', () => {
-    Alpine.start();
     if (typeof initFlowbite === 'function') {
         initFlowbite();
     }
+    
+    // Jika Alpine sudah diinisialisasi, cukup perbarui DOM
+    if (window.Alpine && window.alpineInitialized) {
+        window.Alpine.initTree(document.body);
+    }
+    
     setTimeout(() => {
-        Alpine.store('pageLoading').stopLoading();
+        if (Alpine.store('pageLoading')) {
+            Alpine.store('pageLoading').stopLoading();
+        }
     }, 100);
 });
 
@@ -979,10 +986,7 @@ document.addEventListener('turbo:before-cache', () => {
     });
 });
 
-// Initialize Alpine
 window.Alpine = Alpine;
-Alpine.start();
-
 if (!window.alpineInitialized) {
     Alpine.start();
     window.alpineInitialized = true;

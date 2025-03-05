@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB; // Add this import for DB facade
+use Barryvdh\DomPDF\Facade\PDF;
 
 class ReportController extends Controller
 {
@@ -106,6 +107,27 @@ class ReportController extends Controller
                 'message' => 'Gagal upload template: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    // Di ReportController.php, tambahkan method ini:
+    public function checkActiveTemplates()
+    {
+        // Cek template UTS aktif
+        $utsActive = ReportTemplate::where([
+            'type' => 'UTS',
+            'is_active' => true
+        ])->exists();
+        
+        // Cek template UAS aktif
+        $uasActive = ReportTemplate::where([
+            'type' => 'UAS',
+            'is_active' => true
+        ])->exists();
+        
+        return response()->json([
+            'UTS_active' => $utsActive,
+            'UAS_active' => $uasActive
+        ]);
     }
 
     /**
@@ -383,20 +405,28 @@ class ReportController extends Controller
     }
     
     public function previewRapor($siswa_id) {
-        $siswa = Siswa::with([
-            'kelas',
-            'nilais.mataPelajaran',
-            'nilaiEkstrakurikuler.ekstrakurikuler',
-            'absensi'
-        ])->findOrFail($siswa_id);
-    
-        // Generate PDF menggunakan dompdf
-        $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
+        try {
+            $siswa = Siswa::with([
+                'kelas',
+                'nilais.mataPelajaran',
+                'nilaiEkstrakurikuler.ekstrakurikuler',
+                'absensi'
+            ])->findOrFail($siswa_id);
         
-        return response()->json([
-            'success' => true,
-            'pdf' => base64_encode($pdf->output())
-        ]);
+            // Generate preview HTML dulu
+            $html = view('rapor.preview', compact('siswa'))->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in preview rapor: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat preview rapor: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     public function preview(ReportTemplate $template)
