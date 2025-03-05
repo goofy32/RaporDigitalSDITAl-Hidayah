@@ -40,6 +40,24 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::fallback(function () {
+    if (Auth::guard('web')->check()) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    if (Auth::guard('guru')->check()) {
+        $selectedRole = session('selected_role');
+        
+        if ($selectedRole === 'wali_kelas') {
+            return redirect()->route('wali_kelas.dashboard');
+        } else if ($selectedRole === 'guru') {
+            return redirect()->route('pengajar.dashboard');
+        }
+    }
+    
+    return redirect()->route('login');
+});
+
 // Login Routes
 Route::middleware(['web', 'guest'])->group(function () {
     Route::get('login', function () {
