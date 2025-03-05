@@ -111,7 +111,7 @@ class ClassController extends Controller
                 $guru->save();
                 
                 // Tambahkan logging untuk debugging
-                \Log::info('Mengubah jabatan guru', [
+                Log::info('Mengubah jabatan guru', [
                     'guru_id' => $guru->id,
                     'nama' => $guru->nama,
                     'jabatan_baru' => 'guru_wali'
@@ -123,7 +123,7 @@ class ClassController extends Controller
                 ->with('success', 'Data kelas berhasil ditambahkan');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error saat membuat kelas: ' . $e->getMessage(), [
+            Log::error('Error saat membuat kelas: ' . $e->getMessage(), [
                 'stacktrace' => $e->getTraceAsString()
             ]);
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
@@ -256,7 +256,7 @@ class ClassController extends Controller
                     $currentWaliKelas->jabatan = 'guru';
                     $currentWaliKelas->save();
                     
-                    \Log::info('Mengubah jabatan guru dari guru_wali menjadi guru', [
+                    Log::info('Mengubah jabatan guru dari guru_wali menjadi guru', [
                         'guru_id' => $currentWaliKelas->id,
                         'nama' => $currentWaliKelas->nama
                     ]);
@@ -272,7 +272,7 @@ class ClassController extends Controller
                 $newWaliKelas->jabatan = 'guru_wali';
                 $newWaliKelas->save();
                 
-                \Log::info('Mengganti wali kelas', [
+                Log::info('Mengganti wali kelas', [
                     'kelas_id' => $kelas->id,
                     'old_wali_kelas' => $currentWaliKelas->id,
                     'new_wali_kelas' => $newWaliKelas->id
@@ -310,7 +310,7 @@ class ClassController extends Controller
                 $guru->jabatan = 'guru_wali';
                 $guru->save();
                 
-                \Log::info('Menambahkan wali kelas pada kelas yang sudah ada', [
+                Log::info('Menambahkan wali kelas pada kelas yang sudah ada', [
                     'kelas_id' => $kelas->id,
                     'guru_id' => $guru->id,
                     'nama_guru' => $guru->nama
@@ -322,7 +322,7 @@ class ClassController extends Controller
                 ->with('success', 'Data kelas berhasil diperbarui');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error saat mengupdate kelas: ' . $e->getMessage(), [
+            Log::error('Error saat mengupdate kelas: ' . $e->getMessage(), [
                 'kelas_id' => $id,
                 'stacktrace' => $e->getTraceAsString()
             ]);
@@ -435,7 +435,7 @@ class ClassController extends Controller
             $kelas = Kelas::with(['siswas', 'mataPelajarans'])->findOrFail($kelasId);
             $progress = $this->calculateClassProgressForSingleClass($kelas);
             
-            \Log::info('Admin Kelas progress calculated:', [
+            Log::info('Admin Kelas progress calculated:', [
                 'kelas_id' => $kelasId,
                 'progress' => $progress
             ]);
@@ -446,7 +446,7 @@ class ClassController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            \Log::error('Error calculating class progress:', [
+            Log::error('Error calculating class progress:', [
                 'error' => $e->getMessage(),
                 'kelas_id' => $kelasId
             ]);

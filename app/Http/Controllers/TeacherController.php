@@ -194,7 +194,7 @@ class TeacherController extends Controller
                 }
             }
     
-            \Log::info('Guru baru ditambahkan', [
+            Log::info('Guru baru ditambahkan', [
                 'id' => $guru->id,
                 'nama' => $guru->nama,
                 'jabatan' => $guru->jabatan,
