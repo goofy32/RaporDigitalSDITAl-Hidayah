@@ -75,6 +75,7 @@ Route::middleware(['web', 'guest'])->group(function () {
         
         return view('login');
     })->name('login');
+    Route::get('/debug-views', [LoginController::class, 'debug']);
 
     Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])

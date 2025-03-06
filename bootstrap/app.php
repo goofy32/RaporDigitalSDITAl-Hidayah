@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.wali.kelas' => \App\Http\Middleware\CheckWaliKelas::class,
             'check.report.template' => \App\Http\Middleware\CheckReportTemplate::class,
             'check.rapor.access' => \App\Http\Middleware\CheckRaporAccess::class,
+            
         ]);
 
         // Konfigurasi CSRF

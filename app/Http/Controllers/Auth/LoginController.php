@@ -97,19 +97,46 @@ class LoginController extends Controller
         }
         
         try {
-            // Coba render view dengan path eksplisit
-            $viewPath = resource_path('views/login.blade.php');
-            if (file_exists($viewPath)) {
-                return view('login');
-            } else {
-                \Log::error('Login view file does not exist at: ' . $viewPath);
-                // Fallback ke welcome page jika login tidak ditemukan
-                return view('welcome');
-            }
+            return view('login');
         } catch (\Exception $e) {
             \Log::error('Failed to load login view: ' . $e->getMessage());
-            // Fallback ke welcome page
-            return view('welcome');
+            
+            // Return a simple HTML response instead of looking for a view
+            return response()->make('
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Login</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 50px; text-align: center; }
+                        .login-box { max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; }
+                        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+                    </style>
+                </head>
+                <body>
+                    <div class="login-box">
+                        <h1>Login Page</h1>
+                        <p>This is a fallback login page. Please try again later.</p>
+                        <button onclick="window.location.reload()">Refresh</button>
+                    </div>
+                </body>
+                </html>
+            ');
         }
+    }
+    public function debug()
+    {
+        $viewPaths = config('view.paths');
+        $compiledPath = config('view.compiled');
+        $exists = file_exists(resource_path('views/login.blade.php'));
+        
+        return response()->json([
+            'view_paths' => $viewPaths,
+            'compiled_path' => $compiledPath,
+            'login_file_exists' => $exists,
+            'resource_path' => resource_path('views'),
+            'base_path' => base_path(),
+            'storage_path' => storage_path(),
+        ]);
     }
 }
