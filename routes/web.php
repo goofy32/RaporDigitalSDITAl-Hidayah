@@ -57,7 +57,6 @@ Route::fallback(function () {
     
     return redirect()->route('login');
 });
-
 // Login Routes
 Route::middleware(['web', 'guest'])->group(function () {
     Route::get('login', function () {
@@ -73,12 +72,10 @@ Route::middleware(['web', 'guest'])->group(function () {
                 : redirect()->route('pengajar.dashboard');
         }
         
-        return response()->make('<!DOCTYPE html><html><head><title>Login</title></head><body><h1>Login Form</h1><p>Temporary login page</p></body></html>');
+        return view('login');
     })->name('login');
-    Route::get('/debug-views', [LoginController::class, 'debug']);
 
-    Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])
+    Route::post('/login', [LoginController::class, 'login'])
         ->middleware('throttle:5,1')
         ->name('login.post');
 });
