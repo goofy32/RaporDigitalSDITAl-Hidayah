@@ -2,13 +2,15 @@
 
 use Illuminate\Support\Str;
 
-return [
-    $url = parse_url(getenv("JAWSDB_URL") ?: "");
+// Parse JAWSDB_URL terlebih dahulu
+$url = parse_url(getenv("JAWSDB_URL") ?: "");
 
-    $host = $url["host"] ?? env('DB_HOST', '127.0.0.1');
-    $username = $url["user"] ?? env('DB_USERNAME', 'root');
-    $password = $url["pass"] ?? env('DB_PASSWORD', '');
-    $database = substr($url["path"] ?? "", 1) ?: env('DB_DATABASE', 'laravel');
+$host = $url["host"] ?? env('DB_HOST', '127.0.0.1');
+$username = $url["user"] ?? env('DB_USERNAME', 'root');
+$password = $url["pass"] ?? env('DB_PASSWORD', '');
+$database = substr($url["path"] ?? "", 1) ?: env('DB_DATABASE', 'laravel');
+
+return [
     /*
     |--------------------------------------------------------------------------
     | Default Database Connection Name
@@ -21,7 +23,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'mysql'),
 
     /*
     |--------------------------------------------------------------------------
