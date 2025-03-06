@@ -6,7 +6,7 @@ use Illuminate\View\ViewServiceProvider as ServiceProvider;
 
 class ViewServiceProvider extends ServiceProvider
 {
-    public function register()
+    public function register(): void
     {
         parent::register();
         
@@ -16,7 +16,7 @@ class ViewServiceProvider extends ServiceProvider
             // Add an absolute path to ensure views are found
             $paths[] = base_path('resources/views');
             
-            return new \Illuminate\View\FileViewFinder($app['files'], $paths);
+            return new \Illuminate\View\FileViewFinder($app->make('files'), $paths);
         });
     }
 }

@@ -73,7 +73,7 @@ Route::middleware(['web', 'guest'])->group(function () {
                 : redirect()->route('pengajar.dashboard');
         }
         
-        return view('login');
+        return response()->make('<!DOCTYPE html><html><head><title>Login</title></head><body><h1>Login Form</h1><p>Temporary login page</p></body></html>');
     })->name('login');
     Route::get('/debug-views', [LoginController::class, 'debug']);
 
