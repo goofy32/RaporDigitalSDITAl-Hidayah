@@ -4,7 +4,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "heroku-postbuild": "npm ci && npm run build"
+        "heroku-postbuild": "npm install --no-dev=false && npm run build"
     },
     "engines": {
         "node": "v22.12.0",
@@ -13,7 +13,6 @@
     "devDependencies": {
         "autoprefixer": "^10.4.20",
         "axios": "^1.6.4",
-        "laravel-vite-plugin": "^1.2.0",
         "postcss": "^8.5.3",
         "tailwindcss": "^3.4.17",
         "vite": "^5.0"
@@ -33,6 +32,7 @@
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "turbolinks": "^5.2.0",
-        "vue": "^3.5.13"
+        "vue": "^3.5.13",
+        "laravel-vite-plugin": "^1.2.0"
     }
 }
