@@ -76,7 +76,8 @@ Route::middleware(['web', 'guest'])->group(function () {
         return view('login');
     })->name('login');
 
-    Route::post('/login', [LoginController::class, 'login'])
+    Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])
         ->middleware('throttle:5,1')
         ->name('login.post');
 });

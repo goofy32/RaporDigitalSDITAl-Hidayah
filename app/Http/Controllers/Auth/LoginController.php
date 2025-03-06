@@ -81,4 +81,35 @@ class LoginController extends Controller
     
         return redirect('/login')->with('success', $message);
     }
+
+    public function showLoginForm()
+    {
+        // Cek jika user sudah login
+        if (Auth::guard('web')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+        
+        if (Auth::guard('guru')->check()) {
+            $selectedRole = session('selected_role');
+            return $selectedRole === 'wali_kelas' 
+                ? redirect()->route('wali_kelas.dashboard')
+                : redirect()->route('pengajar.dashboard');
+        }
+        
+        try {
+            // Coba render view dengan path eksplisit
+            $viewPath = resource_path('views/login.blade.php');
+            if (file_exists($viewPath)) {
+                return view('login');
+            } else {
+                \Log::error('Login view file does not exist at: ' . $viewPath);
+                // Fallback ke welcome page jika login tidak ditemukan
+                return view('welcome');
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to load login view: ' . $e->getMessage());
+            // Fallback ke welcome page
+            return view('welcome');
+        }
+    }
 }
