@@ -2,13 +2,13 @@
 
 use Illuminate\Support\Str;
 
-// Parse JAWSDB_URL terlebih dahulu
-$url = parse_url(getenv("JAWSDB_URL") ?: "");
+$url = parse_url(env('DATABASE_URL'));
 
-$host = $url["host"] ?? env('DB_HOST', '127.0.0.1');
-$username = $url["user"] ?? env('DB_USERNAME', 'root');
-$password = $url["pass"] ?? env('DB_PASSWORD', '');
-$database = substr($url["path"] ?? "", 1) ?: env('DB_DATABASE', 'laravel');
+$host = $url['host'] ?? env('DB_HOST', '127.0.0.1');
+$port = $url['port'] ?? env('DB_PORT', '3306');
+$database = substr($url['path'] ?? '', 1) ?: env('DB_DATABASE', 'forge');
+$username = $url['user'] ?? env('DB_USERNAME', 'forge');
+$password = $url['pass'] ?? env('DB_PASSWORD', '');
 
 return [
     /*
