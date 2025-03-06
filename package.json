@@ -4,7 +4,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "heroku-postbuild": "npm install && npm run build"
+        "heroku-postbuild": "npm ci && npm run build"
     },
     "engines": {
         "node": "v22.12.0",
