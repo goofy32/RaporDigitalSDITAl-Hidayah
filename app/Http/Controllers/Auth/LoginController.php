@@ -101,23 +101,46 @@ class LoginController extends Controller
         } catch (\Exception $e) {
             \Log::error('Failed to load login view: ' . $e->getMessage());
             
-            // Return a simple HTML response instead of looking for a view
+            // Return full HTML form that mimics your actual login form
             return response()->make('
                 <!DOCTYPE html>
-                <html>
+                <html lang="en">
                 <head>
-                    <title>Login</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Login - Rapor Digital SDIT Al-Hidayah Logam</title>
                     <style>
-                        body { font-family: Arial, sans-serif; padding: 50px; text-align: center; }
-                        .login-box { max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; }
-                        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+                        body { background-color: #f8fafc; font-family: Arial, sans-serif; }
+                        .container { max-width: 400px; margin: 50px auto; padding: 20px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        h1 { text-align: center; color: #16a34a; }
+                        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+                        button { width: 100%; padding: 10px; background: #16a34a; color: white; border: none; cursor: pointer; }
                     </style>
                 </head>
                 <body>
-                    <div class="login-box">
-                        <h1>Login Page</h1>
-                        <p>This is a fallback login page. Please try again later.</p>
-                        <button onclick="window.location.reload()">Refresh</button>
+                    <div class="container">
+                        <h1>RAPOR DIGITAL<br>SDIT AL-HIDAYAH LOGAM</h1>
+                        <form action="/login" method="POST">
+                            <input type="hidden" name="_token" value="'.csrf_token().'">
+                            <div>
+                                <label for="username">Username</label>
+                                <input type="text" name="username" id="username" required>
+                            </div>
+                            <div>
+                                <label for="password">Password</label>
+                                <input type="password" name="password" id="password" required>
+                            </div>
+                            <div>
+                                <label for="role">Role</label>
+                                <select name="role" id="role" required>
+                                    <option value="" disabled selected>Pilih Role</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="guru">Guru</option>
+                                    <option value="wali_kelas">Wali Kelas</option>
+                                </select>
+                            </div>
+                            <button type="submit">Login</button>
+                        </form>
                     </div>
                 </body>
                 </html>
