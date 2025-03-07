@@ -506,9 +506,9 @@ class SubjectController extends Controller
         try {
             DB::beginTransaction();
     
-            // Atur status muatan lokal berdasarkan jabatan guru
-            // Jika guru biasa (jabatan = 'guru'), maka muatan lokal = true
-            // Jika guru wali kelas, maka muatan lokal = false
+            // SECURITY FIX: Force is_muatan_lokal value based on teacher role
+            // For regular teachers (jabatan = 'guru'), always set muatan_lokal = true
+            // For homeroom teachers (jabatan = 'guru_wali'), set muatan_lokal = false
             $isMuatanLokal = ($guru->jabatan == 'guru');
     
             // Cek duplikasi mata pelajaran
@@ -528,7 +528,7 @@ class SubjectController extends Controller
                 'kelas_id' => $validated['kelas'],
                 'guru_id' => $guru->id,
                 'semester' => $validated['semester'],
-                'is_muatan_lokal' => $isMuatanLokal,
+                'is_muatan_lokal' => $isMuatanLokal, // Always use the server-determined value
             ]);
             
             foreach ($validated['lingkup_materi'] as $judulLingkupMateri) {
@@ -604,7 +604,7 @@ class SubjectController extends Controller
         $guru = auth()->guard('guru')->user();
         $subject = MataPelajaran::where('guru_id', $guru->id)
             ->findOrFail($id);
-
+    
         $validated = $request->validate([
             'mata_pelajaran' => 'required|string|max:255',
             'kelas' => 'required|exists:kelas,id',
@@ -612,12 +612,12 @@ class SubjectController extends Controller
             'lingkup_materi' => 'required|array',
             'lingkup_materi.*' => 'required|string|max:255',
         ]);
-
-        // Atur status muatan lokal berdasarkan jabatan guru
-        // Jika guru biasa (jabatan = 'guru'), maka muatan lokal = true
-        // Jika guru wali kelas, maka muatan lokal = false
+    
+        // SECURITY FIX: Force is_muatan_lokal value based on teacher role
+        // For regular teachers (jabatan = 'guru'), always set muatan_lokal = true
+        // For homeroom teachers (jabatan = 'guru_wali'), set muatan_lokal = false
         $isMuatanLokal = ($guru->jabatan == 'guru');
-
+    
         // Check for duplicates excluding current record
         $exists = MataPelajaran::where('kelas_id', $validated['kelas'])
             ->where('nama_pelajaran', $validated['mata_pelajaran'])
@@ -630,7 +630,7 @@ class SubjectController extends Controller
                 'mata_pelajaran' => 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.'
             ])->withInput();
         }
-
+    
         // Verify teacher can teach in selected class
         $kelasId = $validated['kelas'];
         if (!$guru->canTeachClass($kelasId)) {
@@ -638,16 +638,16 @@ class SubjectController extends Controller
                 'kelas' => 'Anda tidak memiliki akses untuk mengajar di kelas ini.'
             ])->withInput();
         }
-
+    
         try {
             DB::beginTransaction();
-
-            // Update the subject
+    
+            // Update the subject with the server-determined is_muatan_lokal value
             $subject->update([
                 'nama_pelajaran' => $validated['mata_pelajaran'],
                 'kelas_id' => $validated['kelas'],
                 'semester' => $validated['semester'],
-                'is_muatan_lokal' => $isMuatanLokal,
+                'is_muatan_lokal' => $isMuatanLokal, // Always use the server-determined value
             ]);
             
             // Handle lingkup materi updates
@@ -675,7 +675,7 @@ class SubjectController extends Controller
                     'judul_lingkup_materi' => $newTitle,
                 ]);
             }
-
+    
             DB::commit();
             return redirect()->route('pengajar.subject.index')
                 ->with('success', 'Mata Pelajaran berhasil diperbarui!');
@@ -684,6 +684,7 @@ class SubjectController extends Controller
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
+
     public function teacherDestroy($id)
     {
         $guru = auth()->guard('guru')->user();

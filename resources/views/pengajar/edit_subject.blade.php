@@ -79,16 +79,17 @@
             @if(auth()->guard('guru')->user()->jabatan == 'guru')
             <div class="mt-4">
                 <div class="flex items-center">
-                    <input id="is_muatan_lokal" type="checkbox" 
+                    <input id="is_muatan_lokal_display" type="checkbox" 
                         class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                         checked disabled>
-                    <label for="is_muatan_lokal" class="ml-2 block text-sm text-gray-900">
+                    <label for="is_muatan_lokal_display" class="ml-2 block text-sm text-gray-900">
                         Tandai sebagai Muatan Lokal
                     </label>
                 </div>
                 <p class="mt-1 text-xs text-gray-500">Sebagai guru biasa, mata pelajaran Anda ditetapkan sebagai muatan lokal secara otomatis.</p>
-                <!-- Hidden input untuk memastikan nilai is_muatan_lokal tetap terkirim saat form disubmit -->
-                <input type="hidden" name="is_muatan_lokal" value="1">
+                
+                <!-- Hidden input with a different name to avoid manipulation -->
+                <input type="hidden" name="__secure_is_muatan_lokal" value="1">
             </div>
             @endif
 
