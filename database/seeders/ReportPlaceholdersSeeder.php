@@ -19,10 +19,27 @@ class ReportPlaceholdersSeeder extends Seeder
         
         // Set placeholder dasar (yang tidak terkait mata pelajaran)
         $basicPlaceholders = [
+            // Data Siswa
             ['placeholder_key' => 'nama_siswa', 'description' => 'Nama lengkap siswa', 'category' => 'siswa', 'is_required' => true],
             ['placeholder_key' => 'nisn', 'description' => 'NISN siswa', 'category' => 'siswa', 'is_required' => true],
             ['placeholder_key' => 'nis', 'description' => 'NIS siswa', 'category' => 'siswa', 'is_required' => true],
             ['placeholder_key' => 'kelas', 'description' => 'Kelas siswa', 'category' => 'siswa', 'is_required' => true],
+            ['placeholder_key' => 'tempat_lahir', 'description' => 'Tempat lahir siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'jenis_kelamin', 'description' => 'Jenis kelamin siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'agama', 'description' => 'Agama siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'alamat_siswa', 'description' => 'Alamat siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'nama_ayah', 'description' => 'Nama ayah siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'nama_ibu', 'description' => 'Nama ibu siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'pekerjaan_ayah', 'description' => 'Pekerjaan ayah siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'pekerjaan_ibu', 'description' => 'Pekerjaan ibu siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'alamat_orangtua', 'description' => 'Alamat orang tua siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'wali_siswa', 'description' => 'Nama wali siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'pekerjaan_wali', 'description' => 'Pekerjaan wali siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'alamat_wali', 'description' => 'Alamat wali siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'fase', 'description' => 'Fase pembelajaran siswa', 'category' => 'siswa', 'is_required' => false],
+            ['placeholder_key' => 'semester', 'description' => 'Semester (Ganjil/Genap)', 'category' => 'siswa', 'is_required' => false],
+            
+            // Data Sekolah
             ['placeholder_key' => 'tahun_ajaran', 'description' => 'Tahun ajaran', 'category' => 'sekolah', 'is_required' => true],
             ['placeholder_key' => 'nomor_telepon', 'description' => 'Nomor telepon sekolah', 'category' => 'sekolah', 'is_required' => false],
             ['placeholder_key' => 'kepala_sekolah', 'description' => 'Nama kepala sekolah', 'category' => 'sekolah', 'is_required' => false],
@@ -31,9 +48,25 @@ class ReportPlaceholdersSeeder extends Seeder
             ['placeholder_key' => 'nip_wali_kelas', 'description' => 'NIP wali kelas', 'category' => 'sekolah', 'is_required' => false],
             ['placeholder_key' => 'tanggal_terbit', 'description' => 'Tanggal terbit rapor', 'category' => 'sekolah', 'is_required' => false],
             ['placeholder_key' => 'tempat_terbit', 'description' => 'Tempat terbit rapor', 'category' => 'sekolah', 'is_required' => false],
+            
+            // Data profil sekolah untuk template UAS
+            ['placeholder_key' => 'nama_sekolah', 'description' => 'Nama sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'alamat_sekolah', 'description' => 'Alamat sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'kelurahan', 'description' => 'Kelurahan sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'kecamatan', 'description' => 'Kecamatan sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'kabupaten', 'description' => 'Kabupaten sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'provinsi', 'description' => 'Provinsi sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'kode_pos', 'description' => 'Kode pos sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'website', 'description' => 'Website sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'email_sekolah', 'description' => 'Email sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'npsn', 'description' => 'NPSN sekolah', 'category' => 'sekolah', 'is_required' => false],
+            
+            // Data Kehadiran
             ['placeholder_key' => 'sakit', 'description' => 'Jumlah hari sakit', 'category' => 'kehadiran', 'is_required' => true],
             ['placeholder_key' => 'izin', 'description' => 'Jumlah hari izin', 'category' => 'kehadiran', 'is_required' => true],
             ['placeholder_key' => 'tanpa_keterangan', 'description' => 'Jumlah hari tanpa keterangan', 'category' => 'kehadiran', 'is_required' => true],
+            
+            // Data Lainnya
             ['placeholder_key' => 'catatan_guru', 'description' => 'Catatan dari guru', 'category' => 'lainnya', 'is_required' => false],
         ];
         
@@ -46,7 +79,7 @@ class ReportPlaceholdersSeeder extends Seeder
                 'placeholder_key' => "nama_matapelajaran{$i}",
                 'description' => "Nama mata pelajaran {$i}",
                 'category' => 'mapel',
-                'is_required' => $i <= 4 // hanya 4 mata pelajaran pertama yang wajib
+                'is_required' => $i <= 4
             ];
             
             $mapelPlaceholders[] = [
@@ -95,7 +128,7 @@ class ReportPlaceholdersSeeder extends Seeder
         
         // Set placeholder untuk ekstrakurikuler
         $ekskulPlaceholders = [];
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 6; $i++) {
             $ekskulPlaceholders[] = [
                 'placeholder_key' => "ekskul{$i}_nama",
                 'description' => "Nama ekstrakurikuler {$i}",

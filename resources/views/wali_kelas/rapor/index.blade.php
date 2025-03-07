@@ -20,10 +20,12 @@
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                     <button @click="setActiveTab('UTS')"
                             :class="{'border-blue-500 text-blue-600': activeTab === 'UTS',
-                                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UTS'}"
+                                    'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UTS',
+                                    'cursor-not-allowed opacity-70': !templateUTSActive}"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
                             type="button">
                         Rapor UTS
+                        <span x-show="!templateUTSActive" x-cloak class="ml-1 text-xs text-red-500">(Nonaktif)</span>
                     </button>
                     <button @click="setActiveTab('UAS')"
                             :class="{'border-blue-500 text-blue-600': activeTab === 'UAS',
@@ -213,21 +215,48 @@ document.addEventListener('alpine:init', function() {
         showPreview: false,
         previewContent: '',
         templateUASActive: false,
+        templateUTSActive: false,
         
         init() {
             console.log('Initializing raporManager');
             // Cek template yang aktif terlebih dahulu
-            this.checkActiveTemplates().then(() => {
-                // Baca tab yang tersimpan, tetapi validasi juga apakah tab tersebut aktif
+            this.checkActiveTemplates().then((data) => {
+                // Kita perlu tahu mana template yang aktif
+                const utsActive = data.UTS_active;
+                const uasActive = data.UAS_active;
+                
+                // Tentukan tab default berdasarkan template yang aktif
+                if (uasActive) {
+                    this.activeTab = 'UAS'; // Jika UAS aktif, tampilkan tab UAS secara default
+                } else if (utsActive) {
+                    this.activeTab = 'UTS'; // Jika hanya UTS yang aktif
+                } else {
+                    // Jika keduanya tidak aktif, tetap di UTS tapi munculkan pesan
+                    this.activeTab = 'UTS';
+                    setTimeout(() => {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Tidak Ada Template Aktif',
+                            text: 'Tidak ada template rapor yang aktif. Silakan hubungi admin untuk mengaktifkan template.',
+                            confirmButtonColor: '#3085d6',
+                        });
+                    }, 500);
+                }
+                
+                // Baru kemudian cek localStorage, tapi prioritaskan template yang aktif
                 const savedTab = localStorage.getItem('activeRaporTab');
                 if (savedTab) {
-                    // Hanya gunakan UAS jika template UAS aktif
-                    if (savedTab === 'UAS' && this.templateUASActive) {
+                    // Validasi apakah template untuk tab tersebut aktif
+                    if (savedTab === 'UAS' && uasActive) {
                         this.activeTab = 'UAS';
-                    } else if (savedTab === 'UTS') {
+                    } else if (savedTab === 'UTS' && utsActive) {
                         this.activeTab = 'UTS';
                     }
+                    // Jika tidak aktif, tetap gunakan default yang sudah diatur di atas
                 }
+                
+                // Simpan tab yang aktif ke localStorage
+                localStorage.setItem('activeRaporTab', this.activeTab);
             });
         },
         
@@ -236,22 +265,34 @@ document.addEventListener('alpine:init', function() {
                 const response = await fetch('/wali-kelas/rapor/check-templates');
                 const data = await response.json();
                 
+                this.templateUTSActive = data.UTS_active;
                 this.templateUASActive = data.UAS_active;
                 return data;
             } catch (error) {
                 console.error('Error checking templates:', error);
+                this.templateUTSActive = true; // Default nilai jika terjadi error
+                this.templateUASActive = false;
                 return { UTS_active: true, UAS_active: false };
             }
         },
-        
         setActiveTab(tab) {
             // Validasi akses UAS
             if (tab === 'UAS' && !this.templateUASActive) {
-                // Tampilkan pesan bahwa admin belum mengaktifkan rapor UAS
                 Swal.fire({
                     icon: 'info',
                     title: 'Rapor UAS Belum Aktif',
                     text: 'Admin belum mengaktifkan template rapor UAS. Silakan hubungi admin untuk mengaktifkan template UAS terlebih dahulu.',
+                    confirmButtonColor: '#3085d6',
+                });
+                return;
+            }
+            
+            // Validasi akses UTS
+            if (tab === 'UTS' && !this.templateUTSActive) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Rapor UTS Belum Aktif',
+                    text: 'Admin belum mengaktifkan template rapor UTS. Silakan hubungi admin untuk mengaktifkan template UTS terlebih dahulu.',
                     confirmButtonColor: '#3085d6',
                 });
                 return;

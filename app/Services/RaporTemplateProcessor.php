@@ -85,7 +85,6 @@ class RaporTemplateProcessor
     
         $this->placeholders = ReportPlaceholder::all()->groupBy('category');
     }
-
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
      * 
@@ -102,6 +101,20 @@ class RaporTemplateProcessor
             'nis' => $this->siswa->nis ?: '-',
             'kelas' => $this->siswa->kelas->nomor_kelas . ' ' . $this->siswa->kelas->nama_kelas,
             'tahun_ajaran' => $this->siswa->kelas->tahun_ajaran ?: ($this->schoolProfile->tahun_pelajaran ?? '-'),
+            'tempat_lahir' => $this->siswa->tempat_lahir ?? '-',
+            'jenis_kelamin' => $this->siswa->jenis_kelamin ?? '-',
+            'agama' => $this->siswa->agama ?? '-',
+            'alamat_siswa' => $this->siswa->alamat ?? '-',
+            'nama_ayah' => $this->siswa->nama_ayah ?? '-',
+            'nama_ibu' => $this->siswa->nama_ibu ?? '-',
+            'pekerjaan_ayah' => $this->siswa->pekerjaan_ayah ?? '-',
+            'pekerjaan_ibu' => $this->siswa->pekerjaan_ibu ?? '-',
+            'alamat_orangtua' => $this->siswa->alamat_orangtua ?? '-',
+            'wali_siswa' => $this->siswa->wali_siswa ?? '-',
+            'pekerjaan_wali' => $this->siswa->pekerjaan_wali ?? '-',
+            'alamat_wali' => $this->siswa->alamat_wali ?? '-',
+            'fase' => $this->determineFase($this->siswa->kelas->nomor_kelas),
+            'semester' => $semester == 1 ? 'Ganjil' : 'Genap',
         ];
 
         // Data Nilai
@@ -413,12 +426,36 @@ class RaporTemplateProcessor
             $data['nip_wali_kelas'] = '-'; // Tambahkan jika ada
             $data['tanggal_terbit'] = date('d-m-Y');
             $data['tempat_terbit'] = $this->schoolProfile->tempat_terbit ?: '-';
+            
+            // Data profil sekolah untuk template UAS
+            $data['nama_sekolah'] = $this->schoolProfile->nama_sekolah ?: '-';
+            $data['alamat_sekolah'] = $this->schoolProfile->alamat ?: '-';
+            $data['kelurahan'] = $this->schoolProfile->kelurahan ?? '-';
+            $data['kecamatan'] = $this->schoolProfile->kecamatan ?? '-';
+            $data['kabupaten'] = $this->schoolProfile->kabupaten ?? '-';
+            $data['provinsi'] = $this->schoolProfile->provinsi ?? '-';
+            $data['kode_pos'] = $this->schoolProfile->kode_pos ?: '-';
+            $data['website'] = $this->schoolProfile->website ?: '-';
+            $data['email_sekolah'] = $this->schoolProfile->email_sekolah ?: '-';
+            $data['npsn'] = $this->schoolProfile->npsn ?: '-';
         } else {
             $data['nomor_telepon'] = '-';
             $data['kepala_sekolah'] = '-';
             $data['wali_kelas'] = '-';
             $data['tanggal_terbit'] = date('d-m-Y');
             $data['tempat_terbit'] = '-';
+            
+            // Default untuk data profil sekolah jika tidak ada
+            $data['nama_sekolah'] = '-';
+            $data['alamat_sekolah'] = '-';
+            $data['kelurahan'] = '-';
+            $data['kecamatan'] = '-';
+            $data['kabupaten'] = '-';
+            $data['provinsi'] = '-';
+            $data['kode_pos'] = '-';
+            $data['website'] = '-';
+            $data['email_sekolah'] = '-';
+            $data['npsn'] = '-';
         }
         
         // 9. Catatan guru
@@ -426,7 +463,23 @@ class RaporTemplateProcessor
 
         return $data;
     }
-    
+
+    /**
+     * Tentukan fase berdasarkan kelas
+     * 
+     * @param int $kelas Nomor kelas
+     * @return string Fase pembelajaran
+     */
+    protected function determineFase($kelas)
+    {
+        if ($kelas <= 2) {
+            return 'A';
+        } elseif ($kelas <= 4) {
+            return 'B';
+        } else {
+            return 'C';
+        }
+    }
     /**
      * Generate deskripsi capaian otomatis berdasarkan nilai
      *

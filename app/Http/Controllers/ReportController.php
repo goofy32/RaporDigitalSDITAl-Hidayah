@@ -12,6 +12,7 @@ use App\Models\ProfilSekolah;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB; // Add this import for DB facade
 use Barryvdh\DomPDF\Facade\PDF;
+use App\Models\ReportGeneration;
 
 class ReportController extends Controller
 {
@@ -55,26 +56,33 @@ class ReportController extends Controller
                 // Delete the temporary file
                 Storage::disk('public')->delete($tempPath);
                 
-                // Prepare error message
-                $errorMessage = 'Template tidak valid: ';
+                // Bersihkan pesan error dari tag XML
+                $cleanedErrors = [];
                 
                 if (!empty($validationResult['missing_placeholders'])) {
-                    $errorMessage .= 'Placeholder wajib yang tidak ditemukan: ' . 
+                    $cleanedErrors[] = 'Placeholder wajib yang tidak ditemukan: ' . 
                         implode(', ', $validationResult['missing_placeholders']);
                 }
                 
                 if (!empty($validationResult['invalid_placeholders'])) {
-                    $errorMessage .= (!empty($validationResult['missing_placeholders']) ? '. ' : '') . 
-                        'Placeholder tidak valid: ' . implode(', ', $validationResult['invalid_placeholders']);
+                    $invalidList = [];
+                    foreach ($validationResult['invalid_placeholders'] as $invalid) {
+                        // Bersihkan tag XML
+                        $cleaned = preg_replace('/<[^>]+>/', '', $invalid);
+                        // Ambil hanya bagian awal (placeholder asli)
+                        $cleaned = preg_replace('/^([^,\s\)]+).*$/', '$1', $cleaned);
+                        $invalidList[] = $cleaned;
+                    }
+                    $cleanedErrors[] = 'Placeholder tidak valid: ' . implode(', ', $invalidList);
                 }
                 
                 if (isset($validationResult['error'])) {
-                    $errorMessage .= 'Error: ' . $validationResult['error'];
+                    $cleanedErrors[] = 'Error: ' . preg_replace('/<[^>]+>/', '', $validationResult['error']);
                 }
                 
                 return response()->json([
                     'success' => false,
-                    'message' => $errorMessage
+                    'message' => implode('. ', $cleanedErrors)
                 ], 400);
             }
             
@@ -129,7 +137,39 @@ class ReportController extends Controller
             'UAS_active' => $uasActive
         ]);
     }
+    /**
+     * Menampilkan history rapor
+     * 
+     * @return \Illuminate\View\View
+     */
+    public function history()
+    {
+        // Ambil data history rapor dari tabel report_generations
+        $reports = ReportGeneration::with(['siswa', 'kelas', 'generator'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+            
+        return view('admin.report.history', compact('reports'));
+    }
 
+    /**
+     * Download rapor dari history
+     * 
+     * @param ReportGeneration $report
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadHistory(ReportGeneration $report)
+    {
+        $path = storage_path('app/public/' . $report->generated_file);
+        
+        if (!file_exists($path)) {
+            return redirect()->back()->with('error', 'File rapor tidak ditemukan.');
+        }
+        
+        $fileName = 'rapor_' . $report->siswa->nis . '_' . $report->type . '.docx';
+        
+        return response()->download($path, $fileName);
+    }
     /**
      * Buat template sampel dinamis dengan placeholder terbaru
      * 
@@ -521,6 +561,22 @@ class ReportController extends Controller
                 storage_path('app/public/' . $result['path']), 
                 $result['filename']
             );
+
+            if ($result['success']) {
+                // Simpan ke history
+                ReportGeneration::create([
+                    'siswa_id' => $siswa->id,
+                    'kelas_id' => $siswa->kelas_id,
+                    'report_template_id' => $template->id,
+                    'generated_file' => $result['path'],
+                    'type' => $request->type ?? 'UTS',
+                    'tahun_ajaran' => $siswa->kelas->tahun_ajaran ?: $this->schoolProfile->tahun_pelajaran,
+                    'semester' => $request->type === 'UTS' ? 1 : 2,
+                    'generated_at' => now(),
+                    'generated_by' => auth()->id()
+                ]);
+            }
+
         } catch (\Exception $e) {
             \Log::error('Error generating report:', [
                 'error' => $e->getMessage(),
@@ -763,14 +819,41 @@ class ReportController extends Controller
                 'ekskul\d+_keterangan'
             ];
             
-            // Minimum required placeholders (minimal harus ada beberapa placeholder dasar)
-            $requiredPlaceholders = [
+            // Placeholder yang harus ada untuk UTS
+            $utsRequiredPlaceholders = [
                 'nama_siswa', 
                 'nisn', 
                 'nis', 
                 'kelas',
-                'tahun_ajaran'
+                'tahun_ajaran',
+                'sakit'
             ];
+            
+            // Placeholder yang harus ada untuk UAS
+            $uasRequiredPlaceholders = [
+                'nama_siswa', 
+                'nisn', 
+                'nis', 
+                'kelas',
+                'tahun_ajaran',
+                'sakit',
+                'nama_sekolah',
+                'alamat_sekolah'
+                // Tambahkan placeholder lain yang harus ada di UAS
+            ];
+            
+            // Pilih daftar placeholder yang diperlukan berdasarkan jenis template
+            $requiredPlaceholders = ($type === 'UTS') ? $utsRequiredPlaceholders : $uasRequiredPlaceholders;
+            
+            // Tambahkan validator untuk memastikan template tidak memiliki placeholder dari jenis lain
+            // Misalnya, placeholder UAS tidak boleh ada di template UTS
+            $uasSpecificPlaceholders = ['tempat_lahir', 'jenis_kelamin', 'agama', 'alamat_wali'];
+            if ($type === 'UTS' && count(array_intersect($existingVariables, $uasSpecificPlaceholders)) > 0) {
+                return [
+                    'is_valid' => false,
+                    'message' => 'Template UTS tidak boleh mengandung placeholder UAS'
+                ];
+            }
             
             // Check if required placeholders exist
             $missingPlaceholders = [];

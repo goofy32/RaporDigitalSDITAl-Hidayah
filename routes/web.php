@@ -174,6 +174,9 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
         'destroy' => 'ekstra.destroy',
     ]);
 
+    Route::get('/report-history', [ReportController::class, 'history'])->name('admin.report.history');
+    Route::get('/report-history/download/{report}', [ReportController::class, 'downloadHistory'])->name('admin.report.history.download');
+    
     // Report Format
     Route::prefix('report-template')->name('report.template.')->group(function () {
         // Sample template download route
@@ -201,6 +204,8 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
             
         Route::get('/{type?}', [ReportController::class, 'index'])
             ->name('index');
+
+
     });
 });
 
