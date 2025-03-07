@@ -90,7 +90,10 @@
                 <a href="{{ route('admin.report.history') }}" 
                 data-path="report-history"
                 class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
-                    <img src="{{ asset('images/icons/history-icon.png') }}" class="w-5 h-5" alt="History Rapor" />
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
                     <span class="flex-1 ml-3 whitespace-nowrap">History Rapor</span>
                 </a>
             </li>

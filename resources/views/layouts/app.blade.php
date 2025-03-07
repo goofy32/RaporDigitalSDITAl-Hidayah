@@ -58,7 +58,6 @@
         as="image" 
         fetchpriority="high">
 
-
     
     <title>@yield('title')</title>
     
