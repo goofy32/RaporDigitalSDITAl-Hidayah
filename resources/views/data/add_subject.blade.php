@@ -155,6 +155,7 @@ function removeLingkupMateri(button) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Get the necessary elements
     const kelasSelect = document.getElementById('kelas');
     const guruSelect = document.getElementById('guru_pengampu');
     const muatanLokalCheckbox = document.getElementById('is_muatan_lokal');
@@ -178,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // List of wali kelas IDs
+    // List of wali kelas IDs (homeroom teachers)
     const guruWaliList = Object.entries(guruRoles)
         .filter(([_, role]) => role === 'wali_kelas')
         .map(([id, _]) => parseInt(id));
@@ -188,114 +189,101 @@ document.addEventListener('DOMContentLoaded', function() {
         .filter(([_, role]) => role === 'guru')
         .map(([id, _]) => parseInt(id));
     
+    console.log('Teacher roles:', guruRoles);
+    console.log('Homeroom teacher IDs:', guruWaliList);
+    console.log('Regular teacher IDs:', guruBiasaList);
+    
     // Data of wali kelas for each class
     const kelasWali = {};
-    // We'll populate this dynamically from the options
-    Array.from(kelasSelect.options).forEach(option => {
-        if (option.value && option.textContent.includes('Wali Kelas:')) {
-            // Extract the wali kelas ID from option text if possible
-            const match = option.textContent.match(/Wali Kelas: (.+)\)/);
-            if (match) {
-                // Find the teacher ID by name
-                const teacherName = match[1].trim();
-                const teacherOption = Array.from(guruSelect.options).find(opt => 
-                    opt.textContent.includes(teacherName)
-                );
-                
-                if (teacherOption) {
-                    kelasWali[option.value] = parseInt(teacherOption.value);
-                }
-            }
-        }
-    });
     
-    // In the updateFormState function in add_subject.blade.php
+    // Populate the kelasWali object with class-to-homeroom-teacher mapping
+    // This should be replaced with actual server-side data in the Blade template
+    @foreach($classes as $class)
+        @if($class->hasWaliKelas() && $class->getWaliKelasId())
+            kelasWali[{{ $class->id }}] = {{ $class->getWaliKelasId() }};
+        @endif
+    @endforeach
+    
+    console.log('Class to Homeroom Teacher mapping:', kelasWali);
+    
+    // Main function to update form state based on the current selections
     function updateFormState() {
         const isMuatanLokal = muatanLokalCheckbox.checked;
         const selectedKelasId = kelasSelect.value;
         const waliKelasId = kelasWali[selectedKelasId]; // Wali kelas untuk kelas yang dipilih
+        
+        console.log('Update form state:', {
+            isMuatanLokal,
+            selectedKelasId,
+            waliKelasId
+        });
         
         // Reset semua opsi
         Array.from(guruSelect.options).forEach(option => {
             option.disabled = false;
         });
         
-        // Jika kelas dipilih
-        if (selectedKelasId) {
-            if (isMuatanLokal) {
-                // Untuk mata pelajaran muatan lokal:
-                // Hanya guru biasa (bukan wali kelas) yang bisa mengajar
+        // Hide all info elements first
+        hideAllInfoElements();
+        
+        // If no class selected, do nothing further
+        if (!selectedKelasId) {
+            return;
+        }
+        
+        if (isMuatanLokal) {
+            // Untuk mata pelajaran muatan lokal:
+            // Hanya guru biasa (bukan wali kelas) yang bisa mengajar
+            Array.from(guruSelect.options).forEach(option => {
+                if (option.value) {
+                    const guruId = parseInt(option.value);
+                    if (guruWaliList.includes(guruId)) {
+                        option.disabled = true;
+                    }
+                }
+            });
+            
+            // Tampilkan info muatan lokal
+            showMuatanLokalInfo(true);
+            
+            // Reset pilihan jika wali kelas terpilih
+            if (waliKelasId && guruSelect.value == waliKelasId) {
+                guruSelect.value = '';
+            }
+        } else {
+            // Untuk mata pelajaran wajib (bukan muatan lokal):
+            if (waliKelasId) {
+                // Jika kelas memiliki wali kelas, hanya wali kelas yang bisa mengajar
                 Array.from(guruSelect.options).forEach(option => {
                     if (option.value) {
                         const guruId = parseInt(option.value);
-                        if (guruWaliList.includes(guruId)) {
+                        // Disable all options except the homeroom teacher
+                        if (guruId != waliKelasId) {
                             option.disabled = true;
                         }
                     }
                 });
                 
-                // Tampilkan info muatan lokal
-                showMuatanLokalInfo(true);
-                showWaliKelasInfo(false);
-                showNoWaliKelasInfo(false);
+                // Auto-select wali kelas
+                guruSelect.value = waliKelasId;
                 
-                // Reset pilihan jika wali kelas terpilih
-                if (waliKelasId && guruSelect.value == waliKelasId) {
-                    guruSelect.value = '';
-                }
+                // Tampilkan info wali kelas
+                showWaliKelasInfo(true, selectedKelasId);
             } else {
-                // Untuk mata pelajaran wajib (bukan muatan lokal):
-                if (waliKelasId) {
-                    // Jika kelas memiliki wali kelas, hanya wali kelas yang bisa mengajar
-                    Array.from(guruSelect.options).forEach(option => {
-                        if (option.value && parseInt(option.value) != waliKelasId) {
-                            option.disabled = true;
-                        }
-                    });
-                    
-                    // Auto-select wali kelas
-                    guruSelect.value = waliKelasId;
-                    
-                    // Tampilkan info
-                    showWaliKelasInfo(true, selectedKelasId);
-                    showMuatanLokalInfo(false);
-                    showNoWaliKelasInfo(false);
-                } else {
-                    // Jika kelas tidak memiliki wali kelas:
-                    // Semua guru tidak bisa dipilih karena tidak ada wali kelas
-                    Array.from(guruSelect.options).forEach(option => {
-                        if (option.value) {
-                            option.disabled = true;
-                        }
-                    });
-                    
-                    // Reset pilihan guru
-                    guruSelect.value = '';
-                    
-                    // Tampilkan peringatan
-                    showWaliKelasInfo(false);
-                    showMuatanLokalInfo(false);
-                    showNoWaliKelasInfo(true);
-                }
+                // Jika kelas tidak memiliki wali kelas:
+                // Disable all options since we need a homeroom teacher
+                Array.from(guruSelect.options).forEach(option => {
+                    if (option.value) {
+                        option.disabled = true;
+                    }
+                });
+                
+                // Reset pilihan guru
+                guruSelect.value = '';
+                
+                // Tampilkan peringatan tidak ada wali kelas
+                showNoWaliKelasInfo(true);
             }
-        } else {
-            // Jika tidak ada kelas yang dipilih, sembunyikan semua info
-            hideAllInfoElements();
-        }
-    }
-    
-    // Function to update the selected teacher based on form state
-    function updateSelectedTeacher() {
-        const selectedGuruId = parseInt(guruSelect.value);
-        if (!selectedGuruId) return;
-        
-        const isMuatanLokal = muatanLokalCheckbox.checked;
-        const isGuruWali = guruWaliList.includes(selectedGuruId);
-        
-        // If the selected teacher doesn't match the muatan lokal state
-        if ((isMuatanLokal && isGuruWali) || (!isMuatanLokal && !isGuruWali)) {
-            // Reset the selection
-            guruSelect.value = '';
         }
     }
     
@@ -386,24 +374,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners
     if (kelasSelect) {
-        kelasSelect.addEventListener('change', updateFormState);
+        kelasSelect.addEventListener('change', function() {
+            updateFormState();
+            console.log('Class changed to:', this.value);
+            console.log('Wali Kelas ID for this class:', kelasWali[this.value]);
+        });
     }
     
     if (muatanLokalCheckbox) {
-        muatanLokalCheckbox.addEventListener('change', updateFormState);
-    }
-    
-    if (guruSelect) {
-        guruSelect.addEventListener('change', function() {
-            // If user manually selects a teacher, update muatan lokal checkbox accordingly
-            const selectedGuruId = parseInt(guruSelect.value);
-            if (selectedGuruId) {
-                const isWaliKelas = guruWaliList.includes(selectedGuruId);
-                muatanLokalCheckbox.checked = !isWaliKelas;
-            }
-            
-            // Update the form state
+        muatanLokalCheckbox.addEventListener('change', function() {
             updateFormState();
+            console.log('Muatan Lokal changed to:', this.checked);
         });
     }
     
