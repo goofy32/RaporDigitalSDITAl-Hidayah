@@ -3,7 +3,9 @@ import './bootstrap';
 import 'flowbite';
 import '@hotwired/turbo';
 import Alpine from 'alpinejs';
+import { renderAsync } from 'docx-preview';
 
+window.renderAsync = renderAsync;
 const cleanupHandlers = new Set();
 
 document.addEventListener('turbo:before-render', () => {

@@ -181,31 +181,25 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
     Route::prefix('report-template')->name('report.template.')->group(function () {
         // Sample template download route
         Route::get('/sample', [ReportController::class, 'downloadSampleTemplate'])
-            ->name('sample');
-            
-        // Other existing routes...
+        ->name('sample');
         Route::get('/placeholder-guide', [ReportController::class, 'placeholderGuide'])
             ->name('placeholder.guide');
-            
         Route::get('/current', [ReportController::class, 'getCurrentTemplate'])
             ->name('current');
-            
         Route::post('/upload', [ReportController::class, 'upload'])
             ->name('upload');
-            
+        // Route yang sudah ada - kita akan memodifikasi controller method-nya
         Route::get('/{template}/preview', [ReportController::class, 'preview'])
             ->name('preview');
-            
+        // Tambahkan route baru untuk preview dengan docx.js
+        Route::get('/{template}/preview-data', [ReportController::class, 'previewData'])
+            ->name('preview-data');
         Route::post('/{template}/activate', [ReportController::class, 'activate'])
             ->name('activate');
-            
         Route::delete('/{template}', [ReportController::class, 'destroy'])
             ->name('destroy');
-            
         Route::get('/{type?}', [ReportController::class, 'index'])
             ->name('index');
-
-
     });
 });
 

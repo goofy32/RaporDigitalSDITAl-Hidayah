@@ -77,7 +77,7 @@
                                 {{ $template->type }}
                             </span>
                         </td>
-                        <td class="px-6 py-4">{{ $template->filename }}</td>
+                        <td class="px-6 py-4" id="filename-{{ $template->id }}">{{ $template->filename }}</td>
                         <td class="px-6 py-4">{{ $template->tahun_ajaran ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $template->semester == 1 ? 'Ganjil' : 'Genap' }}</td>
                         <td class="px-6 py-4">{{ Carbon\Carbon::parse($template->created_at)->format('d M Y H:i') }}</td>
@@ -94,11 +94,11 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex space-x-2">
-                                <a href="{{ route('report.template.preview', $template->id) }}" 
-                                   target="_blank"
+                                <button
+                                   onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}')"
                                    class="text-blue-600 hover:text-blue-800">
                                     <img src="{{ asset('images/icons/detail.png') }}" alt="Preview Icon" class="w-5 h-5">
-                                </a>
+                                </button>
                                 
                                 @if(!$template->is_active)
                                     <form action="{{ route('report.template.activate', $template->id) }}" 
@@ -243,6 +243,55 @@
     </div>
 </div>
 
+<!-- DOCX Preview Modal -->
+<div id="docxPreviewModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="fixed inset-0 bg-black opacity-50" onclick="closeDocxPreviewModal()"></div>
+        
+        <div class="relative bg-white rounded-lg w-full max-w-5xl max-h-[90vh] p-4">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-medium" id="previewFileName">Preview Document</h3>
+                <button onclick="closeDocxPreviewModal()" class="text-gray-400 hover:text-gray-500">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="overflow-y-auto max-h-[calc(90vh-8rem)]">
+                <div class="border border-gray-300 rounded-lg p-3 min-h-[70vh] bg-white">
+                    <!-- Loading indicator -->
+                    <div id="loadingIndicator" class="flex items-center justify-center h-full">
+                        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+                    </div>
+                    
+                    <!-- Error message -->
+                    <div id="errorMessage" class="hidden flex items-center justify-center h-full">
+                        <div class="text-red-500 text-center">
+                            <p>Gagal memuat preview dokumen.</p>
+                            <p class="text-sm mt-2" id="errorDetail"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- DOCX Content -->
+                    <div id="docxContent" class="h-full w-full"></div>
+                </div>
+            </div>
+            
+            <!-- Fallback options -->
+            <div class="mt-3 text-center" id="fallbackOptions">
+                <p class="text-sm text-gray-500 mb-2">Jika preview tidak tampil dengan baik, gunakan opsi berikut:</p>
+                <button id="officeViewerBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    Lihat dengan Office Viewer
+                </button>
+                <a id="downloadDocxBtn" href="#" download class="ml-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                    Download
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Placeholder Guide -->
 <div id="placeholderGuide" class="hidden fixed inset-0 z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">
@@ -252,9 +301,49 @@
         </div>
     </div>
 </div>
+@push('styles')
+<style>
+    /* Docx viewer styles for consistent rendering */
+    .docx-viewer {
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .docx-viewer .document-container {
+        padding: 20px;
+        background-color: #f0f0f0;
+    }
+    
+    .docx-viewer .document-container .page {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        background-color: white;
+        margin-bottom: 20px;
+        overflow: hidden;
+        width: 794px !important; /* A4 width */
+        min-height: 1123px; /* A4 height */
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    /* Make modal wider on larger screens */
+    @media (min-width: 1280px) {
+        .max-w-5xl {
+            max-width: 80vw;
+        }
+    }
+</style>
+@endpush
 
 @push('scripts')
+<!-- CDN fallback for docx-preview -->
+<script src="https://unpkg.com/docx-preview@0.1.15/dist/docx-preview.js"></script>
 <script>
+// Fallback jika library tidak di-bundle
+if (typeof window.renderAsync === 'undefined' && typeof docx !== 'undefined') {
+    window.renderAsync = docx.renderAsync;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Flowbite dropdowns
     if (typeof Dropdown !== 'undefined') {
@@ -327,6 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Modal functions
 let selectedType = 'UTS';
+let currentPreviewUrl = '';
 
 function openUploadModal(type = 'UTS') {
     selectedType = type;
@@ -349,6 +439,113 @@ function openPlaceholderGuide() {
 
 function closePlaceholderGuide() {
     document.getElementById('placeholderGuide').classList.add('hidden');
+}
+
+async function previewDocument(url, filename) {
+    // Show the modal
+    document.getElementById('docxPreviewModal').classList.remove('hidden');
+    
+    // Update the filename
+    document.getElementById('previewFileName').textContent = 'Preview: ' + filename;
+    
+    // Show loading indicator
+    document.getElementById('loadingIndicator').style.display = 'flex';
+    document.getElementById('errorMessage').classList.add('hidden');
+    document.getElementById('docxContent').innerHTML = '';
+    
+    // Set current URL for fallback options
+    currentPreviewUrl = url;
+    document.getElementById('downloadDocxBtn').href = url;
+    
+    try {
+        // Fetch the DOCX file
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Convert to array buffer
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        // Check if renderAsync is available
+        if (typeof window.renderAsync === 'function') {
+            // Render the DOCX with improved settings for more consistent document size
+            await window.renderAsync(arrayBuffer, document.getElementById('docxContent'), null, {
+                className: 'docx-viewer',
+                inWrapper: true,
+                ignoreWidth: false,
+                ignoreHeight: false,
+                breakPages: true,
+                renderHeaders: true,
+                renderFooters: true,
+                useBase64URL: true,
+                useMathMLPolyfill: true,
+                pageWidth: 794, // A4 width in pixels (approximately)
+                pageHeight: 1123, // A4 height in pixels (approximately)
+                pageBorderTop: 10,
+                pageBorderRight: 10,
+                pageBorderBottom: 10,
+                pageBorderLeft: 10
+            });
+        } else {
+            throw new Error('DocX Preview library not found. Use the fallback options instead.');
+        }
+    } catch (error) {
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        // Show error message
+        document.getElementById('errorMessage').classList.remove('hidden');
+        document.getElementById('errorDetail').textContent = error.message;
+        
+        console.error('Error rendering DOCX:', error);
+    }
+}
+
+function closeDocxPreviewModal() {
+    document.getElementById('docxPreviewModal').classList.add('hidden');
+    document.getElementById('docxContent').innerHTML = '';
+}
+
+function openDocxInOfficeViewer(url) {
+    // Ensure we have a full URL for Office Viewer
+    var publicUrl = '';
+    
+    // Check if the URL already starts with http
+    if (url.startsWith('http')) {
+        publicUrl = url;
+    } else {
+        // Otherwise, build the full URL
+        publicUrl = window.location.origin + (url.startsWith('/') ? '' : '/') + url;
+    }
+    
+    // Create Office Online viewer URL
+    var viewerUrl = "https://view.officeapps.live.com/op/embed.aspx?src=" + encodeURIComponent(publicUrl);
+    
+    // Instead of opening a new window, embed the document in an iframe within the modal
+    const docxContent = document.getElementById('docxContent');
+    docxContent.innerHTML = '';
+    
+    // Create a responsive iframe container
+    const iframeContainer = document.createElement('div');
+    iframeContainer.className = 'w-full h-full min-h-[70vh]';
+    
+    // Create an iframe for the Office Viewer
+    const iframe = document.createElement('iframe');
+    iframe.src = viewerUrl;
+    iframe.className = 'w-full h-full min-h-[70vh] border-0';
+    iframe.setAttribute('frameborder', '0');
+    iframe.setAttribute('allowfullscreen', 'true');
+    
+    // Add the iframe to the container
+    iframeContainer.appendChild(iframe);
+    docxContent.appendChild(iframeContainer);
+    
+    // Hide loading indicator if it's still visible
+    document.getElementById('loadingIndicator').style.display = 'none';
 }
 
 // Handle aktivasi template
@@ -430,11 +627,16 @@ async function handleDelete(e) {
     return false;
 }
 
+document.getElementById('officeViewerBtn').onclick = function() {
+    openDocxInOfficeViewer(currentPreviewUrl);
+};
+
 // Close modals when clicking outside
 document.addEventListener('click', function(e) {
     if (e.target.classList.contains('fixed')) {
         closeUploadModal();
         closePlaceholderGuide();
+        closeDocxPreviewModal();
     }
 });
 
@@ -443,6 +645,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeUploadModal();
         closePlaceholderGuide();
+        closeDocxPreviewModal();
     }
 });
 </script>

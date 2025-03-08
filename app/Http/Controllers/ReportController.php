@@ -364,6 +364,33 @@ class ReportController extends Controller
             return false;
         }
     }
+
+    public function previewData(ReportTemplate $template)
+    {
+        try {
+            $filePath = storage_path('app/public/' . $template->path);
+            
+            if (!file_exists($filePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File template tidak ditemukan'
+                ], 404);
+            }
+
+            // Return raw file content for docx.js processing
+            $content = file_get_contents($filePath);
+            
+            return response($content, 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Disposition' => 'inline; filename="' . $template->filename . '"'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat preview data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     
     public function getCurrentTemplate(Request $request)
     {
@@ -474,7 +501,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    
+
     public function preview(ReportTemplate $template)
     {
         try {
@@ -486,19 +513,22 @@ class ReportController extends Controller
                     'message' => 'File template tidak ditemukan'
                 ], 404);
             }
-
-            // Load template
-            $phpWord = new TemplateProcessor($filePath);
+    
+            // Create a temporary public URL that Office Viewer can access
+            $tempPublicPath = 'temp_previews/' . $template->id . '_' . time() . '_' . basename($template->path);
+            Storage::disk('public')->put($tempPublicPath, file_get_contents($filePath));
             
-            // Isi dengan data sample
-            $this->fillTemplateSampleData($phpWord);
+            // Return the temporary public URL for the docx file
+            $publicUrl = Storage::disk('public')->url($tempPublicPath);
             
-            // Generate preview file
-            $previewPath = storage_path('app/public/preview_' . $template->filename);
-            $phpWord->saveAs($previewPath);
-
-            return response()->download($previewPath)->deleteFileAfterSend();
-
+            return response()->file(storage_path('app/public/' . $tempPublicPath), [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Disposition' => 'inline; filename="' . $template->filename . '"'
+            ]);
+            
+            // Optional: Schedule cleanup of temp file
+            // You might want to add a job to clean up these temporary files
+    
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
