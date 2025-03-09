@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-
 class ProfilSekolah extends Model
 {
     use HasFactory;
@@ -20,6 +19,7 @@ class ProfilSekolah extends Model
         'semester',
         'npsn',
         'kepala_sekolah',
+        'nip_kepala_sekolah',
         'alamat',
         'guru_kelas',
         'kode_pos',
@@ -30,5 +30,10 @@ class ProfilSekolah extends Model
         'tempat_terbit',
         'tanggal_terbit',
         'website',
+        'kelurahan',
+        'kecamatan',
+        'kabupaten',
+        'provinsi',
+        'nip_wali_kelas'
     ];
 }

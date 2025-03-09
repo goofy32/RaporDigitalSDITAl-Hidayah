@@ -273,10 +273,11 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
     ->middleware('check.wali.kelas')  // Tambah middleware baru
     ->name('dashboard');
     Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])->name('profile');
+    Route::get('/overall-progress', [DashboardController::class, 'getOverallProgressWaliKelas'])
+        ->name('overall.progress');
+        
     Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgressWaliKelas'])
         ->name('kelas.progress');
-    Route::get('/overall-progress', [DashboardController::class, 'getOverallProgressWaliKelas'])
-    ->name('overall.progress');
     // Student Management
     Route::prefix('siswa')->name('student.')->group(function () {
         Route::get('/', [StudentController::class, 'waliKelasIndex'])->name('index');

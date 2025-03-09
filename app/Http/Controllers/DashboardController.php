@@ -165,14 +165,42 @@ class DashboardController extends Controller
                 return redirect()->route('login');
             }
             
+            // Ambil kelas yang diwalikan oleh guru
+            $kelas = $waliKelas->kelasWali;
+            
+            if (!$kelas) {
+                return view('wali_kelas.dashboard', [
+                    'totalSiswa' => 0,
+                    'totalAbsensi' => 0,
+                    'totalEkskul' => 0,
+                    'kelas' => null,
+                    'notifications' => collect(),
+                    'recentActivities' => collect(),
+                    'schoolProfile' => ProfilSekolah::first()
+                ]);
+            }
+            
             // Get stats data
-            $totalSiswa = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)->count();
-            $totalMapel = MataPelajaran::where('kelas_id', $waliKelas->kelas_pengajar_id)->count();
+            $totalSiswa = Siswa::where('kelas_id', $kelas->id)->count();
+            
+            // Perbaikan cara menghitung absensi
+            // Gunakan model Absensi untuk menghitung jumlah record absensi
+            $totalAbsensi = DB::table('absensis')
+                ->join('siswas', 'absensis.siswa_id', '=', 'siswas.id')
+                ->where('siswas.kelas_id', $kelas->id)
+                ->count();
+                
+            // Alternatif jika model Absensi menggunakan relasi langsung
+            // $totalAbsensi = Absensi::whereHas('siswa', function($query) use ($kelas) {
+            //     $query->where('kelas_id', $kelas->id);
+            // })->count();
+            
+            $totalMapel = MataPelajaran::where('kelas_id', $kelas->id)->count();
             
             try {
                 $totalEkskul = DB::table('nilai_ekstrakurikuler')
                     ->join('siswas', 'nilai_ekstrakurikuler.siswa_id', '=', 'siswas.id')
-                    ->where('siswas.kelas_id', $waliKelas->kelas_pengajar_id)
+                    ->where('siswas.kelas_id', $kelas->id)
                     ->distinct('ekstrakurikuler_id')
                     ->count('ekstrakurikuler_id');
             } catch (\Exception $e) {
@@ -181,7 +209,7 @@ class DashboardController extends Controller
             }
             
             // Get kelas info
-            $kelas = Kelas::where('id', $waliKelas->kelas_pengajar_id)->first();
+            $kelas = Kelas::where('id', $kelas->id)->first();
             
             // Get notifications
             $notifications = Notification::where(function($query) use ($waliKelas) {
@@ -199,7 +227,7 @@ class DashboardController extends Controller
             $recentActivities = DB::table('nilais')
                 ->join('siswas', 'nilais.siswa_id', '=', 'siswas.id')
                 ->join('mata_pelajarans', 'nilais.mata_pelajaran_id', '=', 'mata_pelajarans.id')
-                ->where('siswas.kelas_id', $waliKelas->kelas_pengajar_id)
+                ->where('siswas.kelas_id', $kelas->id)
                 ->whereNotNull('nilais.nilai_tp')
                 ->select(
                     'siswas.nama',
@@ -217,6 +245,7 @@ class DashboardController extends Controller
                 'totalSiswa',
                 'totalMapel', 
                 'totalEkskul',
+                'totalAbsensi',
                 'kelas',
                 'notifications',
                 'recentActivities',
@@ -239,16 +268,23 @@ class DashboardController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
             
+            // Ambil kelas yang diwalikan oleh guru
+            $kelas = $waliKelas->kelasWali;
+            
+            if (!$kelas) {
+                return response()->json(['progress' => 0]);
+            }
+            
             $totalTP = DB::table('mata_pelajarans')
                 ->join('lingkup_materis', 'mata_pelajarans.id', '=', 'lingkup_materis.mata_pelajaran_id')
                 ->join('tujuan_pembelajarans', 'lingkup_materis.id', '=', 'tujuan_pembelajarans.lingkup_materi_id')
-                ->where('mata_pelajarans.kelas_id', $waliKelas->kelas_pengajar_id) 
+                ->where('mata_pelajarans.kelas_id', $kelas->id) 
                 ->count();
-    
+
             if ($totalTP === 0) {
                 return response()->json(['progress' => 0]);
             }
-    
+
             $completedTP = DB::table('mata_pelajarans')
                 ->join('lingkup_materis', 'mata_pelajarans.id', '=', 'lingkup_materis.mata_pelajaran_id')
                 ->join('tujuan_pembelajarans', 'lingkup_materis.id', '=', 'tujuan_pembelajarans.lingkup_materi_id')
@@ -256,19 +292,19 @@ class DashboardController extends Controller
                     $join->on('tujuan_pembelajarans.id', '=', 'nilais.tujuan_pembelajaran_id')
                         ->whereNotNull('nilais.nilai_tp');
                 })
-                ->where('mata_pelajarans.kelas_id', $waliKelas->kelas_pengajar_id)
+                ->where('mata_pelajarans.kelas_id', $kelas->id)
                 ->count();
-    
+
             $progress = ($completedTP / $totalTP) * 100;
-    
+
             return response()->json(['progress' => round($progress, 2)]);
-    
+
         } catch (\Exception $e) {
             \Log::error('Error calculating overall progress: ' . $e->getMessage());
             return response()->json(['error' => 'Terjadi kesalahan'], 500);
         }
     }
-    
+
     // Method untuk mengambil progress per mata pelajaran untuk kelas wali
     public function getKelasProgressWaliKelas() 
     {
@@ -280,7 +316,10 @@ class DashboardController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
             
-            if (!$waliKelas->kelas_pengajar_id) {
+            // Ambil kelas yang diwalikan oleh guru
+            $kelas = $waliKelas->kelasWali;
+            
+            if (!$kelas) {
                 return response()->json(['progress' => 0]);
             }
             
@@ -288,10 +327,10 @@ class DashboardController extends Controller
             $cacheKey = "wali_kelas_progress_{$waliKelas->id}";
             $cacheDuration = now()->addMinutes(5);
             
-            return Cache::remember($cacheKey, $cacheDuration, function() use ($waliKelas) {
-                $mataPelajarans = MataPelajaran::where('kelas_id', $waliKelas->kelas_pengajar_id)
-                                              ->get();
-                                              
+            return Cache::remember($cacheKey, $cacheDuration, function() use ($kelas) {
+                $mataPelajarans = MataPelajaran::where('kelas_id', $kelas->id)
+                                            ->get();
+                                            
                 $totalProgress = 0;
                 $mapelCount = $mataPelajarans->count();
         
@@ -320,12 +359,12 @@ class DashboardController extends Controller
                 return response()->json([
                     'progress' => round($averageProgress, 2),
                     'details' => [
-                        'kelas_id' => $waliKelas->kelas_pengajar_id,
+                        'kelas_id' => $kelas->id,
                         'total_mapel' => $mapelCount
                     ]
                 ]);
             });
-    
+
         } catch (\Exception $e) {
             \Log::error('Error calculating class progress: ' . $e->getMessage());
             return response()->json(['error' => 'Terjadi kesalahan'], 500);

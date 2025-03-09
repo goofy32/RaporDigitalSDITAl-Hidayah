@@ -43,11 +43,18 @@ class SchoolProfileController extends Controller
             'tahun_pelajaran' => 'required|string|max:255',
             'semester' => 'required|integer',
             'kepala_sekolah' => 'required|string|max:255',
+            'nip_kepala_sekolah' => 'nullable|string|max:255',
             'tempat_terbit' => 'required|string|max:255',
             'tanggal_terbit' => 'required|date',
             'kelas' => 'nullable|integer',
             'guru_kelas' => 'nullable|integer',
             'jumlah_siswa' => 'nullable|integer',
+            'website' => 'nullable|string|max:255',
+            'kelurahan' => 'nullable|string|max:255',
+            'kecamatan' => 'nullable|string|max:255',
+            'kabupaten' => 'nullable|string|max:255',
+            'provinsi' => 'nullable|string|max:255',
+            'nip_wali_kelas' => 'nullable|string|max:255',
         ]);
 
         // Cek apakah data profil sudah ada

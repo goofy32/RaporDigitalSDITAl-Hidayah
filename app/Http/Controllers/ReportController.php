@@ -550,7 +550,8 @@ class ReportController extends Controller
             \Log::info('Generating report', [
                 'guru_id' => $guruId,
                 'siswa_id' => $siswa->id,
-                'siswa_kelas_id' => $siswaKelasId
+                'siswa_kelas_id' => $siswaKelasId,
+                'report_type' => $request->type ?? 'UTS'
             ]);
             
             // Cek akses dengan query langsung ke tabel pivot
@@ -588,34 +589,62 @@ class ReportController extends Controller
             $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $request->type ?? 'UTS');
             $result = $processor->generate();
     
-            return response()->download(
-                storage_path('app/public/' . $result['path']), 
-                $result['filename']
-            );
-
-            if ($result['success']) {
-                // Simpan ke history
+            // Simpan ke history sebelum mengirim response download
+            if (isset($result['success']) && $result['success']) {
                 ReportGeneration::create([
                     'siswa_id' => $siswa->id,
                     'kelas_id' => $siswa->kelas_id,
                     'report_template_id' => $template->id,
                     'generated_file' => $result['path'],
                     'type' => $request->type ?? 'UTS',
-                    'tahun_ajaran' => $siswa->kelas->tahun_ajaran ?: $this->schoolProfile->tahun_pelajaran,
-                    'semester' => $request->type === 'UTS' ? 1 : 2,
+                    'tahun_ajaran' => $siswa->kelas->tahun_ajaran ?? 
+                        ProfilSekolah::first()->tahun_pelajaran ?? 
+                        '2024/2025', // Fallback value jika semua null
+                    'semester' => ($request->type ?? 'UTS') === 'UTS' ? 1 : 2,
                     'generated_at' => now(),
                     'generated_by' => auth()->id()
                 ]);
             }
-
-        } catch (\Exception $e) {
-            \Log::error('Error generating report:', [
+            
+            // Kirim file sebagai response
+            return response()->download(
+                storage_path('app/public/' . $result['path']), 
+                $result['filename']
+            );
+    
+        } catch (\App\Exceptions\RaporException $e) {
+            \Log::error('Error generating report (RaporException):', [
                 'error' => $e->getMessage(),
+                'error_type' => $e->getErrorType(),
                 'trace' => $e->getTraceAsString(),
                 'siswa_id' => $siswa->id,
                 'type' => $request->type
             ]);
-    
+            
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_type' => $e->getErrorType()
+            ], 500);
+        } catch (\Throwable $e) {
+            \Log::error('Error generating report (Throwable):', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'trace' => $e->getTraceAsString(),
+                'siswa_id' => $siswa->id,
+                'type' => $request->type
+            ]);
+            
+            // Periksa jika error adalah tentang argument ke-2
+            if (strpos($e->getMessage(), 'Argument #2') !== false && 
+                strpos($e->getMessage(), 'must be of type int, string given') !== false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ada masalah pada template rapor. Silakan hubungi administrator.',
+                    'error_type' => 'template_error'
+                ], 500);
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal generate rapor: ' . $e->getMessage()

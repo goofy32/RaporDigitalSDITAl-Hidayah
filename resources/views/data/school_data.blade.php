@@ -1,9 +1,7 @@
-<!-- resources/views/data/school_data.blade.php -->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <!-- Meta tags dan lainnya -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -12,7 +10,6 @@
 </head>
 
 <body>
-
     <x-admin.topbar></x-admin.topbar>
     <x-admin.sidebar></x-admin.sidebar>
 
@@ -39,7 +36,6 @@
                 </div>
             </div>
 
-            
             <!-- Bagian Konten Data Sekolah -->
             <div class="grid grid-cols-3 gap-4">
                 <!-- Gambar Profil Kiri -->
@@ -75,6 +71,22 @@
                             <td class="border border-gray-300 p-2">{{ $profil->alamat ?? '-' }}</td>
                         </tr>
                         <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">Kelurahan/Desa</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->kelurahan ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">Kecamatan</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->kecamatan ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">Kabupaten/Kota</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->kabupaten ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">Provinsi</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->provinsi ?? '-' }}</td>
+                        </tr>
+                        <tr>
                             <td class="border border-gray-300 p-2 font-semibold">Kode Pos</td>
                             <td class="border border-gray-300 p-2">{{ $profil->kode_pos ?? '-' }}</td>
                         </tr>
@@ -96,11 +108,19 @@
                         </tr>
                         <tr>
                             <td class="border border-gray-300 p-2 font-semibold">Semester</td>
-                            <td class="border border-gray-300 p-2">{{ $profil->semester ?? '-' }}</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->semester == 1 ? 'Ganjil' : 'Genap' }}</td>
                         </tr>
                         <tr>
                             <td class="border border-gray-300 p-2 font-semibold">Kepala Sekolah</td>
                             <td class="border border-gray-300 p-2">{{ $profil->kepala_sekolah ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">NIP Kepala Sekolah</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->nip_kepala_sekolah ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">NIP Wali Kelas (Default)</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->nip_wali_kelas ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="border border-gray-300 p-2 font-semibold">Guru Kelas</td>
@@ -114,13 +134,18 @@
                             <td class="border border-gray-300 p-2 font-semibold">Jumlah Siswa</td>
                             <td class="border border-gray-300 p-2">{{ $profil->jumlah_siswa ?? '-' }}</td>
                         </tr>
-                        <!-- Tambahkan field lainnya jika diperlukan -->
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">Tempat Terbit Rapor</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->tempat_terbit ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 p-2 font-semibold">Tanggal Terbit Rapor</td>
+                            <td class="border border-gray-300 p-2">{{ $profil->tanggal_terbit ? date('d-m-Y', strtotime($profil->tanggal_terbit)) : '-' }}</td>
+                        </tr>
                     </table>
                 </div>
             </div>
         </div>
     </div>
-
 </body>
-
 </html>

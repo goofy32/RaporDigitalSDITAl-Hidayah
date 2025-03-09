@@ -10,10 +10,9 @@
 </head>
 
 <body>
-
     <x-admin.topbar></x-admin.topbar>
-
     <x-admin.sidebar></x-admin.sidebar>
+    
     @if ($errors->any())
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
         <ul class="list-disc pl-5">
@@ -90,6 +89,46 @@
                         @enderror
                     </div>
 
+                    <!-- Kelurahan -->
+                    <div>
+                        <label for="kelurahan" class="block mb-2 text-sm font-medium text-gray-900">Kelurahan/Desa</label>
+                        <input type="text" id="kelurahan" name="kelurahan" value="{{ old('kelurahan', $profil->kelurahan ?? '') }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                        @error('kelurahan')
+                            <p class="text-red-500 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Kecamatan -->
+                    <div>
+                        <label for="kecamatan" class="block mb-2 text-sm font-medium text-gray-900">Kecamatan</label>
+                        <input type="text" id="kecamatan" name="kecamatan" value="{{ old('kecamatan', $profil->kecamatan ?? '') }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                        @error('kecamatan')
+                            <p class="text-red-500 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Kabupaten/Kota -->
+                    <div>
+                        <label for="kabupaten" class="block mb-2 text-sm font-medium text-gray-900">Kabupaten/Kota</label>
+                        <input type="text" id="kabupaten" name="kabupaten" value="{{ old('kabupaten', $profil->kabupaten ?? '') }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                        @error('kabupaten')
+                            <p class="text-red-500 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Provinsi -->
+                    <div>
+                        <label for="provinsi" class="block mb-2 text-sm font-medium text-gray-900">Provinsi</label>
+                        <input type="text" id="provinsi" name="provinsi" value="{{ old('provinsi', $profil->provinsi ?? '') }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                        @error('provinsi')
+                            <p class="text-red-500 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Kode POS -->
                     <div>
                         <label for="kode_pos" class="block mb-2 text-sm font-medium text-gray-900">Kode POS</label>
@@ -160,6 +199,26 @@
                         @enderror
                     </div>
 
+                    <!-- NIP Kepala Sekolah -->
+                    <div>
+                        <label for="nip_kepala_sekolah" class="block mb-2 text-sm font-medium text-gray-900">NIP Kepala Sekolah</label>
+                        <input type="text" id="nip_kepala_sekolah" name="nip_kepala_sekolah" value="{{ old('nip_kepala_sekolah', $profil->nip_kepala_sekolah ?? '') }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                        @error('nip_kepala_sekolah')
+                            <p class="text-red-500 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- NIP Wali Kelas (Default untuk Template UAS) -->
+                    <div>
+                        <label for="nip_wali_kelas" class="block mb-2 text-sm font-medium text-gray-900">NIP Wali Kelas (Default)</label>
+                        <input type="text" id="nip_wali_kelas" name="nip_wali_kelas" value="{{ old('nip_wali_kelas', $profil->nip_wali_kelas ?? '') }}"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                        @error('nip_wali_kelas')
+                            <p class="text-red-500 text-sm">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <!-- Kelas (Opsional) -->
                     <div>
                         <label for="kelas" class="block mb-2 text-sm font-medium text-gray-900">Jumlah Kelas</label>
@@ -189,6 +248,7 @@
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror
                     </div>
+                    
                     <!-- Tempat Terbit -->
                     <div>
                         <label for="tempat_terbit" class="block mb-2 text-sm font-medium text-gray-900">Tempat Terbit Rapor</label>
@@ -208,8 +268,6 @@
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror
                     </div>
-
-
                 </div>
 
                 <!-- Tombol Submit -->
@@ -220,25 +278,22 @@
             </form>
         </div>
     </div>
+    
     <!-- Script untuk Preview Gambar -->
-<script>
-    document.getElementById('logo').addEventListener('change', function(event) {
-        var input = event.target;
-        var reader = new FileReader();
-        reader.onload = function(){
-            var dataURL = reader.result;
-            var output = document.getElementById('profileImage');
-            output.src = dataURL;
-            output.classList.add('object-cover'); // Pastikan gambar tidak terpotong
-            output.classList.add('object-center'); // Posisikan gambar di tengah
-        };
-        reader.readAsDataURL(input.files[0]);
-    });
-
+    <script>
+        document.getElementById('logo').addEventListener('change', function(event) {
+            var input = event.target;
+            var reader = new FileReader();
+            reader.onload = function(){
+                var dataURL = reader.result;
+                var output = document.getElementById('profileImage');
+                output.src = dataURL;
+                output.classList.add('object-cover'); // Pastikan gambar tidak terpotong
+                output.classList.add('object-center'); // Posisikan gambar di tengah
+            };
+            reader.readAsDataURL(input.files[0]);
+        });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
-
-
 </body>
-
 </html>

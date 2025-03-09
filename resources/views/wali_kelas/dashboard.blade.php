@@ -3,7 +3,8 @@
 @section('title', 'Dashboard Wali Kelas')
 
 @section('content') 
-<div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
+<div x-data="{ mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
+
     <!-- Statistics Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-14">
         <!-- Left Section - Stats (col-span-2) -->
@@ -94,16 +95,14 @@
     <div class="mt-8">
         <!-- Dropdown Pilih Kelas -->
         <div class="mb-8">
-            <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
-            <select id="kelas" 
-                x-model="selectedKelas" 
-                @change="fetchKelasProgress()"
-                class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
-                <option value="">Pilih kelas...</option>
+            <h3 class="block text-sm font-medium text-gray-700">Kelas Yang Diwalikan</h3>
+            <div class="p-3 mt-1 rounded-lg border border-gray-300 bg-gray-50">
                 @if(isset($kelas))
-                    <option value="{{ $kelas->id }}">{{ $kelas->nama_kelas }}</option>
+                    <span class="font-medium text-green-700">{{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}</span>
+                @else
+                    <span class="text-yellow-600">Anda belum ditugaskan sebagai wali kelas</span>
                 @endif
-            </select>
+            </div>
         </div>
 
         <!-- Charts Section -->
@@ -120,7 +119,7 @@
 
             <!-- Chart Per Kelas -->
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai <span x-text="selectedKelas ? 'Kelas ' + selectedKelas : 'Per Kelas'"></span></h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Per Mata Pelajaran</h3>
                 <div class="flex flex-col items-center">
                     <div class="w-64 h-64 relative">
                         <canvas id="classProgressChart"></canvas>

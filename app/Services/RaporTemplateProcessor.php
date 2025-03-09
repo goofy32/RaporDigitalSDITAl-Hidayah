@@ -9,16 +9,17 @@ use App\Models\ProfilSekolah;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Exceptions\RaporException;
 use Exception;
 
 class RaporTemplateProcessor 
 {
     // Constants for error types
-    const ERROR_TEMPLATE_MISSING = 'template_missing';
-    const ERROR_TEMPLATE_INVALID = 'template_invalid';
-    const ERROR_DATA_INCOMPLETE = 'data_incomplete';
-    const ERROR_PLACEHOLDER_MISSING = 'placeholder_missing';
-    const ERROR_FILE_PROCESSING = 'file_processing';
+    const ERROR_TEMPLATE_MISSING = 1001;
+    const ERROR_TEMPLATE_INVALID = 1002;
+    const ERROR_DATA_INCOMPLETE = 1003;
+    const ERROR_PLACEHOLDER_MISSING = 1004;
+    const ERROR_FILE_PROCESSING = 1005;
 
     protected $processor;
     protected $template;
@@ -36,8 +37,9 @@ class RaporTemplateProcessor
     
         // Validasi template path tidak kosong
         if (empty($template->path)) {
-            throw new Exception(
+            throw new RaporException(
                 "Path template kosong. Hubungi admin untuk upload template baru.",
+                'template_missing',
                 self::ERROR_TEMPLATE_MISSING
             );
         }
@@ -61,15 +63,17 @@ class RaporTemplateProcessor
         ]);
     
         if (!file_exists($templatePath)) {
-            throw new Exception(
+            throw new RaporException(
                 "Template file tidak ditemukan: {$templatePath}. Hubungi admin untuk upload template baru.",
+                'template_missing',
                 self::ERROR_TEMPLATE_MISSING
             );
         }
     
         if (!is_file($templatePath)) {
-            throw new Exception(
+            throw new RaporException(
                 "Path bukan merupakan file yang valid: {$templatePath}. Hubungi admin untuk upload template baru.",
+                'template_invalid',
                 self::ERROR_TEMPLATE_INVALID
             );
         }
@@ -77,8 +81,9 @@ class RaporTemplateProcessor
         try {
             $this->processor = new TemplateProcessor($templatePath);
         } catch (\Exception $e) {
-            throw new Exception(
+            throw new RaporException(
                 "Gagal memproses template: " . $e->getMessage() . ". Hubungi admin untuk perbaiki template.",
+                'template_invalid',
                 self::ERROR_TEMPLATE_INVALID
             );
         }
@@ -114,16 +119,13 @@ class RaporTemplateProcessor
             'pekerjaan_wali' => $this->siswa->pekerjaan_wali ?? '-',
             'alamat_wali' => $this->siswa->alamat_wali ?? '-',
             'fase' => $this->determineFase($this->siswa->kelas->nomor_kelas),
-            'semester' => $semester == 1 ? 'Ganjil' : 'Genap',
+            'semester' => $this->schoolProfile->semester == 1 ? 'Ganjil' : 'Genap',
         ];
     
         // Data Nilai
         $nilaiQuery = $this->siswa->nilais()
-            ->with(['mataPelajaran'])
-            ->whereHas('mataPelajaran', function($q) use ($semester) {
-                $q->where('semester', $semester);
-            });
-            
+        ->with(['mataPelajaran']);
+        
         $nilaiCollection = $nilaiQuery->get();
         
         // Grouping by mata pelajaran
@@ -642,7 +644,7 @@ class RaporTemplateProcessor
         return $this->generateCapaianDeskripsi($nilai, $namaMapel);
     }
 
-    /**
+     /**
      * Generate rapor dari template
      * 
      * @param bool $bypassValidation Lewati validasi data jika perlu
@@ -651,6 +653,8 @@ class RaporTemplateProcessor
     public function generate($bypassValidation = false)
     {
         try {
+            Log::info('Starting generate() with template type: ' . $this->type);
+            
             // 1. Validasi data
             if (!$bypassValidation) {
                 $this->validateData();
@@ -693,8 +697,9 @@ class RaporTemplateProcessor
                     'siswa_id' => $this->siswa->id
                 ]);
                 
-                throw new Exception(
+                throw new RaporException(
                     "Gagal mengisi data ke template. Kemungkinan format template tidak valid. Error: " . $e->getMessage(),
+                    'placeholder_missing',
                     self::ERROR_PLACEHOLDER_MISSING
                 );
             }
@@ -709,46 +714,52 @@ class RaporTemplateProcessor
                 'path' => "generated/{$filename}"
             ];
 
-        } catch (Exception $e) {
-            Log::error('Gagal generate rapor:', [
+        } catch (RaporException $e) {
+            Log::error('Gagal generate rapor (RaporException):', [
+                'error' => $e->getMessage(),
+                'error_type' => $e->getErrorType(),
+                'trace' => $e->getTraceAsString(),
+                'siswa_id' => $this->siswa->id,
+                'template_id' => $this->template->id
+            ]);
+            
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('Gagal generate rapor (Exception):', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'siswa_id' => $this->siswa->id,
                 'template_id' => $this->template->id
             ]);
             
-            throw new Exception('Gagal generate rapor: ' . $e->getMessage(), $e->getCode());
+            throw new RaporException('Gagal generate rapor: ' . $e->getMessage(), 'general_error', 500, $e);
         }
     }
-    
-    /**
+
+   /**
      * Validasi data sebelum generate rapor
      * 
-     * @throws Exception
+     * @throws RaporException
      * @return void
      */
     protected function validateData()
     {
-        $semester = $this->type === 'UTS' ? 1 : 2;
-
         // Validasi template aktif
         if (!$this->template->is_active) {
-            throw new Exception(
+            throw new RaporException(
                 'Template rapor belum diaktifkan. Hubungi admin untuk mengaktifkan template.',
+                'template_invalid',
                 self::ERROR_TEMPLATE_INVALID
             );
         }
 
         // Validasi apakah siswa memiliki nilai
-        $hasAnyNilai = $this->siswa->nilais()
-            ->whereHas('mataPelajaran', function($q) use ($semester) {
-                $q->where('semester', $semester);
-            })
-            ->exists();
+        $hasAnyNilai = $this->siswa->nilais()->exists();
             
         if (!$hasAnyNilai) {
-            throw new Exception(
-                'Siswa belum memiliki nilai untuk semester ini. Mohon input nilai terlebih dahulu.',
+            throw new RaporException(
+                'Siswa belum memiliki nilai. Mohon input nilai terlebih dahulu.',
+                'data_incomplete',
                 self::ERROR_DATA_INCOMPLETE
             );
         }
@@ -782,15 +793,18 @@ class RaporTemplateProcessor
         */
 
         // Cek kehadiran
-        if (!$this->siswa->absensi()->where('semester', $semester)->exists()) {
-            throw new Exception(
-                'Data kehadiran siswa belum diisi untuk semester ' . ($semester == 1 ? 'Ganjil' : 'Genap'),
+        if (!$this->siswa->absensi()->exists()) {
+            throw new RaporException(
+                'Data kehadiran siswa belum diisi.',
+                'data_incomplete',
                 self::ERROR_DATA_INCOMPLETE
             );
         }
     }
+
+
     
-    /**
+   /**
      * Generate nama file rapor
      * 
      * @return string
@@ -806,12 +820,12 @@ class RaporTemplateProcessor
         );
     }
 
-    /**
+     /**
      * Simpan file rapor ke storage
      * 
      * @param string $filename
      * @return string
-     * @throws Exception
+     * @throws RaporException
      */
     protected function saveFile($filename)
     {
@@ -825,7 +839,7 @@ class RaporTemplateProcessor
             $this->processor->saveAs($outputPath);
             
             if (!file_exists($outputPath)) {
-                throw new Exception("File tidak berhasil disimpan");
+                throw new \Exception("File tidak berhasil disimpan");
             }
             
             Log::info('Rapor berhasil disimpan:', [
@@ -840,8 +854,9 @@ class RaporTemplateProcessor
                 'path' => $outputPath
             ]);
             
-            throw new Exception(
+            throw new RaporException(
                 "Gagal menyimpan file rapor: " . $e->getMessage(),
+                'file_processing',
                 self::ERROR_FILE_PROCESSING
             );
         }
