@@ -28,7 +28,7 @@
         "flowbite": "^2.5.1",
         "laravel-echo": "^1.19.0",
         "laravel-vite-plugin": "^1.2.0",
-        "libreoffice-convert": "^1.6.0",
+        "libreoffice-convert": "^1.6.1",
         "mammoth": "^1.8.0",
         "pusher-js": "^8.4.0",
         "react": "^19.0.0",

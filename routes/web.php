@@ -336,5 +336,7 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         
         Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
         Route::get('download-pdf/{siswa}', [ReportController::class, 'downloadPdf']) ->name('rapor.download-pdf');
+        Route::get('/preview-pdf/{siswa}', [ReportController::class, 'previewPdf'])->name('preview-pdf');
+        Route::get('/download-pdf/{siswa}', [ReportController::class, 'downloadPdf'])->name('download-pdf');
     });
 });

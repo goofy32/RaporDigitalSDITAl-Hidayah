@@ -365,6 +365,7 @@ class ReportController extends Controller
         }
     }
 
+
     public function previewData(ReportTemplate $template)
     {
         try {
@@ -642,10 +643,18 @@ class ReportController extends Controller
         try {
             DB::beginTransaction();
     
-            // Nonaktifkan semua template dengan tipe yang sama
-            ReportTemplate::where('type', $template->type)
-                ->where('id', '!=', $template->id)
+            // Log aktivitas
+            Log::info('Activating template', [
+                'template_id' => $template->id,
+                'template_type' => $template->type
+            ]);
+    
+            // Nonaktifkan SEMUA template lain, tidak peduli jenisnya
+            $deactivated = ReportTemplate::where('id', '!=', $template->id)
+                ->where('is_active', true)
                 ->update(['is_active' => false]);
+                
+            Log::info('Deactivated templates', ['count' => $deactivated]);
     
             // Aktifkan template yang dipilih
             $template->update(['is_active' => true]);
@@ -659,6 +668,11 @@ class ReportController extends Controller
     
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to activate template', [
+                'template_id' => $template->id,
+                'error' => $e->getMessage()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengaktifkan template: ' . $e->getMessage()
