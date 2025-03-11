@@ -317,64 +317,86 @@
     }
 
     window.saveData = async function() {
-    try {
-        if (!validateForm()) {
-            return;
-        }
-
-        Swal.fire({
-            title: 'Menyimpan Nilai...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
+        try {
+            if (!validateForm()) {
+                return;
             }
-        });
 
-        const formData = new FormData(document.getElementById('saveForm'));
-        
-        const response = await fetch('{{ route("pengajar.score.save_scores", $subject["id"]) }}', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-            Alpine.store('formProtection').reset();
-            
-            let detailMessage = '<ul class="text-left">';
-                data.details.forEach(student => {
-                    detailMessage += `<li class="mb-2"><strong>${student.nama}</strong>:<br>`;
-                    student.nilai.forEach(nilai => {
-                        detailMessage += `- ${nilai.tipe}: ${nilai.nilai}<br>`;
-                    });
-                    detailMessage += '</li>';
-                });
-                detailMessage += '</ul>';
-
-                if (data.warnings && Object.keys(data.warnings).length > 0) {
-                    detailMessage += '<div class="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">';
-                    detailMessage += '<strong>Peringatan:</strong><br>';
-                    Object.entries(data.warnings).forEach(([siswa, warnings]) => {
-                        detailMessage += `<strong>${siswa}:</strong><br>`;
-                        warnings.forEach(warning => {
-                            detailMessage += `- ${warning}<br>`;
-                        });
-                    });
-                    detailMessage += '</div>';
+            Swal.fire({
+                title: 'Menyimpan Nilai...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
                 }
+            });
 
-                await Swal.fire({
+            const formData = new FormData(document.getElementById('saveForm'));
+            
+            const response = await fetch('{{ route("pengajar.score.save_scores", $subject["id"]) }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                Alpine.store('formProtection').reset();
+                
+                // Simpan data untuk ditampilkan nanti jika user klik detail
+                const detailData = data;
+                
+                const result = await Swal.fire({
                     icon: 'success',
                     title: 'Berhasil!',
-                    html: `Nilai berhasil disimpan!<br><br>${detailMessage}`,
-                    width: '600px'
+                    text: 'Nilai berhasil disimpan!',
+                    confirmButtonText: 'Lihat Preview',
+                    showCancelButton: true,
+                    cancelButtonText: 'Lihat Detail',
+                    reverseButtons: true
                 });
+                
+                if (result.isConfirmed) {
+                    // User memilih "Lihat Preview"
+                    window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    // User memilih "Lihat Detail"
+                    let detailMessage = '<ul class="text-left max-h-60 overflow-y-auto">';
+                    detailData.details.forEach(student => {
+                        detailMessage += `<li class="mb-2"><strong>${student.nama}</strong>:<br>`;
+                        student.nilai.forEach(nilai => {
+                            detailMessage += `- ${nilai.tipe}: ${nilai.nilai}<br>`;
+                        });
+                        detailMessage += '</li>';
+                    });
+                    detailMessage += '</ul>';
 
-                window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+                    if (detailData.warnings && Object.keys(detailData.warnings).length > 0) {
+                        detailMessage += '<div class="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">';
+                        detailMessage += '<strong>Peringatan:</strong><br>';
+                        Object.entries(detailData.warnings).forEach(([siswa, warnings]) => {
+                            detailMessage += `<strong>${siswa}:</strong><br>`;
+                            warnings.forEach(warning => {
+                                detailMessage += `- ${warning}<br>`;
+                            });
+                        });
+                        detailMessage += '</div>';
+                    }
+                    
+                    const detailResult = await Swal.fire({
+                        icon: 'info',
+                        title: 'Detail Nilai',
+                        html: detailMessage,
+                        width: '600px',
+                        confirmButtonText: 'Lihat Preview'
+                    });
+                    
+                    if (detailResult.isConfirmed) {
+                        window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+                    }
+                }
             } else {
                 throw new Error(data.message || 'Terjadi kesalahan saat menyimpan nilai');
             }

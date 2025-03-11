@@ -60,13 +60,28 @@
                     </tr>
                     <tr class="border-b">
                         <th class="px-4 py-2 font-medium text-gray-900">Jabatan</th>
-                        <td class="px-4 py-2">{{ Auth::guard('guru')->user()->jabatan ?? 'Belum Diisi' }}</td>
+                        <td class="px-4 py-2">
+                            @if(Auth::guard('guru')->user()->isWaliKelas())
+                                Guru dan Wali Kelas
+                            @else
+                                Guru
+                            @endif
+                        </td>
                     </tr>
                     <tr class="border-b">
                         <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
                         <td class="px-4 py-2">
-                            {{ Auth::guard('guru')->user()->kelasPengajar->nomor_kelas ?? '-' }} - 
-                            {{ Auth::guard('guru')->user()->kelasPengajar->nama_kelas ?? 'Belum Diisi' }}
+                            @if(Auth::guard('guru')->user()->kelasAjar->count() > 0)
+                                <ul class="list-disc list-inside">
+                                    @foreach(Auth::guard('guru')->user()->kelasAjar as $kelas)
+                                        <li>{{ $kelas->full_kelas }}</li>
+                                    @endforeach
+                                </ul>
+                            @elseif(Auth::guard('guru')->user()->isWaliKelas())
+                                {{ Auth::guard('guru')->user()->kelasWali->full_kelas ?? 'Belum Diisi' }}
+                            @else
+                                Belum ada kelas yang diajar
+                            @endif
                         </td>
                     </tr>
                     <tr class="border-b">
