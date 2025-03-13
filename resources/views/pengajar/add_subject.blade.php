@@ -6,14 +6,14 @@
 <div>
     <div class="p-6 bg-white mt-14">
         <!-- Header -->
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Mata Pelajaran</h2>
-            <div>
-                <button onclick="window.history.back()" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 class="text-2xl font-bold text-green-700 break-words max-w-full sm:max-w-lg">Form Tambah Data Mata Pelajaran</h2>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="window.history.back()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Kembali
                 </button>
                 <button type="submit" form="addSubjectForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Simpan
+                    Simpan Semua
                 </button>
             </div>
         </div>
@@ -55,109 +55,167 @@
         </div>
         @endif
 
+        @if(session('errors') && count(session('errors')) > 0)
+        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+            <h4 class="font-medium">Terjadi beberapa kesalahan:</h4>
+            <ul class="ml-4 mt-2 list-disc">
+                @foreach(session('errors') as $error)
+                <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+
         <!-- Form -->
-        <form id="addSubjectForm" action="{{ route('pengajar.subject.store') }}" method="POST" @submit="handleSubmit" x-data="formProtection" class="space-y-6">
+        <form id="addSubjectForm" action="{{ route('pengajar.subject.store') }}" method="POST" @submit="handleSubmit" x-data="formProtection" class="space-y-6" data-needs-protection>
             @csrf
 
-            <!-- Mata Pelajaran -->
-            <div>
-                <label for="mata_pelajaran" class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
-                <input type="text" id="mata_pelajaran" name="mata_pelajaran" value="{{ old('mata_pelajaran') }}" required
-                    class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('mata_pelajaran') border-red-500 @enderror">
-                @error('mata_pelajaran')
-                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                @enderror
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Data Mata Pelajaran</h3>
+                <button type="button" onclick="addSubjectEntry()" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Tambah Mata Pelajaran
+                </button>
             </div>
 
-            <!-- Hanya tampilkan informasi muatan lokal untuk guru biasa -->
-            @if(auth()->guard('guru')->user()->jabatan == 'guru')
-            <div class="mt-4">
-                <div class="flex items-center">
-                    <input id="is_muatan_lokal_display" type="checkbox" 
-                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                        checked disabled>
-                    <label for="is_muatan_lokal_display" class="ml-2 block text-sm text-gray-900">
-                        Tandai sebagai Muatan Lokal
-                    </label>
-                </div>
-                <p class="mt-1 text-xs text-gray-500">Sebagai guru biasa, mata pelajaran Anda ditetapkan sebagai muatan lokal secara otomatis.</p>
-                
-                <!-- Hidden input with a different name to avoid manipulation -->
-                <input type="hidden" name="__secure_is_muatan_lokal" value="1">
-            </div>
-            @endif
-
-            <!-- Kelas Dropdown -->
-            <div>
-                <label for="kelas" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
-                <select id="kelas" name="kelas" required
-                    class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('kelas') border-red-500 @enderror">
-                    <option value="">Pilih Kelas</option>
-                    @if($classes->isEmpty())
-                        <option value="" disabled>Tidak ada kelas yang ditugaskan</option>
-                    @else
-                        @foreach($classes as $class)
-                            <option value="{{ $class->id }}" {{ old('kelas') == $class->id || (auth()->guard('guru')->user()->isWaliKelas() && auth()->guard('guru')->user()->getWaliKelasId() == $class->id) ? 'selected' : '' }}>
-                                Kelas {{ $class->nomor_kelas }} {{ $class->nama_kelas }}
-                                {{ auth()->guard('guru')->user()->isWaliKelas() && 
-                                   auth()->guard('guru')->user()->getWaliKelasId() == $class->id ? 
-                                   '(Wali Kelas)' : '' }}
-                            </option>
-                        @endforeach
-                    @endif
-                </select>
-                @error('kelas')
-                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                @enderror
-                
-                @if($classes->isEmpty())
-                    <p class="mt-2 text-sm text-red-600">Anda belum ditugaskan ke kelas manapun. Silakan hubungi admin.</p>
-                @endif
-                
-                @if(auth()->guard('guru')->user()->isWaliKelas())
-                    <div id="wali-kelas-info" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                        <p class="text-sm text-blue-800">
-                            <span class="font-medium">Info:</span> 
-                            Sebagai wali kelas, Anda secara otomatis dapat mengajar di kelas yang Anda walikan.
-                        </p>
-                    </div>
-                @endif
-            </div>
-
-            <!-- Semester Dropdown -->
-            <div>
-                <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
-                <select id="semester" name="semester" required
-                    class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('semester') border-red-500 @enderror">
-                    <option value="">Pilih Semester</option>
-                    <option value="1" {{ old('semester') == 1 ? 'selected' : '' }}>Semester 1</option>
-                    <option value="2" {{ old('semester') == 2 ? 'selected' : '' }}>Semester 2</option>
-                </select>
-                @error('semester')
-                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <!-- Hidden input untuk guru_id -->
-            <input type="hidden" name="guru_pengampu" value="{{ auth()->guard('guru')->id() }}">
-
-            <!-- Lingkup Materi -->
-            <div>
-                <label class="block mb-2 text-sm font-medium text-gray-900">Lingkup Materi</label>
-                <div id="lingkupMateriContainer">
-                    <div class="flex items-center mb-2">
-                        <input type="text" name="lingkup_materi[]" required
-                            class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                        <button type="button" onclick="addLingkupMateri()" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
+            <!-- Multiple Subject Entry Form -->
+            <div id="subjectEntriesContainer">
+                <!-- Template for a subject entry -->
+                <div class="subject-entry bg-gray-50 p-4 rounded-lg mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-md font-medium text-gray-800">Mata Pelajaran 1</h4>
+                        <button type="button" onclick="removeSubjectEntry(this)" class="text-red-600 hover:text-red-800 hidden remove-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                             </svg>
                         </button>
                     </div>
+
+                    <!-- Mata Pelajaran -->
+                    <div class="mb-4">
+                        <label for="mata_pelajaran_0" class="block mb-2 text-sm font-medium text-gray-900">Nama Mata Pelajaran</label>
+                        <input type="text" id="mata_pelajaran_0" name="subjects[0][mata_pelajaran]" value="{{ old('mata_pelajaran') }}" required
+                            class="block w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                    </div>
+
+                    @php
+                        $isGuruWali = auth()->guard('guru')->user()->jabatan == 'guru_wali';
+                        $kelasWaliId = $isGuruWali ? auth()->guard('guru')->user()->getWaliKelasId() : null;
+                    @endphp
+
+                    <!-- Opsi Muatan Lokal -->
+                    <div class="mb-4">
+                        @if($isGuruWali)
+                            <!-- Untuk guru wali: tidak bisa mengajar muatan lokal -->
+                            <div class="guru-wali-options">
+                                <div class="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p class="text-sm text-blue-800">
+                                        <span class="font-medium">Info:</span> 
+                                        Sebagai wali kelas, Anda hanya dapat mengajar mata pelajaran wajib (non-muatan lokal).
+                                    </p>
+                                </div>
+                            </div>
+                            <!-- Hidden input dengan nilai 0 (false) -->
+                            <input type="hidden" name="subjects[0][is_muatan_lokal]" value="0" class="is-muatan-lokal-input">
+                        @else
+                            <!-- Untuk guru biasa (bukan wali): Bisa pilih muatan lokal atau mata pelajaran wajib -->
+                            <div class="mb-4">
+                                <div class="info-container mb-3">
+                                    <div class="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                        <p class="text-sm text-blue-800">
+                                            <span class="font-medium">Info:</span> 
+                                            Sebagai guru biasa, Anda dapat mengajar mata pelajaran muatan lokal atau mata pelajaran wajib.
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div class="muatan-lokal-container">
+                                    <div class="flex items-center">
+                                        <input id="is_muatan_lokal_0" name="subjects[0][is_muatan_lokal]" type="checkbox" 
+                                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded muatan-lokal-checkbox"
+                                            onchange="syncCheckboxes(this)">
+                                        <label for="is_muatan_lokal_0" class="ml-2 block text-sm text-gray-900">
+                                            Mata Pelajaran Muatan Lokal
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="non-muatan-lokal-options mt-2">
+                                    <div class="flex items-center">
+                                        <input id="allow_non_wali_0" name="subjects[0][allow_non_wali]" type="checkbox" 
+                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded allow-non-wali-checkbox"
+                                            onchange="syncCheckboxes(this)">
+                                        <label for="allow_non_wali_0" class="ml-2 block text-sm text-gray-900">
+                                            Mata Pelajaran Wajib yang diajar guru biasa
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Kelas Dropdown -->
+                    <div class="mb-4">
+                        <label for="kelas_0" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
+                        <select id="kelas_0" name="subjects[0][kelas]" required
+                            class="block w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 kelas-select"
+                            onchange="updateKelasSelection(this.closest('.subject-entry'))">
+                            <option value="">Pilih Kelas</option>
+                            @if($classes->isEmpty())
+                                <option value="" disabled>Tidak ada kelas yang ditugaskan</option>
+                            @else
+                                @foreach($classes as $class)
+                                    @if($isGuruWali && $kelasWaliId == $class->id)
+                                        <option value="{{ $class->id }}" data-is-wali-kelas="true">
+                                            Kelas {{ $class->nomor_kelas }} {{ $class->nama_kelas }} (Wali Kelas)
+                                        </option>
+                                    @else
+                                        <option value="{{ $class->id }}">
+                                            Kelas {{ $class->nomor_kelas }} {{ $class->nama_kelas }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <!-- Semester Dropdown -->
+                    <div class="mb-4">
+                        <label for="semester_0" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
+                        <select id="semester_0" name="subjects[0][semester]" required
+                            class="block w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                            <option value="">Pilih Semester</option>
+                            <option value="1" {{ old('semester') == 1 ? 'selected' : '' }}>Semester 1</option>
+                            <option value="2" {{ old('semester') == 2 ? 'selected' : '' }}>Semester 2</option>
+                        </select>
+                    </div>
+
+                    <!-- Hidden input untuk guru_id -->
+                    <input type="hidden" name="subjects[0][guru_pengampu]" value="{{ auth()->guard('guru')->id() }}">
+
+                    <!-- Hidden input untuk allow_non_wali (hanya digunakan untuk guru wali) -->
+                    @if($isGuruWali)
+                    <input type="hidden" name="subjects[0][allow_non_wali]" value="0" class="allow-non-wali-input">
+                    @endif
+
+                    <!-- Lingkup Materi -->
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900">Lingkup Materi</label>
+                        <div class="lingkup-materi-container">
+                            <div class="flex items-center mb-2">
+                                <input type="text" name="subjects[0][lingkup_materi][]" required
+                                    class="block w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                                <button type="button" onclick="addLingkupMateri(this)" class="ml-2 p-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                @error('lingkup_materi')
-                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                @enderror
             </div>
         </form>
     </div>
@@ -202,10 +260,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 
                 handleSubmit(e) {
-                    if (!checkDuplication()) {
+                    if (!validateForm()) {
                         e.preventDefault();
-                        alert('Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.');
-                        validateMataPelajaran();
                         return false;
                     }
                     
@@ -216,198 +272,204 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const kelasSelect = document.getElementById('kelas');
-    
-    // Simpan data wali kelas untuk setiap kelas
-    const kelasWali = {
-        @foreach($classes as $class)
-            @if($class->hasWaliKelas() && $class->getWaliKelas())
-                {{ $class->id }}: {{ $class->getWaliKelasId() }},
-            @endif
-        @endforeach
-    };
-    
-    // Fungsi untuk mengunci dropdown guru pengampu
-    function lockGuruDropdown(selectedKelasId) {
-        // Jika tidak ada kelas yang dipilih atau tidak ada wali kelas
-        if (!selectedKelasId || !kelasWali[selectedKelasId]) {
-            // Sembunyikan pesan informasi
-            showWaliKelasInfo(false);
-            return;
+    // Initialize all subject entries
+    document.querySelectorAll('.subject-entry').forEach(entry => {
+        // Initialize kelas selection
+        updateKelasSelection(entry.querySelector('.kelas-select'));
+        
+        // Pastikan bahwa hanya satu checkbox yang bisa dicentang
+        const isMuatanLokalCheckbox = entry.querySelector('.muatan-lokal-checkbox');
+        const allowNonWaliCheckbox = entry.querySelector('.allow-non-wali-checkbox');
+        
+        if (isMuatanLokalCheckbox && allowNonWaliCheckbox) {
+            // Secara default, tidak ada yang dicentang
+            isMuatanLokalCheckbox.checked = false;
+            allowNonWaliCheckbox.checked = false;
         }
-        
-        // Dapatkan ID wali kelas
-        const waliKelasId = kelasWali[selectedKelasId];
-        
-        // Tampilkan pesan informasi
-        showWaliKelasInfo(true, selectedKelasId);
-    }
-    
-    // Tambahkan event listener untuk perubahan dropdown kelas
-    if (kelasSelect) {
-        kelasSelect.addEventListener('change', function() {
-            const selectedKelasId = this.value;
-            lockGuruDropdown(selectedKelasId);
-            validateMataPelajaran(); // Cek validasi duplikat saat kelas berubah
-        });
-        
-        // Periksa juga saat halaman pertama kali dimuat
-        lockGuruDropdown(kelasSelect.value);
-    }
-    
-    function showWaliKelasInfo(show, kelasId) {
-        let infoElement = document.getElementById('wali-kelas-info');
-        
-        if (!infoElement) return;
-        
-        if (show) {
-            // Dapatkan informasi kelas untuk pesan
-            let kelasInfo = '';
-            if (kelasId) {
-                const kelasOption = kelasSelect.querySelector(`option[value="${kelasId}"]`);
-                if (kelasOption) {
-                    kelasInfo = kelasOption.textContent;
-                }
-            }
-            
-            infoElement.style.display = 'block';
-        } else if (infoElement) {
-            infoElement.style.display = 'none';
-        }
-    }
-
-    // Definisikan array data mata pelajaran yang sudah ada
-    window.mapelData = [
-        @foreach(App\Models\MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')->get() as $mapel)
-        {
-            id: {{ $mapel->id }},
-            nama: "{{ $mapel->nama_pelajaran }}",
-            kelas_id: {{ $mapel->kelas_id }},
-            semester: {{ $mapel->semester }}
-        },
-        @endforeach
-    ];
-
-    // Dapatkan elemen-elemen yang dibutuhkan
-    const mataPelajaranInput = document.getElementById('mata_pelajaran');
-    const semesterSelect = document.getElementById('semester');
-    const submitButton = document.querySelector('button[type="submit"]');
-    
-    // Jika ada elemen yang tidak ditemukan, hentikan eksekusi
-    if (!mataPelajaranInput || !kelasSelect || !semesterSelect || !submitButton) {
-        console.error('Required elements not found');
-        return;
-    }
-    
-    // Fungsi untuk memeriksa duplikasi
-    function checkDuplication() {
-        const mataPelajaran = mataPelajaranInput.value.trim();
-        const kelasId = parseInt(kelasSelect.value);
-        const semester = parseInt(semesterSelect.value);
-        
-        // Jika salah satu field kosong, lewati validasi
-        if (!mataPelajaran || !kelasId || isNaN(semester)) return true;
-        
-        // Periksa duplikasi
-        const duplicate = window.mapelData.find(subject => 
-            subject.nama.toLowerCase() === mataPelajaran.toLowerCase() && 
-            subject.kelas_id === kelasId && 
-            subject.semester === semester
-        );
-        
-        return !duplicate;
-    }
-    
-    // Real-time validation
-    function validateMataPelajaran() {
-        if (!checkDuplication()) {
-            mataPelajaranInput.classList.add('border-red-500');
-            
-            // Buat pesan error di bawah input jika belum ada
-            let errorElement = document.getElementById('mata-pelajaran-error');
-            if (!errorElement) {
-                errorElement = document.createElement('p');
-                errorElement.id = 'mata-pelajaran-error';
-                errorElement.className = 'mt-1 text-sm text-red-500';
-                errorElement.textContent = 'Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.';
-                mataPelajaranInput.parentNode.appendChild(errorElement);
-            }
-            
-            return false;
-        } else {
-            // Hapus class error dan pesan error jika validasi berhasil
-            mataPelajaranInput.classList.remove('border-red-500');
-            const errorElement = document.getElementById('mata-pelajaran-error');
-            if (errorElement) {
-                errorElement.remove();
-            }
-            
-            return true;
-        }
-    }
-    
-    // Event listener untuk input dan perubahan
-    mataPelajaranInput.addEventListener('input', validateMataPelajaran);
-    kelasSelect.addEventListener('change', validateMataPelajaran);
-    semesterSelect.addEventListener('change', validateMataPelajaran);
-    
-    // Form submit handler dengan capture phase
-    document.getElementById('addSubjectForm').addEventListener('submit', function(event) {
-        if (!checkDuplication()) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Tampilkan pesan error
-            alert('Mata pelajaran dengan nama yang sama sudah ada di kelas ini untuk semester yang sama.');
-            
-            // Validasi visual
-            validateMataPelajaran();
-            
-            return false;
-        }
-        
-        return true;
-    }, true); // true untuk capture phase
-
-    // Fungsi untuk menampilkan pesan
-    function showMessage(message, type) {
-        const statusMessageElement = document.getElementById('statusMessage');
-        const successMessageElement = document.getElementById('successMessage');
-        const errorMessageElement = document.getElementById('errorMessage');
-        const successTextElement = document.getElementById('successText');
-        const errorTextElement = document.getElementById('errorText');
-        
-        // Hide all messages first
-        successMessageElement.classList.add('hidden');
-        errorMessageElement.classList.add('hidden');
-        
-        // Show the appropriate message
-        if (type === 'success') {
-            successTextElement.textContent = message;
-            successMessageElement.classList.remove('hidden');
-        } else {
-            errorTextElement.textContent = message;
-            errorMessageElement.classList.remove('hidden');
-        }
-        
-        // Show the container
-        statusMessageElement.classList.remove('hidden');
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            statusMessageElement.classList.add('hidden');
-        }, 5000);
-    }
+    });
 });
 
-function addLingkupMateri() {
-    const container = document.getElementById('lingkupMateriContainer');
+// Validasi Duplikasi
+window.mapelData = [
+    @foreach(App\Models\MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')->get() as $mapel)
+    {
+        id: {{ $mapel->id }},
+        nama: "{{ $mapel->nama_pelajaran }}",
+        kelas_id: {{ $mapel->kelas_id }},
+        semester: {{ $mapel->semester }}
+    },
+    @endforeach
+];
+
+function syncCheckboxes(checkbox) {
+    const subjectEntry = checkbox.closest('.subject-entry');
+    const isMuatanLokalCheckbox = subjectEntry.querySelector('[name*="is_muatan_lokal"]');
+    const allowNonWaliCheckbox = subjectEntry.querySelector('[name*="allow_non_wali"]');
+    
+    // Jika yang diklik adalah checkbox muatan lokal
+    if (checkbox.name.includes('is_muatan_lokal')) {
+        // Jika muatan lokal dicentang, maka mata pelajaran wajib tidak boleh dicentang
+        if (checkbox.checked && allowNonWaliCheckbox) {
+            allowNonWaliCheckbox.checked = false;
+        }
+    }
+    
+    // Jika yang diklik adalah checkbox mata pelajaran wajib
+    if (checkbox.name.includes('allow_non_wali')) {
+        // Jika mata pelajaran wajib dicentang, maka muatan lokal tidak boleh dicentang
+        if (checkbox.checked && isMuatanLokalCheckbox) {
+            isMuatanLokalCheckbox.checked = false;
+        }
+    }
+    
+    // Mark form as changed
+    window.formChanged = true;
+}
+
+// Hapus function toggleMuatanLokal karena sudah tidak digunakan
+
+function updateKelasSelection(selectElement) {
+    if (!selectElement || !selectElement.value) return;
+    
+    const subjectEntry = selectElement.closest('.subject-entry');
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const isWaliKelas = selectedOption.getAttribute('data-is-wali-kelas') === 'true';
+    const allowNonWaliInput = subjectEntry.querySelector('.allow-non-wali-input');
+    
+    // Check if it's guru wali
+    const isGuruWali = {{ $isGuruWali ? 'true' : 'false' }};
+    
+    if (isGuruWali) {
+        // For guru wali:
+        // - is_muatan_lokal is always false (handled by hidden input)
+        // - allow_non_wali depends on if it's their own class
+        if (isWaliKelas) {
+            // In their own class, allow_non_wali is false
+            if (allowNonWaliInput) {
+                allowNonWaliInput.value = "0";
+            }
+        } else {
+            // In other classes, they teach as a regular teacher
+            // So allow_non_wali needs to be true
+            if (allowNonWaliInput) {
+                allowNonWaliInput.value = "1";
+            }
+        }
+    }
+    
+    // Mark form as changed for the protection system
+    window.formChanged = true;
+}
+
+let subjectCount = 1;
+
+function addSubjectEntry() {
+    subjectCount++;
+    const container = document.getElementById('subjectEntriesContainer');
+    const template = container.querySelector('.subject-entry').cloneNode(true);
+    
+    // Update IDs and names
+    template.querySelectorAll('input, select').forEach(input => {
+        const name = input.getAttribute('name');
+        if (name) {
+            input.setAttribute('name', name.replace(/subjects\[0\]/, `subjects[${subjectCount-1}]`));
+        }
+        
+        const id = input.getAttribute('id');
+        if (id) {
+            const newId = id.replace(/_0$/, `_${subjectCount-1}`);
+            input.setAttribute('id', newId);
+        }
+        
+        // Clear values
+        if (input.tagName === 'INPUT' && input.type !== 'checkbox' && !input.hasAttribute('disabled') && !input.hasAttribute('hidden')) {
+            input.value = '';
+        } else if (input.tagName === 'SELECT' && !input.hasAttribute('disabled')) {
+            // Keep the first option for single-selects
+            if (input.options.length > 0) {
+                input.selectedIndex = 0;
+            }
+        } else if (input.type === 'checkbox' && !input.hasAttribute('disabled')) {
+            input.checked = false;
+        }
+        
+        // Re-attach event handlers
+        if (input.classList.contains('muatan-lokal-checkbox') || 
+            input.classList.contains('allow-non-wali-checkbox')) {
+            input.setAttribute('onchange', "syncCheckboxes(this)");
+        }
+
+        // Re-attach event handlers for kelas select
+        if (input.classList.contains('kelas-select')) {
+            input.setAttribute('onchange', "updateKelasSelection(this.closest('.subject-entry'))");
+        }
+    });
+    
+    // Update labels
+    template.querySelectorAll('label').forEach(label => {
+        const forAttr = label.getAttribute('for');
+        if (forAttr) {
+            label.setAttribute('for', forAttr.replace(/_0$/, `_${subjectCount-1}`));
+        }
+    });
+    
+    // Update heading
+    template.querySelector('h4').textContent = `Mata Pelajaran ${subjectCount}`;
+    
+    // Show the remove button
+    template.querySelector('.remove-btn').classList.remove('hidden');
+    
+    // Reset lingkup materi container - keep only one entry
+    const lingkupContainer = template.querySelector('.lingkup-materi-container');
+    const firstLingkupEntry = lingkupContainer.querySelector('.flex.items-center').cloneNode(true);
+    lingkupContainer.innerHTML = '';
+    lingkupContainer.appendChild(firstLingkupEntry);
+    firstLingkupEntry.querySelector('input').value = '';
+    
+    // Add the new entry to the container
+    container.appendChild(template);
+    
+    // Show all remove buttons if more than one entry
+    if (document.querySelectorAll('.subject-entry').length > 1) {
+        document.querySelectorAll('.subject-entry .remove-btn').forEach(btn => {
+            btn.classList.remove('hidden');
+        });
+    }
+
+    // Set initial state for the new entry
+    updateKelasSelection(template.querySelector('.kelas-select'));
+}
+
+function removeSubjectEntry(button) {
+    const entry = button.closest('.subject-entry');
+    
+    // Only allow removal if there's more than one entry
+    const allEntries = document.querySelectorAll('.subject-entry');
+    if (allEntries.length > 1) {
+        entry.remove();
+        
+        // Update subject numbers in headings
+        document.querySelectorAll('.subject-entry h4').forEach((heading, index) => {
+            heading.textContent = `Mata Pelajaran ${index + 1}`;
+        });
+        
+        // If there's only one entry left, hide its remove button
+        if (document.querySelectorAll('.subject-entry').length === 1) {
+            document.querySelector('.subject-entry .remove-btn').classList.add('hidden');
+        }
+    }
+}
+
+function addLingkupMateri(button) {
+    const container = button.closest('.lingkup-materi-container');
+    const entryIndex = button.closest('.subject-entry').querySelector('input[type="text"]').name.match(/subjects\[(\d+)\]/)[1];
+    
     const div = document.createElement('div');
     div.className = 'flex items-center mb-2';
     
     div.innerHTML = `
-        <input type="text" name="lingkup_materi[]" required
-            class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+        <input type="text" name="subjects[${entryIndex}][lingkup_materi][]" required
+            class="block w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
         <button type="button" onclick="removeLingkupMateri(this)" class="ml-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
@@ -416,19 +478,123 @@ function addLingkupMateri() {
     `;
     
     container.appendChild(div);
-    
-    // Mark form as changed for protection
-    if (window.Alpine) {
-        document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
-    }
 }
 
 function removeLingkupMateri(button) {
     button.parentElement.remove();
-    // Mark form as changed for protection
-    if (window.Alpine) {
-        document.querySelector('[x-data="formProtection"]').__x.$data.formChanged = true;
+}
+
+function toggleMuatanLokal(checkbox) {
+    const subjectEntry = checkbox.closest('.subject-entry');
+    const allowNonWaliContainer = subjectEntry.querySelector('.allow-non-wali-container');
+    const allowNonWaliCheckbox = subjectEntry.querySelector('.allow-non-wali-checkbox');
+    
+    if (checkbox.checked) {
+        // Jika muatan lokal dicentang, sembunyikan opsi mata pelajaran wajib
+        if (allowNonWaliContainer) {
+            allowNonWaliContainer.style.display = 'none';
+        }
+        // Reset allow_non_wali checkbox
+        if (allowNonWaliCheckbox) {
+            allowNonWaliCheckbox.checked = false;
+        }
+    } else {
+        // Jika muatan lokal tidak dicentang, tampilkan opsi mata pelajaran wajib
+        if (allowNonWaliContainer) {
+            allowNonWaliContainer.style.display = 'block';
+        }
     }
+    
+    // Mark form as changed
+    window.formChanged = true;
+}
+
+function updateKelasSelection(selectElement) {
+    if (!selectElement || !selectElement.value) return;
+    
+    const subjectEntry = selectElement.closest('.subject-entry');
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const isWaliKelas = selectedOption.getAttribute('data-is-wali-kelas') === 'true';
+    const allowNonWaliInput = subjectEntry.querySelector('.allow-non-wali-input');
+    
+    // Check if it's guru wali
+    const isGuruWali = {{ $isGuruWali ? 'true' : 'false' }};
+    
+    if (isGuruWali) {
+        // For guru wali:
+        // - is_muatan_lokal is always false (handled by hidden input)
+        // - allow_non_wali depends on if it's their own class
+        if (isWaliKelas) {
+            // In their own class, allow_non_wali is false
+            if (allowNonWaliInput) {
+                allowNonWaliInput.value = "0";
+            }
+        } else {
+            // In other classes, they teach as a regular teacher
+            // So allow_non_wali needs to be true
+            if (allowNonWaliInput) {
+                allowNonWaliInput.value = "1";
+            }
+        }
+    } else {
+        // For guru biasa:
+        // Check the initial state of muatan lokal checkbox
+        const isMuatanLokalCheckbox = subjectEntry.querySelector('.is-muatan-lokal-checkbox');
+        if (isMuatanLokalCheckbox) {
+            toggleMuatanLokal(isMuatanLokalCheckbox);
+        }
+    }
+    
+    // Mark form as changed for the protection system
+    window.formChanged = true;
+}
+
+function validateForm() {
+    // Clear all previous errors
+    document.querySelectorAll('.mata-pelajaran-error').forEach(el => el.remove());
+    document.querySelectorAll('input.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+    
+    let formValid = true;
+    
+    // Validate each subject entry
+    document.querySelectorAll('.subject-entry').forEach((entry, index) => {
+        const mataPelajaranInput = entry.querySelector(`input[name="subjects[${index}][mata_pelajaran]"]`);
+        const mataPelajaran = mataPelajaranInput.value.trim();
+        const kelasSelect = entry.querySelector(`select[name="subjects[${index}][kelas]"]`);
+        const kelasId = parseInt(kelasSelect.value);
+        const semesterSelect = entry.querySelector(`select[name="subjects[${index}][semester]"]`);
+        const semester = parseInt(semesterSelect.value);
+        
+        // Skip validation for incomplete entries
+        if (!mataPelajaran || !kelasId || isNaN(semester)) {
+            return;
+        }
+        
+        // Check for duplicate subjects
+        const duplicate = window.mapelData.find(subject => 
+            subject.nama.toLowerCase() === mataPelajaran.toLowerCase() && 
+            subject.kelas_id === kelasId && 
+            subject.semester === semester
+        );
+        
+        if (duplicate) {
+            // Show error
+            mataPelajaranInput.classList.add('border-red-500');
+            
+            const errorElement = document.createElement('p');
+            errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
+            errorElement.textContent = `"${mataPelajaran}" sudah ada di kelas ini untuk semester ${semester}`;
+            mataPelajaranInput.parentNode.appendChild(errorElement);
+            
+            formValid = false;
+        }
+    });
+    
+    if (!formValid) {
+        alert('Terdapat duplikasi mata pelajaran. Silakan periksa kembali form.');
+    }
+    
+    return formValid;
 }
 </script>
 

@@ -38,12 +38,13 @@ document.addEventListener('turbo:load', () => {
     if (window.Alpine && window.alpineInitialized) {
         window.Alpine.initTree(document.body);
     }
-    
+
     setTimeout(() => {
         if (Alpine.store('pageLoading')) {
             Alpine.store('pageLoading').stopLoading();
         }
     }, 100);
+
 });
 
 document.addEventListener('turbo:before-fetch-response', (event) => {
@@ -55,10 +56,12 @@ document.addEventListener('turbo:before-fetch-response', (event) => {
 });
 
 document.addEventListener('turbo:render', () => {
+    console.log('Turbo render, reinitializing Alpine');
     if (window.Alpine) {
         window.Alpine.initTree(document.body);
     }
 });
+
 
 document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
@@ -939,6 +942,14 @@ Alpine.store('pageLoading', {
     }
 });
 
+function ensureSidebarVisible() {
+    const sidebar = document.getElementById('logo-sidebar');
+    if (sidebar) {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('sm:translate-x-0');
+    }
+}
+
 function preloadPermanentComponents() {
     const permanentElements = document.querySelectorAll('[data-turbo-permanent]');
     
@@ -1016,6 +1027,8 @@ document.addEventListener('turbo:render', updateSidebarActiveState);
 document.addEventListener('turbo:visit', debouncedUpdateSidebar);
 document.addEventListener('DOMContentLoaded', preloadPermanentComponents);
 document.addEventListener('turbo:load', preloadPermanentComponents);
+document.addEventListener('turbo:load', ensureSidebarVisible);
+document.addEventListener('turbo:render', ensureSidebarVisible);
 // Cleanup listeners
 document.addEventListener('turbo:before-cache', () => {
     const notificationHandler = document.querySelector('[x-data="notificationHandler"]');

@@ -274,4 +274,21 @@ class Guru extends Authenticatable
     {
         return $this->photo ? asset('storage/' . $this->photo) : null;
     }
+
+    /**
+     * Menentukan apakah guru dapat mengajar mata pelajaran non-muatan lokal
+     * di kelas tertentu
+     */
+    public function canTeachNonMuatanLokal($kelasId)
+    {
+        // Cek apakah guru adalah wali kelas (bukan hanya jabatan)
+        if (!$this->isWaliKelas()) {
+            return false;
+        }
+        
+        // Jika guru adalah wali kelas, dia hanya dapat mengajar non-muatan lokal di kelas yang diwalikan
+        $waliKelasId = $this->getWaliKelasId();
+        
+        return $waliKelasId == $kelasId;
+    }
 }

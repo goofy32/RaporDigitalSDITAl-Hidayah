@@ -86,7 +86,7 @@
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />
 
     <div class="p-4 sm:ml-64">
-        <div id="main" data-turbo-frame="main">
+        <div id="main" data-turbo-frame="main" class="w-full">
             @if(session('success'))
                 <x-alert type="success" :message="session('success')" />
             @endif

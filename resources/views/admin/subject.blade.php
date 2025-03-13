@@ -78,7 +78,7 @@
                             </a>
                         
                             <!-- Edit Data Mata Pelajaran -->
-                            <a href="{{ route('subject.edit', $subject->id) }}" class="text-green-600 hover:underline">
+                            <a href="{{ route('subject.edit', $subject->id) }}" data-turbo-action="replace" class="text-green-600 hover:underline">
                                 <!-- Ikon Edit -->
                                 <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
 

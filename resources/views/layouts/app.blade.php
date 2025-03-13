@@ -114,7 +114,16 @@
         .turbo-progress-bar {
             background-color: #3B82F6 !important;
         }
+
+        body.edit-subject-page #logo-sidebar {
+            transform: translateX(0) !important;
+        }
+
+        body.edit-subject-page .sm\:ml-64 {
+            margin-left: 16rem !important;
+        }
     </style>
+    
 </head>
 <body>
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>

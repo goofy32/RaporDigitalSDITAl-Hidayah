@@ -17,10 +17,12 @@ class MataPelajaran extends Model
         'guru_id',
         'semester',
         'is_muatan_lokal',
+        'allow_non_wali',
     ];
-
+    
     protected $casts = [
         'is_muatan_lokal' => 'boolean',
+        'allow_non_wali' => 'boolean', 
     ];
 
     public function kelas()
