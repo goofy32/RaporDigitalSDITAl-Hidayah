@@ -10,13 +10,13 @@
             <h2 class="text-2xl font-bold text-green-700">Template Rapor</h2>
         </div>
 
-        <!-- Action Buttons - Similar to Student Page -->
+        <!-- Action Buttons -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div class="flex flex-wrap gap-2">
                 <button onclick="openUploadModal()" 
-                    class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
-                    <svg class="h-3.5 w-3.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+                    class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2.5 transition duration-150 ease-in-out">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                     Upload Template
                 </button>
@@ -53,7 +53,39 @@
             </div>
         </div>
 
-        <!-- Single Templates List Table -->
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+            <div class="flex gap-2">
+                <select id="filter-type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+                    <option value="">Semua Jenis</option>
+                    <option value="UTS">UTS</option>
+                    <option value="UAS">UAS</option>
+                </select>
+                
+                <select id="filter-kelas" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+                    <option value="">Semua Kelas</option>
+                    @foreach(\App\Models\Kelas::orderBy('nomor_kelas')->get() as $kelas)
+                        <option value="{{ $kelas->full_kelas }}">{{ $kelas->full_kelas }}</option>
+                    @endforeach
+                    <option value="Template Global">Template Global</option>
+                </select>
+            </div>
+            
+            <!-- Search Box -->
+            <div class="relative w-full md:w-auto mt-2 md:mt-0">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="w-4 h-4 text-gray-500" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                <input type="search" 
+                       id="search-input"
+                       class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-green-500 focus:border-green-500" 
+                       placeholder="Cari template...">
+            </div>
+        </div>
+
+        <!-- Templates List Table -->
         <div class="overflow-x-auto bg-white shadow-md rounded-lg">
             <table class="w-full text-sm text-left text-gray-500">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -61,6 +93,7 @@
                         <th class="px-6 py-3">No</th>
                         <th class="px-6 py-3">Jenis</th>
                         <th class="px-6 py-3">Nama File</th>
+                        <th class="px-6 py-3">Kelas</th>
                         <th class="px-6 py-3">Tahun Ajaran</th>
                         <th class="px-6 py-3">Semester</th>
                         <th class="px-6 py-3">Tanggal Upload</th>
@@ -70,7 +103,10 @@
                 </thead>
                 <tbody>
                     @forelse($templates as $index => $template)
-                    <tr class="bg-white border-b hover:bg-gray-50">
+                    <tr class="bg-white border-b hover:bg-gray-50" 
+                        data-type="{{ $template->type }}" 
+                        data-kelas="{{ $template->kelas_id ? $template->kelas->full_kelas : 'Template Global' }}"
+                        data-search="{{ $template->filename }}">
                         <td class="px-6 py-4">{{ $index + 1 }}</td>
                         <td class="px-6 py-4">
                             <span class="px-2 py-1 text-xs font-medium {{ $template->type === 'UTS' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
@@ -78,48 +114,75 @@
                             </span>
                         </td>
                         <td class="px-6 py-4" id="filename-{{ $template->id }}">{{ $template->filename }}</td>
+                        <td class="px-6 py-4">
+                            @if($template->kelas_id)
+                                {{ $template->kelas->full_kelas }}
+                            @else
+                                <span class="text-gray-500">Template Global</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4">{{ $template->tahun_ajaran ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $template->semester == 1 ? 'Ganjil' : 'Genap' }}</td>
                         <td class="px-6 py-4">{{ Carbon\Carbon::parse($template->created_at)->format('d M Y H:i') }}</td>
                         <td class="px-6 py-4">
                             @if($template->is_active)
-                                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                <span class="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center justify-center w-fit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
                                     Aktif
                                 </span>
                             @else
-                                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                                <span class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full flex items-center justify-center w-fit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                     Tidak Aktif
                                 </span>
                             @endif
                         </td>
                         <td class="px-6 py-4">
-                            <div class="flex space-x-2">
+                            <div class="flex space-x">
+                                <!-- Preview Button dengan SVG -->
                                 <button
                                    onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}')"
-                                   class="text-blue-600 hover:text-blue-800">
-                                    <img src="{{ asset('images/icons/detail.png') }}" alt="Preview Icon" class="w-5 h-5">
+                                   class="text-blue-600 hover:text-blue-800 p-1.5 rounded-full hover:bg-blue-50">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
                                 </button>
                                 
-                                @if(!$template->is_active)
-                                    <form action="{{ route('report.template.activate', $template->id) }}" 
-                                        method="POST" 
-                                        onsubmit="return handleActivate(event)"
-                                        class="inline">
-                                        @csrf
-                                        <button type="submit" class="text-green-600 hover:text-green-800">
-                                            <img src="{{ asset('images/icons/activate.png') }}" alt="Activate Icon" class="w-5 h-5">
-                                        </button>
-                                    </form>
-                                @endif
+                                <!-- Activate/Deactivate Button dengan SVG -->
+                                <form action="{{ route('report.template.activate', $template->id) }}" 
+                                    method="POST" 
+                                    onsubmit="return handleActivateToggle(event)"
+                                    class="inline">
+                                    @csrf
+                                    <button type="submit" class="{{ $template->is_active ? 'text-green-600 hover:text-green-700' : 'text-gray-500 hover:text-gray-600' }} p-1.5 rounded-full hover:bg-gray-50">
+                                        @if($template->is_active)
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        @else
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        @endif
+                                    </button>
+                                </form>
 
+                                <!-- Delete Button dengan SVG -->
                                 <form action="{{ route('report.template.destroy', $template->id) }}" 
                                       method="POST" 
                                       class="inline"
                                       onsubmit="return handleDelete(event)">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-800">
-                                        <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
+                                    <button type="submit" class="text-red-600 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
                                     </button>
                                 </form>
                             </div>
@@ -127,7 +190,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-4 text-center">
+                        <td colspan="9" class="px-6 py-4 text-center">
                             <div class="flex flex-col items-center justify-center py-6">
                                 <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -180,6 +243,19 @@
                     </div>
                     <p class="mt-1 text-xs text-gray-500">
                         Pastikan template yang diupload sesuai dengan jenis rapor yang dipilih
+                    </p>
+                </div>
+
+                <!-- Kelas Selection -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                    <select name="kelas_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5 w-full" required>
+                        @foreach(\App\Models\Kelas::orderBy('nomor_kelas')->get() as $kelas)
+                            <option value="{{ $kelas->id }}">{{ $kelas->full_kelas }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Pilih kelas untuk template ini.
                     </p>
                 </div>
                 
@@ -301,6 +377,7 @@
         </div>
     </div>
 </div>
+
 @push('styles')
 <style>
     /* Docx viewer styles for consistent rendering */
@@ -339,6 +416,86 @@
 <!-- CDN fallback for docx-preview -->
 <script src="https://unpkg.com/docx-preview@0.1.15/dist/docx-preview.js"></script>
 <script>
+async function handleActivateToggle(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const button = form.querySelector('button');
+    // Ubah cara mendeteksi status aktif, jangan menggunakan atribut src dari img
+    const isCurrentlyActive = button.closest('svg') ? 
+        button.closest('svg').classList.contains('text-green-600') : 
+        button.classList.contains('text-green-600');
+        
+    const actionWord = isCurrentlyActive ? 'menonaktifkan' : 'mengaktifkan';
+    
+    if (!confirm(`Apakah Anda yakin ingin ${actionWord} template ini?`)) {
+        return false;
+    }
+
+    button.disabled = true;
+    
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload halaman setelah berhasil
+            window.location.reload();
+        } else {
+            alert(result.message || `Gagal ${actionWord} template`);
+            button.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert(`Terjadi kesalahan saat ${actionWord} template`);
+        button.disabled = false;
+    }
+    
+    return false;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter berdasarkan jenis (UTS/UAS)
+    const filterType = document.getElementById('filter-type');
+    filterType.addEventListener('change', applyFilters);
+    
+    // Filter berdasarkan kelas
+    const filterKelas = document.getElementById('filter-kelas');
+    filterKelas.addEventListener('change', applyFilters);
+    
+    // Filter berdasarkan pencarian
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', applyFilters);
+    
+    function applyFilters() {
+        const typeFilter = filterType.value;
+        const kelasFilter = filterKelas.value;
+        const searchFilter = searchInput.value.toLowerCase();
+        
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const rowType = row.getAttribute('data-type');
+            const rowKelas = row.getAttribute('data-kelas');
+            const rowSearchText = row.getAttribute('data-search').toLowerCase();
+            
+            // Cek apakah baris memenuhi semua filter
+            const matchesType = !typeFilter || rowType === typeFilter;
+            const matchesKelas = !kelasFilter || rowKelas === kelasFilter;
+            const matchesSearch = !searchFilter || rowSearchText.includes(searchFilter);
+            
+            // Tampilkan/sembunyikan baris berdasarkan hasil filter
+            row.style.display = matchesType && matchesKelas && matchesSearch ? '' : 'none';
+        });
+    }
+});
+
 // Fallback jika library tidak di-bundle
 if (typeof window.renderAsync === 'undefined' && typeof docx !== 'undefined') {
     window.renderAsync = docx.renderAsync;
@@ -366,6 +523,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+ 
     
     // Handle form submit with AJAX
     const uploadForm = document.getElementById('uploadForm');

@@ -161,4 +161,9 @@ class Kelas extends Model
         
         return $result;
     }
+    
+    public function reportTemplates()
+    {
+        return $this->hasMany(ReportTemplate::class, 'kelas_id');
+    }
 }

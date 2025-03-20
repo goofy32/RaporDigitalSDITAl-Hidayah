@@ -90,6 +90,11 @@ class RaporTemplateProcessor
     
         $this->placeholders = ReportPlaceholder::all()->groupBy('category');
     }
+
+    public static function getTemplateForSiswa(Siswa $siswa, $type = 'UTS')
+    {
+        return ReportTemplate::getActiveTemplate($type, $siswa->kelas_id);
+    }
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
      * 

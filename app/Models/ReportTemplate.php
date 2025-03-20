@@ -12,7 +12,8 @@ class ReportTemplate extends Model
         'type', 
         'is_active',
         'tahun_ajaran',
-        'semester'
+        'semester',
+        'kelas_id' // Tambahkan kelas_id
     ];
 
     protected $casts = [
@@ -20,6 +21,22 @@ class ReportTemplate extends Model
         'semester' => 'integer'
     ];
 
+    public function kelas()
+    {
+        return $this->belongsTo(Kelas::class, 'kelas_id');
+    }
+
+    // Get template aktif berdasarkan kelas dan tipe
+    public static function getActiveTemplate($type, $kelasId)
+    {
+        // Cari template spesifik untuk kelas
+        $template = self::where('type', $type)
+                       ->where('kelas_id', $kelasId)
+                       ->where('is_active', true)
+                       ->first();
+        
+        return $template;
+    }
     // Accessor untuk mendapatkan label semester
     public function getSemesterLabelAttribute()
     {

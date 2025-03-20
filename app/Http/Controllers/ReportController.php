@@ -19,11 +19,11 @@ class ReportController extends Controller
     // Modify the index method to pass school profile to the view
     public function index()
     {
-        // Get all templates (both UTS and UAS) sorted by creation date
-        $templates = ReportTemplate::orderBy('created_at', 'desc')
+        $templates = ReportTemplate::with('kelas') // Load relasi kelas
+            ->orderBy('created_at', 'desc')
             ->get();
-        
-        $schoolProfile = ProfilSekolah::first();
+            
+        $schoolProfile = \App\Models\ProfilSekolah::first();
         
         return view('admin.report.index', compact('templates', 'schoolProfile'));
     }
@@ -39,102 +39,102 @@ class ReportController extends Controller
         $request->validate([
             'template' => 'required|file|mimes:docx',
             'type' => 'required|in:UTS,UAS',
+            'kelas_id' => 'nullable|exists:kelas,id',
             'tahun_ajaran' => 'required',
-            'semester' => 'required|in:1,2',
+            'semester' => 'required|in:1,2'
         ]);
-        
+    
         try {
+            // Proses upload file
             $file = $request->file('template');
-            $filename = $file->getClientOriginalName();
-            $tempPath = $file->store('temp', 'public');
-            $fullTempPath = storage_path('app/public/' . $tempPath);
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('templates', $fileName, 'public');
             
-            // Validate template placeholders
-            $validationResult = $this->validateTemplate($fullTempPath, $request->type);
+            // Validasi placeholder dalam template
+            $templatePath = storage_path('app/public/' . $filePath);
+            $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+            $variables = $templateProcessor->getVariables();
             
-            if (!$validationResult['is_valid']) {
-                // Delete the temporary file
-                Storage::disk('public')->delete($tempPath);
-                
-                // Bersihkan pesan error dari tag XML
-                $cleanedErrors = [];
-                
-                if (!empty($validationResult['missing_placeholders'])) {
-                    $cleanedErrors[] = 'Placeholder wajib yang tidak ditemukan: ' . 
-                        implode(', ', $validationResult['missing_placeholders']);
-                }
-                
-                if (!empty($validationResult['invalid_placeholders'])) {
-                    $invalidList = [];
-                    foreach ($validationResult['invalid_placeholders'] as $invalid) {
-                        // Bersihkan tag XML
-                        $cleaned = preg_replace('/<[^>]+>/', '', $invalid);
-                        // Ambil hanya bagian awal (placeholder asli)
-                        $cleaned = preg_replace('/^([^,\s\)]+).*$/', '$1', $cleaned);
-                        $invalidList[] = $cleaned;
+            // Dapatkan placeholder wajib berdasarkan tipe
+            $requiredPlaceholders = \App\Models\ReportPlaceholder::where('is_required', true)
+                ->where(function($query) use ($request) {
+                    if ($request->type === 'UTS') {
+                        $query->where('category', '!=', 'uas_only');
+                    } else {
+                        $query->where('category', '!=', 'uts_only');
                     }
-                    $cleanedErrors[] = 'Placeholder tidak valid: ' . implode(', ', $invalidList);
-                }
-                
-                if (isset($validationResult['error'])) {
-                    $cleanedErrors[] = 'Error: ' . preg_replace('/<[^>]+>/', '', $validationResult['error']);
-                }
+                })
+                ->pluck('placeholder_key')
+                ->toArray();
+            
+            // Periksa apakah semua placeholder wajib ada
+            $missingPlaceholders = array_diff($requiredPlaceholders, $variables);
+            if (count($missingPlaceholders) > 0) {
+                // Hapus file yang sudah diupload
+                \Storage::disk('public')->delete($filePath);
                 
                 return response()->json([
                     'success' => false,
-                    'message' => implode('. ', $cleanedErrors)
-                ], 400);
+                    'message' => 'Template tidak valid. Placeholder wajib yang tidak ditemukan: ' . implode(', ', $missingPlaceholders)
+                ], 422);
             }
             
-            // Move from temp to final location
-            $path = 'templates/' . time() . '_' . $filename;
-            Storage::disk('public')->move($tempPath, $path);
-            
+            // Simpan data dengan kelas_id
             $template = ReportTemplate::create([
-                'filename' => $filename,
-                'path' => $path,
+                'filename' => $fileName,
+                'path' => $filePath,
                 'type' => $request->type,
+                'kelas_id' => $request->kelas_id ?: null, 
+                'is_active' => false, 
                 'tahun_ajaran' => $request->tahun_ajaran,
-                'semester' => $request->semester,
-                'is_active' => false, // Default inactive
+                'semester' => $request->semester
             ]);
-            
+    
             return response()->json([
                 'success' => true,
-                'message' => 'Template berhasil diupload',
-                'template' => $template
+                'message' => 'Template berhasil diunggah'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Upload template error:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            // Jika terjadi error saat memproses template, hapus file yang sudah diupload
+            if (isset($filePath) && \Storage::disk('public')->exists($filePath)) {
+                \Storage::disk('public')->delete($filePath);
+            }
             
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal upload template: ' . $e->getMessage()
+                'message' => 'Gagal mengupload template: ' . $e->getMessage()
             ], 500);
         }
     }
 
     // Di ReportController.php, tambahkan method ini:
-    public function checkActiveTemplates()
+    public function checkActiveTemplates(Request $request)
     {
-        // Cek template UTS aktif
-        $utsActive = ReportTemplate::where([
-            'type' => 'UTS',
-            'is_active' => true
-        ])->exists();
+        $kelasId = auth()->user()->kelasWali->id ?? null;
         
-        // Cek template UAS aktif
-        $uasActive = ReportTemplate::where([
-            'type' => 'UAS',
-            'is_active' => true
-        ])->exists();
+        if (!$kelasId) {
+            return response()->json([
+                'UTS_active' => false,
+                'UAS_active' => false,
+                'error' => 'Tidak ditemukan kelas yang diwalikan'
+            ]);
+        }
+        
+        // Cek template aktif untuk UTS di kelas spesifik
+        $utsTemplate = ReportTemplate::where('type', 'UTS')
+            ->where('kelas_id', $kelasId)
+            ->where('is_active', true)
+            ->exists();
+            
+        // Cek template aktif untuk UAS di kelas spesifik
+        $uasTemplate = ReportTemplate::where('type', 'UAS')
+            ->where('kelas_id', $kelasId)
+            ->where('is_active', true)
+            ->exists();
         
         return response()->json([
-            'UTS_active' => $utsActive,
-            'UAS_active' => $uasActive
+            'UTS_active' => $utsTemplate,
+            'UAS_active' => $uasTemplate
         ]);
     }
     /**
@@ -540,175 +540,166 @@ class ReportController extends Controller
 
     public function generateReport(Request $request, Siswa $siswa)
     {
+        $type = $request->input('type', 'UTS');
+        $action = $request->input('action', 'download');
+        
         try {
-            // Dapatkan data guru dan siswa
-            $guru = auth()->user();
-            $guruId = $guru->id;
-            $siswaKelasId = $siswa->kelas_id;
+            // Dapatkan template yang sesuai untuk kelas siswa
+            $template = $this->getTemplateForSiswa($siswa, $type);
             
-            // Log untuk debugging
-            \Log::info('Generating report', [
-                'guru_id' => $guruId,
-                'siswa_id' => $siswa->id,
-                'siswa_kelas_id' => $siswaKelasId,
-                'report_type' => $request->type ?? 'UTS'
-            ]);
-            
-            // Cek akses dengan query langsung ke tabel pivot
-            $isWaliKelas = \DB::table('guru_kelas')
-                ->where('guru_id', $guruId)
-                ->where('kelas_id', $siswaKelasId)
-                ->where('is_wali_kelas', 1)
-                ->where('role', 'wali_kelas')
-                ->exists();
-                
-            \Log::info('Wali kelas check result', ['is_wali_kelas' => $isWaliKelas]);
-            
-            // Validasi akses
-            if (!$isWaliKelas) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki akses untuk generate rapor siswa ini'
-                ], 403);
-            }
-    
-            // Cek template aktif
-            $template = \App\Models\ReportTemplate::where([
-                'type' => $request->type ?? 'UTS',
-                'is_active' => true
-            ])->first();
-    
             if (!$template) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Template aktif tidak ditemukan. Hubungi admin untuk mengaktifkan template.'
-                ], 400);
+                    'message' => 'Tidak ada template aktif untuk jenis rapor ' . $type . ' pada kelas ini.'
+                ], 404);
             }
-    
-            // Generate rapor
-            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $request->type ?? 'UTS');
-            $result = $processor->generate();
-    
-            // Simpan ke history sebelum mengirim response download
-            if (isset($result['success']) && $result['success']) {
-                ReportGeneration::create([
-                    'siswa_id' => $siswa->id,
-                    'kelas_id' => $siswa->kelas_id,
-                    'report_template_id' => $template->id,
-                    'generated_file' => $result['path'],
-                    'type' => $request->type ?? 'UTS',
-                    'tahun_ajaran' => $siswa->kelas->tahun_ajaran ?? 
-                        ProfilSekolah::first()->tahun_pelajaran ?? 
-                        '2024/2025', // Fallback value jika semua null
-                    'semester' => ($request->type ?? 'UTS') === 'UTS' ? 1 : 2,
-                    'generated_at' => now(),
-                    'generated_by' => auth()->id()
+            
+            // Cek kelengkapan data
+            $hasData = $siswa->hasCompleteData($type);
+            $bypassValidation = $request->input('bypass_validation', false);
+            
+            if (!$hasData && !$bypassValidation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data siswa belum lengkap untuk menghasilkan rapor.',
+                    'error_type' => 'data_incomplete'
+                ], 422);
+            }
+            
+            // Proses generate rapor
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type);
+            $result = $processor->generate($bypassValidation);
+            
+            if (!$result['success']) {
+                throw new \Exception($result['message'] ?? 'Gagal generate rapor');
+            }
+            
+            // Simpan history generate
+            $this->saveGenerationHistory($siswa, $template, $type);
+            
+            // Jika hanya preview, kembalikan URL
+            if ($action == 'preview') {
+                return response()->json([
+                    'success' => true,
+                    'file_url' => asset('storage/' . $result['path']),
+                    'filename' => $result['filename']
                 ]);
             }
             
-            // Kirim file sebagai response
-            return response()->download(
-                storage_path('app/public/' . $result['path']), 
-                $result['filename']
-            );
-    
+            // Download file
+            $fullPath = storage_path('app/public/' . $result['path']);
+            
+            return response()->download($fullPath, $result['filename']);
+            
         } catch (\App\Exceptions\RaporException $e) {
-            \Log::error('Error generating report (RaporException):', [
-                'error' => $e->getMessage(),
-                'error_type' => $e->getErrorType(),
-                'trace' => $e->getTraceAsString(),
+            \Log::error('RaporException in generateReport: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
-                'type' => $request->type
+                'type' => $type,
+                'error_type' => $e->getErrorType(),
+                'stack_trace' => $e->getTraceAsString()
             ]);
             
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'error_type' => $e->getErrorType()
-            ], 500);
-        } catch (\Throwable $e) {
-            \Log::error('Error generating report (Throwable):', [
-                'error' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'trace' => $e->getTraceAsString(),
-                'siswa_id' => $siswa->id,
-                'type' => $request->type
-            ]);
+            ], 422);
             
-            // Periksa jika error adalah tentang argument ke-2
-            if (strpos($e->getMessage(), 'Argument #2') !== false && 
-                strpos($e->getMessage(), 'must be of type int, string given') !== false) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ada masalah pada template rapor. Silakan hubungi administrator.',
-                    'error_type' => 'template_error'
-                ], 500);
-            }
+        } catch (\Exception $e) {
+            \Log::error('Error in generateReport: ' . $e->getMessage(), [
+                'siswa_id' => $siswa->id,
+                'type' => $type,
+                'stack_trace' => $e->getTraceAsString()
+            ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal generate rapor: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat generate rapor: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    public function indexWaliKelas()
-        {
-            $guru = auth()->user();
-            $kelas = $guru->kelasWali;
-            
-            if (!$kelas) {
-                return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
-            }
-            
-            $siswa = $kelas->siswas()
-                ->with(['nilais.mataPelajaran', 'absensi'])
-                ->get();
-                
-            return view('wali_kelas.rapor.index', compact('siswa'));
+    protected function saveGenerationHistory(Siswa $siswa, ReportTemplate $template, $type)
+    {
+        try {
+            \App\Models\ReportGeneration::create([
+                'siswa_id' => $siswa->id,
+                'kelas_id' => $siswa->kelas_id,
+                'report_template_id' => $template->id,
+                'generated_file' => null, // File tidak disimpan secara permanen
+                'type' => $type,
+                'tahun_ajaran' => $template->tahun_ajaran,
+                'semester' => $template->semester,
+                'generated_at' => now(),
+                'generated_by' => auth()->id() ?? auth()->guard('guru')->id()
+            ]);
+        } catch (\Exception $e) {
+            // Hanya log error, tidak mempengaruhi proses utama
+            \Log::error('Error saving generation history: ' . $e->getMessage(), [
+                'siswa_id' => $siswa->id,
+                'template_id' => $template->id
+            ]);
         }
+    }
+    
+
+    public function indexWaliKelas()
+    {
+        $guru = auth()->user();
+        $kelas = $guru->kelasWali;
+        
+        if (!$kelas) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
+        }
+        
+        $siswa = $kelas->siswas()
+            ->with(['nilais.mataPelajaran', 'absensi'])
+            ->get();
+            
+        return view('wali_kelas.rapor.index', compact('siswa'));
+    }
+
     public function activate(ReportTemplate $template)
     {
         try {
-            DB::beginTransaction();
+            // Cek apakah template ini sudah aktif
+            if ($template->is_active) {
+                // Jika sudah aktif, berarti ini adalah request untuk menonaktifkan
+                $template->update(['is_active' => false]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Template berhasil dinonaktifkan',
+                    'status' => 'inactive'
+                ]);
+            }
     
-            // Log aktivitas
-            Log::info('Activating template', [
-                'template_id' => $template->id,
-                'template_type' => $template->type
-            ]);
-    
-            // Nonaktifkan SEMUA template lain, tidak peduli jenisnya
-            $deactivated = ReportTemplate::where('id', '!=', $template->id)
-                ->where('is_active', true)
+            // Jika belum aktif, maka akan diaktifkan
+            // Pertama, nonaktifkan semua template dengan tipe dan kelas yang sama
+            ReportTemplate::where('type', $template->type)
+                ->where('kelas_id', $template->kelas_id)
                 ->update(['is_active' => false]);
-                
-            Log::info('Deactivated templates', ['count' => $deactivated]);
-    
-            // Aktifkan template yang dipilih
+            
+            // Kemudian, aktifkan template yang dipilih
             $template->update(['is_active' => true]);
-    
-            DB::commit();
-    
+            
             return response()->json([
                 'success' => true,
-                'message' => 'Template berhasil diaktifkan'
+                'message' => 'Template berhasil diaktifkan',
+                'status' => 'active'
             ]);
-    
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to activate template', [
+            \Log::error('Error activating template: ' . $e->getMessage(), [
                 'template_id' => $template->id,
-                'error' => $e->getMessage()
+                'stack_trace' => $e->getTraceAsString()
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengaktifkan template: ' . $e->getMessage()
+                'message' => 'Gagal mengubah status template: ' . $e->getMessage()
             ], 500);
         }
     }
-
+    
     public function generateBatchReport(Request $request)
     {
         try {
@@ -840,6 +831,34 @@ class ReportController extends Controller
                 'message' => $e->getMessage()
             ], 400);
         }
+    }
+
+    protected function getTemplateForSiswa(Siswa $siswa, $type)
+    {
+        // Cari template untuk kelas spesifik dulu
+        $template = ReportTemplate::where('type', $type)
+            ->where('kelas_id', $siswa->kelas_id)
+            ->where('is_active', true)
+            ->first();
+        
+        // Jika tidak ditemukan, cari template global
+        if (!$template) {
+            $template = ReportTemplate::where('type', $type)
+                ->whereNull('kelas_id')
+                ->where('is_active', true)
+                ->first();
+        }
+        
+        // Log untuk debugging
+        \Log::info('Getting template for student', [
+            'siswa_id' => $siswa->id,
+            'kelas_id' => $siswa->kelas_id,
+            'type' => $type,
+            'template_found' => ($template ? $template->id : 'None'),
+            'is_kelas_specific' => ($template && $template->kelas_id ? 'Yes' : 'No')
+        ]);
+        
+        return $template;
     }
 
     public function destroy(ReportTemplate $template)

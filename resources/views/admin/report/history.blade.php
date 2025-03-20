@@ -43,59 +43,67 @@
     <!-- Data Table -->
     <div class="overflow-x-auto shadow-md rounded-lg">
         <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3">No</th>
-                    <th class="px-6 py-3">NIS/Nama Siswa</th>
-                    <th class="px-6 py-3">Kelas</th>
-                    <th class="px-6 py-3">Tipe Rapor</th>
-                    <th class="px-6 py-3">Tahun Ajaran</th>
-                    <th class="px-6 py-3">Dicetak Oleh</th>
-                    <th class="px-6 py-3">Waktu Cetak</th>
-                    <th class="px-6 py-3">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($reports as $index => $report)
-                <tr class="bg-white border-b hover:bg-gray-50" 
-                    data-type="{{ $report->type }}" 
-                    data-kelas="{{ $report->kelas_id }}"
-                    data-search="{{ $report->siswa->nama }} {{ $report->siswa->nis }}">
-                    <td class="px-6 py-4">{{ $reports->firstItem() + $index }}</td>
-                    <td class="px-6 py-4 font-medium text-gray-900">
-                        {{ $report->siswa->nis }} - {{ $report->siswa->nama }}
-                    </td>
-                    <td class="px-6 py-4">{{ $report->kelas->full_kelas }}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 text-xs font-medium {{ $report->type === 'UTS' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
-                            {{ $report->type }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4">{{ $report->tahun_ajaran }}</td>
-                    <td class="px-6 py-4">{{ $report->generator->nama }}</td>
-                    <td class="px-6 py-4">{{ $report->created_at->format('d M Y H:i') }}</td>
-                    <td class="px-6 py-4">
-                        <a href="{{ route('admin.report.history.download', $report->id) }}" 
-                           class="text-green-600 hover:text-green-900">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                            </svg>
-                        </a>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">
-                        <div class="flex flex-col items-center justify-center py-6">
-                            <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <p class="text-gray-500 mb-2">Belum ada history cetak rapor</p>
-                        </div>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+    <tr>
+        <th class="px-6 py-3">No</th>
+        <th class="px-6 py-3">NIS/Nama Siswa</th>
+        <th class="px-6 py-3">Kelas</th>
+        <th class="px-6 py-3">Tipe Rapor</th>
+        <th class="px-6 py-3">Template</th> <!-- Kolom baru -->
+        <th class="px-6 py-3">Tahun Ajaran</th>
+        <th class="px-6 py-3">Dicetak Oleh</th>
+        <th class="px-6 py-3">Waktu Cetak</th>
+        <th class="px-6 py-3">Aksi</th>
+    </tr>
+        </thead>
+        <tbody>
+            @forelse($reports as $index => $report)
+            <tr class="bg-white border-b hover:bg-gray-50" 
+                data-type="{{ $report->type }}" 
+                data-kelas="{{ $report->kelas_id }}"
+                data-search="{{ $report->siswa->nama }} {{ $report->siswa->nis }}">
+                <td class="px-6 py-4">{{ $reports->firstItem() + $index }}</td>
+                <td class="px-6 py-4 font-medium text-gray-900">
+                    {{ $report->siswa->nis }} - {{ $report->siswa->nama }}
+                </td>
+                <td class="px-6 py-4">{{ $report->kelas->full_kelas }}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs font-medium {{ $report->type === 'UTS' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
+                        {{ $report->type }}
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    @if($report->template && $report->template->kelas_id)
+                        <span class="text-xs">{{ $report->template->kelas->full_kelas }}</span>
+                    @else
+                        <span class="text-xs text-gray-500">Global</span>
+                    @endif
+                </td>
+                <td class="px-6 py-4">{{ $report->tahun_ajaran }}</td>
+                <td class="px-6 py-4">{{ $report->generator->nama }}</td>
+                <td class="px-6 py-4">{{ $report->created_at->format('d M Y H:i') }}</td>
+                <td class="px-6 py-4">
+                    <a href="{{ route('admin.report.history.download', $report->id) }}" 
+                        class="text-green-600 hover:text-green-900">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </a>
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="9" class="px-6 py-4 text-center text-gray-500">
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <svg class="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="text-gray-500 mb-2">Belum ada history cetak rapor</p>
+                    </div>
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
         </table>
     </div>
 
