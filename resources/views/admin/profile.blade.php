@@ -172,8 +172,15 @@
                     <!-- Tahun Pelajaran -->
                     <div>
                         <label for="tahun_pelajaran" class="block mb-2 text-sm font-medium text-gray-900">Tahun Pelajaran</label>
-                        <input type="text" id="tahun_pelajaran" name="tahun_pelajaran" value="{{ old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') }}"
+                        <select id="tahun_pelajaran" name="tahun_pelajaran" 
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" required>
+                            <option value="">Pilih Tahun Pelajaran</option>
+                            @foreach($tahunAjarans as $ta)
+                                <option value="{{ $ta->tahun_ajaran }}" {{ (old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') == $ta->tahun_ajaran) ? 'selected' : '' }}>
+                                    {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
+                                </option>
+                            @endforeach
+                        </select>
                         @error('tahun_pelajaran')
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror
@@ -182,8 +189,12 @@
                     <!-- Semester -->
                     <div>
                         <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
-                        <input type="number" id="semester" name="semester" value="{{ old('semester', $profil->semester ?? '') }}"
+                        <select id="semester" name="semester" 
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" required>
+                            <option value="">Pilih Semester</option>
+                            <option value="1" {{ (old('semester', $profil->semester ?? '') == 1) ? 'selected' : '' }}>Ganjil</option>
+                            <option value="2" {{ (old('semester', $profil->semester ?? '') == 2) ? 'selected' : '' }}>Genap</option>
+                        </select>
                         @error('semester')
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror

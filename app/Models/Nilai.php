@@ -25,7 +25,8 @@ class Nilai extends Model
         'tp_number',
         'nilai_tes',
         'nilai_non_tes',
-        'nilai_akhir_rapor'
+        'nilai_akhir_rapor',
+        'tahun_ajaran_id' // Tambahkan ini
     ];
 
     protected $casts = [
@@ -68,11 +69,30 @@ class Nilai extends Model
     {
         return $this->belongsTo(LingkupMateri::class, 'lingkup_materi_id');
     }
+    
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
+    
+    public function scopeTahunAjaran($query, $tahunAjaranId)
+    {
+        return $query->where('tahun_ajaran_id', $tahunAjaranId);
+    }
+    
+    public function scopeAktif($query)
+    {
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        if ($tahunAjaranAktif) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
+        }
+        return $query;
+    }
+    
     public function isComplete()
     {
         return !is_null($this->nilai_akhir_rapor) && 
             !is_null($this->nilai_tes) && 
             !is_null($this->nilai_non_tes);
     }
-
 }

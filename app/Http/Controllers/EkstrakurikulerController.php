@@ -104,6 +104,7 @@ class EkstrakurikulerController extends Controller
         // Ambil data wali kelas yang sedang login
         $waliKelas = auth()->guard('guru')->user();
         $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         if (!$kelasWaliId) {
             return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
@@ -113,7 +114,12 @@ class EkstrakurikulerController extends Controller
             ->whereHas('siswa', function($query) use ($kelasWaliId) {
                 $query->where('kelas_id', $kelasWaliId);
             });
-
+    
+        // Filter berdasarkan tahun ajaran
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+    
         // Tambah fitur pencarian
         if ($request->has('search')) {
             $search = $request->search;
@@ -131,7 +137,7 @@ class EkstrakurikulerController extends Controller
         $nilaiEkstrakurikuler = $query->orderBy('created_at', 'desc')->paginate(10);
         return view('wali_kelas.ekstrakurikuler', compact('nilaiEkstrakurikuler'));
     }
-
+    
     public function waliKelasCreate()
     {
         $waliKelas = auth()->guard('guru')->user();
@@ -153,6 +159,7 @@ class EkstrakurikulerController extends Controller
     {
         $waliKelas = auth()->guard('guru')->user();
         $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         if (!$kelasWaliId) {
             return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
@@ -175,13 +182,17 @@ class EkstrakurikulerController extends Controller
             'deskripsi' => 'nullable|string',
         ]);
     
-        // Cek apakah siswa sudah memiliki nilai untuk ekstrakurikuler ini
+        // Tambahkan tahun ajaran ke data
+        $validated['tahun_ajaran_id'] = $tahunAjaranId;
+        
+        // Cek apakah siswa sudah memiliki nilai untuk ekstrakurikuler ini pada tahun ajaran yang sama
         $exists = NilaiEkstrakurikuler::where('siswa_id', $validated['siswa_id'])
             ->where('ekstrakurikuler_id', $validated['ekstrakurikuler_id'])
+            ->where('tahun_ajaran_id', $tahunAjaranId)
             ->exists();
             
         if ($exists) {
-            return back()->with('error', 'Siswa sudah memiliki nilai untuk ekstrakurikuler ini.');
+            return back()->with('error', 'Siswa sudah memiliki nilai untuk ekstrakurikuler ini pada tahun ajaran yang sama.');
         }
     
         NilaiEkstrakurikuler::create($validated);
@@ -189,6 +200,7 @@ class EkstrakurikulerController extends Controller
         return redirect()->route('wali_kelas.ekstrakurikuler.index')
             ->with('success', 'Data ekstrakurikuler berhasil ditambahkan');
     }
+    
 
     public function waliKelasEdit($id)
     {
@@ -218,6 +230,7 @@ class EkstrakurikulerController extends Controller
     {
         $waliKelas = auth()->guard('guru')->user();
         $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         if (!$kelasWaliId) {
             return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
@@ -228,6 +241,9 @@ class EkstrakurikulerController extends Controller
             'deskripsi' => 'nullable|string',
         ]);
     
+        // Tambahkan tahun ajaran ke data
+        $validated['tahun_ajaran_id'] = $tahunAjaranId;
+        
         try {
             $nilaiEkstrakurikuler = NilaiEkstrakurikuler::whereHas('siswa', function($query) use ($kelasWaliId) {
                 $query->where('kelas_id', $kelasWaliId);

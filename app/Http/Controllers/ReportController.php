@@ -19,10 +19,15 @@ class ReportController extends Controller
     // Modify the index method to pass school profile to the view
     public function index()
     {
-        $templates = ReportTemplate::with('kelas') // Load relasi kelas
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        $templates = ReportTemplate::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->with('kelas')
             ->orderBy('created_at', 'desc')
             ->get();
-            
+        
         $schoolProfile = \App\Models\ProfilSekolah::first();
         
         return view('admin.report.index', compact('templates', 'schoolProfile'));
@@ -105,6 +110,22 @@ class ReportController extends Controller
                 'message' => 'Gagal mengupload template: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function archiveByTahunAjaran(Request $request)
+    {
+        $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
+        
+        $reports = ReportGeneration::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->with(['siswa', 'kelas', 'generator'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+            
+        $tahunAjarans = TahunAjaran::orderBy('tanggal_mulai', 'desc')->get();
+        
+        return view('admin.report.archive', compact('reports', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     // Di ReportController.php, tambahkan method ini:

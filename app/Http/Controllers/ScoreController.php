@@ -19,13 +19,23 @@ class ScoreController extends Controller
     public function index()
     {
         $guru = Auth::guard('guru')->user();
+        $tahunAjaranId = session('tahun_ajaran_id');
         Log::info('Guru ID: ' . $guru->id);
         
-        $kelasData = Kelas::with(['mataPelajarans' => function($query) use ($guru) {
+        $kelasData = Kelas::with(['mataPelajarans' => function($query) use ($guru, $tahunAjaranId) {
             $query->where('guru_id', $guru->id);
+            if ($tahunAjaranId) {
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            }
         }])
-        ->whereHas('mataPelajarans', function($query) use ($guru) {
+        ->whereHas('mataPelajarans', function($query) use ($guru, $tahunAjaranId) {
             $query->where('guru_id', $guru->id);
+            if ($tahunAjaranId) {
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+        })
+        ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranId);
         })
         ->get();
         
@@ -33,142 +43,15 @@ class ScoreController extends Controller
         
         return view('pengajar.score', ['kelasData' => $kelasData]);
     }
-    
-    public function inputScore($id)
-    {
-        try {
-            $mataPelajaran = MataPelajaran::with([
-                'kelas.siswas' => function($query) {
-                    $query->orderBy('nama', 'asc');
-                },
-                'lingkupMateris.tujuanPembelajarans',
-            ])->findOrFail($id);
-    
-            // Validasi akses guru
-            $guru = Auth::guard('guru')->user();
-            if ($mataPelajaran->guru_id !== $guru->id) {
-                return redirect()->route('pengajar.score')
-                    ->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
-            }
-    
-            // Periksa apakah ada TP untuk setiap Lingkup Materi
-            $hasTp = $mataPelajaran->lingkupMateris->every(function($lm) {
-                return $lm->tujuanPembelajarans->isNotEmpty();
-            });
-    
-            if (!$hasTp) {
-                return redirect()->route('pengajar.score')
-                    ->with('warning', 'Harap isi Tujuan Pembelajaran untuk mata pelajaran ini terlebih dahulu.');
-            }
-    
-            // Siapkan data
-            $subject = [
-                'id' => $mataPelajaran->id,
-                'name' => $mataPelajaran->nama_pelajaran,
-                'class' => $mataPelajaran->kelas->nama_kelas
-            ];
-    
-            $students = $mataPelajaran->kelas->siswas
-            ->sortBy('nama')  // Tambahkan sorting
-            ->map(function($siswa) {
-                return [
-                    'id' => $siswa->id,
-                    'name' => $siswa->nama
-                ];
-            });
-    
-            // Inisialisasi struktur data nilai
-            $existingScores = [];
-            foreach ($mataPelajaran->kelas->siswas as $siswa) {
-                $existingScores[$siswa->id] = [
-                    'tp' => [],
-                    'lm' => [],
-                    'na_tp' => null,
-                    'na_lm' => null,
-                    'nilai_tes' => null,
-                    'nilai_non_tes' => null,
-                    'nilai_akhir_semester' => null,
-                    'nilai_akhir_rapor' => null
-                ];
-                foreach ($mataPelajaran->lingkupMateris as $lm) {
-                    $existingScores[$siswa->id]['lm'][$lm->id] = null;
-                    foreach ($lm->tujuanPembelajarans as $tp) {
-                        $existingScores[$siswa->id]['tp'][$lm->id][$tp->id] = null;
-                    }
-                }
-            }
-    
-            // Ambil semua nilai yang sudah ada
-            $existingNilais = Nilai::where('mata_pelajaran_id', $id)->get();
-            
-            // Isi struktur data dengan nilai yang ada
-            foreach ($existingNilais as $nilai) {
-                if ($nilai->nilai_tp !== null) {
-                    $existingScores[$nilai->siswa_id]['tp'][$nilai->lingkup_materi_id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
-                }
-                if ($nilai->nilai_lm !== null) {
-                    $existingScores[$nilai->siswa_id]['lm'][$nilai->lingkup_materi_id] = $nilai->nilai_lm;
-                }
-                if ($nilai->na_tp !== null) {
-                    $existingScores[$nilai->siswa_id]['na_tp'] = $nilai->na_tp;
-                }
-                if ($nilai->na_lm !== null) {
-                    $existingScores[$nilai->siswa_id]['na_lm'] = $nilai->na_lm;
-                }
-                if ($nilai->nilai_akhir_semester !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
-                }
-                if ($nilai->nilai_tes !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
-                }
-                if ($nilai->nilai_non_tes !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
-                }
-                if ($nilai->nilai_akhir_rapor !== null) {
-                    $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
-                }
-            }
-    
-            $mataPelajaranList = MataPelajaran::where('kelas_id', $mataPelajaran->kelas_id)
-                ->where('guru_id', $guru->id)
-                ->get();
-    
-            return view('pengajar.input_score', compact(
-                'subject',
-                'students',
-                'mataPelajaran',
-                'existingScores',
-                'mataPelajaranList'
-            ));
-    
-        } catch (\Exception $e) {
-            Log::error('Error in ScoreController@inputScore: ' . $e->getMessage());
-            return redirect()->route('pengajar.score')
-                ->with('error', 'Terjadi kesalahan saat memuat data');
-        }
-    }
 
-    private function compareScores($existingNilai, $newScoreData) 
-    {
-        if (!$existingNilai) return false;
     
-        // Bandingkan semua jenis nilai
-        return (float)$existingNilai->nilai_tp === (float)($newScoreData['tp'] ?? null) &&
-               (float)$existingNilai->nilai_lm === (float)($newScoreData['lm'] ?? null) &&
-               (float)$existingNilai->na_tp === (float)($newScoreData['na_tp'] ?? null) &&
-               (float)$existingNilai->na_lm === (float)($newScoreData['na_lm'] ?? null) &&
-               (float)$existingNilai->nilai_tes === (float)($newScoreData['nilai_tes'] ?? null) &&
-               (float)$existingNilai->nilai_non_tes === (float)($newScoreData['nilai_non_tes'] ?? null) &&
-               (float)$existingNilai->nilai_akhir_semester === (float)($newScoreData['nilai_akhir'] ?? null) &&
-               (float)$existingNilai->nilai_akhir_rapor === (float)($newScoreData['nilai_akhir_rapor'] ?? null);
-    }
-
     public function saveScore(Request $request, $id)
     {
         try {
             DB::beginTransaction();
             $savedData = [];
             $notSavedData = []; // Tracking data yang tidak tersimpan
+            $tahunAjaranId = session('tahun_ajaran_id');
     
             foreach($request->scores as $siswaId => $scoreData) {
                 $studentData = [
@@ -186,6 +69,14 @@ class ScoreController extends Controller
                                     $tp = TujuanPembelajaran::find($tpId);
                                     $lm = LingkupMateri::find($lmId);
                                     
+                                    $nilaiData = [
+                                        'nilai_tp' => $nilai
+                                    ];
+                                    
+                                    if ($tahunAjaranId) {
+                                        $nilaiData['tahun_ajaran_id'] = $tahunAjaranId;
+                                    }
+                                    
                                     Nilai::updateOrCreate(
                                         [
                                             'siswa_id' => $siswaId,
@@ -193,7 +84,7 @@ class ScoreController extends Controller
                                             'lingkup_materi_id' => $lmId,
                                             'tujuan_pembelajaran_id' => $tpId,
                                         ],
-                                        ['nilai_tp' => $nilai]
+                                        $nilaiData
                                     );
     
                                     $studentData['nilai'][] = [
@@ -210,13 +101,21 @@ class ScoreController extends Controller
                         // Simpan nilai LM
                         if (isset($scoreData['lm'][$lmId]) && $scoreData['lm'][$lmId] > 0) {
                             try {
+                                $nilaiData = [
+                                    'nilai_lm' => $scoreData['lm'][$lmId]
+                                ];
+                                
+                                if ($tahunAjaranId) {
+                                    $nilaiData['tahun_ajaran_id'] = $tahunAjaranId;
+                                }
+                                
                                 Nilai::updateOrCreate(
                                     [
                                         'siswa_id' => $siswaId,
                                         'mata_pelajaran_id' => $id,
                                         'lingkup_materi_id' => $lmId,
                                     ],
-                                    ['nilai_lm' => $scoreData['lm'][$lmId]]
+                                    $nilaiData
                                 );
     
                                 $studentData['nilai'][] = [
@@ -245,6 +144,10 @@ class ScoreController extends Controller
     
                 if (!empty($finalScores)) {
                     try {
+                        if ($tahunAjaranId) {
+                            $finalScores['tahun_ajaran_id'] = $tahunAjaranId;
+                        }
+                        
                         Nilai::updateOrCreate(
                             [
                                 'siswa_id' => $siswaId,
@@ -296,6 +199,151 @@ class ScoreController extends Controller
             ], 500);
         }
     }
+
+    public function inputScore($id)
+{
+    try {
+        $mataPelajaran = MataPelajaran::with([
+            'kelas.siswas' => function($query) {
+                $query->orderBy('nama', 'asc');
+            },
+            'lingkupMateris.tujuanPembelajarans',
+        ])->findOrFail($id);
+
+        // Validasi akses guru
+        $guru = Auth::guard('guru')->user();
+        if ($mataPelajaran->guru_id !== $guru->id) {
+            return redirect()->route('pengajar.score')
+                ->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
+        }
+
+        // Periksa apakah ada TP untuk setiap Lingkup Materi
+        $hasTp = $mataPelajaran->lingkupMateris->every(function($lm) {
+            return $lm->tujuanPembelajarans->isNotEmpty();
+        });
+
+        if (!$hasTp) {
+            return redirect()->route('pengajar.score')
+                ->with('warning', 'Harap isi Tujuan Pembelajaran untuk mata pelajaran ini terlebih dahulu.');
+        }
+
+        // Siapkan data
+        $subject = [
+            'id' => $mataPelajaran->id,
+            'name' => $mataPelajaran->nama_pelajaran,
+            'class' => $mataPelajaran->kelas->nama_kelas
+        ];
+
+        // Filter siswa berdasarkan tahun ajaran yang aktif
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $siswas = $mataPelajaran->kelas->siswas;
+        
+        if ($tahunAjaranId) {
+            $siswas = $siswas->filter(function($siswa) use ($tahunAjaranId) {
+                return $siswa->kelas && $siswa->kelas->tahun_ajaran_id == $tahunAjaranId;
+            });
+        }
+        
+        $students = $siswas->sortBy('nama')->map(function($siswa) {
+            return [
+                'id' => $siswa->id,
+                'name' => $siswa->nama
+            ];
+        });
+
+        // Inisialisasi struktur data nilai
+        $existingScores = [];
+        foreach ($siswas as $siswa) {
+            $existingScores[$siswa->id] = [
+                'tp' => [],
+                'lm' => [],
+                'na_tp' => null,
+                'na_lm' => null,
+                'nilai_tes' => null,
+                'nilai_non_tes' => null,
+                'nilai_akhir_semester' => null,
+                'nilai_akhir_rapor' => null
+            ];
+            foreach ($mataPelajaran->lingkupMateris as $lm) {
+                $existingScores[$siswa->id]['lm'][$lm->id] = null;
+                foreach ($lm->tujuanPembelajarans as $tp) {
+                    $existingScores[$siswa->id]['tp'][$lm->id][$tp->id] = null;
+                }
+            }
+        }
+
+        // Ambil semua nilai yang sudah ada dengan filter tahun ajaran jika ada
+        $existingNilaisQuery = Nilai::where('mata_pelajaran_id', $id);
+        if ($tahunAjaranId) {
+            $existingNilaisQuery->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+        $existingNilais = $existingNilaisQuery->get();
+        
+        // Isi struktur data dengan nilai yang ada
+        foreach ($existingNilais as $nilai) {
+            if ($nilai->nilai_tp !== null) {
+                $existingScores[$nilai->siswa_id]['tp'][$nilai->lingkup_materi_id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
+            }
+            if ($nilai->nilai_lm !== null) {
+                $existingScores[$nilai->siswa_id]['lm'][$nilai->lingkup_materi_id] = $nilai->nilai_lm;
+            }
+            if ($nilai->na_tp !== null) {
+                $existingScores[$nilai->siswa_id]['na_tp'] = $nilai->na_tp;
+            }
+            if ($nilai->na_lm !== null) {
+                $existingScores[$nilai->siswa_id]['na_lm'] = $nilai->na_lm;
+            }
+            if ($nilai->nilai_akhir_semester !== null) {
+                $existingScores[$nilai->siswa_id]['nilai_akhir_semester'] = $nilai->nilai_akhir_semester;
+            }
+            if ($nilai->nilai_tes !== null) {
+                $existingScores[$nilai->siswa_id]['nilai_tes'] = $nilai->nilai_tes;
+            }
+            if ($nilai->nilai_non_tes !== null) {
+                $existingScores[$nilai->siswa_id]['nilai_non_tes'] = $nilai->nilai_non_tes;
+            }
+            if ($nilai->nilai_akhir_rapor !== null) {
+                $existingScores[$nilai->siswa_id]['nilai_akhir_rapor'] = $nilai->nilai_akhir_rapor;
+            }
+        }
+
+        $mataPelajaranList = MataPelajaran::where('kelas_id', $mataPelajaran->kelas_id)
+            ->where('guru_id', $guru->id)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->get();
+
+        return view('pengajar.input_score', compact(
+            'subject',
+            'students',
+            'mataPelajaran',
+            'existingScores',
+            'mataPelajaranList'
+        ));
+
+    } catch (\Exception $e) {
+        Log::error('Error in ScoreController@inputScore: ' . $e->getMessage());
+        return redirect()->route('pengajar.score')
+            ->with('error', 'Terjadi kesalahan saat memuat data');
+    }
+}
+
+    private function compareScores($existingNilai, $newScoreData) 
+    {
+        if (!$existingNilai) return false;
+    
+        // Bandingkan semua jenis nilai
+        return (float)$existingNilai->nilai_tp === (float)($newScoreData['tp'] ?? null) &&
+               (float)$existingNilai->nilai_lm === (float)($newScoreData['lm'] ?? null) &&
+               (float)$existingNilai->na_tp === (float)($newScoreData['na_tp'] ?? null) &&
+               (float)$existingNilai->na_lm === (float)($newScoreData['na_lm'] ?? null) &&
+               (float)$existingNilai->nilai_tes === (float)($newScoreData['nilai_tes'] ?? null) &&
+               (float)$existingNilai->nilai_non_tes === (float)($newScoreData['nilai_non_tes'] ?? null) &&
+               (float)$existingNilai->nilai_akhir_semester === (float)($newScoreData['nilai_akhir'] ?? null) &&
+               (float)$existingNilai->nilai_akhir_rapor === (float)($newScoreData['nilai_akhir_rapor'] ?? null);
+    }
+
     
     private function hasChanges($existing, $new)
     {

@@ -16,6 +16,7 @@ use App\Http\Controllers\EkstrakurikulerController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\TahunAjaranController;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
 
@@ -88,6 +89,10 @@ Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 // Admin Routes - Guard: web, Role: admin only
 Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function () {
 
+    Route::get('/set-tahun-ajaran/{id}', function($id) {
+        session(['tahun_ajaran_id' => $id]);
+        return redirect()->back()->with('success', 'Tahun ajaran berhasil diubah');
+    })->name('tahun.ajaran.set-session');
         // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'adminDashboard'])->name('admin.dashboard');
     Route::get('/kelas-progress/{id}', [DashboardController::class, 'getKelasProgressAdmin'])
@@ -131,6 +136,18 @@ Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function (
     Route::get('kelas/{id}/edit', [ClassController::class, 'edit'])->name('kelas.edit');
     Route::put('kelas/{id}', [ClassController::class, 'update'])->name('kelas.update');
     Route::delete('kelas/{id}', [ClassController::class, 'destroy'])->name('kelas.destroy');
+    
+    Route::prefix('tahun-ajaran')->name('tahun.ajaran.')->group(function () {
+        Route::get('/', [TahunAjaranController::class, 'index'])->name('index');
+        Route::get('/create', [TahunAjaranController::class, 'create'])->name('create');
+        Route::post('/', [TahunAjaranController::class, 'store'])->name('store');
+        Route::get('/{id}', [TahunAjaranController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [TahunAjaranController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [TahunAjaranController::class, 'update'])->name('update');
+        Route::post('/{id}/set-active', [TahunAjaranController::class, 'setActive'])->name('set-active');
+        Route::get('/{id}/copy', [TahunAjaranController::class, 'copy'])->name('copy');
+        Route::post('/{id}/copy', [TahunAjaranController::class, 'processCopy'])->name('process-copy');
+    });
     
     // Teacher Management
     Route::prefix('pengajar')->group(function () {

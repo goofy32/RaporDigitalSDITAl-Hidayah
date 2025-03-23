@@ -15,11 +15,20 @@ class SubjectController extends Controller
 {
     public function index(Request $request)
     {
+        // Ambil tahun ajaran dari session
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         // Gunakan join untuk memastikan kita bisa mengurutkan berdasarkan kolom dari tabel kelas
         $query = MataPelajaran::join('kelas', 'mata_pelajarans.kelas_id', '=', 'kelas.id')
             ->select('mata_pelajarans.*') // Pastikan hanya mengambil kolom dari mata_pelajarans
             ->with(['kelas', 'guru']); // Load relasi kelas dan guru
             
+        // Filter berdasarkan tahun ajaran jika ada
+        if ($tahunAjaranId) {
+            $query->where('mata_pelajarans.tahun_ajaran_id', $tahunAjaranId);
+        }
+            
+        // Handle pencarian
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
@@ -53,7 +62,14 @@ class SubjectController extends Controller
               ->orderBy('mata_pelajarans.nama_pelajaran', 'asc');
         
         $subjects = $query->paginate(10);
-        return view('admin.subject', compact('subjects'));
+        
+        // Pass data tahun ajaran ke view untuk menampilkan informasi
+        $activeTahunAjaran = null;
+        if ($tahunAjaranId) {
+            $activeTahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        }
+        
+        return view('admin.subject', compact('subjects', 'activeTahunAjaran'));
     }
 
     public function create()

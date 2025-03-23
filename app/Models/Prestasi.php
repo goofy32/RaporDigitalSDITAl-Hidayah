@@ -16,6 +16,7 @@ class Prestasi extends Model
         'siswa_id',
         'jenis_prestasi',
         'keterangan',
+        'tahun_ajaran_id' // Tambahkan ini
     ];
 
     public function kelas()
@@ -26,5 +27,24 @@ class Prestasi extends Model
     public function siswa()
     {
         return $this->belongsTo(Siswa::class);
+    }
+    
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
+    
+    public function scopeTahunAjaran($query, $tahunAjaranId)
+    {
+        return $query->where('tahun_ajaran_id', $tahunAjaranId);
+    }
+    
+    public function scopeAktif($query)
+    {
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        if ($tahunAjaranAktif) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
+        }
+        return $query;
     }
 }

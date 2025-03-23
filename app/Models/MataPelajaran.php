@@ -18,6 +18,7 @@ class MataPelajaran extends Model
         'semester',
         'is_muatan_lokal',
         'allow_non_wali',
+        'tahun_ajaran_id', // Tambahkan field ini
     ];
     
     protected $casts = [
@@ -33,6 +34,11 @@ class MataPelajaran extends Model
     public function guru()
     {
         return $this->belongsTo(Guru::class, 'guru_id');
+    }
+    
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
 
     public function lingkupMateris()
@@ -54,5 +60,25 @@ class MataPelajaran extends Model
             });
             $mataPelajaran->lingkupMateris()->delete();
         });
+    }
+    
+    /**
+     * Scope untuk filter berdasarkan tahun ajaran
+     */
+    public function scopeTahunAjaran($query, $tahunAjaranId)
+    {
+        return $query->where('tahun_ajaran_id', $tahunAjaranId);
+    }
+    
+    /**
+     * Scope untuk filter berdasarkan tahun ajaran aktif
+     */
+    public function scopeAktif($query)
+    {
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        if ($tahunAjaranAktif) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
+        }
+        return $query;
     }
 }

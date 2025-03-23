@@ -6,6 +6,7 @@ use App\Http\Middleware\CacheControl;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\TahunAjaranMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,7 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Konfigurasi global middleware
         $middleware->web(append: [
             SessionTimeout::class,
-            CacheControl::class
+            CacheControl::class,
+            TahunAjaranMiddleware::class
         ]);
 
         $middleware->alias([
@@ -31,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.wali.kelas' => \App\Http\Middleware\CheckWaliKelas::class,
             'check.report.template' => \App\Http\Middleware\CheckReportTemplate::class,
             'check.rapor.access' => \App\Http\Middleware\CheckRaporAccess::class,
-            
+            'tahun.ajaran' => TahunAjaranMiddleware::class,
         ]);
 
         // Konfigurasi CSRF

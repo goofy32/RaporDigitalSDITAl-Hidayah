@@ -51,10 +51,57 @@
                 </div>
             </div>
 
-            <!-- User Menu -->
-            <div class="flex items-center relative" x-data="{ open: false }">
-                <div class="flex items-center space-x-8">
-                    <span class="text-sm font-medium text-gray-900">
+            <!-- User Menu dan Tahun Ajaran Selector -->
+            <div class="flex items-center relative space-x-4">
+                <!-- Tahun Ajaran Selector - Komponen Baru -->
+                @if(isset($tahunAjarans) && $tahunAjarans->count() > 0)
+                <div x-data="tahunAjaranSelector" class="relative hidden md:block">
+                    <button @click="toggleDropdown" class="flex items-center justify-between px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <span class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                            </svg>
+                            {{ isset($activeTahunAjaran) ? $activeTahunAjaran->tahun_ajaran . ' - ' . ($activeTahunAjaran->semester == 1 ? 'Ganjil' : 'Genap') : 'Pilih Tahun Ajaran' }}
+                        </span>
+                        <svg class="w-4 h-4 ml-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    
+                    <div 
+                        x-show="isOpen" 
+                        @click.away="isOpen = false"
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave-start="transform opacity-100 scale-100"
+                        x-transition:leave-end="transform opacity-0 scale-95"
+                        class="absolute right-0 z-50 w-56 mt-2 origin-top-right bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                        style="display: none;"
+                    >
+                        <div class="py-1">
+                            @foreach($tahunAjarans as $ta)
+                            <a 
+                                href="{{ route('tahun.ajaran.set-session', ['id' => $ta->id]) }}" 
+                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ isset($activeTahunAjaran) && $ta->id === $activeTahunAjaran->id ? 'bg-green-50 text-green-700' : '' }}"
+                            >
+                                <span class="flex-1">{{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}</span>
+                                @if(isset($activeTahunAjaran) && $ta->id === $activeTahunAjaran->id)
+                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                                @endif
+                            </a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Info Pengguna -->
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm font-medium text-gray-900 hidden md:block">
                         @if(Auth::guard('guru')->check())
                             {{ Auth::guard('guru')->user()->nama }}
                         @else
@@ -62,74 +109,95 @@
                         @endif
                     </span>
                     
-                    <button @click="open = !open" 
-                            @click.away="open = false"
-                            class="flex items-center text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300">
-                        <span class="sr-only">Open user menu</span>
-                        @if(Auth::guard('guru')->check() && Auth::guard('guru')->user()->photo)
-                            <div x-data class="w-8 h-8">
-                                <img class="w-full h-full rounded-full transition-opacity duration-300"
-                                     src="{{ asset('storage/' . Auth::guard('guru')->user()->photo) }}" 
-                                     alt="user photo"
-                                     :class="Alpine.store('navigation').isImageLoaded('user-photo') ? 'opacity-100' : 'opacity-0'"
-                                     id="user-photo">
-                            </div>
-                        @else
-                            <div class="relative w-8 h-8 overflow-hidden bg-gray-100 rounded-full"
-                                 id="default-user-photo">
-                                <svg class="absolute w-10 h-10 text-gray-400 -left-1" 
-                                     fill="currentColor" 
-                                     viewBox="0 0 20 20" 
-                                     xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" 
-                                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" 
-                                          clip-rule="evenodd"></path>
-                                </svg>
-                            </div>
-                        @endif
-                    </button>
-
-                    <!-- Dropdown menu -->
-                    <div x-show="open" 
-                         x-transition:enter="transition ease-out duration-100"
-                         x-transition:enter-start="transform opacity-0 scale-95"
-                         x-transition:enter-end="transform opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-75"
-                         x-transition:leave-start="transform opacity-100 scale-100"
-                         x-transition:leave-end="transform opacity-0 scale-95"
-                         class="absolute right-0 mt-16 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-                         style="display: none;">
-                        <!-- User Info -->
-                        <div class="px-4 py-3">
-                            @if(Auth::guard('guru')->check())
-                                <p class="text-sm font-medium text-gray-900">{{ Auth::guard('guru')->user()->nama }}</p>
-                                <p class="text-sm text-gray-500 truncate">{{ Auth::guard('guru')->user()->email }}</p>
+                    <!-- User Dropdown Button -->
+                    <div x-data="{ open: false }">
+                        <button @click="open = !open" 
+                                @click.away="open = false"
+                                class="flex items-center text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300">
+                            <span class="sr-only">Open user menu</span>
+                            @if(Auth::guard('guru')->check() && Auth::guard('guru')->user()->photo)
+                                <div x-data class="w-8 h-8">
+                                    <img class="w-full h-full rounded-full transition-opacity duration-300"
+                                        src="{{ asset('storage/' . Auth::guard('guru')->user()->photo) }}" 
+                                        alt="user photo"
+                                        :class="Alpine.store('navigation').isImageLoaded('user-photo') ? 'opacity-100' : 'opacity-0'"
+                                        id="user-photo">
+                                </div>
                             @else
-                                <p class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</p>
-                                <p class="text-sm text-gray-500 truncate">{{ Auth::user()->email }}</p>
+                                <div class="relative w-8 h-8 overflow-hidden bg-gray-100 rounded-full"
+                                    id="default-user-photo">
+                                    <svg class="absolute w-10 h-10 text-gray-400 -left-1" 
+                                        fill="currentColor" 
+                                        viewBox="0 0 20 20" 
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path fill-rule="evenodd" 
+                                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" 
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
                             @endif
-                        </div>
-                        <!-- Menu Items -->
-                        <div class="border-t border-gray-100">
-                            @if(Auth::guard('guru')->check())
-                                @if(session('selected_role') === 'wali_kelas')
-                                    <a href="{{ route('wali_kelas.profile') }}" 
-                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
-                                       role="menuitem">Profile</a>
+                        </button>
+
+                        <!-- Dropdown menu -->
+                        <div x-show="open" 
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            class="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                            style="display: none;">
+                            <!-- User Info -->
+                            <div class="px-4 py-3">
+                                @if(Auth::guard('guru')->check())
+                                    <p class="text-sm font-medium text-gray-900">{{ Auth::guard('guru')->user()->nama }}</p>
+                                    <p class="text-sm text-gray-500 truncate">{{ Auth::guard('guru')->user()->email }}</p>
                                 @else
-                                    <a href="{{ route('pengajar.profile') }}" 
-                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
-                                       role="menuitem">Profile</a>
+                                    <p class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</p>
+                                    <p class="text-sm text-gray-500 truncate">{{ Auth::user()->email }}</p>
                                 @endif
-                            @endif
-                            <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100">
-                                @csrf
-                                <button type="submit" 
-                                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
-                                        role="menuitem">
-                                    Logout
-                                </button>
-                            </form>
+                            </div>
+                            <!-- Menu Items -->
+                            <div class="border-t border-gray-100">
+                                @if(Auth::guard('guru')->check())
+                                    @if(session('selected_role') === 'wali_kelas')
+                                        <a href="{{ route('wali_kelas.profile') }}" 
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
+                                        role="menuitem">Profile</a>
+                                    @else
+                                        <a href="{{ route('pengajar.profile') }}" 
+                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
+                                        role="menuitem">Profile</a>
+                                    @endif
+                                @endif
+                                
+                                <!-- Tahun Ajaran (untuk mobile) -->
+                                @if(isset($tahunAjarans) && $tahunAjarans->count() > 0)
+                                    <div class="md:hidden border-t border-gray-100">
+                                        <p class="px-4 py-2 text-xs font-semibold text-gray-500">TAHUN AJARAN</p>
+                                        @foreach($tahunAjarans as $ta)
+                                            <a href="{{ route('tahun.ajaran.set-session', ['id' => $ta->id]) }}" 
+                                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ isset($activeTahunAjaran) && $ta->id === $activeTahunAjaran->id ? 'bg-green-50 text-green-700' : '' }}" 
+                                            role="menuitem">
+                                                {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
+                                                @if(isset($activeTahunAjaran) && $ta->id === $activeTahunAjaran->id)
+                                                    <span class="ml-2 text-green-600">✓</span>
+                                                @endif
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                
+                                <form method="POST" action="{{ route('logout') }}" class="border-t border-gray-100">
+                                    @csrf
+                                    <button type="submit" 
+                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
+                                            role="menuitem">
+                                        Logout
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -137,3 +205,21 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('tahunAjaranSelector', () => ({
+        isOpen: false,
+        
+        toggleDropdown() {
+            this.isOpen = !this.isOpen;
+        },
+        
+        changeTahunAjaran(id) {
+            window.location.href = `/set-tahun-ajaran/${id}`;
+        }
+    }));
+});
+</script>
+@endpush

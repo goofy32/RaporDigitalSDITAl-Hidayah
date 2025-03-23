@@ -15,6 +15,21 @@
                     <span class="ms-3">Dashboard</span>
                 </a>
             </li>
+
+            <li>
+                <a href="{{ route('tahun.ajaran.index') }}" 
+                data-path="tahun-ajaran"
+                class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span class="ms-3">Tahun Ajaran</span>
+                </a>
+            </li>
+
             <li>
                 <a href="{{ route('profile') }}"
                     data-turbo-frame="main"

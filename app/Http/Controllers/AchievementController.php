@@ -14,7 +14,13 @@ class AchievementController extends Controller
     // Menampilkan semua data prestasi
     public function index(Request $request)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
         $query = Prestasi::with(['kelas', 'siswa']);
+        
+        // Filter berdasarkan tahun ajaran
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
         
         if ($request->has('search')) {
             $search = strtolower($request->search);
@@ -66,9 +72,12 @@ class AchievementController extends Controller
             'jenis_prestasi' => 'required|string|max:255',
             'keterangan' => 'nullable|string|max:500',
         ]);
-
+    
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $validated['tahun_ajaran_id'] = $tahunAjaranId;
+    
         Prestasi::create($validated);
-
+    
         return redirect()->route('achievement.index')->with('success', 'Data Prestasi berhasil ditambahkan');
     }
 
@@ -94,6 +103,9 @@ class AchievementController extends Controller
             'keterangan' => 'nullable|string|max:500',
         ]);
     
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $validated['tahun_ajaran_id'] = $tahunAjaranId;
+        
         $prestasi = Prestasi::findOrFail($id);
         $prestasi->update($validated);
     

@@ -21,6 +21,22 @@ class DashboardController extends Controller
 {
     public function adminDashboard()
     {
+
+        $tahunAjaranId = session('tahun_ajaran_id');
+    
+        $totalStudents = Siswa::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+            return $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+            });
+        })->count();
+        
+        $totalClasses = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+        })->count();
+        
+        $totalSubjects = MataPelajaran::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+        })->count();
         // Pastikan hanya admin yang bisa akses
         if (!Auth::guard('web')->check()) {
             return redirect()->route('login');

@@ -14,6 +14,7 @@ class Kelas extends Model
     protected $fillable = [
         'nomor_kelas',
         'nama_kelas',
+        'tahun_ajaran_id',  // Tambahkan field ini
     ];
 
     protected $appends = ['full_kelas'];
@@ -29,6 +30,13 @@ class Kelas extends Model
             ->withPivot('is_wali_kelas', 'role')
             ->withTimestamps();
     }
+    
+    // Relasi dengan tahun ajaran
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
+    }
+    
     // Wali kelas
     public function waliKelas()
     {
@@ -79,7 +87,8 @@ class Kelas extends Model
     // Get full kelas name
     public function getFullKelasAttribute()
     {
-        return "Kelas {$this->nomor_kelas} {$this->nama_kelas}";
+        $tahunAjaranText = $this->tahunAjaran ? " ({$this->tahunAjaran->tahun_ajaran})" : "";
+        return "Kelas {$this->nomor_kelas} {$this->nama_kelas}{$tahunAjaranText}";
     }
     
     public function siswas()
@@ -165,5 +174,25 @@ class Kelas extends Model
     public function reportTemplates()
     {
         return $this->hasMany(ReportTemplate::class, 'kelas_id');
+    }
+    
+    /**
+     * Scope untuk filter berdasarkan tahun ajaran
+     */
+    public function scopeTahunAjaran($query, $tahunAjaranId)
+    {
+        return $query->where('tahun_ajaran_id', $tahunAjaranId);
+    }
+    
+    /**
+     * Scope untuk filter berdasarkan tahun ajaran aktif
+     */
+    public function scopeAktif($query)
+    {
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        if ($tahunAjaranAktif) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
+        }
+        return $query;
     }
 }

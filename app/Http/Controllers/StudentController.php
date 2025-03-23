@@ -15,11 +15,23 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
+        // Ambil tahun ajaran dari session
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        // Buat query dasar dengan eager loading kelas
         $query = Siswa::with(['kelas' => function($query) {
             $query->orderBy('nomor_kelas', 'asc')
                   ->orderBy('nama_kelas', 'asc');
         }]);
-     
+        
+        // Filter berdasarkan tahun ajaran jika ada
+        if ($tahunAjaranId) {
+            $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+            });
+        }
+         
+        // Handle pencarian
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
@@ -59,7 +71,14 @@ class StudentController extends Controller
               ->select('siswas.*');
         
         $students = $query->paginate(10);
-        return view('admin.student', compact('students'));
+        
+        // Pass data tahun ajaran ke view untuk menampilkan informasi
+        $activeTahunAjaran = null;
+        if ($tahunAjaranId) {
+            $activeTahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        }
+        
+        return view('admin.student', compact('students', 'activeTahunAjaran'));
     }
 
     public function create()

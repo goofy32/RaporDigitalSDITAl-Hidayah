@@ -11,7 +11,8 @@ class AbsensiController extends Controller
     public function index(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $kelasWaliId = $waliKelas->getWaliKelasId(); // Gunakan metode dari model
+        $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         if (!$kelasWaliId) {
             return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
@@ -22,6 +23,11 @@ class AbsensiController extends Controller
                 $query->where('kelas_id', $kelasWaliId);
             });
     
+        // Filter berdasarkan tahun ajaran
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+    
         if ($request->has('search')) {
             $search = $request->search;
             $query->whereHas('siswa', function($q) use ($search) {
@@ -29,7 +35,7 @@ class AbsensiController extends Controller
                   ->orWhere('nis', 'LIKE', "%{$search}%");
             });
         }
-
+    
         // Tambah filter semester
         if ($request->has('semester')) {
             $query->where('semester', $request->semester);
@@ -38,6 +44,7 @@ class AbsensiController extends Controller
         $absensis = $query->orderBy('created_at', 'desc')->paginate(10);
         return view('wali_kelas.absence', compact('absensis'));
     }
+    
 
     public function create()
     {
@@ -64,23 +71,31 @@ class AbsensiController extends Controller
             'tanpa_keterangan' => 'required|integer|min:0',
             'semester' => 'required|in:1,2'
         ]);
-
-        // Cek apakah sudah ada data absensi untuk siswa dan semester ini
+    
+        $tahunAjaranId = session('tahun_ajaran_id');
+    
+        // Cek apakah sudah ada data absensi untuk siswa dan semester ini pada tahun ajaran yang sama
         $existingAbsensi = Absensi::where('siswa_id', $request->siswa_id)
                                  ->where('semester', $request->semester)
+                                 ->where('tahun_ajaran_id', $tahunAjaranId)
                                  ->first();
-
+    
         if ($existingAbsensi) {
             return redirect()->back()
                            ->withInput()
                            ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
         }
-
-        Absensi::create($request->all());
-
+    
+        // Tambahkan tahun ajaran ke data yang akan disimpan
+        $data = $request->all();
+        $data['tahun_ajaran_id'] = $tahunAjaranId;
+    
+        Absensi::create($data);
+    
         return redirect()->route('wali_kelas.absence.index')
                         ->with('success', 'Data absensi berhasil ditambahkan');
     }
+    
 
     public function edit($id)
     {
@@ -115,23 +130,28 @@ class AbsensiController extends Controller
             'tanpa_keterangan' => 'required|integer|min:0',
             'semester' => 'required|in:1,2'
         ]);
-
+    
         $absensi = Absensi::findOrFail($id);
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         // Cek duplikasi kecuali untuk record yang sedang diedit
         $existingAbsensi = Absensi::where('siswa_id', $absensi->siswa_id)
                                  ->where('semester', $request->semester)
+                                 ->where('tahun_ajaran_id', $tahunAjaranId)
                                  ->where('id', '!=', $id)
                                  ->first();
-
+    
         if ($existingAbsensi) {
             return redirect()->back()
                            ->withInput()
                            ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
         }
-
-        $absensi->update($request->all());
-
+    
+        // Update data
+        $data = $request->all();
+        $data['tahun_ajaran_id'] = $tahunAjaranId;
+        $absensi->update($data);
+    
         return redirect()->route('wali_kelas.absence.index')
                         ->with('success', 'Data absensi berhasil diperbarui');
     }

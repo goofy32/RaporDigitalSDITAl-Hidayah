@@ -17,8 +17,18 @@ class ClassController extends Controller
     // Menampilkan daftar kelas
     public function index(Request $request)
     {
+        // Ambil tahun ajaran dari session
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        // Buat query dasar
         $query = Kelas::query();
         
+        // Filter berdasarkan tahun ajaran jika ada
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+        
+        // Handle pencarian
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
@@ -41,7 +51,7 @@ class ClassController extends Controller
                 }
             });
         }
-    
+        
         // Default ordering jika tidak ada pencarian
         if (!$request->has('search') || 
             (isset($terms) && count($terms) === 1 && $terms[0] === 'kelas')) {
@@ -51,7 +61,13 @@ class ClassController extends Controller
         
         $kelasList = $query->paginate(10);
         
-        return view('admin.class', compact('kelasList'));
+        // Pass data tahun ajaran ke view untuk menampilkan informasi
+        $activeTahunAjaran = null;
+        if ($tahunAjaranId) {
+            $activeTahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        }
+        
+        return view('admin.class', compact('kelasList', 'activeTahunAjaran'));
     }
 
     // Menampilkan form tambah data kelas
