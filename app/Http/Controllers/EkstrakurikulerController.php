@@ -114,7 +114,7 @@ class EkstrakurikulerController extends Controller
             ->whereHas('siswa', function($query) use ($kelasWaliId) {
                 $query->where('kelas_id', $kelasWaliId);
             });
-    
+
         // Filter berdasarkan tahun ajaran
         if ($tahunAjaranId) {
             $query->where('tahun_ajaran_id', $tahunAjaranId);

@@ -399,9 +399,15 @@ class TahunAjaranController extends Controller
     }
     public function setSessionTahunAjaran($id)
     {
-        $tahunAjaran = TahunAjaran::findOrFail($id);
-        session(['tahun_ajaran_id' => $id]);
-        
-        return redirect()->back()->with('success', 'Tampilan data diubah ke tahun ajaran ' . $tahunAjaran->tahun_ajaran);
+        try {
+            $tahunAjaran = TahunAjaran::findOrFail($id);
+            
+            // Set session untuk digunakan di seluruh aplikasi
+            session(['tahun_ajaran_id' => $id]);
+            
+            return redirect()->back()->with('success', 'Tampilan data diubah ke tahun ajaran ' . $tahunAjaran->tahun_ajaran);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 }

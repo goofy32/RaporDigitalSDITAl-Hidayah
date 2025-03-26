@@ -165,14 +165,18 @@ class ReportController extends Controller
      */
     public function history()
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         // Ambil data history rapor dari tabel report_generations
         $reports = ReportGeneration::with(['siswa', 'kelas', 'generator'])
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
             
         return view('admin.report.history', compact('reports'));
     }
-
     /**
      * Download rapor dari history
      * 
