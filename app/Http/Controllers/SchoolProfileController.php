@@ -34,17 +34,65 @@ class SchoolProfileController extends Controller
     {
         // Validasi input
         $validated = $request->validate([
-            // ... validasi lainnya ...
+            'nama_instansi' => 'required|string|max:255',
+            'nama_sekolah' => 'required|string|max:255',
+            'npsn' => 'required|string|max:100',
+            'alamat' => 'required|string',
+            'kelurahan' => 'nullable|string|max:255',
+            'kecamatan' => 'nullable|string|max:255',
+            'kabupaten' => 'nullable|string|max:255',
+            'provinsi' => 'nullable|string|max:255',
+            'kode_pos' => 'required|string|max:10',
+            'telepon' => 'required|string|max:20',
+            'email_sekolah' => 'required|email|max:255',
+            'website' => 'nullable|string|max:255',
             'tahun_pelajaran' => 'required|string|max:255',
             'semester' => 'required|integer',
+            'kepala_sekolah' => 'required|string|max:255',
+            'nip_kepala_sekolah' => 'nullable|string|max:100',
+            'nip_wali_kelas' => 'nullable|string|max:100',
+            'guru_kelas' => 'nullable|integer',
+            'kelas' => 'nullable|integer',
+            'jumlah_siswa' => 'nullable|integer',
+            'tempat_terbit' => 'required|string|max:255',
+            'tanggal_terbit' => 'required|date',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
     
         // Cek apakah data profil sudah ada
         $profil = ProfilSekolah::first();
-    
+        
+        // Siapkan data yang akan diupdate/disimpan
+        $data = $request->except(['_token', 'logo']);
+
         // Jika ada file logo yang diupload
         if ($request->hasFile('logo')) {
-            // ... kode untuk upload logo ...
+            \Log::info('Logo file found', [
+                'file' => $request->file('logo'),
+                'original_name' => $request->file('logo')->getClientOriginalName(),
+                'mime' => $request->file('logo')->getMimeType(),
+                'size' => $request->file('logo')->getSize()
+            ]);
+            
+            try {
+                // Jika ada logo lama, hapus dulu
+                if ($profil && $profil->logo) {
+                    Storage::disk('public')->delete($profil->logo);
+                }
+                
+                // Simpan logo baru
+                $logoPath = $request->file('logo')->store('logos', 'public');
+                $data['logo'] = $logoPath;
+                
+                \Log::info('Logo stored successfully', [
+                    'path' => $logoPath
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Error storing logo', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
         }
     
         // Cari tahun ajaran aktif berdasarkan tahun dan semester yang dipilih
@@ -67,10 +115,10 @@ class SchoolProfileController extends Controller
     
         if ($profil) {
             // Jika data profil sudah ada, lakukan update
-            $profil->update($validated);
+            $profil->update($data);
         } else {
             // Jika data profil belum ada, buat baru
-            $profil = ProfilSekolah::create($validated);
+            $profil = ProfilSekolah::create($data);
         }
     
         // Setelah menyimpan data, arahkan ke halaman data profil sekolah

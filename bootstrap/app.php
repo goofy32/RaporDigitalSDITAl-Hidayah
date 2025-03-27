@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.report.template' => \App\Http\Middleware\CheckReportTemplate::class,
             'check.rapor.access' => \App\Http\Middleware\CheckRaporAccess::class,
             'tahun.ajaran' => TahunAjaranMiddleware::class,
+            'check.basic.setup' => \App\Http\Middleware\CheckBasicSetup::class,
         ]);
 
         // Konfigurasi CSRF

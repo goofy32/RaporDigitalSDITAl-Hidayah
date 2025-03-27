@@ -81,4 +81,20 @@ class LoginController extends Controller
     
         return redirect('/login')->with('success', $message);
     }
+
+    protected function authenticated(Request $request, $user)
+    {
+        $profilSekolah = ProfilSekolah::first();
+        $tahunAjaran = TahunAjaran::first();
+        
+        if (!$profilSekolah || !$tahunAjaran) {
+            if (!$profilSekolah && !$tahunAjaran) {
+                session()->flash('warning', 'Selamat datang! Silakan lengkapi Profil Sekolah dan buat Tahun Ajaran terlebih dahulu.');
+            } elseif (!$profilSekolah) {
+                session()->flash('warning', 'Selamat datang! Silakan lengkapi Profil Sekolah terlebih dahulu.');
+            } else {
+                session()->flash('warning', 'Selamat datang! Silakan buat Tahun Ajaran terlebih dahulu.');
+            }
+        }
+    }
 }

@@ -68,6 +68,8 @@
     <!-- React and ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     
     <!-- For production, use these instead -->
     <!-- <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script> -->
@@ -129,6 +131,17 @@
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
     <x-admin.sidebar data-turbo-permanent id="sidebar"></x-admin.sidebar>
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />
+
+    @if(Session::has('warning'))
+        <script>
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian!',
+                html: "{{ Session::get('warning') }}",
+                confirmButtonText: 'Mengerti'
+            });
+        </script>
+    @endif
 
     <div class="p-4 sm:ml-64 min-h-screen bg-white">
         <div class="mt-14"> <!-- Padding top untuk navbar -->

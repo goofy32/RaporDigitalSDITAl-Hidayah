@@ -87,7 +87,7 @@ Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
 
 // Admin Routes - Guard: web, Role: admin only
-Route::middleware(['auth:web', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
 
     Route::get('/set-tahun-ajaran/{id}', function($id) {
         session(['tahun_ajaran_id' => $id]);
