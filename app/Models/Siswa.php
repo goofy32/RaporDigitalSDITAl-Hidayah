@@ -34,16 +34,19 @@ class Siswa extends Model
     {
         return $this->belongsTo(Kelas::class)->orderBy('nomor_kelas', 'asc');        
     }
+
+    public function getTahunAjaranIdAttribute()
+    {
+        return $this->kelas->tahun_ajaran_id ?? session('tahun_ajaran_id');
+    }
+
     public function tahunAjaran()
     {
-        return $this->hasOneThrough(
-            TahunAjaran::class,
-            Kelas::class,
-            'id', // Foreign key di kelas
-            'id', // Foreign key di tahun_ajaran
-            'kelas_id', // Local key di siswa
-            'tahun_ajaran_id' // Local key di kelas
-        );
+        if ($this->kelas) {
+            return $this->kelas->tahunAjaran();
+        }
+        
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
     
     public function scopeTahunAjaran($query, $tahunAjaranId)

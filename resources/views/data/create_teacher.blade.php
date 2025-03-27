@@ -57,6 +57,9 @@
 
         <form id="createTeacherForm" action="{{ route('teacher.store') }}" method="POST" @submit="handleSubmit" x-data="formProtection" enctype="multipart/form-data">
             @csrf
+            
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Kolom Kiri -->
                 <div class="space-y-4">

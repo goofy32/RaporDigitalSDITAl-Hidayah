@@ -21,6 +21,8 @@
     <form id="createAbsenceForm" action="{{ route('wali_kelas.absence.store') }}" method="POST" x-data="formProtection" @submit="handleSubmit" class="space-y-6">
         @csrf
 
+        <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
         <!-- NIS dan Nama Siswa -->
         <div>
             <label for="siswa_id" class="block mb-2 text-sm font-medium text-gray-900">Siswa</label>

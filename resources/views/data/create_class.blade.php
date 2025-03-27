@@ -76,6 +76,8 @@
         <!-- Form -->
         <form id="createClassForm" action="{{ route('kelas.store') }}" method="POST"  @submit="handleSubmit" x-data="formProtection" class="w-full">  <!-- Tambahkan w-full -->
             @csrf
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <div class="space-y-6 w-full">  <!-- Tambahkan w-full -->
                 <!-- Nomor Kelas -->
                 <div class="w-full">  <!-- Tambahkan w-full -->

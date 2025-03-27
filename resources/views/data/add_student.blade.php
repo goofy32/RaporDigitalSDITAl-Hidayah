@@ -20,6 +20,9 @@
 
         <form id="studentForm" action="{{ route('student.store') }}" method="POST" enctype="multipart/form-data" x-data="formProtection"  @submit="handleSubmit" class="space-y-6">
             @csrf
+
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Data Diri Siswa -->
                 <div class="bg-white rounded-lg shadow-sm">

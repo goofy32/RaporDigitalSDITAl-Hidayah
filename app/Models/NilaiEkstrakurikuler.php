@@ -19,6 +19,20 @@ class NilaiEkstrakurikuler extends Model
         'tahun_ajaran_id' // Tambahkan ini
     ];
 
+
+    public function getTahunAjaranIdAttribute()
+    {
+        if ($this->tahun_ajaran_id) {
+            return $this->tahun_ajaran_id;
+        }
+        
+        if ($this->siswa && $this->siswa->kelas) {
+            return $this->siswa->kelas->tahun_ajaran_id;
+        }
+        
+        return session('tahun_ajaran_id');
+    }
+    
     public function siswa()
     {
         return $this->belongsTo(Siswa::class);

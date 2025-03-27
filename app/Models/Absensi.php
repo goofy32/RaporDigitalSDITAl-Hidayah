@@ -29,6 +29,19 @@ class Absensi extends Model
         return $this->belongsTo(TahunAjaran::class);
     }
     
+    public function getTahunAjaranIdAttribute()
+    {
+        if ($this->tahun_ajaran_id) {
+            return $this->tahun_ajaran_id;
+        }
+        
+        if ($this->siswa && $this->siswa->kelas) {
+            return $this->siswa->kelas->tahun_ajaran_id;
+        }
+        
+        return session('tahun_ajaran_id');
+    }
+
     public function scopeTahunAjaran($query, $tahunAjaranId)
     {
         return $query->where('tahun_ajaran_id', $tahunAjaranId);

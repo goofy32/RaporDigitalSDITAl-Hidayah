@@ -70,6 +70,8 @@
         <form id="addSubjectForm" action="{{ route('pengajar.subject.store') }}" method="POST" @submit="handleSubmit" x-data="formProtection" class="space-y-6" data-needs-protection>
             @csrf
 
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-medium text-gray-900">Data Mata Pelajaran</h3>
                 <button type="button" onclick="addSubjectEntry()" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">

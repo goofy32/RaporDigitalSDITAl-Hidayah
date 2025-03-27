@@ -19,6 +19,11 @@ class LingkupMateri extends Model
     // Menambahkan eager loading default
     protected $with = ['tujuanPembelajarans'];
 
+    public function getTahunAjaranIdAttribute()
+    {
+        return $this->mataPelajaran ? $this->mataPelajaran->tahun_ajaran_id : null;
+    }
+    
     public function mataPelajaran()
     {
         return $this->belongsTo(MataPelajaran::class, 'mata_pelajaran_id');

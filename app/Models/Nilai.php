@@ -51,6 +51,17 @@ class Nilai extends Model
         'nilai_akhir_semester' => 'nullable|numeric|min:0|max:100',
     ];
 
+    public function getTahunAjaranIdAttribute($value)
+    {
+        if ($value) return $value;
+        
+        if ($this->mataPelajaran && $this->mataPelajaran->tahun_ajaran_id) {
+            return $this->mataPelajaran->tahun_ajaran_id;
+        }
+        
+        return session('tahun_ajaran_id');
+    }
+
     public function siswa()
     {
         return $this->belongsTo(Siswa::class, 'siswa_id');

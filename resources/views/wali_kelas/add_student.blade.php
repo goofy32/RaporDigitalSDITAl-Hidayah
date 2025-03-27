@@ -10,6 +10,8 @@
 
     <form action="{{ route('wali_kelas.student.store') }}" method="POST" enctype="multipart/form-data" x-data="formProtection" @submit="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         @csrf
+        <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
         <!-- Data Diri -->
         <div>
             <h3 class="bg-green-700 text-white px-4 py-2 rounded-t">Data Diri</h3>

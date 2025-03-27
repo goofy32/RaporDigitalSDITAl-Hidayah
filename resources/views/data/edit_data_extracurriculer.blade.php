@@ -22,6 +22,8 @@
         @csrf
         @method('PUT')
 
+        <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
         <!-- Nama Ekstrakurikuler -->
         <div>
             <label for="nama_ekstrakurikuler" class="block mb-2 text-sm font-medium text-gray-900">Nama Ekstrakurikuler</label>

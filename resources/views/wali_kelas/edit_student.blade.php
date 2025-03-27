@@ -12,6 +12,8 @@
         @csrf
         @method('PUT')
 
+        <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
         <!-- Data Diri -->
         <div>
             <h3 class="bg-green-700 text-white px-4 py-2 rounded-t">Data Diri</h3>

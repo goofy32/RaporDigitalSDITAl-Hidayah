@@ -83,6 +83,7 @@ class ScoreController extends Controller
                                             'mata_pelajaran_id' => $id,
                                             'lingkup_materi_id' => $lmId,
                                             'tujuan_pembelajaran_id' => $tpId,
+                                            'tahun_ajaran_id' => $tahunAjaranId, // Tambahkan ini untuk pencarian
                                         ],
                                         $nilaiData
                                     );
@@ -97,40 +98,10 @@ class ScoreController extends Controller
                                 }
                             }
                         }
-    
-                        // Simpan nilai LM
-                        if (isset($scoreData['lm'][$lmId]) && $scoreData['lm'][$lmId] > 0) {
-                            try {
-                                $nilaiData = [
-                                    'nilai_lm' => $scoreData['lm'][$lmId]
-                                ];
-                                
-                                if ($tahunAjaranId) {
-                                    $nilaiData['tahun_ajaran_id'] = $tahunAjaranId;
-                                }
-                                
-                                Nilai::updateOrCreate(
-                                    [
-                                        'siswa_id' => $siswaId,
-                                        'mata_pelajaran_id' => $id,
-                                        'lingkup_materi_id' => $lmId,
-                                    ],
-                                    $nilaiData
-                                );
-    
-                                $studentData['nilai'][] = [
-                                    'tipe' => 'LM',
-                                    'nama' => $lm->judul_lingkup_materi,
-                                    'nilai' => $scoreData['lm'][$lmId]
-                                ];
-                            } catch (\Exception $e) {
-                                $studentNotSaved[] = "LM {$lm->judul_lingkup_materi}: {$e->getMessage()}";
-                            }
-                        }
                     }
                 }
     
-                // Simpan nilai akhir
+                // Simpan nilai agregat
                 $finalScores = array_filter([
                     'na_tp' => $scoreData['na_tp'] ?? null,
                     'na_lm' => $scoreData['na_lm'] ?? null,
@@ -152,15 +123,18 @@ class ScoreController extends Controller
                             [
                                 'siswa_id' => $siswaId,
                                 'mata_pelajaran_id' => $id,
+                                'tahun_ajaran_id' => $tahunAjaranId, // Tambahkan ini untuk pencarian
                             ],
                             $finalScores
                         );
     
                         foreach($finalScores as $key => $value) {
-                            $studentData['nilai'][] = [
-                                'tipe' => str_replace('_', ' ', ucwords($key)),
-                                'nilai' => $value
-                            ];
+                            if ($key !== 'tahun_ajaran_id') { // Skip this from display
+                                $studentData['nilai'][] = [
+                                    'tipe' => str_replace('_', ' ', ucwords($key)),
+                                    'nilai' => $value
+                                ];
+                            }
                         }
                     } catch (\Exception $e) {
                         $studentNotSaved[] = "Nilai Akhir: {$e->getMessage()}";
@@ -177,22 +151,16 @@ class ScoreController extends Controller
     
             DB::commit();
     
-            $message = 'Nilai berhasil disimpan!';
-            if (!empty($notSavedData)) {
-                $message .= "\nBeberapa nilai tidak tersimpan:\n" . json_encode($notSavedData, JSON_PRETTY_PRINT);
-                Log::warning('Some scores were not saved:', $notSavedData);
-            }
-    
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => 'Nilai berhasil disimpan!',
                 'details' => $savedData,
                 'warnings' => $notSavedData
             ]);
     
         } catch (\Exception $e) {
             DB::rollback();
-            Log::error('Error saving scores: ' . $e->getMessage());
+            \Log::error('Error saving scores: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
@@ -358,13 +326,15 @@ class ScoreController extends Controller
     public function previewScore($id)
     {
         try {
+            $tahunAjaranId = session('tahun_ajaran_id');
+            
             // Load mata pelajaran dengan relasi yang diperlukan
             $mataPelajaran = MataPelajaran::with([
                 'kelas.siswas' => function($query) {
                     $query->orderBy('nama', 'asc');
                 },
                 'lingkupMateris.tujuanPembelajarans',
-                'lingkupMateris.nilais' => function($query) {
+                'lingkupMateris.nilais' => function($query) use ($tahunAjaranId) {
                     $query->select(
                         'nilais.*',
                         'siswa_id',
@@ -379,6 +349,11 @@ class ScoreController extends Controller
                         'nilai_akhir_semester',
                         'nilai_akhir_rapor'
                     );
+                    
+                    // Filter nilai berdasarkan tahun ajaran yang aktif
+                    if ($tahunAjaranId) {
+                        $query->where('tahun_ajaran_id', $tahunAjaranId);
+                    }
                 }
             ])->findOrFail($id);
     
@@ -389,7 +364,13 @@ class ScoreController extends Controller
                     ->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
             }
     
+            // Filter siswa berdasarkan tahun ajaran aktif
             $students = $mataPelajaran->kelas->siswas
+                ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
+                    return $collection->filter(function($siswa) use ($tahunAjaranId) {
+                        return $siswa->kelas && $siswa->kelas->tahun_ajaran_id == $tahunAjaranId;
+                    });
+                })
                 ->sortBy('nama')
                 ->map(function($siswa) {
                     return [
@@ -420,28 +401,31 @@ class ScoreController extends Controller
                 }
             }
     
-            // Ambil semua nilai secara efisien dengan single query
-            $nilais = Nilai::where('mata_pelajaran_id', $id)
-                ->with(['lingkupMateri', 'tujuanPembelajaran'])
-                ->get()
-                ->groupBy('siswa_id');
+            // Ambil semua nilai dengan single query dan filter berdasarkan tahun ajaran
+            $nilaiQuery = Nilai::where('mata_pelajaran_id', $id);
+            
+            if ($tahunAjaranId) {
+                $nilaiQuery->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+            
+            $nilais = $nilaiQuery->get()->groupBy('siswa_id');
     
-            // Isi nilai-nilai
-            foreach ($nilais as $siswaId => $siswaNilais) {
+            // Isi struktur data dengan nilai yang ada
+            foreach ($nilais as $siswaId => $nilaiSiswa) {
                 if (!isset($existingScores[$siswaId])) continue;
-    
-                foreach ($siswaNilais as $nilai) {
-                    // Isi nilai TP jika ada
+                
+                foreach ($nilaiSiswa as $nilai) {
+                    // Isi nilai TP
                     if ($nilai->nilai_tp !== null && $nilai->tujuan_pembelajaran_id && $nilai->lingkup_materi_id) {
                         $existingScores[$siswaId]['tp'][$nilai->lingkup_materi_id][$nilai->tujuan_pembelajaran_id] = $nilai->nilai_tp;
                     }
-    
+                    
                     // Isi nilai LM
                     if ($nilai->nilai_lm !== null && $nilai->lingkup_materi_id) {
                         $existingScores[$siswaId]['lm'][$nilai->lingkup_materi_id] = $nilai->nilai_lm;
                     }
-    
-                    // Update nilai aggregat jika belum diset atau nilai baru lebih besar
+                    
+                    // Isi nilai agregat
                     if ($nilai->na_tp !== null) {
                         $existingScores[$siswaId]['na_tp'] = $nilai->na_tp;
                     }
@@ -463,31 +447,33 @@ class ScoreController extends Controller
                 }
             }
     
-            // Log untuk debugging
-            Log::info('Preview Scores Data:', [
-                'mata_pelajaran' => $mataPelajaran->nama_pelajaran,
-                'total_students' => count($students),
-                'total_nilais' => $nilais->count(),
-                'scores_sample' => array_slice($existingScores, 0, 2)
-            ]);
-    
             return view('pengajar.preview_score', compact('mataPelajaran', 'existingScores', 'students'));
         } catch (\Exception $e) {
-            Log::error('Error in ScoreController@previewScore: ' . $e->getMessage());
+            \Log::error('Error in previewScore: ' . $e->getMessage());
             return redirect()->route('pengajar.score.index')
                 ->with('error', 'Terjadi kesalahan saat memuat data: ' . $e->getMessage());
         }
     }
+
     public function deleteNilai(Request $request)
     {
         try {
             DB::beginTransaction();
+            $tahunAjaranId = session('tahun_ajaran_id');
             
-            // Hapus semua nilai untuk siswa dan mata pelajaran tersebut
-            Nilai::where([
+            // Query dasar
+            $query = Nilai::where([
                 'siswa_id' => $request->siswa_id,
                 'mata_pelajaran_id' => $request->mata_pelajaran_id,
-            ])->delete();
+            ]);
+            
+            // Tambahkan filter tahun ajaran jika ada
+            if ($tahunAjaranId) {
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+            
+            // Jalankan delete
+            $query->delete();
     
             DB::commit();
             return response()->json([

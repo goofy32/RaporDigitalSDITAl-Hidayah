@@ -31,6 +31,9 @@
 
     <form id="saveForm" method="POST" action="{{ route('pengajar.score.save_scores', $subject['id']) }}" x-data="formProtection" >
         @csrf
+
+        <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
         <div class="overflow-x-auto">
             <table id="students-table" class="min-w-full text-sm text-left text-gray-500 border-collapse">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">

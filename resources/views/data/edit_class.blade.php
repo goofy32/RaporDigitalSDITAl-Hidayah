@@ -76,6 +76,8 @@
             @csrf
             @method('PUT')
 
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <!-- Nomor Kelas -->
             <div class="mb-4">
                 <label for="nomor_kelas" class="block text-sm font-medium text-gray-700">Nomor Kelas</label>

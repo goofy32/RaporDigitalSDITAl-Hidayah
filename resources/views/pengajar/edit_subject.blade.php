@@ -26,6 +26,8 @@
             @csrf
             @method('PUT')
 
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <!-- Layout dengan satu kolom (tanpa grid) -->
             <div class="space-y-6">
                 <!-- Mata Pelajaran -->

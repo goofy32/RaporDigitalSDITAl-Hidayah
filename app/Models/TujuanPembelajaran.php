@@ -34,11 +34,18 @@ class TujuanPembelajaran extends Model
         return $this->hasOneThrough(
             MataPelajaran::class,
             LingkupMateri::class,
-            'id', // Foreign key di lingkup_materis
-            'id', // Foreign key di mata_pelajarans
-            'lingkup_materi_id', // Local key di tujuan_pembelajarans
-            'mata_pelajaran_id' // Local key di lingkup_materis
+            'id', // foreign key on lingkup_materis
+            'id', // foreign key on mata_pelajarans
+            'lingkup_materi_id', // local key on tujuan_pembelajarans
+            'mata_pelajaran_id' // local key on lingkup_materis
         );
+    }
+
+    public function getTahunAjaranIdAttribute()
+    {
+        return $this->lingkupMateri && $this->lingkupMateri->mataPelajaran 
+            ? $this->lingkupMateri->mataPelajaran->tahun_ajaran_id 
+            : null;
     }
 
     // Helper method untuk mengecek kepemilikan
