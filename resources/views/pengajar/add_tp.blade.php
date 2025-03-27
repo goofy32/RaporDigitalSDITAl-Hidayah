@@ -38,6 +38,9 @@
         <form id="addTPForm" x-data="formProtection" class="space-y-6">
             @csrf
             <!-- Mata Pelajaran -->
+
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+
             <div>
                 <label class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
                 <p class="text-gray-700 font-semibold">{{ $mataPelajaran->nama_pelajaran }}</p>

@@ -11,6 +11,16 @@
 
     <!-- Filter Controls -->
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+        <div class="flex gap-2 mb-4">
+            <select id="tahun-ajaran-selector" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+                <option value="">Semua Tahun Ajaran</option>
+                @foreach($tahunAjarans as $ta)
+                    <option value="{{ $ta->id }}" {{ isset($tahunAjaranId) && $ta->id == $tahunAjaranId ? 'selected' : '' }}>
+                        {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
         <div class="flex gap-2">
             <select id="filter-type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
                 <option value="">Semua Tipe</option>
@@ -61,6 +71,7 @@
             <tr class="bg-white border-b hover:bg-gray-50" 
                 data-type="{{ $report->type }}" 
                 data-kelas="{{ $report->kelas_id }}"
+                data-tahun-ajaran="{{ $report->tahun_ajaran_id }}"
                 data-search="{{ $report->siswa->nama }} {{ $report->siswa->nis }}">
                 <td class="px-6 py-4">{{ $reports->firstItem() + $index }}</td>
                 <td class="px-6 py-4 font-medium text-gray-900">
@@ -116,6 +127,17 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const tahunAjaranSelector = document.getElementById('tahun-ajaran-selector');
+        tahunAjaranSelector.addEventListener('change', function() {
+            const selectedTahunAjaran = this.value;
+            
+            // If specific academic year is selected, only show those reports
+            if (selectedTahunAjaran) {
+                window.location.href = "{{ route('admin.report.archive') }}?tahun_ajaran_id=" + selectedTahunAjaran;
+            } else {
+                window.location.href = "{{ route('admin.report.archive') }}";
+            }
+        });
         // Filter berdasarkan tipe rapor
         const filterType = document.getElementById('filter-type');
         filterType.addEventListener('change', applyFilters);

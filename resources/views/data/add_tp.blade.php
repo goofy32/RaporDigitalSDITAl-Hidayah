@@ -36,6 +36,8 @@
         
         <!-- Form -->
         <form id="addTPForm" x-data="formProtection" class="space-y-6">
+            
+            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
             <!-- Mata Pelajaran -->
             <div>
                 <label class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>

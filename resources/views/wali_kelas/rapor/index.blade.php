@@ -216,6 +216,7 @@ document.addEventListener('alpine:init', function() {
         previewContent: '',
         templateUASActive: false,
         templateUTSActive: false,
+        tahunAjaranId: "{{ session('tahun_ajaran_id') }}",
         
         init() {
             console.log('Initializing raporManager');
@@ -339,7 +340,8 @@ document.addEventListener('alpine:init', function() {
                 this.loading = true;
                 console.log('Fetching preview for siswa ID:', siswaId);
                 
-                const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}`);
+                // Tambahkan query parameter tahun_ajaran_id
+                const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}?tahun_ajaran_id=${this.tahunAjaranId}`);
                 console.log('Preview response status:', response.status);
                 
                 // Jika tidak sukses, tampilkan detail error
@@ -381,7 +383,8 @@ document.addEventListener('alpine:init', function() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
-                        type: this.activeTab
+                        type: this.activeTab,
+                        tahun_ajaran_id: this.tahunAjaranId // Tambahkan ini
                     })
                 });
 
@@ -429,6 +432,7 @@ document.addEventListener('alpine:init', function() {
                 return;
             }
 
+
             // Validasi sebelum mengirim request
             const invalidSiswa = [];
             document.querySelectorAll('tbody tr').forEach(row => {
@@ -470,7 +474,8 @@ document.addEventListener('alpine:init', function() {
                     },
                     body: JSON.stringify({
                         siswa_ids: this.selectedSiswa,
-                        type: this.activeTab
+                        type: this.activeTab,
+                        tahun_ajaran_id: this.tahunAjaranId // Tambahkan ini
                     })
                 });
 

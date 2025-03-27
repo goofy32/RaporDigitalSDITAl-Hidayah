@@ -861,30 +861,29 @@ class ReportController extends Controller
         }
     }
 
-    protected function getTemplateForSiswa(Siswa $siswa, $type)
+    public function getTemplateForSiswa(Siswa $siswa, $type)
     {
-        // Cari template untuk kelas spesifik dulu
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        // First look for class-specific template
         $template = ReportTemplate::where('type', $type)
             ->where('kelas_id', $siswa->kelas_id)
             ->where('is_active', true)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
             ->first();
         
-        // Jika tidak ditemukan, cari template global
+        // If not found, look for global template
         if (!$template) {
             $template = ReportTemplate::where('type', $type)
                 ->whereNull('kelas_id')
                 ->where('is_active', true)
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
                 ->first();
         }
-        
-        // Log untuk debugging
-        \Log::info('Getting template for student', [
-            'siswa_id' => $siswa->id,
-            'kelas_id' => $siswa->kelas_id,
-            'type' => $type,
-            'template_found' => ($template ? $template->id : 'None'),
-            'is_kelas_specific' => ($template && $template->kelas_id ? 'Yes' : 'No')
-        ]);
         
         return $template;
     }
