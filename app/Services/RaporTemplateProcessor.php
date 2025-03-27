@@ -27,6 +27,7 @@ class RaporTemplateProcessor
     protected $type;
     protected $placeholders;
     protected $schoolProfile;
+    protected $tahunAjaranId; // Tambahkan property untuk menyimpan tahun ajaran ID
 
     public function __construct(ReportTemplate $template, Siswa $siswa, $type = 'UTS') 
     {
@@ -34,6 +35,8 @@ class RaporTemplateProcessor
         $this->siswa = $siswa;
         $this->type = $type;
         $this->schoolProfile = ProfilSekolah::first();
+        // Ambil tahun ajaran dari session atau dari kelas siswa
+        $this->tahunAjaranId = session('tahun_ajaran_id') ?: ($siswa->kelas->tahun_ajaran_id ?? null);
     
         // Validasi template path tidak kosong
         if (empty($template->path)) {
@@ -49,7 +52,8 @@ class RaporTemplateProcessor
             'template_id' => $template->id,
             'filename' => $template->filename,
             'path' => $template->path,
-            'is_active' => $template->is_active
+            'is_active' => $template->is_active,
+            'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran yang digunakan
         ]);
     
         // Pastikan path template adalah file yang valid
@@ -93,8 +97,41 @@ class RaporTemplateProcessor
 
     public static function getTemplateForSiswa(Siswa $siswa, $type = 'UTS')
     {
-        return ReportTemplate::getActiveTemplate($type, $siswa->kelas_id);
+        $tahunAjaranId = session('tahun_ajaran_id') ?: $siswa->kelas->tahun_ajaran_id;
+        
+        // Cari template untuk kelas spesifik dulu dengan filter tahun ajaran
+        $template = ReportTemplate::where('type', $type)
+            ->where('kelas_id', $siswa->kelas_id)
+            ->where('is_active', true)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->first();
+        
+        // Jika tidak ditemukan, cari template global dengan filter tahun ajaran
+        if (!$template) {
+            $template = ReportTemplate::where('type', $type)
+                ->whereNull('kelas_id')
+                ->where('is_active', true)
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->first();
+        }
+        
+        // Log untuk debugging
+        Log::info('Getting template for student', [
+            'siswa_id' => $siswa->id,
+            'kelas_id' => $siswa->kelas_id,
+            'type' => $type,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'template_found' => ($template ? $template->id : 'None'),
+            'is_kelas_specific' => ($template && $template->kelas_id ? 'Yes' : 'No')
+        ]);
+        
+        return $template;
     }
+    
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
      * 
@@ -103,6 +140,7 @@ class RaporTemplateProcessor
     protected function collectAllData()
     {
         $semester = $this->type === 'UTS' ? 1 : 2;
+        $tahunAjaranId = $this->tahunAjaranId;
         
         // Data Siswa
         $data = [
@@ -110,7 +148,7 @@ class RaporTemplateProcessor
             'nisn' => $this->siswa->nisn ?: '-',
             'nis' => $this->siswa->nis ?: '-',
             'kelas' => $this->siswa->kelas->nomor_kelas . ' ' . $this->siswa->kelas->nama_kelas,
-            'tahun_ajaran' => $this->siswa->kelas->tahun_ajaran ?: ($this->schoolProfile->tahun_pelajaran ?? '-'),
+            'tahun_ajaran' => $this->siswa->kelas->tahunAjaran ? $this->siswa->kelas->tahunAjaran->tahun_ajaran : ($this->schoolProfile->tahun_pelajaran ?? '-'),
             'tempat_lahir' => $this->siswa->tempat_lahir ?? '-',
             'jenis_kelamin' => $this->siswa->jenis_kelamin ?? '-',
             'agama' => $this->siswa->agama ?? '-',
@@ -127,9 +165,12 @@ class RaporTemplateProcessor
             'semester' => $this->schoolProfile->semester == 1 ? 'Ganjil' : 'Genap',
         ];
     
-        // Data Nilai
+        // Data Nilai - Filter berdasarkan tahun ajaran yang dipilih
         $nilaiQuery = $this->siswa->nilais()
-        ->with(['mataPelajaran']);
+            ->with(['mataPelajaran'])
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            });
         
         $nilaiCollection = $nilaiQuery->get();
         
@@ -139,7 +180,8 @@ class RaporTemplateProcessor
         Log::info('Data nilai yang diambil:', [
             'siswa_id' => $this->siswa->id,
             'mapel_count' => $nilai->count(),
-            'mapel_list' => $nilai->keys()->toArray()
+            'mapel_list' => $nilai->keys()->toArray(),
+            'tahun_ajaran_id' => $tahunAjaranId
         ]);
     
         // Pisahkan mata pelajaran reguler dan muatan lokal
@@ -243,8 +285,13 @@ class RaporTemplateProcessor
                 // Tandai key ini sudah diproses
                 $processedKeys[] = $key;
                 
-                // Cari nilai akhir rapor
-                $nilaiAkhir = $nilaiMapel->where('nilai_akhir_rapor', '!=', null)->first();
+                // Cari nilai akhir rapor yang sesuai dengan tahun ajaran
+                $nilaiAkhir = $nilaiMapel
+                    ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
+                        return $collection->where('tahun_ajaran_id', $tahunAjaranId);
+                    })
+                    ->where('nilai_akhir_rapor', '!=', null)
+                    ->first();
                 
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
@@ -264,11 +311,17 @@ class RaporTemplateProcessor
                     Log::info("Mata pelajaran $key diproses", [
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
-                        'placeholder_position' => $mapelCount - 1
+                        'placeholder_position' => $mapelCount - 1,
+                        'tahun_ajaran_id' => $tahunAjaranId
                     ]);
                 } else {
-                    // Jika tidak ada nilai_akhir_rapor, gunakan rata-rata nilai lain
-                    $avgNilai = $nilaiMapel->avg('nilai_tp');
+                    // Jika tidak ada nilai_akhir_rapor, gunakan rata-rata nilai lain dengan filter tahun ajaran
+                    $avgNilai = $nilaiMapel
+                        ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
+                            return $collection->where('tahun_ajaran_id', $tahunAjaranId);
+                        })
+                        ->avg('nilai_tp');
+                        
                     if ($avgNilai) {
                         $data["nilai_$key"] = number_format($avgNilai, 1);
                         $data["capaian_$key"] = $this->generateSpecificCapaian($avgNilai, $key);
@@ -298,8 +351,13 @@ class RaporTemplateProcessor
         // Proses mata pelajaran reguler lainnya yang belum diidentifikasi
         foreach ($mapelReguler as $mapelName => $nilaiMapel) {
             if (!in_array($mapelName, $processedMapelNames) && $mapelCount <= 10) {
-                // Cari nilai akhir rapor
-                $nilaiAkhir = $nilaiMapel->where('nilai_akhir_rapor', '!=', null)->first();
+                // Cari nilai akhir rapor dengan filter tahun ajaran
+                $nilaiAkhir = $nilaiMapel
+                    ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
+                        return $collection->where('tahun_ajaran_id', $tahunAjaranId);
+                    })
+                    ->where('nilai_akhir_rapor', '!=', null)
+                    ->first();
                 
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
@@ -318,7 +376,8 @@ class RaporTemplateProcessor
                     Log::info("Mata pelajaran lainnya diproses", [
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
-                        'placeholder_position' => $mapelCount - 1
+                        'placeholder_position' => $mapelCount - 1,
+                        'tahun_ajaran_id' => $tahunAjaranId
                     ]);
                 }
             }
@@ -337,11 +396,17 @@ class RaporTemplateProcessor
             }
         }
     
-        // Proses Muatan Lokal
+        // Proses Muatan Lokal dengan filter tahun ajaran
         $mulokCount = 1;
         foreach ($mulok as $nama => $nilaiMulok) {
             if ($mulokCount <= 5) {
-                $nilaiAkhir = $nilaiMulok->where('nilai_akhir_rapor', '!=', null)->first();
+                // Filter nilai berdasarkan tahun ajaran
+                $nilaiAkhir = $nilaiMulok
+                    ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
+                        return $collection->where('tahun_ajaran_id', $tahunAjaranId);
+                    })
+                    ->where('nilai_akhir_rapor', '!=', null)
+                    ->first();
                 
                 // Nama muatan lokal
                 $data["nama_mulok$mulokCount"] = $nama;
@@ -352,8 +417,13 @@ class RaporTemplateProcessor
                     $data["capaian_mulok$mulokCount"] = $nilaiAkhir->deskripsi ?? 
                         $this->generateCapaianDeskripsi($nilaiValue, $nama);
                 } else {
-                    // Jika tidak ada nilai_akhir_rapor, cari alternatif
-                    $avgNilai = $nilaiMulok->avg('nilai_tp');
+                    // Jika tidak ada nilai_akhir_rapor, cari alternatif dengan filter tahun ajaran
+                    $avgNilai = $nilaiMulok
+                        ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
+                            return $collection->where('tahun_ajaran_id', $tahunAjaranId);
+                        })
+                        ->avg('nilai_tp');
+                        
                     $data["nilai_mulok$mulokCount"] = $avgNilai ? number_format($avgNilai, 1) : '-';
                     $data["capaian_mulok$mulokCount"] = $avgNilai ? 
                         $this->generateCapaianDeskripsi($avgNilai, $nama) : '-';
@@ -370,9 +440,12 @@ class RaporTemplateProcessor
             $data["capaian_mulok$i"] = '-';
         }
     
-        // Data Ekstrakurikuler
+        // Data Ekstrakurikuler dengan filter tahun ajaran
         $ekstrakurikuler = $this->siswa->nilaiEkstrakurikuler()
             ->with('ekstrakurikuler')
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
             ->get();
             
         for ($i = 1; $i <= 6; $i++) {
@@ -386,8 +459,14 @@ class RaporTemplateProcessor
             }
         }
     
-        // Data Kehadiran
-        $absensi = $this->siswa->absensi()->where('semester', $semester)->first();
+        // Data Kehadiran dengan filter tahun ajaran
+        $absensi = $this->siswa->absensi()
+            ->where('semester', $semester)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->first();
+            
         if ($absensi) {
             $data['sakit'] = $absensi->sakit ?: '0';
             $data['izin'] = $absensi->izin ?: '0';
@@ -449,11 +528,16 @@ class RaporTemplateProcessor
             })),
             'mulok_count' => count(array_filter(array_keys($data), function($key) {
                 return strpos($key, 'nama_mulok') === 0;
-            }))
+            })),
+            'tahun_ajaran_id' => $tahunAjaranId
         ]);
     
         return $data;
     }
+    
+    // Bagian selanjutnya seperti findMatchingMapel(), determineFase(), dll. tetap sama
+    // ...
+    
     /**
      * Cari mata pelajaran yang cocok berdasarkan nama
      * 
@@ -513,7 +597,7 @@ class RaporTemplateProcessor
                 }
             }
         }
-        
+
         Log::info('Tidak ada kecocokan untuk mata pelajaran', ['mapel' => $mapelName]);
         return null;
     }
@@ -658,7 +742,9 @@ class RaporTemplateProcessor
     public function generate($bypassValidation = false)
     {
         try {
-            Log::info('Starting generate() with template type: ' . $this->type);
+            Log::info('Starting generate() with template type: ' . $this->type, [
+                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran yang digunakan
+            ]);
             
             // 1. Validasi data
             if (!$bypassValidation) {
@@ -673,7 +759,8 @@ class RaporTemplateProcessor
             
             Log::info('Variables in template:', [
                 'found_variables' => $variables,
-                'template_type' => $this->type
+                'template_type' => $this->type,
+                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran yang digunakan
             ]);
             
             // 4. Isi semua placeholder
@@ -699,7 +786,8 @@ class RaporTemplateProcessor
                 Log::error('Gagal mengisi placeholder:', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                    'siswa_id' => $this->siswa->id
+                    'siswa_id' => $this->siswa->id,
+                    'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran untuk debug
                 ]);
                 
                 throw new RaporException(
@@ -725,7 +813,8 @@ class RaporTemplateProcessor
                 'error_type' => $e->getErrorType(),
                 'trace' => $e->getTraceAsString(),
                 'siswa_id' => $this->siswa->id,
-                'template_id' => $this->template->id
+                'template_id' => $this->template->id,
+                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran untuk debug
             ]);
             
             throw $e;
@@ -734,7 +823,8 @@ class RaporTemplateProcessor
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'siswa_id' => $this->siswa->id,
-                'template_id' => $this->template->id
+                'template_id' => $this->template->id,
+                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran untuk debug
             ]);
             
             throw new RaporException('Gagal generate rapor: ' . $e->getMessage(), 'general_error', 500, $e);
@@ -749,6 +839,8 @@ class RaporTemplateProcessor
      */
     protected function validateData()
     {
+        $tahunAjaranId = $this->tahunAjaranId;
+
         // Validasi template aktif
         if (!$this->template->is_active) {
             throw new RaporException(
@@ -758,49 +850,31 @@ class RaporTemplateProcessor
             );
         }
 
-        // Validasi apakah siswa memiliki nilai
-        $hasAnyNilai = $this->siswa->nilais()->exists();
+        // Validasi apakah siswa memiliki nilai untuk tahun ajaran yang aktif
+        $hasAnyNilai = $this->siswa->nilais()
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->exists();
             
         if (!$hasAnyNilai) {
             throw new RaporException(
-                'Siswa belum memiliki nilai. Mohon input nilai terlebih dahulu.',
+                'Siswa belum memiliki nilai pada tahun ajaran ini. Mohon input nilai terlebih dahulu.',
                 'data_incomplete',
                 self::ERROR_DATA_INCOMPLETE
             );
         }
 
-        // Validasi nilai untuk mata pelajaran tertentu
-        // Ini sudah tidak diperlukan karena kita akan menampilkan yang ada saja
-        // Tapi bisa dikembalikan jika masih ingin memeriksa mata pelajaran wajib
-        /*
-        $mapelWajib = ['Matematika', 'Bahasa Indonesia', 'Pendidikan Agama Islam'];
-        $missingMapel = [];
-        
-        foreach ($mapelWajib as $mapel) {
-            $hasMapel = $this->siswa->nilais()
-                ->whereHas('mataPelajaran', function($q) use ($semester, $mapel) {
-                    $q->where('semester', $semester)
-                      ->where('nama_pelajaran', 'like', "%{$mapel}%");
-                })
-                ->exists();
-                
-            if (!$hasMapel) {
-                $missingMapel[] = $mapel;
-            }
-        }
-        
-        if (!empty($missingMapel)) {
-            throw new Exception(
-                'Data nilai mata pelajaran berikut belum ada: ' . implode(', ', $missingMapel),
-                self::ERROR_DATA_INCOMPLETE
-            );
-        }
-        */
-
-        // Cek kehadiran
-        if (!$this->siswa->absensi()->exists()) {
+        // Cek kehadiran untuk tahun ajaran yang aktif
+        $hasAbsensi = $this->siswa->absensi()
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->exists();
+            
+        if (!$hasAbsensi) {
             throw new RaporException(
-                'Data kehadiran siswa belum diisi.',
+                'Data kehadiran siswa pada tahun ajaran ini belum diisi.',
                 'data_incomplete',
                 self::ERROR_DATA_INCOMPLETE
             );
@@ -816,11 +890,21 @@ class RaporTemplateProcessor
      */
     protected function generateFilename()
     {
+        // Tambahkan tahun ajaran ke nama file untuk membedakan antar tahun ajaran
+        $tahunAjaranText = '';
+        if ($this->tahunAjaranId) {
+            $tahunAjaran = \App\Models\TahunAjaran::find($this->tahunAjaranId);
+            if ($tahunAjaran) {
+                $tahunAjaranText = '_' . str_replace('/', '_', $tahunAjaran->tahun_ajaran);
+            }
+        }
+        
         return sprintf(
-            "rapor_%s_%s_%s_%s.docx",
+            "rapor_%s_%s_%s%s_%s.docx",
             $this->type,
             $this->siswa->nis ?: 'nonis',
             str_replace(' ', '_', $this->siswa->kelas->nama_kelas),
+            $tahunAjaranText,
             time()
         );
     }
@@ -849,14 +933,16 @@ class RaporTemplateProcessor
             
             Log::info('Rapor berhasil disimpan:', [
                 'path' => $outputPath,
-                'size' => filesize($outputPath)
+                'size' => filesize($outputPath),
+                'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
             
             return "generated/{$filename}";
         } catch (\Exception $e) {
             Log::error('Error saat menyimpan file rapor:', [
                 'error' => $e->getMessage(),
-                'path' => $outputPath
+                'path' => $outputPath,
+                'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
             
             throw new RaporException(

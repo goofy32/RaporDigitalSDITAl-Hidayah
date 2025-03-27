@@ -175,21 +175,27 @@ class Siswa extends Model
     public function hasCompleteData($type = 'UTS')
     {
         $semester = $type === 'UTS' ? 1 : 2;
+        $tahunAjaranId = session('tahun_ajaran_id');
         
-        // Cek nilai berdasarkan semester
+        // Cek nilai berdasarkan semester dan tahun ajaran
         $hasNilai = $this->nilais()
             ->whereHas('mataPelajaran', function($q) use ($semester) {
                 $q->where('semester', $semester);
             })
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
             ->where('nilai_akhir_rapor', '!=', null)
             ->exists();
         
-        // Cek kehadiran semester yang sesuai
+        // Cek kehadiran semester yang sesuai dan tahun ajaran
         $hasAbsensi = $this->absensi()
             ->where('semester', $semester)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
             ->exists();
         
         return $hasNilai && $hasAbsensi;
     }
-    
 }

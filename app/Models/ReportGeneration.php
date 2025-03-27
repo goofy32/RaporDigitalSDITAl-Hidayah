@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasTahunAjaran;
 
 class ReportGeneration extends Model
 {
+    use HasTahunAjaran;
+    
+    // Tambahkan tahun_ajaran_id ke fillable
     protected $fillable = [
         'siswa_id',
         'kelas_id',
@@ -14,6 +18,7 @@ class ReportGeneration extends Model
         'type',
         'tahun_ajaran',
         'semester',
+        'tahun_ajaran_id', // Tambahkan ini
         'generated_at',
         'generated_by'
     ];
@@ -30,6 +35,11 @@ class ReportGeneration extends Model
     public function kelas()
     {
         return $this->belongsTo(Kelas::class);
+    }
+
+    public function tahunAjaran()
+    {
+        return $this->belongsTo(TahunAjaran::class);
     }
 
     public function template()

@@ -567,9 +567,10 @@ class ReportController extends Controller
     {
         $type = $request->input('type', 'UTS');
         $action = $request->input('action', 'download');
+        $tahunAjaranId = session('tahun_ajaran_id'); // Ambil tahun ajaran dari session
         
         try {
-            // Dapatkan template yang sesuai untuk kelas siswa
+            // Dapatkan template yang sesuai untuk kelas siswa dengan filter tahun ajaran
             $template = $this->getTemplateForSiswa($siswa, $type);
             
             if (!$template) {
@@ -599,8 +600,8 @@ class ReportController extends Controller
                 throw new \Exception($result['message'] ?? 'Gagal generate rapor');
             }
             
-            // Simpan history generate
-            $this->saveGenerationHistory($siswa, $template, $type);
+            // Simpan history generate dengan tahun ajaran
+            $this->saveGenerationHistory($siswa, $template, $type, $tahunAjaranId);
             
             // Jika hanya preview, kembalikan URL
             if ($action == 'preview') {
@@ -615,8 +616,8 @@ class ReportController extends Controller
             $fullPath = storage_path('app/public/' . $result['path']);
             
             return response()->download($fullPath, $result['filename']);
-            
-        } catch (\App\Exceptions\RaporException $e) {
+        } 
+         catch (\App\Exceptions\RaporException $e) {
             \Log::error('RaporException in generateReport: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
                 'type' => $type,
@@ -644,7 +645,7 @@ class ReportController extends Controller
         }
     }
 
-    protected function saveGenerationHistory(Siswa $siswa, ReportTemplate $template, $type)
+    protected function saveGenerationHistory(Siswa $siswa, ReportTemplate $template, $type, $tahunAjaranId = null)
     {
         try {
             \App\Models\ReportGeneration::create([
@@ -655,6 +656,7 @@ class ReportController extends Controller
                 'type' => $type,
                 'tahun_ajaran' => $template->tahun_ajaran,
                 'semester' => $template->semester,
+                'tahun_ajaran_id' => $tahunAjaranId ?: session('tahun_ajaran_id'), // Tambahkan tahun ajaran ID
                 'generated_at' => now(),
                 'generated_by' => auth()->id() ?? auth()->guard('guru')->id()
             ]);
@@ -662,7 +664,8 @@ class ReportController extends Controller
             // Hanya log error, tidak mempengaruhi proses utama
             \Log::error('Error saving generation history: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
-                'template_id' => $template->id
+                'template_id' => $template->id,
+                'tahun_ajaran_id' => $tahunAjaranId
             ]);
         }
     }
