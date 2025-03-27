@@ -64,7 +64,13 @@
                 
                 <select id="filter-kelas" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
                     <option value="">Semua Kelas</option>
-                    @foreach(\App\Models\Kelas::orderBy('nomor_kelas')->get() as $kelas)
+                    @php
+                        $tahunAjaranId = session('tahun_ajaran_id');
+                        $kelasList = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                        })->orderBy('nomor_kelas')->get();
+                    @endphp
+                    @foreach($kelasList as $kelas)
                         <option value="{{ $kelas->full_kelas }}">{{ $kelas->full_kelas }}</option>
                     @endforeach
                     <option value="Template Global">Template Global</option>
@@ -227,6 +233,7 @@
 
             <form id="uploadForm" action="{{ route('report.template.upload') }}" method="POST" enctype="multipart/form-data">
                 @csrf
+                <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
                 
                 <!-- Type Selection -->
                 <div class="mb-4">
@@ -250,12 +257,18 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
                     <select name="kelas_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5 w-full" required>
-                        @foreach(\App\Models\Kelas::orderBy('nomor_kelas')->get() as $kelas)
+                        @php
+                            $tahunAjaranId = session('tahun_ajaran_id');
+                            $kelasList = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                            })->orderBy('nomor_kelas')->get();
+                        @endphp
+                        @foreach($kelasList as $kelas)
                             <option value="{{ $kelas->id }}">{{ $kelas->full_kelas }}</option>
                         @endforeach
                     </select>
                     <p class="mt-1 text-xs text-gray-500">
-                        Pilih kelas untuk template ini.
+                        Pilih kelas untuk template ini (hanya kelas dari tahun ajaran aktif).
                     </p>
                 </div>
                 
