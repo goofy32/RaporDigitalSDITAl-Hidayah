@@ -59,8 +59,24 @@ class AchievementController extends Controller
     // Menampilkan form tambah prestasi
     public function create()
     {
-        $kelas = Kelas::orderBy('nomor_kelas')->get();
-        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        $kelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+            
+        $siswa = Siswa::with('kelas')
+            ->whereHas('kelas', function($query) use ($tahunAjaranId) {
+                if ($tahunAjaranId) {
+                    $query->where('tahun_ajaran_id', $tahunAjaranId);
+                }
+            })
+            ->orderBy('nama')
+            ->get();
+            
         return view('data.add_prestasi', compact('kelas', 'siswa'));
     }
     // Menyimpan data prestasi
@@ -84,11 +100,25 @@ class AchievementController extends Controller
     // Menampilkan form edit
     public function edit($id)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
         $prestasi = Prestasi::findOrFail($id);
-        $kelas = Kelas::orderBy('nomor_kelas')->get();
         
-        // Ubah menjadi mengambil SEMUA siswa, bukan hanya dari kelas yang sedang diedit
-        $siswa = Siswa::with('kelas')->orderBy('nama')->get();
+        $kelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+        
+        // Ubah menjadi mengambil siswa berdasarkan tahun ajaran
+        $siswa = Siswa::with('kelas')
+            ->whereHas('kelas', function($query) use ($tahunAjaranId) {
+                if ($tahunAjaranId) {
+                    $query->where('tahun_ajaran_id', $tahunAjaranId);
+                }
+            })
+            ->orderBy('nama')
+            ->get();
         
         return view('data.edit_prestasi', compact('prestasi', 'kelas', 'siswa'));
     }

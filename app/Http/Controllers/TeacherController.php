@@ -102,7 +102,7 @@ class TeacherController extends Controller
             ->orderBy('nomor_kelas')
             ->orderBy('nama_kelas')
             ->get();
-
+    
         // Ambil kelas yang belum memiliki wali kelas untuk opsi wali kelas
         $kelasForWali = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
@@ -114,10 +114,9 @@ class TeacherController extends Controller
             ->orderBy('nomor_kelas')
             ->orderBy('nama_kelas')
             ->get();
-
+    
         return view('data.create_teacher', compact('kelasForMengajar', 'kelasForWali'));
     }
-
     public function store(Request $request)
     {
         return DB::transaction(function() use ($request) {

@@ -74,16 +74,29 @@ class SubjectController extends Controller
 
     public function create()
     {
-        $classes = Kelas::orderBy('nomor_kelas')
-                        ->orderBy('nama_kelas')
-                        ->get();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        $classes = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+            
         $teachers = Guru::orderBy('nama')->get();
         
         // Ambil semua mata pelajaran untuk validasi JavaScript
-        $mataPelajaranList = MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')->get();
+        $mataPelajaranList = MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->get();
         
         // Kode ini akan dimanfaatkan oleh JavaScript
-        $waliKelasMap = Kelas::getWaliKelasMap();
+        $waliKelasMap = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->getWaliKelasMap();
         
         return view('data.add_subject', compact('classes', 'teachers', 'waliKelasMap', 'mataPelajaranList'));
     }
@@ -292,19 +305,33 @@ class SubjectController extends Controller
     
     public function edit($id)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
         $subject = MataPelajaran::with('lingkupMateris')->findOrFail($id);
-        $classes = Kelas::all();
-        $teachers = Guru::all();
+        
+        $classes = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+            
+        $teachers = Guru::orderBy('nama')->get();
     
         // Ambil semua mata pelajaran untuk validasi JavaScript
-        $mataPelajaranList = MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')->get();
+        $mataPelajaranList = MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->get();
         
         // Kode ini akan dimanfaatkan oleh JavaScript
-        $waliKelasMap = Kelas::getWaliKelasMap();
+        $waliKelasMap = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->getWaliKelasMap();
         
         return view('data.edit_subject', compact('subject', 'classes', 'teachers', 'waliKelasMap', 'mataPelajaranList'));
     }
-    
  
     public function updateLingkupMateri(Request $request, $id)
     {
@@ -492,9 +519,15 @@ class SubjectController extends Controller
         // Ambil ID guru yang sedang login
         $guruId = Auth::guard('guru')->id();
         $guru = Auth::guard('guru')->user();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         // Query untuk mendapatkan kelas
         $classesQuery = Kelas::query();
+        
+        // Filter kelas berdasarkan tahun ajaran
+        $classesQuery->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+        });
         
         // Jika guru ini adalah wali kelas, tambahkan kelas walinya ke dalam daftar
         if ($guru->isWaliKelas()) {
@@ -659,6 +692,7 @@ class SubjectController extends Controller
         // Ambil ID guru yang sedang login
         $guruId = Auth::guard('guru')->id();
         $guru = Auth::guard('guru')->user();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         // Verifikasi guru adalah pemilik mata pelajaran
         if ($subject->guru_id != $guruId) {
@@ -668,7 +702,12 @@ class SubjectController extends Controller
         // Query untuk mendapatkan kelas
         $classesQuery = Kelas::query();
         
-// Jika guru ini adalah wali kelas, tambahkan kelas walinya ke dalam daftar
+        // Filter kelas berdasarkan tahun ajaran
+        $classesQuery->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+        });
+        
+        // Jika guru ini adalah wali kelas, tambahkan kelas walinya ke dalam daftar
         if ($guru->isWaliKelas()) {
             $kelasWali = $guru->kelasWali()->first();
             

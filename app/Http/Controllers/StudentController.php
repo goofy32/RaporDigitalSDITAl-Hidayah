@@ -84,7 +84,15 @@ class StudentController extends Controller
 
     public function create()
     {
-        $kelas = Kelas::all();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        $kelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+            
         return view('data.add_student', compact('kelas'));
     }
 
@@ -149,10 +157,19 @@ class StudentController extends Controller
         $student = Siswa::with('kelas')->findOrFail($id);
         return view('data.siswa_data', compact('student'));
     }
+    
     public function edit($id)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
         $student = Siswa::findOrFail($id);
-        $kelas = Kelas::all();
+        
+        $kelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
+            
         return view('data.edit_student', compact('student', 'kelas'));
     }
 

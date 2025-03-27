@@ -29,6 +29,7 @@ class Siswa extends Model
         'photo',
         'wali_siswa',
         'pekerjaan_wali',
+        'tahun_ajaran_id'
     ];
     public function kelas()
     {

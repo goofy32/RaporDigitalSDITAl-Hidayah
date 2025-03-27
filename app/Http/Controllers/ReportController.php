@@ -125,7 +125,7 @@ class ReportController extends Controller
             
         $tahunAjarans = TahunAjaran::orderBy('tanggal_mulai', 'desc')->get();
         
-        return view('admin.report.archive', compact('reports', 'tahunAjarans', 'tahunAjaranId'));
+        return view('admin.report.history', compact('reports', 'tahunAjarans', 'tahunAjaranId'));
     }
 
     // Di ReportController.php, tambahkan method ini:

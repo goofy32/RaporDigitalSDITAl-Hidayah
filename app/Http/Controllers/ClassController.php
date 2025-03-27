@@ -73,18 +73,25 @@ class ClassController extends Controller
     // Menampilkan form tambah data kelas
     public function create()
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         // Dapatkan guru yang hanya memiliki jabatan 'guru' saja (bukan guru_wali)
-        // dan belum menjadi wali kelas di kelas manapun
+        // dan belum menjadi wali kelas di kelas manapun pada tahun ajaran saat ini
         $guruList = Guru::where('jabatan', 'guru')
-            ->whereDoesntHave('kelas', function($query) {
+            ->whereDoesntHave('kelas', function($query) use ($tahunAjaranId) {
                 $query->where('guru_kelas.is_wali_kelas', true)
-                      ->where('guru_kelas.role', 'wali_kelas');
+                      ->where('guru_kelas.role', 'wali_kelas')
+                      ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
+                          $q->whereHas('kelas', function($kq) use ($tahunAjaranId) {
+                              $kq->where('tahun_ajaran_id', $tahunAjaranId);
+                          });
+                      });
             })
             ->get();
-
+    
         return view('data.create_class', compact('guruList'));
     }
-    
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -148,6 +155,7 @@ class ClassController extends Controller
         
     public function edit($id)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
         $kelas = Kelas::findOrFail($id);
         
         // Ambil data wali kelas saat ini (jika ada)
@@ -156,17 +164,22 @@ class ClassController extends Controller
                         ->wherePivot('role', 'wali_kelas')
                         ->first();
         
-        // Ambil daftar guru yang tersedia untuk menjadi wali kelas (dengan jabatan 'guru' dan belum menjadi wali kelas)
+        // Ambil daftar guru yang tersedia untuk menjadi wali kelas 
+        // (dengan jabatan 'guru' dan belum menjadi wali kelas)
         $availableGuruList = Guru::where('jabatan', 'guru')
-            ->whereDoesntHave('kelas', function($query) {
+            ->whereDoesntHave('kelas', function($query) use ($tahunAjaranId) {
                 $query->where('guru_kelas.is_wali_kelas', true)
-                    ->where('guru_kelas.role', 'wali_kelas');
+                    ->where('guru_kelas.role', 'wali_kelas')
+                    ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
+                        $q->whereHas('kelas', function($kq) use ($tahunAjaranId) {
+                            $kq->where('tahun_ajaran_id', $tahunAjaranId);
+                        });
+                    });
             })
             ->get();
         
         return view('data.edit_class', compact('kelas', 'waliKelas', 'availableGuruList'));
     }
-
 // Mengupdate data kelas
     public function update(Request $request, $id)
     {
