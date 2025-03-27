@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasTahunAjaran;
 
 class Siswa extends Model
 {
-    use HasFactory;
+    use HasFactory, HasTahunAjaran;
 
     protected $table = 'siswas';
 

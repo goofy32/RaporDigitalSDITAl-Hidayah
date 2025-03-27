@@ -31,29 +31,32 @@
         @endphp
 
         @if($activeTahunAjaran)
-        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="text-xl font-bold text-green-800">{{ $activeTahunAjaran->tahun_ajaran }}</h4>
-                    <p class="text-green-600">Semester {{ $activeTahunAjaran->semester }} ({{ $activeTahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }})</p>
-                    <p class="text-sm text-gray-600">{{ date('d F Y', strtotime($activeTahunAjaran->tanggal_mulai)) }} - {{ date('d F Y', strtotime($activeTahunAjaran->tanggal_selesai)) }}</p>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center">
+                            <h4 class="text-xl font-bold text-green-800">{{ $activeTahunAjaran->tahun_ajaran }}</h4>
+                            <span class="ml-3 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">AKTIF</span>
+                        </div>
+                        <p class="text-green-600">Semester {{ $activeTahunAjaran->semester }} ({{ $activeTahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }})</p>
+                        <p class="text-sm text-gray-600">{{ date('d F Y', strtotime($activeTahunAjaran->tanggal_mulai)) }} - {{ date('d F Y', strtotime($activeTahunAjaran->tanggal_selesai)) }}</p>
+                    </div>
+                    <div>
+                        <a href="{{ route('tahun.ajaran.show', $activeTahunAjaran->id) }}" class="px-3 py-1 bg-blue-500 text-white rounded-md mr-2 text-sm hover:bg-blue-600">
+                            Detail
+                        </a>
+                    </div>
                 </div>
-                <div>
-                    <a href="{{ route('tahun.ajaran.show', $activeTahunAjaran->id) }}" class="px-3 py-1 bg-blue-500 text-white rounded-md mr-2 text-sm hover:bg-blue-600">
-                        Detail
-                    </a>
+                @if($activeTahunAjaran->deskripsi)
+                <div class="mt-2 p-2 bg-white rounded border border-green-100">
+                    <p class="text-sm text-gray-600">{{ $activeTahunAjaran->deskripsi }}</p>
                 </div>
+                @endif
             </div>
-            @if($activeTahunAjaran->deskripsi)
-            <div class="mt-2 p-2 bg-white rounded border border-green-100">
-                <p class="text-sm text-gray-600">{{ $activeTahunAjaran->deskripsi }}</p>
+            @else
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p class="text-yellow-700">Tidak ada tahun ajaran yang aktif saat ini. Silakan aktifkan salah satu tahun ajaran.</p>
             </div>
-            @endif
-        </div>
-        @else
-        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p class="text-yellow-700">Tidak ada tahun ajaran yang aktif saat ini. Silakan aktifkan salah satu tahun ajaran.</p>
-        </div>
         @endif
     </div>
 
@@ -100,25 +103,25 @@
                         </td>
                         <td class="py-4 px-4 border-b text-sm">
                             <div class="flex space-x-2">
-                                <a href="{{ route('tahun.ajaran.show', $tahunAjaran->id) }}" class="text-blue-600 hover:text-blue-900" title="Lihat Detail">
-                                    <i class="fas fa-eye"></i>
+                                <a href="{{ route('tahun.ajaran.show', $tahunAjaran->id) }}" class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    Detail
                                 </a>
-                                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="text-yellow-600 hover:text-yellow-900" title="Edit">
-                                    <i class="fas fa-edit"></i>
+                                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                                    Edit
                                 </a>
                                 @if(!$tahunAjaran->is_active)
                                 <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
                                     @csrf
-                                    <button type="submit" class="text-green-600 hover:text-green-900" title="Aktifkan" onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                                        <i class="fas fa-check-circle"></i>
+                                    <button type="submit" class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600" onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
+                                        Aktifkan
                                     </button>
                                 </form>
-                                <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" class="text-indigo-600 hover:text-indigo-900" title="Salin ke Tahun Ajaran Baru">
-                                    <i class="fas fa-copy"></i>
+                                <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" class="px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600">
+                                    Salin
                                 </a>
                                 @else
-                                <span class="text-gray-400 cursor-not-allowed">
-                                    <i class="fas fa-check-circle"></i>
+                                <span class="px-2 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed">
+                                    Aktif
                                 </span>
                                 @endif
                             </div>
@@ -136,4 +139,4 @@
         </div>
     </div>
 </div>
-@endsection
+@endsection 

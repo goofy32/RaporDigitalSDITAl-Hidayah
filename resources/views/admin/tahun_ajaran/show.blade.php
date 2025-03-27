@@ -104,19 +104,28 @@
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Tindakan</h3>
         
         <div class="flex flex-wrap gap-4">
+            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" 
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                <i class="fas fa-edit mr-2"></i>
+                Edit Tahun Ajaran
+            </a>
+            
             <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
                 class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <i class="fas fa-copy mr-2"></i>
                 Salin ke Tahun Ajaran Baru
             </a>
             
-            @if($tahunAjaran->is_active)
-            <a href="#" 
-                class="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 cursor-not-allowed" 
-                disabled>
-                <i class="fas fa-check-circle mr-2"></i>
-                Tahun Ajaran Aktif
-            </a>
+            @if(!$tahunAjaran->is_active)
+            <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" 
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Aktifkan Tahun Ajaran
+                </button>
+            </form>
             @endif
         </div>
     </div>

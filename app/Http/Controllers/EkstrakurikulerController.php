@@ -7,12 +7,19 @@ use App\Models\NilaiEkstrakurikuler;
 use App\Models\Siswa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class EkstrakurikulerController extends Controller
 {
     public function index(Request $request)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
         $query = Ekstrakurikuler::query();
+        
+        // Filter berdasarkan tahun ajaran (jika kolom tahun_ajaran_id ada di tabel)
+        if ($tahunAjaranId && Schema::hasColumn('ekstrakurikulers', 'tahun_ajaran_id')) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
         
         // Handle search
         if ($request->has('search')) {
@@ -24,10 +31,10 @@ class EkstrakurikulerController extends Controller
         }
         
         $ekstrakurikulers = $query->paginate(10);
+        
         return view('admin.ekstrakulikuler', compact('ekstrakurikulers'));
-    }
+    }    
     
-
     public function create()
     {
         return view('data.add_data_extracurriculer');

@@ -469,12 +469,16 @@ class SubjectController extends Controller
     public function teacherIndex()
     {
         $guru = auth()->guard('guru')->user();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         // Gunakan join dengan tabel kelas untuk memungkinkan pengurutan yang lebih baik
         $subjects = MataPelajaran::join('kelas', 'mata_pelajarans.kelas_id', '=', 'kelas.id')
             ->select('mata_pelajarans.*') // Pastikan hanya mengambil kolom dari mata pelajaran
             ->with(['kelas', 'guru', 'lingkupMateris'])
             ->where('mata_pelajarans.guru_id', $guru->id)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('mata_pelajarans.tahun_ajaran_id', $tahunAjaranId);
+            })
             ->orderBy('kelas.nomor_kelas', 'asc') // Urutkan berdasarkan nomor kelas
             ->orderBy('kelas.nama_kelas', 'asc')  // Kemudian nama kelas (A, B, C, dll)
             ->orderBy('mata_pelajarans.nama_pelajaran', 'asc') // Terakhir berdasarkan nama mata pelajaran

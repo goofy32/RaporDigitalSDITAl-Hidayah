@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasTahunAjaran;
 
 class Absensi extends Model
 {
+    use HasTahunAjaran;
+    
     protected $fillable = [
         'siswa_id',
         'sakit',

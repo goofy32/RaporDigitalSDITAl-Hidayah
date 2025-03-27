@@ -10,6 +10,7 @@ use App\Models\Kelas;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class StudentController extends Controller
 {
@@ -205,16 +206,24 @@ class StudentController extends Controller
     public function waliKelasIndex(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $kelas = $waliKelas->kelasWali()->first();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
-        if (!$kelas) {
+        if (!$kelasWaliId) {
             return back()->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
         }
         
         // Pastikan relasi kelas selalu di-load
         $query = Siswa::with(['kelas' => function($query) {
             $query->select('id', 'nomor_kelas', 'nama_kelas');
-        }])->where('kelas_id', $kelas->id);
+        }])->where('kelas_id', $kelasWaliId);
+        
+        // Filter berdasarkan tahun ajaran
+        if ($tahunAjaranId) {
+            $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
+                $q->where('tahun_ajaran_id', $tahunAjaranId);
+            });
+        }
         
         if($request->has('search')) {
             $search = $request->search;
@@ -233,6 +242,8 @@ class StudentController extends Controller
         
         return view('wali_kelas.student', compact('students'));
     }
+
+
     public function waliKelasShow($id)
     {
         $waliKelas = auth()->guard('guru')->user();

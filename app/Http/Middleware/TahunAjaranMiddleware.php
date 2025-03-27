@@ -42,6 +42,12 @@ class TahunAjaranMiddleware
         if ($tahunAjaranId) {
             $tahunAjaran = TahunAjaran::find($tahunAjaranId);
             view()->share('activeTahunAjaran', $tahunAjaran);
+            
+            // Tambahkan tahun ajaran ke request untuk digunakan di controller
+            $request->merge(['tahun_ajaran_id' => $tahunAjaranId]);
+            
+            // Tambahkan ke request attributes agar bisa diakses dengan $request->attributes->get('tahun_ajaran_id')
+            $request->attributes->add(['tahun_ajaran_id' => $tahunAjaranId]);
         }
         
         // Ambil daftar semua tahun ajaran (untuk dropdown selector)
@@ -50,6 +56,13 @@ class TahunAjaranMiddleware
                                    ->get();
         
         view()->share('tahunAjarans', $tahunAjarans);
+        
+        // Pastikan field tahun_ajaran_id otomatis terisi saat form submission
+        if ($request->isMethod('post') || $request->isMethod('put')) {
+            if (!$request->has('tahun_ajaran_id') && $tahunAjaranId) {
+                $request->merge(['tahun_ajaran_id' => $tahunAjaranId]);
+            }
+        }
         
         return $next($request);
     }

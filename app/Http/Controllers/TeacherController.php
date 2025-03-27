@@ -16,14 +16,19 @@ class TeacherController extends Controller
 {
     public function index(Request $request)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         $query = Guru::select([
                 'gurus.*',
                 DB::raw('MIN(kelas.nomor_kelas) as nomor_kelas')
             ])
             ->leftJoin('guru_kelas', 'gurus.id', '=', 'guru_kelas.guru_id')
             ->leftJoin('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
-            ->with(['kelas' => function($q) {
+            ->with(['kelas' => function($q) use ($tahunAjaranId) {
                 $q->withPivot('is_wali_kelas', 'role');
+                if ($tahunAjaranId) {
+                    $q->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+                }
             }])
             ->groupBy([
                 'gurus.id',
@@ -41,17 +46,36 @@ class TeacherController extends Controller
                 'gurus.photo',
                 'gurus.created_at',
                 'gurus.updated_at'
-            ])
-            ->orderBy('nomor_kelas', 'asc');
+            ]);
+            
+        // Filter berdasarkan tahun ajaran aktif
+        if ($tahunAjaranId) {
+            $query->whereExists(function ($subquery) use ($tahunAjaranId) {
+                $subquery->select(DB::raw(1))
+                    ->from('guru_kelas')
+                    ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+                    ->whereRaw('guru_kelas.guru_id = gurus.id')
+                    ->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orWhereNotExists(function ($subquery) {
+                $subquery->select(DB::raw(1))
+                    ->from('guru_kelas')
+                    ->whereRaw('guru_kelas.guru_id = gurus.id');
+            });
+        }
                 
         if ($request->has('search')) {
             $search = strtolower($request->search);
             $terms = explode(' ', trim($search));
             
             if (count($terms) > 0 && $terms[0] === 'kelas') {
-                $query->whereHas('kelas', function($kelasQ) use ($terms) {
+                $query->whereHas('kelas', function($kelasQ) use ($terms, $tahunAjaranId) {
                     if (count($terms) > 1 && is_numeric($terms[1])) {
                         $kelasQ->where('nomor_kelas', $terms[1]);
+                    }
+                    
+                    if ($tahunAjaranId) {
+                        $kelasQ->where('kelas.tahun_ajaran_id', $tahunAjaranId);
                     }
                 });
             } else {
@@ -66,15 +90,24 @@ class TeacherController extends Controller
         $teachers = $query->paginate(10);
         return view('admin.teacher', compact('teachers'));
     }
+
     public function create()
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         // Ambil semua kelas untuk kelas yang diajar
-        $kelasForMengajar = Kelas::orderBy('nomor_kelas')
+        $kelasForMengajar = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
             ->orderBy('nama_kelas')
             ->get();
 
         // Ambil kelas yang belum memiliki wali kelas untuk opsi wali kelas
-        $kelasForWali = Kelas::whereDoesntHave('guru', function($query) {
+        $kelasForWali = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->whereDoesntHave('guru', function($query) {
                 $query->where('guru_kelas.is_wali_kelas', true)
                     ->where('guru_kelas.role', 'wali_kelas');
             })
@@ -142,7 +175,7 @@ class TeacherController extends Controller
                 'photo.max' => 'Ukuran file maksimal 2MB',
             ]);
     
-            // Handle password dan photo seperti sebelumnya
+            // Handle password dan photo
             $validated['password'] = Hash::make($validated['password']);
             $validated['password_plain'] = $request->password;
     
@@ -235,24 +268,40 @@ class TeacherController extends Controller
 
     public function edit($id)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         // Load guru dengan relasi yang dibutuhkan
         $teacher = Guru::with([
-            'kelas' => function($query) {
+            'kelas' => function($query) use ($tahunAjaranId) {
                 $query->withPivot('is_wali_kelas', 'role');
+                if ($tahunAjaranId) {
+                    $query->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+                }
             },
-            'kelasWali'
+            'kelasWali' => function($query) use ($tahunAjaranId) {
+                if ($tahunAjaranId) {
+                    $query->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+                }
+            }
         ])->findOrFail($id);
     
         if ($teacher->tanggal_lahir) {
             $teacher->tanggal_lahir = date('Y-m-d', strtotime($teacher->tanggal_lahir));
         }
+        
         // Ambil semua kelas untuk opsi mengajar
-        $kelasList = Kelas::orderBy('nomor_kelas')
-                          ->orderBy('nama_kelas')
-                          ->get();
+        $kelasList = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->orderBy('nomor_kelas')
+            ->orderBy('nama_kelas')
+            ->get();
     
         // Ambil kelas yang tersedia untuk wali kelas
-        $availableKelas = Kelas::whereDoesntHave('guru', function($query) use ($id) {
+        $availableKelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->whereDoesntHave('guru', function($query) use ($id) {
                 $query->where('guru_kelas.is_wali_kelas', true)
                       ->where('guru_kelas.role', 'wali_kelas')
                       ->where('guru_id', '!=', $id);
@@ -276,10 +325,12 @@ class TeacherController extends Controller
             'currentWaliKelas'
         ));
     }
+    
     public function update(Request $request, $id)
     {
         DB::beginTransaction();
         try {
+            $tahunAjaranId = session('tahun_ajaran_id');
             $teacher = Guru::findOrFail($id);
     
             // Validasi dasar
@@ -334,8 +385,20 @@ class TeacherController extends Controller
     
             $teacher->update($dataToUpdate);
     
-            // Hapus semua relasi kelas yang ada
-            $teacher->kelas()->detach();
+            // Hapus semua relasi kelas yang ada untuk tahun ajaran saat ini
+            if ($tahunAjaranId) {
+                DB::table('guru_kelas')
+                    ->where('guru_id', $teacher->id)
+                    ->whereExists(function($query) use ($tahunAjaranId) {
+                        $query->select(DB::raw(1))
+                            ->from('kelas')
+                            ->whereRaw('kelas.id = guru_kelas.kelas_id')
+                            ->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+                    })
+                    ->delete();
+            } else {
+                $teacher->kelas()->detach();
+            }
     
             // Array untuk tracking kelas yang sudah di-attach
             $attachedClasses = [];
@@ -376,7 +439,8 @@ class TeacherController extends Controller
                 'nama' => $teacher->nama,
                 'jabatan' => $request->jabatan,
                 'kelas_ids' => $kelas_ids,
-                'wali_kelas_id' => $request->wali_kelas_id ?? null
+                'wali_kelas_id' => $request->wali_kelas_id ?? null,
+                'tahun_ajaran_id' => $tahunAjaranId
             ]);
     
             DB::commit();
@@ -394,6 +458,7 @@ class TeacherController extends Controller
                 ->withInput();
         }
     }
+
     public function showProfile()
     {
         // Karena kita menggunakan auth guard 'guru',

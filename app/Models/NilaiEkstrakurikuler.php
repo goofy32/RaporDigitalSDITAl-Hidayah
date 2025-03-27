@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasTahunAjaran;
 
 class NilaiEkstrakurikuler extends Model
 {
+    use HasTahunAjaran;
+
     protected $table = 'nilai_ekstrakurikuler';
     
     protected $fillable = [
