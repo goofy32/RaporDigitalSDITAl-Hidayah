@@ -117,10 +117,16 @@ class Kelas extends Model
         return $waliKelas ? $waliKelas->id : null;
     }
     
-    public static function getWaliKelasMap()
+    public static function getWaliKelasMap($tahunAjaranId = null)
     {
         $result = [];
-        $allKelas = self::all();
+        $query = self::query();
+        
+        if ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }
+        
+        $allKelas = $query->get();
         
         foreach ($allKelas as $kelas) {
             $waliKelasId = $kelas->getWaliKelasId();

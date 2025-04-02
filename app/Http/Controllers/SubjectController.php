@@ -93,10 +93,7 @@ class SubjectController extends Controller
             ->get();
         
         // Kode ini akan dimanfaatkan oleh JavaScript
-        $waliKelasMap = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                return $query->where('tahun_ajaran_id', $tahunAjaranId);
-            })
-            ->getWaliKelasMap();
+        $waliKelasMap = Kelas::getWaliKelasMap($tahunAjaranId);
         
         return view('data.add_subject', compact('classes', 'teachers', 'waliKelasMap', 'mataPelajaranList'));
     }

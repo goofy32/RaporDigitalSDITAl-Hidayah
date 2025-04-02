@@ -66,13 +66,26 @@
 
             <div class="md:col-span-2">
                 <div class="flex items-center">
-                    <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $tahunAjaran->is_active) ? 'checked' : '' }}
-                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
-                    <label for="is_active" class="ml-2 block text-sm text-gray-700">
-                        Aktifkan tahun ajaran ini
-                    </label>
+                    @if($tahunAjaran->is_active)
+                        <input type="checkbox" name="is_active" id="is_active" value="1" checked disabled
+                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-not-allowed">
+                        <input type="hidden" name="is_active" value="1">
+                        <label for="is_active" class="ml-2 block text-sm text-gray-700">
+                            Tahun Ajaran Aktif
+                        </label>
+                    @else
+                        <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active', $tahunAjaran->is_active) ? 'checked' : '' }}
+                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                        <label for="is_active" class="ml-2 block text-sm text-gray-700">
+                            Aktifkan tahun ajaran ini
+                        </label>
+                    @endif
                 </div>
-                <p class="mt-1 text-sm text-gray-500">Jika diaktifkan, tahun ajaran lain akan dinonaktifkan secara otomatis.</p>
+                @if($tahunAjaran->is_active)
+                    <p class="mt-1 text-sm text-gray-500">Tahun ajaran ini sedang aktif. Untuk menonaktifkan, silakan aktifkan tahun ajaran lain terlebih dahulu.</p>
+                @else
+                    <p class="mt-1 text-sm text-gray-500">Jika diaktifkan, tahun ajaran lain akan dinonaktifkan secara otomatis.</p>
+                @endif
             </div>
         </div>
 

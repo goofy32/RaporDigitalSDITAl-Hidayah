@@ -80,12 +80,12 @@ class ClassController extends Controller
         $guruList = Guru::where('jabatan', 'guru')
             ->whereDoesntHave('kelas', function($query) use ($tahunAjaranId) {
                 $query->where('guru_kelas.is_wali_kelas', true)
-                      ->where('guru_kelas.role', 'wali_kelas')
-                      ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
-                          $q->whereHas('kelas', function($kq) use ($tahunAjaranId) {
-                              $kq->where('tahun_ajaran_id', $tahunAjaranId);
-                          });
-                      });
+                      ->where('guru_kelas.role', 'wali_kelas');
+                      
+                // Filter berdasarkan tahun ajaran jika ada
+                if ($tahunAjaranId) {
+                    $query->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+                }
             })
             ->get();
     

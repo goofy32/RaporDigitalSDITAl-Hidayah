@@ -120,16 +120,28 @@ class TahunAjaranController extends Controller
         }
 
         $tahunAjaran = TahunAjaran::findOrFail($id);
-
+    
+        // Cek jika tahun ajaran sedang aktif dan akan dinonaktifkan
+        if ($tahunAjaran->is_active && !$request->has('is_active')) {
+            // Hitung apakah ini tahun ajaran aktif satu-satunya
+            $activeCount = TahunAjaran::where('is_active', true)->count();
+            
+            if ($activeCount <= 1) {
+                return redirect()->back()
+                         ->withInput()
+                         ->with('error', 'Harus ada minimal satu tahun ajaran yang aktif. Aktifkan tahun ajaran lain terlebih dahulu sebelum menonaktifkan yang ini.');
+            }
+        }
+    
         // Jika menandai sebagai aktif, nonaktifkan tahun ajaran lain
         if ($request->has('is_active') && $request->is_active && !$tahunAjaran->is_active) {
             TahunAjaran::where('is_active', true)
                        ->update(['is_active' => false]);
         }
-
+    
         // Update tahun ajaran
         $tahunAjaran->update($request->all());
-
+    
         // Jika ini adalah tahun ajaran aktif, perbarui profil sekolah
         if ($tahunAjaran->is_active) {
             $profil = ProfilSekolah::first();
@@ -140,11 +152,13 @@ class TahunAjaranController extends Controller
                 ]);
             }
         }
-
+    
         return redirect()->route('tahun.ajaran.index')
                          ->with('success', 'Tahun ajaran berhasil diperbarui!');
     }
 
+
+    
     /**
      * Set a tahun ajaran as active.
      */
@@ -155,8 +169,8 @@ class TahunAjaranController extends Controller
         try {
             // Nonaktifkan semua tahun ajaran
             TahunAjaran::where('is_active', true)
-                       ->update(['is_active' => false]);
-                       
+                ->update(['is_active' => false]);
+                
             // Aktifkan tahun ajaran yang dipilih
             $tahunAjaran = TahunAjaran::findOrFail($id);
             $tahunAjaran->update(['is_active' => true]);
@@ -170,12 +184,42 @@ class TahunAjaranController extends Controller
             DB::commit();
             
             return redirect()->route('tahun.ajaran.index')
-                             ->with('success', 'Tahun ajaran ' . $tahunAjaran->tahun_ajaran . ' berhasil diaktifkan!');
+                        ->with('success', 'Tahun ajaran ' . $tahunAjaran->tahun_ajaran . ' berhasil diaktifkan!');
         } catch (\Exception $e) {
             DB::rollback();
+            
+            // Coba ambil tahun ajaran yang sebelumnya aktif
+            $oldActive = TahunAjaran::where('is_active', true)->first();
+            
+            // Jika tidak ada yang aktif, aktifkan yang terakhir
+            if (!$oldActive) {
+                $latest = TahunAjaran::latest('tanggal_mulai')->first();
+                if ($latest) {
+                    $latest->update(['is_active' => true]);
+                    session(['tahun_ajaran_id' => $latest->id]);
+                }
+            }
+            
             return redirect()->back()->with('error', 'Gagal mengaktifkan tahun ajaran: ' . $e->getMessage());
         }
     }
+    public function destroy($id)
+    {
+        $tahunAjaran = TahunAjaran::findOrFail($id);
+        
+        // Cek apakah tahun ajaran sedang aktif
+        if ($tahunAjaran->is_active) {
+            return redirect()->back()
+                ->with('error', 'Tidak dapat menghapus tahun ajaran yang sedang aktif. Aktifkan tahun ajaran lain terlebih dahulu.');
+        }
+        
+        // Proses penghapusan
+        $tahunAjaran->delete();
+        
+        return redirect()->route('tahun.ajaran.index')
+            ->with('success', 'Tahun ajaran berhasil dihapus.');
+    }
+    
 
     /**
      * Generate tahun ajaran baru berdasarkan tahun ajaran yang sudah ada.
