@@ -319,7 +319,7 @@ class SubjectController extends Controller
             ->get();
             
         $teachers = Guru::orderBy('nama')->get();
-    
+        
         // Ambil semua mata pelajaran untuk validasi JavaScript
         $mataPelajaranList = MataPelajaran::select('id', 'nama_pelajaran', 'kelas_id', 'semester')
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
@@ -327,11 +327,8 @@ class SubjectController extends Controller
             })
             ->get();
         
-        // Kode ini akan dimanfaatkan oleh JavaScript
-        $waliKelasMap = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                return $query->where('tahun_ajaran_id', $tahunAjaranId);
-            })
-            ->getWaliKelasMap();
+        // Panggil getWaliKelasMap sebagai method statis dengan parameter tahun ajaran
+        $waliKelasMap = Kelas::getWaliKelasMap($tahunAjaranId);
         
         return view('data.edit_subject', compact('subject', 'classes', 'teachers', 'waliKelasMap', 'mataPelajaranList'));
     }

@@ -310,7 +310,7 @@ function deleteLingkupMateri(button, id) {
     });
 }
 
-function showInfo(container, type, message) {
+function showInfo(container, type, message, isImportant = false) {
     let className, icon;
     
     switch(type) {
@@ -334,18 +334,75 @@ function showInfo(container, type, message) {
             break;
     }
     
-    container.innerHTML = `
-        <div class="p-2 ${className} rounded-md flex items-start">
+    // For important messages, add additional highlight styling
+    if (isImportant) {
+        className += ' font-medium';
+    }
+    
+    // Create a unique ID for this message if it's an important warning
+    const messageId = isImportant ? `msg-${Date.now()}` : '';
+    
+    const messageHTML = `
+        <div id="${messageId}" class="p-2 ${className} rounded-md flex items-start mb-2">
             ${icon}
             <p class="text-sm">${message}</p>
         </div>
     `;
+    
+    // Append to container (don't replace existing messages)
+    container.innerHTML += messageHTML;
+    
+    // If it's an important message, add a subtle highlight effect
+    if (isImportant && messageId) {
+        setTimeout(() => {
+            const msgElement = document.getElementById(messageId);
+            if (msgElement) {
+                msgElement.classList.add('animate-pulse');
+                setTimeout(() => {
+                    msgElement.classList.remove('animate-pulse');
+                }, 1000);
+            }
+        }, 100);
+    }
 }
 
 function showMessage(message, type) {
     alert(message);
 }
 
+
+function handleCheckboxChange(checkbox) {
+    const form = document.getElementById('editSubjectForm');
+    const isMuatanLokalCheckbox = document.getElementById('is_muatan_lokal');
+    const allowNonWaliCheckbox = document.getElementById('allow_non_wali');
+    
+    // Jika checkbox muatan lokal yang diubah
+    if (checkbox === isMuatanLokalCheckbox && checkbox.checked) {
+        // Jika dicentang, nonaktifkan checkbox allow_non_wali
+        if (allowNonWaliCheckbox) {
+            allowNonWaliCheckbox.checked = false;
+        }
+    }
+    
+    // Jika checkbox allow_non_wali yang diubah
+    if (checkbox === allowNonWaliCheckbox && checkbox.checked) {
+        // Jika dicentang, nonaktifkan checkbox muatan lokal
+        if (isMuatanLokalCheckbox) {
+            isMuatanLokalCheckbox.checked = false;
+        }
+    }
+    
+    // Update guru options setelah mengubah status checkbox
+    updateFormState();
+    
+    // Tandai form sebagai berubah untuk proteksi navigasi
+    if (window.Alpine) {
+        const protectionData = document.querySelector('[x-data="formProtection"]');
+        if (protectionData && protectionData.__x) {
+            protectionData.__x.$data.formChanged = true;
+        }
+    }
+}
 // Add event listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Get the necessary elements
@@ -385,23 +442,42 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Main function to update form state based on selections
     function updateFormState() {
+        // Get the necessary elements
+        const kelasSelect = document.getElementById('kelas');
+        const guruSelect = document.getElementById('guru_pengampu');
+        const muatanLokalCheckbox = document.getElementById('is_muatan_lokal');
+        const allowNonWaliCheckbox = document.getElementById('allow_non_wali');
+        const nonMuatanOptions = document.querySelector('.non-muatan-lokal-options');
+        const infoContainer = document.querySelector('.info-container');
+        
+        // Clear previous info/alerts
+        if (infoContainer) {
+            infoContainer.innerHTML = '';
+        }
+        
+        // Make sure we have the required elements before proceeding
+        if (!kelasSelect || !guruSelect || !muatanLokalCheckbox) {
+            console.error('Required form elements not found');
+            return;
+        }
+
         const isMuatanLokal = muatanLokalCheckbox.checked;
         const allowNonWali = allowNonWaliCheckbox ? allowNonWaliCheckbox.checked : false;
         
         // Toggle visibility of non-muatan options
         if (nonMuatanOptions) {
             nonMuatanOptions.style.display = isMuatanLokal ? 'none' : 'block';
+            
+            // Reset checkbox when toggling muatan lokal
+            if (isMuatanLokal && allowNonWaliCheckbox) {
+                allowNonWaliCheckbox.checked = false;
+            }
         }
         
         // Reset all options to enabled first
         Array.from(guruSelect.options).forEach(option => {
             option.disabled = false;
         });
-        
-        // Clear any previous info
-        if (infoContainer) {
-            infoContainer.innerHTML = '';
-        }
         
         const selectedKelasId = parseInt(kelasSelect.value);
         if (!selectedKelasId) return; // No kelas selected
@@ -413,39 +489,50 @@ document.addEventListener('DOMContentLoaded', function() {
         const waliKelasIdAttr = selectedOption.getAttribute('data-wali-id');
         const waliKelasId = waliKelasIdAttr ? parseInt(waliKelasIdAttr) : null;
         
-        if (isMuatanLokal !== (form.getAttribute('data-previous-muatan-lokal') === 'true')) {
-            guruSelect.selectedIndex = 0;
-            form.setAttribute('data-previous-muatan-lokal', isMuatanLokal);
+        // Remove any existing "no guru" option from select
+        const noGuruOption = Array.from(guruSelect.options).find(option => 
+            option.value === "" && option.getAttribute('data-no-guru') === 'true');
+        if (noGuruOption) {
+            noGuruOption.remove();
         }
         
         // Apply rules based on selection
+        let hasAvailableGuru = false;
+        
         if (isMuatanLokal) {
             // For muatan lokal: only regular teachers, not wali kelas
             Array.from(guruSelect.options).forEach(option => {
                 if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
                     option.disabled = true;
+                } else if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali') {
+                    hasAvailableGuru = true;
                 }
             });
             
-            if (infoContainer) {
+            if (!hasAvailableGuru) {
+                showInfo(infoContainer, 'warning', 'Tidak ada guru biasa tersedia. Harap tambahkan guru dengan jabatan guru terlebih dahulu.', true);
+            } else {
                 showInfo(infoContainer, 'info', 'Mata pelajaran muatan lokal hanya dapat diajar oleh guru dengan jabatan guru biasa (bukan wali kelas).');
             }
         } else {
             // For non-muatan lokal
             if (!hasWaliKelas) {
                 // Class doesn't have wali kelas
-                if (infoContainer) {
-                    showInfo(infoContainer, 'warning', 'Kelas ini belum memiliki wali kelas. Harap tambahkan wali kelas terlebih dahulu, atau centang opsi "Pelajaran non-muatan lokal dengan guru bukan wali kelas".');
-                }
+                showInfo(infoContainer, 'warning', 'Kelas ini belum memiliki wali kelas. Harap tambahkan wali kelas terlebih dahulu, atau centang opsi "Pelajaran non-muatan lokal dengan guru bukan wali kelas".');
                 
                 if (allowNonWali) {
                     // Allow only regular teachers, NOT wali kelas
                     Array.from(guruSelect.options).forEach(option => {
                         if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
                             option.disabled = true;
+                        } else if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali') {
+                            hasAvailableGuru = true;
                         }
                     });
-                    if (infoContainer) {
+                    
+                    if (!hasAvailableGuru) {
+                        showInfo(infoContainer, 'warning', 'Tidak ada guru biasa tersedia. Harap tambahkan guru dengan jabatan guru terlebih dahulu.', true);
+                    } else {
                         showInfo(infoContainer, 'info', 'Anda memilih mata pelajaran non-muatan lokal yang diajar oleh guru biasa.');
                     }
                 } else {
@@ -455,6 +542,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             option.disabled = true;
                         }
                     });
+                    
+                    showInfo(infoContainer, 'warning', 'Belum ada guru wali kelas untuk kelas ini. Harap tambahkan wali kelas atau centang "Pelajaran non-muatan lokal dengan guru bukan wali kelas".', true);
                 }
             } else if (waliKelasId) { // Pastikan waliKelasId tidak null
                 // Class has wali kelas
@@ -463,29 +552,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     Array.from(guruSelect.options).forEach(option => {
                         if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
                             option.disabled = true;
+                        } else if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali') {
+                            hasAvailableGuru = true;
                         }
                     });
-                    if (infoContainer) {
+                    
+                    if (!hasAvailableGuru) {
+                        showInfo(infoContainer, 'warning', 'Tidak ada guru biasa tersedia. Harap tambahkan guru dengan jabatan guru terlebih dahulu.', true);
+                    } else {
                         showInfo(infoContainer, 'info', 'Anda memilih mata pelajaran non-muatan lokal yang diajar oleh guru biasa, bukan wali kelas.');
                     }
                 } else {
                     // Allow only the wali kelas of this class
+                    let waliKelasFound = false;
                     Array.from(guruSelect.options).forEach(option => {
                         if (option.value && parseInt(option.value) !== waliKelasId) {
                             option.disabled = true;
+                        } else if (option.value && parseInt(option.value) === waliKelasId) {
+                            waliKelasFound = true;
                         }
                     });
                     
                     // Auto-select wali kelas if not already selected
-                    if (guruSelect.value !== waliKelasId.toString()) {
+                    if (guruSelect.value !== waliKelasId.toString() && waliKelasFound) {
                         guruSelect.value = waliKelasId.toString();
                     }
                     
-                    if (infoContainer) {
+                    if (!waliKelasFound) {
+                        showInfo(infoContainer, 'warning', 'Wali kelas tidak ditemukan dalam daftar guru. Harap periksa data guru.', true);
+                    } else {
                         showInfo(infoContainer, 'info', 'Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.');
                     }
                 }
             }
+        }
+        
+        // Highlight this field if no valid option is selected
+        if (guruSelect.value === "" || guruSelect.selectedIndex === 0) {
+            guruSelect.classList.add('border-yellow-500');
+        } else {
+            guruSelect.classList.remove('border-yellow-500');
         }
     }
 
@@ -664,6 +770,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return true;
     }, true); // true untuk capture phase (akan dijalankan sebelum event handler lain)
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Tambahkan event listener untuk checkbox muatan lokal
+    const muatanLokalCheckbox = document.getElementById('is_muatan_lokal');
+    if (muatanLokalCheckbox) {
+        muatanLokalCheckbox.addEventListener('change', function() {
+            handleCheckboxChange(this);
+        });
+    }
+    
+    // Tambahkan event listener untuk checkbox allow non wali
+    const allowNonWaliCheckbox = document.getElementById('allow_non_wali');
+    if (allowNonWaliCheckbox) {
+        allowNonWaliCheckbox.addEventListener('change', function() {
+            handleCheckboxChange(this);
+        });
+    }
+    
+    // Jalankan updateFormState untuk setup awal
+    updateFormState();
 });
 </script>
 
