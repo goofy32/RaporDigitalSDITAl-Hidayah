@@ -112,6 +112,12 @@ class SubjectController extends Controller
                 'subjects.*.semester' => 'required|integer|min:1|max:2',
                 'subjects.*.lingkup_materi' => 'required|array',
                 'subjects.*.lingkup_materi.*' => 'required|string|max:255',
+            ], [
+                'subjects.*.guru_pengampu.required' => 'Harap pilih guru pengampu untuk mata pelajaran',
+                'subjects.*.kelas.required' => 'Harap pilih kelas untuk mata pelajaran',
+                'subjects.*.mata_pelajaran.required' => 'Nama mata pelajaran harus diisi',
+                'subjects.*.semester.required' => 'Semester harus dipilih',
+                'subjects.*.lingkup_materi.required' => 'Lingkup materi harus diisi'
             ]);
     
             DB::beginTransaction();

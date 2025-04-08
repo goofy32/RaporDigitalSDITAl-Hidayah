@@ -293,117 +293,190 @@ function removeLingkupMateri(button) {
     button.parentElement.remove();
 }
 
-function updateGuruOptions(subjectEntry) {
-    // Ambil elemen dari entry yang aktif
-    const isMuatanLokalElement = subjectEntry.querySelector('input[name*="[is_muatan_lokal]"]');
-    const nonMuatanOptions = subjectEntry.querySelector('.non-muatan-lokal-options');
-    const allowNonWaliElement = subjectEntry.querySelector('input[name*="[allow_non_wali]"]');
-    const kelasSelect = subjectEntry.querySelector('select[name*="[kelas]"]');
-    const guruSelect = subjectEntry.querySelector('select[name*="[guru_pengampu]"]');
-    const infoContainer = subjectEntry.querySelector('.info-container');
-    
-    // Periksa apakah elemen ada sebelum mengakses propertinya
-    const isMuatanLokal = isMuatanLokalElement ? isMuatanLokalElement.checked : false;
-    const allowNonWali = allowNonWaliElement ? allowNonWaliElement.checked : false;
-    
-    // Pastikan infoContainer ada
-    if (!infoContainer) return;
-    
-    // Clear previous info
-    infoContainer.innerHTML = '';
-    
-    // Pastikan guruSelect ada
-    if (!guruSelect) return;
-    
-    // Reset all options to enabled
-    Array.from(guruSelect.options).forEach(option => {
-        option.disabled = false;
-    });
-
-    if (isMuatanLokal !== subjectEntry.getAttribute('data-previous-muatan-lokal') === 'true') {
-        guruSelect.selectedIndex = 0; // Reset selection to the default option
-        subjectEntry.setAttribute('data-previous-muatan-lokal', isMuatanLokal);
-    }
-    
-    // Toggle display of non-muatan lokal options jika elemen ada
-    if (nonMuatanOptions) {
-        nonMuatanOptions.style.display = isMuatanLokal ? 'none' : 'block';
-    }
-    
-    // Pastikan kelasSelect ada
-    if (!kelasSelect) return;
-    
-    // Get selected kelas info
-    const selectedKelasId = parseInt(kelasSelect.value);
-    if (!selectedKelasId) return; // No kelas selected
-    
-    const selectedOption = kelasSelect.options[kelasSelect.selectedIndex];
-    if (!selectedOption) return;
-    
-    const hasWaliKelas = selectedOption.getAttribute('data-has-wali') === 'true';
-    const waliKelasIdAttr = selectedOption.getAttribute('data-wali-id');
-    const waliKelasId = waliKelasIdAttr ? parseInt(waliKelasIdAttr) : null;
-    
-    // Apply rules
-    if (isMuatanLokal) {
-        // For muatan lokal: only regular teachers, not wali kelas
-        Array.from(guruSelect.options).forEach(option => {
-            if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
-                option.disabled = true;
-            }
-        });
+    function updateGuruOptions(subjectEntry) {
+        // Ambil elemen dari entry yang aktif
+        const isMuatanLokalElement = subjectEntry.querySelector('input[name*="[is_muatan_lokal]"]');
+        const nonMuatanOptions = subjectEntry.querySelector('.non-muatan-lokal-options');
+        const allowNonWaliElement = subjectEntry.querySelector('input[name*="[allow_non_wali]"]');
+        const kelasSelect = subjectEntry.querySelector('select[name*="[kelas]"]');
+        const guruSelect = subjectEntry.querySelector('select[name*="[guru_pengampu]"]');
+        const infoContainer = subjectEntry.querySelector('.info-container');
         
-        showInfo(infoContainer, 'info', 'Mata pelajaran muatan lokal hanya dapat diajar oleh guru dengan jabatan guru biasa (bukan wali kelas).');
-    } else {
-        // For non-muatan lokal
-        if (!hasWaliKelas) {
-            // Class doesn't have wali kelas
-            showInfo(infoContainer, 'warning', 'Kelas ini belum memiliki wali kelas. Harap tambahkan wali kelas terlebih dahulu, atau centang opsi "Pelajaran non-muatan lokal dengan guru bukan wali kelas".');
-            
-            if (allowNonWali) {
-                // Allow only regular teachers, NOT wali kelas
-                Array.from(guruSelect.options).forEach(option => {
-                    if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
-                        option.disabled = true;
-                    }
-                });
-                showInfo(infoContainer, 'info', 'Anda memilih mata pelajaran non-muatan lokal yang diajar oleh guru biasa.');
-            } else {
-                // No valid options
-                Array.from(guruSelect.options).forEach(option => {
-                    if (option.value) {
-                        option.disabled = true;
-                    }
-                });
-            }
-        } else if (waliKelasId) { // Pastikan waliKelasId tidak null
-            // Class has wali kelas
-            if (allowNonWali) {
-                // Allow only regular teachers, NOT wali kelas
-                Array.from(guruSelect.options).forEach(option => {
-                    if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
-                        option.disabled = true;
-                    }
-                });
-                showInfo(infoContainer, 'info', 'Anda memilih mata pelajaran non-muatan lokal yang diajar oleh guru biasa, bukan wali kelas.');
-            } else {
-                // Allow only the wali kelas of this class
-                Array.from(guruSelect.options).forEach(option => {
-                    if (option.value && parseInt(option.value) !== waliKelasId) {
-                        option.disabled = true;
-                    }
-                });
-                
-                // Auto-select wali kelas if not already selected
-                if (guruSelect.value !== waliKelasId.toString()) {
-                    guruSelect.value = waliKelasId.toString();
+        // Periksa apakah elemen ada sebelum mengakses propertinya
+        const isMuatanLokal = isMuatanLokalElement ? isMuatanLokalElement.checked : false;
+        const allowNonWali = allowNonWaliElement ? allowNonWaliElement.checked : false;
+        
+        // Pastikan infoContainer ada
+        if (!infoContainer) return;
+        
+        // Clear previous info
+        infoContainer.innerHTML = '';
+        
+        // Pastikan guruSelect ada
+        if (!guruSelect) return;
+        
+        // Reset all options to enabled
+        Array.from(guruSelect.options).forEach(option => {
+            option.disabled = false;
+        });
+
+        if (isMuatanLokal !== subjectEntry.getAttribute('data-previous-muatan-lokal') === 'true') {
+            guruSelect.selectedIndex = 0; // Reset selection to the default option
+            subjectEntry.setAttribute('data-previous-muatan-lokal', isMuatanLokal);
+        }
+        
+        // Toggle display of non-muatan lokal options jika elemen ada
+        if (nonMuatanOptions) {
+            nonMuatanOptions.style.display = isMuatanLokal ? 'none' : 'block';
+        }
+        
+        // Pastikan kelasSelect ada
+        if (!kelasSelect) return;
+        
+        // Get selected kelas info
+        const selectedKelasId = parseInt(kelasSelect.value);
+        if (!selectedKelasId) return; // No kelas selected
+        
+        const selectedOption = kelasSelect.options[kelasSelect.selectedIndex];
+        if (!selectedOption) return;
+        
+        const hasWaliKelas = selectedOption.getAttribute('data-has-wali') === 'true';
+        const waliKelasIdAttr = selectedOption.getAttribute('data-wali-id');
+        const waliKelasId = waliKelasIdAttr ? parseInt(waliKelasIdAttr) : null;
+
+        // Add a "No available guru" option if needed
+        let noGuruOption = Array.from(guruSelect.options).find(option => option.value === "" && option.getAttribute('data-no-guru') === 'true');
+        if (noGuruOption) {
+            noGuruOption.remove(); // Remove existing "no guru" option to avoid duplicates
+        }
+        
+        // Apply rules
+        if (isMuatanLokal) {
+            // For muatan lokal: only regular teachers, not wali kelas
+            let hasAvailableGuru = false;
+            Array.from(guruSelect.options).forEach(option => {
+                if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
+                    option.disabled = true;
+                } else if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali') {
+                    hasAvailableGuru = true;
                 }
+            });
+            
+            if (!hasAvailableGuru) {
+                const noGuruOption = document.createElement('option');
+                noGuruOption.value = "";
+                noGuruOption.textContent = "Tidak ada guru biasa tersedia";
+                noGuruOption.setAttribute('data-no-guru', 'true');
+                noGuruOption.disabled = true;
+                guruSelect.add(noGuruOption, 1); // Add after the first "Pilih Guru" option
+            }
+            
+            showInfo(infoContainer, 'info', 'Mata pelajaran muatan lokal hanya dapat diajar oleh guru dengan jabatan guru biasa (bukan wali kelas).');
+        } else {
+            // For non-muatan lokal
+            if (!hasWaliKelas) {
+                // Class doesn't have wali kelas
+                showInfo(infoContainer, 'warning', 'Kelas ini belum memiliki wali kelas. Harap tambahkan wali kelas terlebih dahulu, atau centang opsi "Pelajaran non-muatan lokal dengan guru bukan wali kelas".');
                 
-                showInfo(infoContainer, 'info', 'Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.');
+                if (allowNonWali) {
+                    // Allow only regular teachers, NOT wali kelas
+                    let hasAvailableGuru = false;
+                    Array.from(guruSelect.options).forEach(option => {
+                        if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
+                            option.disabled = true;
+                        } else if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali') {
+                            hasAvailableGuru = true;
+                        }
+                    });
+                    
+                    if (!hasAvailableGuru) {
+                        const noGuruOption = document.createElement('option');
+                        noGuruOption.value = "";
+                        noGuruOption.textContent = "Tidak ada guru biasa tersedia";
+                        noGuruOption.setAttribute('data-no-guru', 'true');
+                        noGuruOption.disabled = true;
+                        guruSelect.add(noGuruOption, 1);
+                    }
+                    
+                    showInfo(infoContainer, 'info', 'Anda memilih mata pelajaran non-muatan lokal yang diajar oleh guru biasa.');
+                } else {
+                    // No valid options
+                    Array.from(guruSelect.options).forEach(option => {
+                        if (option.value) {
+                            option.disabled = true;
+                        }
+                    });
+                    
+                    const noGuruOption = document.createElement('option');
+                    noGuruOption.value = "";
+                    noGuruOption.textContent = "Belum ada guru wali kelas untuk kelas ini";
+                    noGuruOption.setAttribute('data-no-guru', 'true');
+                    noGuruOption.disabled = true;
+                    guruSelect.add(noGuruOption, 1);
+                }
+            } else if (waliKelasId) { // Pastikan waliKelasId tidak null
+                // Class has wali kelas
+                if (allowNonWali) {
+                    // Allow only regular teachers, NOT wali kelas
+                    let hasAvailableGuru = false;
+                    Array.from(guruSelect.options).forEach(option => {
+                        if (option.value && option.getAttribute('data-jabatan') === 'guru_wali') {
+                            option.disabled = true;
+                        } else if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali') {
+                            hasAvailableGuru = true;
+                        }
+                    });
+                    
+                    if (!hasAvailableGuru) {
+                        const noGuruOption = document.createElement('option');
+                        noGuruOption.value = "";
+                        noGuruOption.textContent = "Tidak ada guru biasa tersedia";
+                        noGuruOption.setAttribute('data-no-guru', 'true');
+                        noGuruOption.disabled = true;
+                        guruSelect.add(noGuruOption, 1);
+                    }
+                    
+                    showInfo(infoContainer, 'info', 'Anda memilih mata pelajaran non-muatan lokal yang diajar oleh guru biasa, bukan wali kelas.');
+                } else {
+                    // Allow only the wali kelas of this class
+                    let waliKelasFound = false;
+                    Array.from(guruSelect.options).forEach(option => {
+                        if (option.value && parseInt(option.value) !== waliKelasId) {
+                            option.disabled = true;
+                        } else if (option.value && parseInt(option.value) === waliKelasId) {
+                            waliKelasFound = true;
+                        }
+                    });
+                    
+                    // Auto-select wali kelas if not already selected
+                    if (guruSelect.value !== waliKelasId.toString() && waliKelasFound) {
+                        guruSelect.value = waliKelasId.toString();
+                    }
+                    
+                    if (!waliKelasFound) {
+                        const noGuruOption = document.createElement('option');
+                        noGuruOption.value = "";
+                        noGuruOption.textContent = "Wali kelas tidak ditemukan dalam daftar guru";
+                        noGuruOption.setAttribute('data-no-guru', 'true');
+                        noGuruOption.disabled = true;
+                        guruSelect.add(noGuruOption, 1);
+                    }
+                    
+                    showInfo(infoContainer, 'info', 'Untuk mata pelajaran wajib (bukan muatan lokal), guru pengampu harus wali kelas dari kelas ini.');
+                }
             }
         }
+        
+        autoSelectGuru(guruSelect, selectedKelasId, isMuatanLokal, allowNonWali, waliKelasId);
+        
+        // Highlight this field if no valid option is selected
+        if (guruSelect.value === "" || guruSelect.selectedIndex === 0) {
+            guruSelect.classList.add('border-yellow-500');
+            showInfo(infoContainer, 'warning', 'Harap pilih guru pengampu untuk mata pelajaran ini', true);
+        } else {
+            guruSelect.classList.remove('border-yellow-500');
+        }
     }
-}
 
 function showInfo(container, type, message) {
     let className, icon;
@@ -519,49 +592,161 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+function autoSelectGuru(guruSelect, kelasId, isMuatanLokal, allowNonWali, waliKelasId) {
+    // If no option is selected or the default option is selected
+    if (guruSelect.selectedIndex <= 0 || guruSelect.value === "") {
+        // For muatan lokal, select the first available non-wali guru
+        if (isMuatanLokal) {
+            for (let i = 0; i < guruSelect.options.length; i++) {
+                const option = guruSelect.options[i];
+                if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali' && !option.disabled) {
+                    guruSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        } 
+        // For non-muatan lokal without allow non-wali
+        else if (!allowNonWali && waliKelasId) {
+            guruSelect.value = waliKelasId.toString();
+        }
+        // For non-muatan lokal with allow non-wali
+        else if (allowNonWali) {
+            for (let i = 0; i < guruSelect.options.length; i++) {
+                const option = guruSelect.options[i];
+                if (option.value && option.getAttribute('data-jabatan') !== 'guru_wali' && !option.disabled) {
+                    guruSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 function validateForm() {
     // Clear all previous errors
     document.querySelectorAll('.mata-pelajaran-error').forEach(el => el.remove());
-    document.querySelectorAll('input.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+    document.querySelectorAll('input.border-red-500, select.border-red-500').forEach(el => el.classList.remove('border-red-500'));
     
     let formValid = true;
     
     // Validate each subject entry
     document.querySelectorAll('.subject-entry').forEach((entry, index) => {
         const mataPelajaranInput = entry.querySelector(`input[name="subjects[${index}][mata_pelajaran]"]`);
-        const mataPelajaran = mataPelajaranInput.value.trim();
         const kelasSelect = entry.querySelector(`select[name="subjects[${index}][kelas]"]`);
-        const kelasId = parseInt(kelasSelect.value);
         const semesterSelect = entry.querySelector(`select[name="subjects[${index}][semester]"]`);
-        const semester = parseInt(semesterSelect.value);
+        const guruSelect = entry.querySelector(`select[name="subjects[${index}][guru_pengampu]"]`);
         
-        // Skip validation for incomplete entries
-        if (!mataPelajaran || !kelasId || isNaN(semester)) {
-            return;
-        }
-        
-        // Check for duplicate subjects
-        const duplicate = window.mapelData.find(subject => 
-            subject.nama.toLowerCase() === mataPelajaran.toLowerCase() && 
-            subject.kelas_id === kelasId && 
-            subject.semester === semester
-        );
-        
-        if (duplicate) {
-            // Show error
+        // Check if required fields are filled
+        if (!mataPelajaranInput.value.trim()) {
             mataPelajaranInput.classList.add('border-red-500');
             
             const errorElement = document.createElement('p');
             errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
-            errorElement.textContent = `"${mataPelajaran}" sudah ada di kelas ini untuk semester ${semester}`;
+            errorElement.textContent = 'Nama mata pelajaran harus diisi';
             mataPelajaranInput.parentNode.appendChild(errorElement);
             
             formValid = false;
         }
+        
+        if (!kelasSelect.value) {
+            kelasSelect.classList.add('border-red-500');
+            
+            const errorElement = document.createElement('p');
+            errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
+            errorElement.textContent = 'Kelas harus dipilih';
+            kelasSelect.parentNode.appendChild(errorElement);
+            
+            formValid = false;
+        }
+        
+        if (!semesterSelect.value) {
+            semesterSelect.classList.add('border-red-500');
+            
+            const errorElement = document.createElement('p');
+            errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
+            errorElement.textContent = 'Semester harus dipilih';
+            semesterSelect.parentNode.appendChild(errorElement);
+            
+            formValid = false;
+        }
+        
+        if (!guruSelect.value) {
+            guruSelect.classList.add('border-red-500');
+            
+            const errorElement = document.createElement('p');
+            errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
+            errorElement.textContent = 'Guru pengampu harus dipilih';
+            guruSelect.parentNode.appendChild(errorElement);
+            
+            formValid = false;
+        }
+        
+        // Check for duplicates
+        if (mataPelajaranInput.value.trim() && kelasSelect.value && semesterSelect.value) {
+            const mataPelajaran = mataPelajaranInput.value.trim();
+            const kelasId = parseInt(kelasSelect.value);
+            const semester = parseInt(semesterSelect.value);
+            
+            // Skip validation for incomplete entries
+            if (!mataPelajaran || !kelasId || isNaN(semester)) {
+                return;
+            }
+            
+            // Check for duplicate subjects
+            const duplicate = window.mapelData.find(subject => 
+                subject.nama.toLowerCase() === mataPelajaran.toLowerCase() && 
+                subject.kelas_id === kelasId && 
+                subject.semester === semester
+            );
+            
+            if (duplicate) {
+                // Show error
+                mataPelajaranInput.classList.add('border-red-500');
+                
+                const errorElement = document.createElement('p');
+                errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
+                errorElement.textContent = `"${mataPelajaran}" sudah ada di kelas ini untuk semester ${semester}`;
+                mataPelajaranInput.parentNode.appendChild(errorElement);
+                
+                formValid = false;
+            }
+        }
+        
+        // Validate lingkup materi
+        const lingkupMateriInputs = entry.querySelectorAll('input[name^="subjects[' + index + '][lingkup_materi]"]');
+        let hasEmptyLingkupMateri = false;
+        
+        lingkupMateriInputs.forEach(input => {
+            if (!input.value.trim()) {
+                input.classList.add('border-red-500');
+                hasEmptyLingkupMateri = true;
+                formValid = false;
+            }
+        });
+        
+        if (hasEmptyLingkupMateri) {
+            const lingkupMateriContainer = entry.querySelector('.lingkup-materi-container');
+            if (lingkupMateriContainer) {
+                const errorElement = document.createElement('p');
+                errorElement.className = 'mata-pelajaran-error mt-1 text-sm text-red-500';
+                errorElement.textContent = 'Semua lingkup materi harus diisi';
+                lingkupMateriContainer.appendChild(errorElement);
+            }
+        }
     });
     
     if (!formValid) {
-        alert('Terdapat duplikasi mata pelajaran. Silakan periksa kembali form.');
+        // Use SweetAlert2 if available, otherwise use regular alert
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Data Belum Lengkap',
+                html: 'Mohon lengkapi semua kolom yang bertanda <span class="text-red-500">merah</span> sebelum menyimpan.',
+                icon: 'warning',
+                confirmButtonText: 'Mengerti'
+            });
+        } else {
+            alert('Mohon lengkapi semua kolom yang wajib diisi sebelum menyimpan.');
+        }
     }
     
     return formValid;
