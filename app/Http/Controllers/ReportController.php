@@ -567,33 +567,33 @@ class ReportController extends Controller
     {
         $type = $request->input('type', 'UTS');
         $action = $request->input('action', 'download');
-        $tahunAjaranId = session('tahun_ajaran_id'); // Ambil tahun ajaran dari session
+        $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id')); // Ambil dari request atau session
         
         try {
             // Dapatkan template yang sesuai untuk kelas siswa dengan filter tahun ajaran
-            $template = $this->getTemplateForSiswa($siswa, $type);
+            $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId); // Tambahkan parameter tahun ajaran
             
             if (!$template) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak ada template aktif untuk jenis rapor ' . $type . ' pada kelas ini.'
+                    'message' => 'Tidak ada template aktif untuk jenis rapor ' . $type . ' pada kelas ini di tahun ajaran yang dipilih.'
                 ], 404);
             }
             
             // Cek kelengkapan data
-            $hasData = $siswa->hasCompleteData($type);
+            $hasData = $siswa->hasCompleteData($type, $tahunAjaranId); // Tambahkan parameter tahun ajaran
             $bypassValidation = $request->input('bypass_validation', false);
             
             if (!$hasData && !$bypassValidation) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data siswa belum lengkap untuk menghasilkan rapor.',
+                    'message' => 'Data siswa belum lengkap untuk menghasilkan rapor di tahun ajaran ini.',
                     'error_type' => 'data_incomplete'
                 ], 422);
             }
             
             // Proses generate rapor
-            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type);
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId); // Sertakan tahun ajaran
             $result = $processor->generate($bypassValidation);
             
             if (!$result['success']) {
@@ -617,10 +617,11 @@ class ReportController extends Controller
             
             return response()->download($fullPath, $result['filename']);
         } 
-         catch (\App\Exceptions\RaporException $e) {
+        catch (\App\Exceptions\RaporException $e) {
             \Log::error('RaporException in generateReport: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
                 'type' => $type,
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'error_type' => $e->getErrorType(),
                 'stack_trace' => $e->getTraceAsString()
             ]);
@@ -635,6 +636,7 @@ class ReportController extends Controller
             \Log::error('Error in generateReport: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
                 'type' => $type,
+                'tahun_ajaran_id' => $tahunAjaranId,
                 'stack_trace' => $e->getTraceAsString()
             ]);
             

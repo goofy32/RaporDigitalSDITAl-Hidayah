@@ -100,6 +100,43 @@ class ScoreController extends Controller
                         }
                     }
                 }
+                
+                // Tambahkan kode untuk simpan nilai Lingkup Materi (LM)
+                if (isset($scoreData['lm']) && is_array($scoreData['lm'])) {
+                    foreach($scoreData['lm'] as $lmId => $nilai) {
+                        if ($nilai !== null && $nilai !== '' && $nilai > 0) {
+                            try {
+                                $lm = LingkupMateri::find($lmId);
+                                
+                                $nilaiData = [
+                                    'nilai_lm' => $nilai
+                                ];
+                                
+                                if ($tahunAjaranId) {
+                                    $nilaiData['tahun_ajaran_id'] = $tahunAjaranId;
+                                }
+                                
+                                Nilai::updateOrCreate(
+                                    [
+                                        'siswa_id' => $siswaId,
+                                        'mata_pelajaran_id' => $id,
+                                        'lingkup_materi_id' => $lmId,
+                                        'tahun_ajaran_id' => $tahunAjaranId,
+                                    ],
+                                    $nilaiData
+                                );
+    
+                                $studentData['nilai'][] = [
+                                    'tipe' => 'LM',
+                                    'kode' => $lm->judul_lingkup_materi,
+                                    'nilai' => $nilai
+                                ];
+                            } catch (\Exception $e) {
+                                $studentNotSaved[] = "LM {$lm->judul_lingkup_materi}: {$e->getMessage()}";
+                            }
+                        }
+                    }
+                }
     
                 // Simpan nilai agregat
                 $finalScores = array_filter([

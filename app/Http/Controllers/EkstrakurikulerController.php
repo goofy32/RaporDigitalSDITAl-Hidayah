@@ -189,9 +189,6 @@ class EkstrakurikulerController extends Controller
             'deskripsi' => 'nullable|string',
         ]);
     
-        // Tambahkan tahun ajaran ke data
-        $validated['tahun_ajaran_id'] = $tahunAjaranId;
-        
         // Cek apakah siswa sudah memiliki nilai untuk ekstrakurikuler ini pada tahun ajaran yang sama
         $exists = NilaiEkstrakurikuler::where('siswa_id', $validated['siswa_id'])
             ->where('ekstrakurikuler_id', $validated['ekstrakurikuler_id'])
@@ -202,12 +199,20 @@ class EkstrakurikulerController extends Controller
             return back()->with('error', 'Siswa sudah memiliki nilai untuk ekstrakurikuler ini pada tahun ajaran yang sama.');
         }
     
-        NilaiEkstrakurikuler::create($validated);
+        // Set nilai tahun_ajaran_id secara eksplisit sebelum membuat record
+        $nilaiEkstrakurikuler = new NilaiEkstrakurikuler([
+            'siswa_id' => $validated['siswa_id'],
+            'ekstrakurikuler_id' => $validated['ekstrakurikuler_id'],
+            'predikat' => $validated['predikat'],
+            'deskripsi' => $validated['deskripsi'],
+            'tahun_ajaran_id' => $tahunAjaranId  // Set ini secara eksplisit
+        ]);
+        
+        $nilaiEkstrakurikuler->save();
     
         return redirect()->route('wali_kelas.ekstrakurikuler.index')
             ->with('success', 'Data ekstrakurikuler berhasil ditambahkan');
     }
-    
 
     public function waliKelasEdit($id)
     {

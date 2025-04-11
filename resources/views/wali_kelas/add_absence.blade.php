@@ -18,7 +18,7 @@
     </div>
 
     <!-- Form -->
-    <form id="createAbsenceForm" action="{{ route('wali_kelas.absence.store') }}" method="POST" x-data="formProtection" @submit="handleSubmit" class="space-y-6">
+    <form id="createAbsenceForm" action="{{ route('wali_kelas.absence.store') }}" method="POST" x-data="formProtection" @submit="handleSubmit" class="space-y-6" data-turbo="false">
         @csrf
 
         <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
@@ -82,4 +82,27 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for SweetAlert validation error in session
+        @if(session('swal_validation_error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Validasi Error',
+                html: "{!! session('swal_validation_error') !!}",
+                confirmButtonText: 'Oke'
+            });
+        @endif
+
+        // Disable Turbo for this form
+        const form = document.querySelector('form');
+        if (form) {
+            form.setAttribute('data-turbo', 'false');
+        }
+    });
+</script>
+@endpush
+
 @endsection

@@ -29,15 +29,25 @@ class RaporTemplateProcessor
     protected $schoolProfile;
     protected $tahunAjaranId; // Tambahkan property untuk menyimpan tahun ajaran ID
 
-    public function __construct(ReportTemplate $template, Siswa $siswa, $type = 'UTS') 
+    public function __construct(ReportTemplate $template, Siswa $siswa, $type = 'UTS', $tahunAjaranId = null)
     {
         $this->template = $template;
         $this->siswa = $siswa;
         $this->type = $type;
         $this->schoolProfile = ProfilSekolah::first();
-        // Ambil tahun ajaran dari session atau dari kelas siswa
-        $this->tahunAjaranId = session('tahun_ajaran_id') ?: ($siswa->kelas->tahun_ajaran_id ?? null);
-    
+        // Ambil tahun ajaran dari parameter, session, atau dari kelas siswa
+        $this->tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id') ?: ($siswa->kelas->tahun_ajaran_id ?? null);
+        
+        // Log untuk debugging
+        Log::info('RaporTemplateProcessor initialized:', [
+            'siswa_id' => $siswa->id, 
+            'siswa_name' => $siswa->nama,
+            'kelas' => $siswa->kelas->nama_kelas ?? 'Unknown',
+            'template_id' => $template->id,
+            'type' => $type,
+            'tahun_ajaran_id' => $this->tahunAjaranId
+        ]);
+
         // Validasi template path tidak kosong
         if (empty($template->path)) {
             throw new RaporException(
@@ -95,11 +105,11 @@ class RaporTemplateProcessor
         $this->placeholders = ReportPlaceholder::all()->groupBy('category');
     }
 
-    public static function getTemplateForSiswa(Siswa $siswa, $type = 'UTS')
+    protected function getTemplateForSiswa(Siswa $siswa, $type, $tahunAjaranId = null)
     {
-        $tahunAjaranId = session('tahun_ajaran_id') ?: $siswa->kelas->tahun_ajaran_id;
+        $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
         
-        // Cari template untuk kelas spesifik dulu dengan filter tahun ajaran
+        // First look for class-specific template
         $template = ReportTemplate::where('type', $type)
             ->where('kelas_id', $siswa->kelas_id)
             ->where('is_active', true)
@@ -108,7 +118,7 @@ class RaporTemplateProcessor
             })
             ->first();
         
-        // Jika tidak ditemukan, cari template global dengan filter tahun ajaran
+        // If not found, look for global template
         if (!$template) {
             $template = ReportTemplate::where('type', $type)
                 ->whereNull('kelas_id')
@@ -120,13 +130,13 @@ class RaporTemplateProcessor
         }
         
         // Log untuk debugging
-        Log::info('Getting template for student', [
+        Log::info('Template selection for siswa:', [
             'siswa_id' => $siswa->id,
             'kelas_id' => $siswa->kelas_id,
             'type' => $type,
             'tahun_ajaran_id' => $tahunAjaranId,
-            'template_found' => ($template ? $template->id : 'None'),
-            'is_kelas_specific' => ($template && $template->kelas_id ? 'Yes' : 'No')
+            'template_found' => $template ? 'Yes' : 'No',
+            'template_id' => $template ? $template->id : null
         ]);
         
         return $template;

@@ -118,7 +118,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('report.template.index') }}" 
+                        <a href="{{ route('report.template.index') }}"
+                        data-turbo-frame="main" 
                         data-path="report-template"
                         class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
                             <img src="{{ asset('images/icons/report-icon.png') }}" class="w-5 h-5" alt="Format Rapor" />
@@ -126,7 +127,8 @@
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('admin.report.history') }}" 
+                        <a href="{{ route('admin.report.history') }}"
+                        data-turbo-frame="main" 
                         data-path="report-history"
                         class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

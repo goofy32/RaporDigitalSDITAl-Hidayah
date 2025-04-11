@@ -15,6 +15,73 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    document.addEventListener('turbo:before-render', function (event) {
+        // Cek apakah ada session error
+        const oldErrors = JSON.parse(localStorage.getItem('validationErrors'));
+        const oldInput = JSON.parse(localStorage.getItem('oldInput'));
+        
+        if (oldErrors) {
+            // Simpan errors untuk digunakan setelah render
+            window.validationErrors = oldErrors;
+        }
+        
+        if (oldInput) {
+            window.oldInput = oldInput;
+        }
+    });
+    
+    document.addEventListener('turbo:render', function () {
+        // Tampilkan error setelah render jika ada
+        if (window.validationErrors) {
+            // Buat error alert
+            const errorWrapper = document.createElement('div');
+            errorWrapper.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6';
+            errorWrapper.setAttribute('role', 'alert');
+            
+            let errorContent = '<p class="font-bold">Validasi Error:</p><ul>';
+            
+            // Tampilkan semua error
+            Object.values(window.validationErrors).flat().forEach(error => {
+                errorContent += `<li>${error}</li>`;
+            });
+            
+            errorContent += '</ul>';
+            errorWrapper.innerHTML = errorContent;
+            
+            // Tambahkan ke halaman
+            const content = document.querySelector('#main');
+            if (content) {
+                content.insertBefore(errorWrapper, content.firstChild);
+            }
+            
+            // Hapus errors dari memory
+            delete window.validationErrors;
+            localStorage.removeItem('validationErrors');
+        }
+        
+        if (window.oldInput) {
+            // Isi kembali nilai input dari session
+            Object.entries(window.oldInput).forEach(([name, value]) => {
+                const input = document.querySelector(`[name="${name}"]`);
+                if (input) {
+                    if (input.type === 'checkbox' || input.type === 'radio') {
+                        input.checked = value === input.value;
+                    } else if (input.tagName === 'SELECT') {
+                        Array.from(input.options).forEach(option => {
+                            option.selected = option.value === value;
+                        });
+                    } else {
+                        input.value = value;
+                    }
+                }
+            });
+            
+            delete window.oldInput;
+            localStorage.removeItem('oldInput');
+        }
+    });
+</script>
 </head>
 <body x-data="{ 
         firstLoad: true,

@@ -15,10 +15,9 @@ class Absensi extends Model
         'izin',
         'tanpa_keterangan',
         'semester',
-        'tahun_ajaran_id' // Tambahkan ini
+        'tahun_ajaran_id' // This is correctly included in fillable
     ];
     
-
     public function siswa()
     {
         return $this->belongsTo(Siswa::class);
@@ -31,8 +30,10 @@ class Absensi extends Model
     
     public function getTahunAjaranIdAttribute()
     {
-        if ($this->tahun_ajaran_id) {
-            return $this->tahun_ajaran_id;
+        // Access the raw attribute value directly using the attributes array
+        // This avoids the infinite recursion problem
+        if (isset($this->attributes['tahun_ajaran_id']) && $this->attributes['tahun_ajaran_id']) {
+            return $this->attributes['tahun_ajaran_id'];
         }
         
         if ($this->siswa && $this->siswa->kelas) {

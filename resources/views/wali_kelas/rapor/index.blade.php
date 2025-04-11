@@ -384,7 +384,7 @@ document.addEventListener('alpine:init', function() {
                     },
                     body: JSON.stringify({
                         type: this.activeTab,
-                        tahun_ajaran_id: this.tahunAjaranId // Tambahkan ini
+                        tahun_ajaran_id: this.tahunAjaranId
                     })
                 });
 
@@ -411,16 +411,53 @@ document.addEventListener('alpine:init', function() {
                     }
                 }
 
-                // Jika sukses, akan mendapatkan file blob
-                const blob = await response.blob();
-                await this.downloadFile(blob, `rapor_${this.activeTab.toLowerCase()}_${siswaId}.docx`);
+                // PERBAIKAN: Clone response untuk digunakan dua kali
+                const responseClone = response.clone();
                 
-                // Tampilkan notifikasi sukses
-                alert('Rapor berhasil digenerate dan diunduh');
+                // Cek tipe respons untuk mencegah error "body stream already read"
+                const contentType = response.headers.get("content-type");
                 
+                if (contentType && contentType.includes("application/json")) {
+                    // Jika respons adalah JSON, proses sebagai JSON
+                    const data = await response.json();
+                    // Proses data JSON jika perlu
+                    
+                    // Tampilkan notifikasi sukses
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Rapor berhasil diproses'
+                    });
+                } else {
+                    // Jika respons adalah file blob, proses sebagai file download
+                    const blob = await responseClone.blob();
+                    await this.downloadFile(blob, `rapor_${this.activeTab.toLowerCase()}_${siswaId}.docx`);
+                    
+                    // Tampilkan notifikasi sukses
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Rapor berhasil digenerate dan diunduh'
+                    });
+                }
             } catch (error) {
                 console.error('Error:', error);
-                alert(error.message);
+                
+                // Tampilkan alert yang lebih informatif dengan SweetAlert
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Generate Rapor',
+                    html: `
+                        <p>${error.message}</p>
+                        <p class="mt-2 text-sm text-red-600">Pastikan:</p>
+                        <ul class="text-left mt-2 text-sm list-disc pl-5">
+                            <li>Data Nilai sudah lengkap untuk tahun ajaran yang dipilih</li>
+                            <li>Data Absensi sudah diinput</li>
+                            <li>Template rapor untuk tahun ajaran ini tersedia dan aktif</li>
+                        </ul>
+                    `,
+                    confirmButtonText: 'Mengerti'
+                });
             } finally {
                 this.loading = false;
             }
@@ -428,10 +465,13 @@ document.addEventListener('alpine:init', function() {
 
         async generateBatchReport() {
             if (this.loading || this.selectedSiswa.length === 0) {
-                alert('Pilih siswa terlebih dahulu');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Pilih siswa terlebih dahulu'
+                });
                 return;
             }
-
 
             // Validasi sebelum mengirim request
             const invalidSiswa = [];
@@ -453,19 +493,40 @@ document.addEventListener('alpine:init', function() {
 
             // Jika ada siswa yang datanya belum lengkap
             if (invalidSiswa.length > 0) {
-                let message = "Beberapa siswa belum memiliki data lengkap:\n";
-                invalidSiswa.forEach(nama => {
-                    message += `- ${nama}\n`;
+                // Gunakan SweetAlert untuk konfirmasi yang lebih baik
+                const result = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Data Tidak Lengkap',
+                    html: `
+                        <p>Beberapa siswa belum memiliki data lengkap:</p>
+                        <ul class="text-left mt-2 text-sm">
+                            ${invalidSiswa.map(nama => `<li>- ${nama}</li>`).join('')}
+                        </ul>
+                        <p class="mt-2">Lanjutkan cetak hanya untuk siswa dengan data lengkap?</p>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Lanjutkan',
+                    cancelButtonText: 'Batal'
                 });
-                message += "\nLanjutkan cetak hanya untuk siswa dengan data lengkap?";
                 
-                if (!confirm(message)) {
+                if (!result.isConfirmed) {
                     return;
                 }
             }
 
             try {
                 this.loading = true;
+                
+                // Tampilkan loading indicator yang informatif
+                const loadingAlert = Swal.fire({
+                    title: 'Memproses Rapor',
+                    html: 'Mohon tunggu sebentar...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
                 const response = await fetch('/wali-kelas/rapor/batch-generate', {
                     method: 'POST',
                     headers: {
@@ -475,9 +536,12 @@ document.addEventListener('alpine:init', function() {
                     body: JSON.stringify({
                         siswa_ids: this.selectedSiswa,
                         type: this.activeTab,
-                        tahun_ajaran_id: this.tahunAjaranId // Tambahkan ini
+                        tahun_ajaran_id: this.tahunAjaranId // Pastikan tahun ajaran disertakan
                     })
                 });
+
+                // Tutup loading alert
+                loadingAlert.close();
 
                 if (!response.ok) {
                     // Coba ambil pesan error dalam format JSON
@@ -492,10 +556,31 @@ document.addEventListener('alpine:init', function() {
                 }
 
                 const blob = await response.blob();
-                await this.downloadFile(blob, `rapor_batch_${this.activeTab.toLowerCase()}.zip`);
+                await this.downloadFile(blob, `rapor_batch_${this.activeTab.toLowerCase()}_${new Date().getTime()}.zip`);
+                
+                // Notifikasi sukses
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Batch rapor berhasil digenerate dan diunduh'
+                });
             } catch (error) {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat mencetak rapor: ' + error.message);
+                // Alert yang lebih informatif
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Mencetak Rapor',
+                    html: `
+                        <p>${error.message}</p>
+                        <p class="mt-2 text-sm text-red-600">Kemungkinan penyebab:</p>
+                        <ul class="text-left mt-2 text-sm list-disc pl-5">
+                            <li>Data siswa tidak lengkap untuk tahun ajaran ${this.tahunAjaranId || 'yang dipilih'}</li>
+                            <li>Template rapor tidak tersedia atau tidak aktif</li>
+                            <li>Error server saat memproses (periksa log server)</li>
+                        </ul>
+                    `,
+                    confirmButtonText: 'Mengerti'
+                });
             } finally {
                 this.loading = false;
             }

@@ -16,20 +16,23 @@ class NilaiEkstrakurikuler extends Model
         'ekstrakurikuler_id',
         'predikat',
         'deskripsi',
-        'tahun_ajaran_id' // Tambahkan ini
+        'tahun_ajaran_id'
     ];
 
-
-    public function getTahunAjaranIdAttribute()
+    // Perbaikan pada accessor (getter)
+    public function getTahunAjaranIdAttribute($value)
     {
-        if ($this->tahun_ajaran_id) {
-            return $this->tahun_ajaran_id;
+        // Jika nilai tahun_ajaran_id sudah ada di model, kembalikan nilai tersebut
+        if (!empty($value)) {
+            return $value;
         }
         
+        // Jika belum ada, coba ambil dari relasi siswa->kelas
         if ($this->siswa && $this->siswa->kelas) {
             return $this->siswa->kelas->tahun_ajaran_id;
         }
         
+        // Jika masih tidak ada, gunakan tahun ajaran dari session
         return session('tahun_ajaran_id');
     }
     

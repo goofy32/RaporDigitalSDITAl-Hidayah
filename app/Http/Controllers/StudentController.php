@@ -289,64 +289,117 @@ class StudentController extends Controller
 
     public function waliKelasStore(Request $request)
     {
-        $waliKelas = auth()->guard('guru')->user();
-        
-        // Cek wali kelas melalui relasi guru_kelas
-        $kelas = $waliKelas->kelasWali()->first();
-        
-        if (!$kelas) {
-            return redirect()->route('wali_kelas.student.index')
-                ->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
-        }
-        
-        $validated = $request->validate([
-            'nis' => 'required|unique:siswas',
-            'nisn' => 'required|unique:siswas',
-            'nama' => 'required',
-            'tanggal_lahir' => 'required|date',
-            'jenis_kelamin' => 'required',
-            'agama' => 'required',
-            'alamat' => 'required',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'nama_ayah' => 'required|string',
-            'nama_ibu' => 'required|string',
-            'pekerjaan_ayah' => 'nullable|string',
-            'pekerjaan_ibu' => 'nullable|string',
-            'alamat_orangtua' => 'nullable|string',
-            'wali_siswa' => 'nullable|string',
-            'pekerjaan_wali' => 'nullable|string',
-        ]);
-
-        // Set kelas_id dari kelas wali yang ditemukan
-        $validated['kelas_id'] = $kelas->id;
-        
-        if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('photos', 'public');
-        }
-
         try {
-            Siswa::create($validated);
+            // Get wali kelas
+            $waliKelas = auth()->guard('guru')->user();
+            
+            // Cek wali kelas melalui relasi guru_kelas
+            $kelas = $waliKelas->kelasWali()->first();
+            
+            if (!$kelas) {
+                return redirect()->route('wali_kelas.student.index')
+                    ->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
+            }
+            
+            // Get tahun ajaran from session or from kelas
+            $tahunAjaranId = session('tahun_ajaran_id') ?? $kelas->tahun_ajaran_id;
+            
+            if (!$tahunAjaranId) {
+                return redirect()->route('wali_kelas.student.index')
+                    ->with('error', 'Tahun ajaran belum dipilih. Silakan pilih tahun ajaran terlebih dahulu.');
+            }
+            
+            // Validate the request
+            $validated = $request->validate([
+                'nis' => 'required|unique:siswas',
+                'nisn' => 'required|unique:siswas',
+                'nama' => 'required',
+                'tanggal_lahir' => 'required|date',
+                'jenis_kelamin' => 'required',
+                'agama' => 'required',
+                'alamat' => 'required',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+                'nama_ayah' => 'required|string',
+                'nama_ibu' => 'required|string',
+                'pekerjaan_ayah' => 'nullable|string',
+                'pekerjaan_ibu' => 'nullable|string',
+                'alamat_orangtua' => 'nullable|string',
+                'wali_siswa' => 'nullable|string',
+                'pekerjaan_wali' => 'nullable|string',
+            ], [
+                'nis.required' => 'NIS wajib diisi.',
+                'nis.unique' => 'NIS sudah digunakan oleh siswa lain.',
+                'nisn.required' => 'NISN wajib diisi.',
+                'nisn.unique' => 'NISN sudah digunakan oleh siswa lain.',
+                'nama.required' => 'Nama siswa wajib diisi.',
+                'tanggal_lahir.required' => 'Tanggal lahir wajib diisi.',
+                'jenis_kelamin.required' => 'Jenis kelamin wajib dipilih.',
+                'agama.required' => 'Agama wajib dipilih.',
+                'alamat.required' => 'Alamat wajib diisi.',
+                'nama_ayah.required' => 'Nama ayah wajib diisi.',
+                'nama_ibu.required' => 'Nama ibu wajib diisi.',
+            ]);
+    
+            // Set kelas_id from the selected class
+            $validated['kelas_id'] = $kelas->id;
+            
+            // Explicitly set the tahun_ajaran_id
+            $validated['tahun_ajaran_id'] = $tahunAjaranId;
+            
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                $validated['photo'] = $request->file('photo')->store('photos', 'public');
+            }
+    
+            // Use database transaction
+            DB::beginTransaction();
+            
+            // Create student
+            $siswa = Siswa::create($validated);
+            
+            DB::commit();
+            
             return redirect()->route('wali_kelas.student.index')
                 ->with('success', 'Data siswa berhasil ditambahkan!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Ubah format error menjadi satu pesan dengan HTML untuk SweetAlert
+            $errorMessages = collect($e->errors())->flatten()->implode('<br>');
+            
+            // Kembali dengan validation_errors dalam session
+            \Log::info('Validation error: ' . $errorMessages);
+            return back()->with('swal_validation_error', $errorMessages)->withInput();
         } catch (\Exception $e) {
+            // Rollback transaction in case of error
+            if (isset($e) && DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            
+            // Log the error
+            \Log::error('Error adding student: ' . $e->getMessage());
+            
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
                 ->withInput();
         }
     }
+
     public function waliKelasEdit($id)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $student = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+        $kelasWaliId = $waliKelas->getWaliKelasId(); // Menggunakan method getWaliKelasId() bukan kelas_pengajar_id
+        
+        $student = Siswa::where('kelas_id', $kelasWaliId)
             ->findOrFail($id);
-        $kelas = Kelas::where('id', $waliKelas->kelas_pengajar_id)->first();
-
+        $kelas = Kelas::where('id', $kelasWaliId)->first();
+    
         return view('wali_kelas.edit_student', compact('student', 'kelas'));
     }
 
     public function waliKelasUpdate(Request $request, $id)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $student = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+        $kelasWaliId = $waliKelas->getWaliKelasId(); // Menggunakan method getWaliKelasId() bukan kelas_pengajar_id
+        
+        $student = Siswa::where('kelas_id', $kelasWaliId)
             ->findOrFail($id);
 
         $validated = $request->validate([
@@ -380,7 +433,9 @@ class StudentController extends Controller
     public function waliKelasDestroy($id)
     {
         $waliKelas = auth()->guard('guru')->user();
-        $student = Siswa::where('kelas_id', $waliKelas->kelas_pengajar_id)
+        $kelasWaliId = $waliKelas->getWaliKelasId(); // Menggunakan method getWaliKelasId() bukan kelas_pengajar_id
+        
+        $student = Siswa::where('kelas_id', $kelasWaliId)
             ->findOrFail($id);
             
         if ($student->photo) {
@@ -391,6 +446,7 @@ class StudentController extends Controller
         return redirect()->route('wali_kelas.student.index')
             ->with('success', 'Data siswa berhasil dihapus!');
     }
+    
     public function uploadPage()
     {
         return view('data.upload_student');

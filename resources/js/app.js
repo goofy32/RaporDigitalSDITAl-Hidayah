@@ -47,6 +47,74 @@ document.addEventListener('turbo:load', () => {
 
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+    // Monitor form submissions for the student add form
+    const studentForm = document.querySelector('form[action*="student.store"]');
+    
+    if (studentForm) {
+        console.log('Student form detected, adding monitoring');
+        
+        studentForm.addEventListener('submit', function(e) {
+            console.log('Form submission detected');
+            
+            // Log form data for debugging
+            const formData = new FormData(this);
+            console.log('Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            
+            // Check if tahun_ajaran_id is present
+            if (!formData.get('tahun_ajaran_id')) {
+                console.warn('tahun_ajaran_id is missing!');
+                // Optional: Add the value if missing
+                const tahunAjaranId = document.querySelector('meta[name="tahun-ajaran-id"]')?.content;
+                if (tahunAjaranId) {
+                    console.log(`Adding tahun_ajaran_id: ${tahunAjaranId}`);
+                    
+                    // Create hidden input if it doesn't exist
+                    if (!document.querySelector('input[name="tahun_ajaran_id"]')) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'tahun_ajaran_id';
+                        input.value = tahunAjaranId;
+                        this.appendChild(input);
+                    }
+                }
+            }
+        });
+    }
+    
+    // Check for Alpine.js formProtection
+    const formProtectionEl = document.querySelector('[x-data="formProtection"]');
+    if (formProtectionEl) {
+        console.log('Form protection detected');
+    } else {
+        console.warn('Form protection not found on the page');
+    }
+    
+    // Check for Turbo navigation issues
+    document.addEventListener('turbo:before-visit', () => {
+        console.log('Turbo navigation started');
+    });
+    
+    document.addEventListener('turbo:before-cache', () => {
+        console.log('Page being cached by Turbo');
+    });
+    
+    document.addEventListener('turbo:submit-start', (event) => {
+        console.log('Form submission via Turbo:', event.detail.formSubmission);
+    });
+    
+    document.addEventListener('turbo:submit-end', (event) => {
+        console.log('Form submission completed:', event.detail.success ? 'success' : 'failure');
+        if (!event.detail.success) {
+            console.error('Form submission failed');
+        }
+    });
+});
+
+
 document.addEventListener('turbo:before-fetch-response', (event) => {
     const response = event.detail.fetchResponse;
     if (!response.succeeded) {
