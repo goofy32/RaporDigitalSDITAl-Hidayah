@@ -152,59 +152,85 @@
 
                        <!-- Kelas Mengajar -->
                        <div id="kelas_mengajar_section">
-                           <label class="block text-sm font-medium text-gray-700">Kelas yang Diajar</label>
-                           
-                           @php
-                               // Ambil semua kelas yang diajar (pengajar), kecuali yang sudah diwalikan
-                               $kelasAjar = $teacher->kelas()->wherePivot('role', 'pengajar')->pluck('kelas.id')->toArray();
-                               
-                               // Ambil kelas yang diwalikan
-                               $kelasWali = $teacher->kelas()->wherePivot('is_wali_kelas', true)
+                            <label class="block text-sm font-medium text-gray-700">Kelas yang Diajar</label>
+                            
+                            @php
+                                // Ambil semua kelas yang diajar (pengajar), kecuali yang sudah diwalikan
+                                $kelasAjar = $teacher->kelas()->wherePivot('role', 'pengajar')->pluck('kelas.id')->toArray();
+                                
+                                // Ambil kelas yang diwalikan
+                                $kelasWali = $teacher->kelas()->wherePivot('is_wali_kelas', true)
                                                             ->wherePivot('role', 'wali_kelas')
                                                             ->first();
-                           @endphp
-                           
-                           <select name="kelas_ids[]" multiple required id="kelas_mengajar"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[120px]">
-                               @foreach($kelasList as $kelas)
-                                   <option value="{{ $kelas->id }}" 
-                                       {{ in_array($kelas->id, $kelasAjar) ? 'selected' : '' }}>
-                                       Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
-                                   </option>
-                               @endforeach
-                           </select>
-                           <p class="mt-1 text-sm text-gray-500">Tekan CTRL untuk memilih beberapa kelas yang akan diajar</p>
-                           
-                           @if($kelasWali)
-                               <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                                   <p class="text-sm text-blue-800">
-                                       <span class="font-medium">Catatan:</span> Guru ini menjadi wali kelas untuk Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}. 
-                                       Kelas wali tidak perlu dipilih di daftar kelas mengajar, karena akan otomatis ditambahkan.
-                                   </p>
-                               </div>
-                           @endif
-                       </div>
+                            @endphp
+                            
+                            @if(isset($kelasList) && $kelasList->count() > 0)
+                                <select name="kelas_ids[]" multiple required id="kelas_mengajar"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[120px]">
+                                    @foreach($kelasList as $kelas)
+                                        <option value="{{ $kelas->id }}" 
+                                            {{ in_array($kelas->id, $kelasAjar) ? 'selected' : '' }}>
+                                            Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">Tekan CTRL untuk memilih beberapa kelas yang akan diajar</p>
+                            @else
+                                <div class="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p class="text-sm text-yellow-800">
+                                        <span class="font-medium">Perhatian:</span> Belum ada kelas yang tersedia untuk diampu.
+                                        Guru tidak dapat ditambahkan sampai ada kelas yang tersedia.
+                                    </p>
+                                    <p class="text-sm text-yellow-800 mt-2">
+                                        <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                    </p>
+                                </div>
+                            @endif
+                            
+                            @if($kelasWali)
+                                <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p class="text-sm text-blue-800">
+                                        <span class="font-medium">Catatan:</span> Guru ini menjadi wali kelas untuk Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}. 
+                                        Kelas wali tidak perlu dipilih di daftar kelas mengajar, karena akan otomatis ditambahkan.
+                                    </p>
+                                </div>
+                            @endif
+                        </div>
 
                        <!-- Wali Kelas -->
                        <div id="wali_kelas_section" style="{{ $teacher->jabatan === 'guru_wali' ? '' : 'display:none;' }}">
-                           <label class="block text-sm font-medium text-gray-700">Wali Kelas Untuk</label>
-                           <select name="wali_kelas_id" id="wali_kelas_id"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
-                               <option value="">Pilih Kelas</option>
-                               @foreach($availableKelas as $kelas)
-                                   <option value="{{ $kelas->id }}" 
-                                       {{ ($kelasWali && $kelasWali->id === $kelas->id) ? 'selected' : '' }}>
-                                       Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
-                                   </option>
-                               @endforeach
-                           </select>
-                           @if($kelasWali)
-                               <p class="mt-1 text-sm text-gray-600">
-                                   Saat ini menjadi wali kelas: 
-                                   Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
-                               </p>
-                           @endif
-                       </div>
+                            <label class="block text-sm font-medium text-gray-700">Wali Kelas Untuk</label>
+                            
+                            @if(isset($availableKelas) && $availableKelas->count() > 0)
+                                <select name="wali_kelas_id" id="wali_kelas_id"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                    <option value="">Pilih Kelas</option>
+                                    @foreach($availableKelas as $kelas)
+                                        <option value="{{ $kelas->id }}" 
+                                            {{ ($kelasWali && $kelasWali->id === $kelas->id) ? 'selected' : '' }}>
+                                            Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if($kelasWali)
+                                    <p class="mt-1 text-sm text-gray-600">
+                                        Saat ini menjadi wali kelas: 
+                                        Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
+                                    </p>
+                                @endif
+                            @else
+                                <div class="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p class="text-sm text-yellow-800">
+                                        <span class="font-medium">Perhatian:</span> Tidak ada kelas yang tersedia untuk ditugaskan sebagai wali kelas.
+                                        Semua kelas sudah memiliki wali kelas atau belum ada kelas yang dibuat.
+                                    </p>
+                                    <p class="text-sm text-yellow-800 mt-2">
+                                        <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                    </p>
+                                </div>
+                                <input type="hidden" name="wali_kelas_id" value="{{ $kelasWali ? $kelasWali->id : '' }}">
+                            @endif
+                        </div>
 
                        <!-- Username -->
                        <div>
@@ -222,28 +248,37 @@
 
                        <!-- Password Section -->
                        <div class="pt-4 border-t border-gray-200">
-                           <h3 class="text-lg font-medium text-gray-900 mb-4">Ubah Password</h3>
-                           
-                           <div class="space-y-4">
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700">Password Saat Ini</label>
-                                   <input type="password" name="current_password"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
-                               </div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Ubah Password</h3>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Password Saat Ini</label>
+                                    <input type="password" name="current_password" id="current_password"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                    <p class="mt-1 text-sm text-gray-500">Kosongkan seluruh field password jika tidak ingin mengubah password</p>
+                                    <div id="current_password_error" class="hidden mt-1 text-sm text-red-500"></div>
+                                </div>
 
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700">Password Baru</label>
-                                   <input type="password" name="password"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
-                               </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Password Baru</label>
+                                    <input type="password" name="password" id="new_password"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                    <div class="mt-1" id="password_strength_meter" style="display: none;">
+                                        <div class="h-2 rounded-full bg-gray-200 relative overflow-hidden">
+                                            <div id="password_strength_bar" class="h-2 absolute left-0 top-0" style="width: 0%;"></div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1" id="password_strength_text"></p>
+                                    </div>
+                                </div>
 
-                               <div>
-                                   <label class="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
-                                   <input type="password" name="password_confirmation"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
-                               </div>
-                           </div>
-                       </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
+                                    <input type="password" name="password_confirmation" id="password_confirmation"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                    <div id="password_match_error" class="hidden mt-1 text-sm text-red-500"></div>
+                                </div>
+                            </div>
+                        </div>
                    </div>
                </div>
            </div>
@@ -254,6 +289,216 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('password_confirmation');
+    const currentPassword = document.getElementById('current_password');
+    const strengthMeter = document.getElementById('password_strength_meter');
+    const strengthBar = document.getElementById('password_strength_bar');
+    const strengthText = document.getElementById('password_strength_text');
+    const currentPasswordError = document.getElementById('current_password_error');
+    const passwordMatchError = document.getElementById('password_match_error');
+    
+    // 1. Validasi password saat pengguna selesai mengetik di field password saat ini
+    if (currentPassword) {
+        currentPassword.addEventListener('blur', async function() {
+            // Hanya validasi jika ada input di password baru dan password saat ini
+            if (this.value && newPassword.value) {
+                validateCurrentPassword();
+            }
+        });
+    }
+    
+    // 2. Validasi password saat pengguna selesai mengetik di field password baru
+    if (newPassword) {
+        newPassword.addEventListener('blur', function() {
+            // Validasi password saat ini jika sudah diisi
+            if (this.value && currentPassword.value) {
+                validateCurrentPassword();
+            }
+            
+            // Update strength meter
+            if (this.value.length > 0) {
+                strengthMeter.style.display = 'block';
+                updatePasswordStrength(this.value);
+            } else {
+                strengthMeter.style.display = 'none';
+            }
+        });
+        
+        // Real-time update
+        newPassword.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                strengthMeter.style.display = 'block';
+                updatePasswordStrength(this.value);
+            } else {
+                strengthMeter.style.display = 'none';
+            }
+            
+            // Cek kesesuaian dengan konfirmasi jika sudah diisi
+            if (confirmPassword.value) {
+                validatePasswordMatch();
+            }
+        });
+    }
+    
+    // 3. Validasi kecocokan password secara real-time
+    if (confirmPassword) {
+        confirmPassword.addEventListener('input', validatePasswordMatch);
+    }
+    
+    // Fungsi untuk memvalidasi password saat ini
+    async function validateCurrentPassword() {
+        try {
+            const response = await fetch('/admin/pengajar/verify-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ 
+                    teacher_id: {{ $teacher->id }}, 
+                    current_password: currentPassword.value 
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!data.valid) {
+                currentPassword.classList.add('border-red-500');
+                currentPassword.classList.remove('border-green-500');
+                currentPasswordError.textContent = 'Password saat ini tidak sesuai';
+                currentPasswordError.classList.remove('hidden');
+                return false;
+            } else {
+                currentPassword.classList.remove('border-red-500');
+                currentPassword.classList.add('border-green-500');
+                currentPasswordError.classList.add('hidden');
+                return true;
+            }
+        } catch (error) {
+            console.error('Error verifying password:', error);
+            currentPasswordError.textContent = 'Terjadi kesalahan saat memverifikasi password';
+            currentPasswordError.classList.remove('hidden');
+            return false;
+        }
+    }
+    
+    // Function untuk validasi kecocokan password
+    function validatePasswordMatch() {
+        if (newPassword.value && confirmPassword.value) {
+            if (newPassword.value !== confirmPassword.value) {
+                confirmPassword.classList.add('border-red-500');
+                confirmPassword.classList.remove('border-green-500');
+                passwordMatchError.textContent = 'Password tidak cocok';
+                passwordMatchError.classList.remove('hidden');
+                return false;
+            } else {
+                confirmPassword.classList.remove('border-red-500');
+                confirmPassword.classList.add('border-green-500');
+                passwordMatchError.classList.add('hidden');
+                return true;
+            }
+        }
+        return true;
+    }
+    
+    // Function untuk update password strength
+    function updatePasswordStrength(password) {
+        // Rule untuk password strength
+        const lengthRule = password.length >= 6;
+        const uppercaseRule = /[A-Z]/.test(password);
+        const lowercaseRule = /[a-z]/.test(password);
+        const numberRule = /[0-9]/.test(password);
+        const specialRule = /[^A-Za-z0-9]/.test(password);
+        
+        // Hitung score (0-100)
+        let score = 0;
+        if (lengthRule) score += 20;
+        if (uppercaseRule) score += 20;
+        if (lowercaseRule) score += 20;
+        if (numberRule) score += 20;
+        if (specialRule) score += 20;
+        
+        // Update UI
+        strengthBar.style.width = `${score}%`;
+        
+        // Set warna berdasarkan score
+        if (score < 40) {
+            strengthBar.className = 'h-2 absolute left-0 top-0 bg-red-500';
+            strengthText.textContent = 'Lemah';
+            strengthText.className = 'text-xs text-red-500 mt-1';
+        } else if (score < 70) {
+            strengthBar.className = 'h-2 absolute left-0 top-0 bg-yellow-500';
+            strengthText.textContent = 'Sedang';
+            strengthText.className = 'text-xs text-yellow-600 mt-1';
+        } else {
+            strengthBar.className = 'h-2 absolute left-0 top-0 bg-green-500';
+            strengthText.textContent = 'Kuat';
+            strengthText.className = 'text-xs text-green-600 mt-1';
+        }
+        
+        // Tambahkan text untuk saran
+        let suggestion = 'Saran: ';
+        if (!lengthRule) suggestion += 'Minimal 6 karakter. ';
+        if (!uppercaseRule) suggestion += 'Tambahkan huruf besar. ';
+        if (!lowercaseRule) suggestion += 'Tambahkan huruf kecil. ';
+        if (!numberRule) suggestion += 'Tambahkan angka. ';
+        if (!specialRule) suggestion += 'Tambahkan karakter khusus. ';
+        
+        if (suggestion !== 'Saran: ') {
+            strengthText.textContent += ` - ${suggestion}`;
+        }
+    }
+    
+    // Validasi form submission untuk password
+    const form = document.getElementById('editTeacherForm');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            // Jika ada input password tapi tidak ada input password saat ini
+            if (newPassword.value && !currentPassword.value) {
+                e.preventDefault();
+                
+                currentPassword.classList.add('border-red-500');
+                currentPasswordError.textContent = 'Password saat ini harus diisi untuk mengubah password';
+                currentPasswordError.classList.remove('hidden');
+                
+                currentPassword.focus();
+                // Scroll ke elemen
+                currentPassword.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return false;
+            }
+            
+            // Jika ada input password, validasi password saat ini
+            if (newPassword.value && currentPassword.value) {
+                // Validasi langsung saat submit
+                e.preventDefault(); // Tahan form submission sampai validasi selesai
+                
+                const passwordValid = await validateCurrentPassword();
+                const matchValid = validatePasswordMatch();
+                
+                // Lanjutkan submit hanya jika semua validasi berhasil
+                if (passwordValid && matchValid) {
+                    form.submit();
+                } else {
+                    // Focus ke elemen yang bermasalah
+                    if (!passwordValid) {
+                        currentPassword.focus();
+                        currentPassword.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (!matchValid) {
+                        confirmPassword.focus();
+                        confirmPassword.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+                return false;
+            }
+            
+            // Jika tidak ada validasi password yang perlu dilakukan, form disubmit secara normal
+            return true;
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
     // Function untuk handle perubahan jabatan
     window.handleJabatanChange = function() {
         const jabatan = document.getElementById('jabatan').value;
@@ -261,12 +506,61 @@ document.addEventListener('DOMContentLoaded', function() {
         const kelasMengajarSection = document.getElementById('kelas_mengajar_section');
         const waliKelasSelect = document.querySelector('[name="wali_kelas_id"]');
         const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
+        
+        // Cek apakah ada kelas yang tersedia
+        const availableKelasCount = {{ isset($availableKelas) ? $availableKelas->count() : 0 }};
+        const kelasListCount = {{ isset($kelasList) ? $kelasList->count() : 0 }};
+        const hasCurrentWaliKelas = {{ $kelasWali ? 'true' : 'false' }};
 
         if (jabatan === 'guru_wali') {
             waliKelasSection.style.display = 'block';
             kelasMengajarSection.style.display = 'block';
-            if(waliKelasSelect) waliKelasSelect.required = true;
-            if(kelasMengajarSelect) kelasMengajarSelect.required = true;
+            
+            // Jika tidak ada kelas yang tersedia untuk wali kelas dan guru belum menjadi wali kelas, tampilkan pemberitahuan
+            if (availableKelasCount === 0 && !hasCurrentWaliKelas) {
+                const submitButton = document.querySelector('button[form="editTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.title = 'Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk wali kelas';
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                
+                // Tambahkan peringatan di bagian atas form
+                const formHeader = document.querySelector('.flex.justify-between.items-center.mb-6');
+                if (formHeader && !document.getElementById('no-kelas-alert')) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.id = 'no-kelas-alert';
+                    alertDiv.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4';
+                    alertDiv.innerHTML = `
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm"><strong>Error:</strong> Tidak dapat mengubah menjadi guru wali kelas karena tidak ada kelas yang tersedia. Harap buat kelas terlebih dahulu.</p>
+                            </div>
+                        </div>
+                    `;
+                    formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+                }
+            } else {
+                // Hapus peringatan jika ada
+                const alertDiv = document.getElementById('no-kelas-alert');
+                if (alertDiv) alertDiv.remove();
+                
+                // Enable tombol submit
+                const submitButton = document.querySelector('button[form="editTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.title = '';
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+            
+            if(waliKelasSelect) waliKelasSelect.required = availableKelasCount > 0 || hasCurrentWaliKelas;
+            if(kelasMengajarSelect) kelasMengajarSelect.required = kelasListCount > 0;
             
             // Tambahkan event listener untuk perubahan pada wali kelas
             if(waliKelasSelect) {
@@ -277,8 +571,52 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (jabatan === 'guru') {
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'block';
+            
+            // Jika tidak ada kelas yang tersedia untuk mengajar, tampilkan pemberitahuan
+            if (kelasListCount === 0) {
+                const submitButton = document.querySelector('button[form="editTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.title = 'Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk diampu';
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                
+                // Tambahkan peringatan di bagian atas form
+                const formHeader = document.querySelector('.flex.justify-between.items-center.mb-6');
+                if (formHeader && !document.getElementById('no-kelas-alert')) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.id = 'no-kelas-alert';
+                    alertDiv.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4';
+                    alertDiv.innerHTML = `
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm"><strong>Error:</strong> Tidak dapat mengubah guru karena tidak ada kelas yang tersedia untuk diampu. Harap buat kelas terlebih dahulu.</p>
+                            </div>
+                        </div>
+                    `;
+                    formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+                }
+            } else {
+                // Hapus peringatan jika ada
+                const alertDiv = document.getElementById('no-kelas-alert');
+                if (alertDiv) alertDiv.remove();
+                
+                // Enable tombol submit
+                const submitButton = document.querySelector('button[form="editTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.title = '';
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+            
             if(waliKelasSelect) waliKelasSelect.required = false;
-            if(kelasMengajarSelect) kelasMengajarSelect.required = true;
+            if(kelasMengajarSelect) kelasMengajarSelect.required = kelasListCount > 0;
             
             // Enable semua opsi kelas mengajar
             enableAllKelasMengajarOptions();
@@ -343,32 +681,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 infoText.remove();
             }
         }
-    }
-
-    // Password validation
-    const passwordForm = document.getElementById('editTeacherForm');
-    const newPassword = document.querySelector('input[name="password"]');
-    const confirmPassword = document.querySelector('input[name="password_confirmation"]');
-    const currentPassword = document.querySelector('input[name="current_password"]');
-
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', function(e) {
-            if (newPassword.value) {
-                if (!currentPassword.value) {
-                    e.preventDefault();
-                    alert('Password saat ini harus diisi untuk mengubah password');
-                    currentPassword.focus();
-                    return;
-                }
-
-                if (newPassword.value !== confirmPassword.value) {
-                    e.preventDefault();
-                    alert('Konfirmasi password tidak cocok');
-                    confirmPassword.focus();
-                    return;
-                }
-            }
-        });
     }
 
     // Form validation

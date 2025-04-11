@@ -84,7 +84,17 @@ Route::middleware(['web', 'guest'])->group(function () {
 
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
-
+Route::get('/admin/check-password-format/{id}', function($id) {
+    $guru = \App\Models\Guru::find($id);
+    if (!$guru) return 'Guru tidak ditemukan';
+    
+    // Cek apakah password disimpan dengan format bcrypt (dimulai dengan $2y$)
+    $passwordFormat = substr($guru->password, 0, 4);
+    
+    return "Format password: {$passwordFormat}. " . 
+           "Benar jika dimulai dengan \$2y\$ atau \$2a\$. " .
+           "Password length: " . strlen($guru->password);
+})->middleware(['auth:web']);
 
 // Admin Routes - Guard: web, Role: admin only
 Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
@@ -160,6 +170,10 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::delete('/{id}', [TeacherController::class, 'destroy'])->name('teacher.destroy');
         Route::get('/{id}/password', [TeacherController::class, 'showPassword'])
         ->name('teacher.show_password');
+        
+        // Tambahkan rute baru di sini
+        Route::post('/verify-password', [TeacherController::class, 'verifyPassword'])
+            ->name('teacher.verify-password');
     });
     
     // Achievement Routes

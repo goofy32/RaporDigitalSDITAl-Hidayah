@@ -171,16 +171,16 @@ class ClassController extends Controller
                 $query->where('guru_kelas.is_wali_kelas', true)
                     ->where('guru_kelas.role', 'wali_kelas')
                     ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
-                        $q->whereHas('kelas', function($kq) use ($tahunAjaranId) {
-                            $kq->where('tahun_ajaran_id', $tahunAjaranId);
-                        });
+                        // FIX: Mengubah 'kelas' menjadi 'tahun_ajaran_id'
+                        $q->where('kelas.tahun_ajaran_id', $tahunAjaranId);
                     });
             })
             ->get();
         
         return view('data.edit_class', compact('kelas', 'waliKelas', 'availableGuruList'));
     }
-// Mengupdate data kelas
+
+    // Mengupdate data kelas
     public function update(Request $request, $id)
     {
         $validated = $request->validate([

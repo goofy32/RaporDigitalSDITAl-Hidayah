@@ -131,28 +131,53 @@
 
                     <div id="kelas_mengajar_section" style="display:none;">
                         <label class="block text-sm font-medium text-gray-700">Kelas yang Diajar</label>
-                        <select name="kelas_ids[]" multiple required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[120px]">
-                            @foreach($kelasForMengajar as $kelas)
-                                <option value="{{ $kelas->id }}" {{ (is_array(old('kelas_ids')) && in_array($kelas->id, old('kelas_ids'))) ? 'selected' : '' }}>
-                                    Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-sm text-gray-500">Tekan CTRL untuk memilih beberapa kelas yang akan diajar</p>
+                        @if(isset($kelasForMengajar) && $kelasForMengajar->count() > 0)
+                            <select name="kelas_ids[]" multiple required
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 min-h-[120px]">
+                                @foreach($kelasForMengajar as $kelas)
+                                    <option value="{{ $kelas->id }}" {{ (is_array(old('kelas_ids')) && in_array($kelas->id, old('kelas_ids'))) ? 'selected' : '' }}>
+                                        Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500">Tekan CTRL untuk memilih beberapa kelas yang akan diajar</p>
+                        @else
+                            <div class="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p class="text-sm text-yellow-800">
+                                    <span class="font-medium">Perhatian:</span> Belum ada kelas yang tersedia untuk diampu.
+                                    Guru tidak dapat ditambahkan sampai ada kelas yang tersedia.
+                                </p>
+                                <p class="text-sm text-yellow-800 mt-2">
+                                    <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                </p>
+                            </div>
+                        @endif
                     </div>
                     <div id="wali_kelas_section" style="display:none;">
                         <label class="block text-sm font-medium text-gray-700">Wali Kelas Untuk</label>
-                        <select name="wali_kelas_id" 
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
-                            <option value="">Pilih Kelas</option>
-                            @foreach($kelasForWali as $kelas)
-                                <option value="{{ $kelas->id }}" {{ old('wali_kelas_id') == $kelas->id ? 'selected' : '' }}>
-                                    Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-sm text-gray-500">Pilih kelas yang akan diwalikan</p>
+                        @if(isset($kelasForWali) && $kelasForWali->count() > 0)
+                            <select name="wali_kelas_id" 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                <option value="">Pilih Kelas</option>
+                                @foreach($kelasForWali as $kelas)
+                                    <option value="{{ $kelas->id }}" {{ old('wali_kelas_id') == $kelas->id ? 'selected' : '' }}>
+                                        Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500">Pilih kelas yang akan diwalikan</p>
+                        @else
+                            <div class="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p class="text-sm text-yellow-800">
+                                    <span class="font-medium">Perhatian:</span> Tidak ada kelas yang tersedia untuk ditugaskan sebagai wali kelas.
+                                    Semua kelas sudah memiliki wali kelas atau belum ada kelas yang dibuat.
+                                </p>
+                                <p class="text-sm text-yellow-800 mt-2">
+                                    <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                </p>
+                            </div>
+                            <input type="hidden" name="wali_kelas_id" value="">
+                        @endif
                     </div>
                     <!-- Kredensial -->
                     <div class="pt-4 border-t border-gray-200">
@@ -268,46 +293,129 @@ document.addEventListener('DOMContentLoaded', function() {
         const kelasMengajarSection = document.getElementById('kelas_mengajar_section');
         const waliKelasSelect = document.querySelector('[name="wali_kelas_id"]');
         const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
-
-        // Reset form saat ganti jabatan jika belum ada nilai dari old()
-        if(!kelasMengajarSelect.options.selected && !waliKelasSelect.options.selected) {
-            if(waliKelasSelect) waliKelasSelect.value = '';
-            if(kelasMengajarSelect) kelasMengajarSelect.selectedIndex = -1;
-        }
-
+        
+        // Cek apakah ada kelas yang tersedia
+        const kelasForWaliCount = {{ isset($kelasForWali) ? $kelasForWali->count() : 0 }};
+        const kelasForMengajarCount = {{ isset($kelasForMengajar) ? $kelasForMengajar->count() : 0 }};
+        
         if (jabatan === 'guru_wali') {
             // Tampilkan kedua section
             waliKelasSection.style.display = 'block';
             kelasMengajarSection.style.display = 'block';
-            if(waliKelasSelect) waliKelasSelect.required = true;
-            if(kelasMengajarSelect) kelasMengajarSelect.required = true;
             
-            // Tambahkan event listener untuk perubahan pada wali kelas
-            if(waliKelasSelect) {
-                waliKelasSelect.addEventListener('change', function() {
-                    updateKelasMengajarForWali();
-                });
+            // Jika tidak ada kelas yang tersedia untuk wali kelas, tampilkan pemberitahuan
+            if (kelasForWaliCount === 0) {
+                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.title = 'Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk wali kelas';
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                
+                // Tambahkan peringatan di bagian atas form
+                const formHeader = document.querySelector('.flex.justify-between.items-center.mb-6');
+                if (formHeader && !document.getElementById('no-kelas-alert')) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.id = 'no-kelas-alert';
+                    alertDiv.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4';
+                    alertDiv.innerHTML = `
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm"><strong>Error:</strong> Tidak dapat membuat guru wali kelas karena tidak ada kelas yang tersedia. Harap buat kelas terlebih dahulu.</p>
+                            </div>
+                        </div>
+                    `;
+                    formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+                }
+            } else {
+                // Hapus peringatan jika ada
+                const alertDiv = document.getElementById('no-kelas-alert');
+                if (alertDiv) alertDiv.remove();
+                
+                // Enable tombol submit
+                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.title = '';
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
             }
+            
+            if(waliKelasSelect) waliKelasSelect.required = kelasForWaliCount > 0;
+            if(kelasMengajarSelect) kelasMengajarSelect.required = kelasForMengajarCount > 0;
         } else if (jabatan === 'guru') {
             // Tampilkan hanya kelas mengajar
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'block';
-            if(waliKelasSelect) waliKelasSelect.required = false;
-            if(kelasMengajarSelect) kelasMengajarSelect.required = true;
             
-            // Enable semua opsi kelas mengajar
-            enableAllKelasMengajarOptions();
+            // Jika tidak ada kelas yang tersedia untuk mengajar, tampilkan pemberitahuan
+            if (kelasForMengajarCount === 0) {
+                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.title = 'Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk diampu';
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                
+                // Tambahkan peringatan di bagian atas form
+                const formHeader = document.querySelector('.flex.justify-between.items-center.mb-6');
+                if (formHeader && !document.getElementById('no-kelas-alert')) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.id = 'no-kelas-alert';
+                    alertDiv.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4';
+                    alertDiv.innerHTML = `
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm"><strong>Error:</strong> Tidak dapat membuat guru karena tidak ada kelas yang tersedia untuk diampu. Harap buat kelas terlebih dahulu.</p>
+                            </div>
+                        </div>
+                    `;
+                    formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+                }
+            } else {
+                // Hapus peringatan jika ada
+                const alertDiv = document.getElementById('no-kelas-alert');
+                if (alertDiv) alertDiv.remove();
+                
+                // Enable tombol submit
+                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.title = '';
+                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+            
+            if(waliKelasSelect) waliKelasSelect.required = false;
+            if(kelasMengajarSelect) kelasMengajarSelect.required = kelasForMengajarCount > 0;
         } else {
             // Sembunyikan keduanya jika belum pilih jabatan
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'none';
             if(waliKelasSelect) waliKelasSelect.required = false;
             if(kelasMengajarSelect) kelasMengajarSelect.required = false;
-        }
-        
-        // Update kelas mengajar berdasarkan kelas wali jika sudah dipilih
-        if(jabatan === 'guru_wali' && waliKelasSelect && waliKelasSelect.value) {
-            updateKelasMengajarForWali();
+            
+            // Hapus peringatan jika ada
+            const alertDiv = document.getElementById('no-kelas-alert');
+            if (alertDiv) alertDiv.remove();
+            
+            // Enable tombol submit
+            const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.title = '';
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
     };
     

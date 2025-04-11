@@ -115,8 +115,17 @@ class TeacherController extends Controller
             ->orderBy('nama_kelas')
             ->get();
     
-        return view('data.create_teacher', compact('kelasForMengajar', 'kelasForWali'));
+        // Periksa apakah ada kelas yang tersedia
+        $hasKelas = $kelasForMengajar->count() > 0;
+    
+        // Tambahkan pesan error ke session jika tidak ada kelas
+        if (!$hasKelas) {
+            session()->flash('error', 'Tidak ada kelas yang tersedia. Harap buat kelas terlebih dahulu sebelum menambahkan guru.');
+        }
+    
+        return view('data.create_teacher', compact('kelasForMengajar', 'kelasForWali', 'hasKelas'));
     }
+    
     public function store(Request $request)
     {
         return DB::transaction(function() use ($request) {
@@ -331,7 +340,7 @@ class TeacherController extends Controller
         try {
             $tahunAjaranId = session('tahun_ajaran_id');
             $teacher = Guru::findOrFail($id);
-    
+        
             // Validasi dasar
             $rules = [
                 'nuptk' => 'required|numeric|digits_between:9,15|unique:gurus,nuptk,'.$id,
@@ -344,7 +353,7 @@ class TeacherController extends Controller
                 'jabatan' => 'required|in:guru,guru_wali',
                 'username' => 'required|string|max:255|unique:gurus,username,'.$id,
             ];
-    
+        
             // Tambah validasi berdasarkan jabatan
             if ($request->jabatan === 'guru') {
                 $rules['kelas_ids'] = 'required|array';
@@ -353,26 +362,40 @@ class TeacherController extends Controller
                 // Untuk guru_wali, kelas_ids bisa hanya berisi wali_kelas_id saja
                 $rules['kelas_ids'] = 'nullable|array';
             }
-    
+        
             // Validasi password jika diisi
             if ($request->filled('password')) {
-                $rules['current_password'] = 'required';
                 $rules['password'] = 'required|min:6|confirmed';
+                $rules['current_password'] = 'required';
+                
+                // Verifikasi password saat ini hanya jika ingin mengubah password
+                if (!$request->filled('current_password')) {
+                    return back()
+                        ->withErrors(['current_password' => 'Password saat ini wajib diisi untuk mengubah password'])
+                        ->withInput($request->except(['password', 'password_confirmation', 'current_password']));
+                }
+                
+                // Verifikasi password saat ini
+                if (!Hash::check($request->current_password, $teacher->password)) {
+                    return back()
+                        ->withErrors(['current_password' => 'Password saat ini tidak sesuai'])
+                        ->withInput($request->except(['password', 'password_confirmation', 'current_password']));
+                }
             }
-    
+        
             $validated = $request->validate($rules);
     
             // Update data guru
             $dataToUpdate = collect($validated)
                 ->except(['password', 'current_password', 'kelas_ids', 'wali_kelas_id'])
                 ->toArray();
-    
+        
             // Update password jika ada
             if ($request->filled('password')) {
                 $dataToUpdate['password'] = Hash::make($request->password);
-                $dataToUpdate['password_plain'] = $request->password;
+                $dataToUpdate['password_plain'] = $request->password; // Simpan juga password plaintext untuk keperluan admin
             }
-    
+        
             // Update photo jika ada
             if ($request->hasFile('photo')) {
                 // Hapus photo lama jika ada
@@ -381,9 +404,9 @@ class TeacherController extends Controller
                 }
                 $dataToUpdate['photo'] = $request->file('photo')->store('teacher-photos', 'public');
             }
-    
+        
             $teacher->update($dataToUpdate);
-    
+        
             // Hapus semua relasi kelas yang ada untuk tahun ajaran saat ini
             if ($tahunAjaranId) {
                 DB::table('guru_kelas')
@@ -398,10 +421,10 @@ class TeacherController extends Controller
             } else {
                 $teacher->kelas()->detach();
             }
-    
+        
             // Array untuk tracking kelas yang sudah di-attach
             $attachedClasses = [];
-    
+        
             // Tentukan kelas yang akan diajar
             $kelas_ids = [];
             
@@ -413,17 +436,17 @@ class TeacherController extends Controller
             else if ($request->jabatan === 'guru') {
                 $kelas_ids = $request->kelas_ids ?? [];
             }
-    
+        
             // Attach kelas
             foreach ($kelas_ids as $kelasId) {
                 // Skip jika kelas sudah di-attach
                 if (in_array($kelasId, $attachedClasses)) {
                     continue;
                 }
-    
+        
                 $isWaliKelas = ($request->jabatan === 'guru_wali' && 
                             $request->wali_kelas_id == $kelasId);
-    
+        
                 $teacher->kelas()->attach($kelasId, [
                     'is_wali_kelas' => $isWaliKelas,
                     'role' => $isWaliKelas ? 'wali_kelas' : 'pengajar'
@@ -431,7 +454,7 @@ class TeacherController extends Controller
                 
                 $attachedClasses[] = $kelasId;
             }
-    
+        
             // Logging untuk debugging
             \Log::info('Update guru berhasil', [
                 'id' => $teacher->id,
@@ -441,11 +464,12 @@ class TeacherController extends Controller
                 'wali_kelas_id' => $request->wali_kelas_id ?? null,
                 'tahun_ajaran_id' => $tahunAjaranId
             ]);
-    
+        
             DB::commit();
             return redirect()->route('teacher')
-                ->with('success', 'Data guru berhasil diperbarui');
-    
+                ->with('success', 'Data guru berhasil diperbarui' . 
+                    ($request->filled('password') ? ' beserta passwordnya' : ''));
+        
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error update guru', [
@@ -455,6 +479,43 @@ class TeacherController extends Controller
             return back()
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    
+    public function verifyPassword(Request $request)
+    {
+        try {
+            // Log request untuk debugging
+            \Log::info('Password verification request received', [
+                'teacher_id' => $request->teacher_id,
+                'has_password' => !empty($request->current_password)
+            ]);
+            
+            // Ambil data guru
+            $teacher = Guru::findOrFail($request->teacher_id);
+            
+            // Verifikasi password
+            $valid = Hash::check($request->current_password, $teacher->password);
+            
+            \Log::info('Password verification result', [
+                'valid' => $valid
+            ]);
+            
+            return response()->json([
+                'valid' => $valid,
+                'message' => $valid ? 'Password valid' : 'Password tidak sesuai'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error verifying teacher password', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'valid' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
         }
     }
 
