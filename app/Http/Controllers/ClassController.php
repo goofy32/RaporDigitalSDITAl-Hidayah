@@ -106,6 +106,17 @@ class ClassController extends Controller
             'nama_kelas.max' => 'Nama kelas maksimal 255 karakter'
         ]);
     
+        // Check for existing class with the same name
+        $existingClass = Kelas::where('nomor_kelas', $request->nomor_kelas)
+                            ->where('nama_kelas', $request->nama_kelas)
+                            ->first();
+                            
+        if ($existingClass) {
+            return back()
+                ->withInput()
+                ->withErrors(['nama_kelas' => 'Kelas ' . $request->nomor_kelas . ' ' . $request->nama_kelas . ' sudah ada. Gunakan nama kelas yang berbeda.']);
+        }
+    
         DB::beginTransaction();
         try {
             // Buat kelas baru
@@ -199,6 +210,17 @@ class ClassController extends Controller
             'wali_kelas_id.exists' => 'Guru yang dipilih tidak valid',
             'current_wali_kelas_id.exists' => 'Wali kelas saat ini tidak valid'
         ]);
+
+        $existingClass = Kelas::where('id', '!=', $id)
+            ->where('nomor_kelas', $request->nomor_kelas)
+            ->where('nama_kelas', $request->nama_kelas)
+            ->first();
+        
+        if ($existingClass) {
+            return back()
+            ->withInput()
+            ->withErrors(['nama_kelas' => 'Kelas ' . $request->nomor_kelas . ' ' . $request->nama_kelas . ' sudah ada. Gunakan nama kelas yang berbeda.']);
+            }
 
         DB::beginTransaction();
         try {

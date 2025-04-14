@@ -47,6 +47,15 @@ document.addEventListener('turbo:load', () => {
 
 });
 
+document.addEventListener('turbo:submit-start', (event) => {
+    const form = event.target;
+    if (form.hasAttribute('data-needs-protection')) {
+        // Clear previous validation errors
+        document.querySelectorAll('.error-message').forEach(el => el.remove());
+        document.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+    }
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     // Monitor form submissions for the student add form
     const studentForm = document.querySelector('form[action*="student.store"]');
@@ -112,6 +121,30 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Form submission failed');
         }
     });
+});
+
+document.addEventListener('turbo:submit-end', (event) => {
+    if (!event.detail.success) {
+        // Handle failed form submission
+        console.error('Form submission failed');
+        
+        // If there's a validation error alert in the response, show it
+        const responseText = event.detail.fetchResponse.responseText;
+        if (responseText && responseText.includes('bg-red-100')) {
+            // Extract and insert the validation error element
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(responseText, 'text/html');
+            const errorElement = htmlDoc.querySelector('.bg-red-100.border-l-4.border-red-500');
+            
+            if (errorElement) {
+                const formElement = event.target;
+                formElement.insertAdjacentElement('beforebegin', errorElement);
+                
+                // Scroll to error
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
 });
 
 

@@ -19,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SessionTimeout::class,
             CacheControl::class,
-            TahunAjaranMiddleware::class
+            TahunAjaranMiddleware::class,
+            \App\Http\Middleware\HandleValidationErrors::class
         ]);
 
         $middleware->alias([
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.rapor.access' => \App\Http\Middleware\CheckRaporAccess::class,
             'tahun.ajaran' => TahunAjaranMiddleware::class,
             'check.basic.setup' => \App\Http\Middleware\CheckBasicSetup::class,
+            'handle.validation.errors' => \App\Http\Middleware\HandleValidationErrors::class,
         ]);
 
         // Konfigurasi CSRF

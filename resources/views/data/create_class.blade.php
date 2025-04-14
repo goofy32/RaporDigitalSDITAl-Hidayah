@@ -74,7 +74,7 @@
         </div>
 
         <!-- Form -->
-        <form id="createClassForm" action="{{ route('kelas.store') }}" method="POST"  @submit="handleSubmit" x-data="formProtection" class="w-full">  <!-- Tambahkan w-full -->
+        <form id="createClassForm" action="{{ route('kelas.store') }}" method="POST" data-needs-protection data-turbo="false" x-data="formProtection">
             @csrf
             <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
 

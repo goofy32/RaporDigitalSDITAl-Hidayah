@@ -72,12 +72,10 @@
         </div>
 
         <!-- Form -->
-        <form id="editClassForm" action="{{ route('kelas.update', $kelas->id) }}" method="POST" @submit="handleSubmit" data-turbo="false" x-data="formProtection" class="space-y-6">
+        <form id="editClassForm" action="{{ route('kelas.update', $kelas->id) }}" method="POST" @submit="handleSubmit" data-turbo="false" data-needs-protection x-data="formProtection" class="space-y-6">
             @csrf
             @method('PUT')
-
-            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
-
+        
             <!-- Nomor Kelas -->
             <div class="mb-4">
                 <label for="nomor_kelas" class="block text-sm font-medium text-gray-700">Nomor Kelas</label>
