@@ -147,51 +147,45 @@
                                 </span>
                             @endif
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="flex space-x">
-                                <!-- Preview Button dengan SVG -->
-                                <button
-                                   onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}')"
-                                   class="text-blue-600 hover:text-blue-800 p-1.5 rounded-full hover:bg-blue-50">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        <td class="px-1 py-4 text-center flex space-x-2">
+                            <!-- Preview Button using detail.png image -->
+                            <button
+                                onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}')"
+                                class="text-blue-600 hover:text-blue-800">
+                                <img src="{{ asset('images/icons/detail.png') }}" alt="Detail Icon" class="w-5 h-5">
+                            </button>
+                            
+                            <!-- Activate/Deactivate Button using edit.png image or custom active/inactive SVG -->
+                            <form action="{{ route('report.template.activate', $template->id) }}" 
+                                method="POST" 
+                                onsubmit="return handleActivateToggle(event)"
+                                class="inline">
+                                @csrf
+                                <button type="submit" class="{{ $template->is_active ? 'text-green-600 hover:text-green-700' : 'text-gray-500 hover:text-gray-600' }}">
+                                    @if($template->is_active)
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" stroke="currentColor" fill="none" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
                                     </svg>
+                                    @else
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" stroke="currentColor" fill="none" />
+                                    </svg>
+                                    @endif
                                 </button>
-                                
-                                <!-- Activate/Deactivate Button dengan SVG -->
-                                <form action="{{ route('report.template.activate', $template->id) }}" 
-                                    method="POST" 
-                                    onsubmit="return handleActivateToggle(event)"
-                                    class="inline">
-                                    @csrf
-                                    <button type="submit" class="{{ $template->is_active ? 'text-green-600 hover:text-green-700' : 'text-gray-500 hover:text-gray-600' }} p-1.5 rounded-full hover:bg-gray-50">
-                                        @if($template->is_active)
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        @else
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        @endif
-                                    </button>
-                                </form>
+                            </form>
 
-                                <!-- Delete Button dengan SVG -->
-                                <form action="{{ route('report.template.destroy', $template->id) }}" 
-                                      method="POST" 
-                                      class="inline"
-                                      onsubmit="return handleDelete(event)">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </form>
-                            </div>
+                            <!-- Delete Button using delete.png image -->
+                            <form action="{{ route('report.template.destroy', $template->id) }}" 
+                                method="POST" 
+                                class="inline"
+                                onsubmit="return handleDelete(event)">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-600 hover:text-red-800">
+                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     @empty

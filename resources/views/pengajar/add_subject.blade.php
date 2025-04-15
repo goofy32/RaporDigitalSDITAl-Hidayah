@@ -72,16 +72,6 @@
 
             <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
 
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-medium text-gray-900">Data Mata Pelajaran</h3>
-                <button type="button" onclick="addSubjectEntry()" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
-                    Tambah Mata Pelajaran
-                </button>
-            </div>
-
             <!-- Multiple Subject Entry Form -->
             <div id="subjectEntriesContainer">
                 <!-- Template for a subject entry -->
@@ -218,6 +208,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="flex justify-end mt-6 mb-2">
+                <button type="button" onclick="addSubjectEntry()" class="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Tambah Mata Pelajaran
+                </button>
             </div>
         </form>
     </div>

@@ -4,7 +4,7 @@
 <div class="p-6 bg-white mt-14" x-data="siswaFilter()">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700">Form Tambah/Edit Data Prestasi</h2>
+        <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Prestasi</h2>
         <div>
             <a href="{{ route('achievement.index') }}" class="px-4 py-2 mr-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 Kembali
@@ -15,20 +15,17 @@
         </div>
     </div>
 
-    <!-- Form Tambah/Edit Data Prestasi -->
+    <!-- Form Tambah Data Prestasi -->
     <form 
         id="prestasiForm" 
-        action="{{ isset($prestasi) ? route('achievement.update', $prestasi->id) : route('achievement.store') }}" 
+        action="{{ route('achievement.store') }}" 
         method="post" 
         class="space-y-6"
         x-data="formProtection"
-         @submit="handleSubmit"
+        @submit="handleSubmit"
+        data-needs-protection
     >
         @csrf
-        @if(isset($prestasi))
-            @method('PUT')
-        @endif
-
         <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
 
         <!-- Kelas -->
@@ -69,7 +66,7 @@
                 <template x-for="siswa in filteredSiswa" :key="siswa.id">
                     <option 
                         :value="siswa.id" 
-                        x-text="siswa.nama"
+                        x-text="(siswa.nis ? siswa.nis + ' - ' : '') + siswa.nama"
                         :selected="siswa.id == selectedSiswaId"
                     ></option>
                 </template>
@@ -86,7 +83,7 @@
                 type="text" 
                 id="jenis_prestasi" 
                 name="jenis_prestasi" 
-                value="{{ isset($prestasi) ? $prestasi->jenis_prestasi : old('jenis_prestasi') }}" 
+                value="{{ old('jenis_prestasi') }}" 
                 required
                 class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
             >
@@ -104,7 +101,7 @@
                 rows="4" 
                 required
                 class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
-            >{{ isset($prestasi) ? $prestasi->keterangan : old('keterangan') }}</textarea>
+            >{{ old('keterangan') }}</textarea>
             @error('keterangan')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror
@@ -113,12 +110,11 @@
 </div>
 
 @push('scripts')
-<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script>
     function siswaFilter() {
         return {
-            selectedKelasId: {{ isset($prestasi) ? $prestasi->kelas_id : 'null' }},
-            selectedSiswaId: {{ isset($prestasi) ? $prestasi->siswa_id : 'null' }},
+            selectedKelasId: null,
+            selectedSiswaId: null,
             allSiswa: @json($siswa),
             
             init() {
@@ -139,6 +135,7 @@
             get filteredSiswa() {
                 if (!this.selectedKelasId) return [];
                 
+                // Filter siswa berdasarkan kelas, dan urutkan berdasarkan nama
                 return this.allSiswa
                     .filter(siswa => siswa.kelas_id == this.selectedKelasId)
                     .sort((a, b) => a.nama.localeCompare(b.nama));

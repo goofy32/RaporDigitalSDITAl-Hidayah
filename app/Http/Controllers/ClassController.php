@@ -47,7 +47,10 @@ class ClassController extends Controller
                     // Pencarian normal untuk term lainnya
                     $q->where('nama_kelas', 'like', '%' . $search . '%')
                       ->orWhere('nomor_kelas', 'like', '%' . $search . '%')
-                      ->orWhere('wali_kelas', 'like', '%' . $search . '%');
+                      ->orWhereHas('guru', function($guruQuery) use ($search) {
+                          $guruQuery->where('nama', 'like', '%' . $search . '%')
+                                   ->where('guru_kelas.is_wali_kelas', true);
+                      });
                 }
             });
         }

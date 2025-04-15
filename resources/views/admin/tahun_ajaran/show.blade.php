@@ -4,14 +4,14 @@
 
 @section('content')
 <div class="p-4 bg-white rounded-lg shadow-md">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 class="text-2xl font-bold text-green-700">Detail Tahun Ajaran</h2>
-        <div class="flex space-x-2">
-            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">
-                <i class="fas fa-edit mr-2"></i> Edit
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                Edit
             </a>
-            <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                <i class="fas fa-arrow-left mr-2"></i> Kembali
+            <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Kembali
             </a>
         </div>
     </div>
@@ -82,9 +82,9 @@
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Statistik</h3>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                <p class="text-2xl font-bold text-blue-700">{{ $totalKelas }}</p>
-                <p class="text-sm text-blue-600">Kelas</p>
+            <div class="bg-green-50 border border-green-100 rounded-lg p-4">
+                <p class="text-2xl font-bold text-green-700">{{ $totalKelas }}</p>
+                <p class="text-sm text-green-600">Kelas</p>
             </div>
             
             <div class="bg-green-50 border border-green-100 rounded-lg p-4">
@@ -92,9 +92,9 @@
                 <p class="text-sm text-green-600">Siswa</p>
             </div>
             
-            <div class="bg-purple-50 border border-purple-100 rounded-lg p-4">
-                <p class="text-2xl font-bold text-purple-700">{{ $totalMataPelajaran }}</p>
-                <p class="text-sm text-purple-600">Mata Pelajaran</p>
+            <div class="bg-green-50 border border-green-100 rounded-lg p-4">
+                <p class="text-2xl font-bold text-green-700">{{ $totalMataPelajaran }}</p>
+                <p class="text-sm text-green-600">Mata Pelajaran</p>
             </div>
         </div>
     </div>
@@ -105,14 +105,12 @@
         
         <div class="flex flex-wrap gap-4">
             <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" 
-                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                <i class="fas fa-edit mr-2"></i>
+                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                 Edit Tahun Ajaran
             </a>
             
             <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
-                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                <i class="fas fa-copy mr-2"></i>
+                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 Salin ke Tahun Ajaran Baru
             </a>
             
@@ -120,9 +118,8 @@
             <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
                 @csrf
                 <button type="submit" 
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                    <i class="fas fa-check-circle mr-2"></i>
                     Aktifkan Tahun Ajaran
                 </button>
             </form>

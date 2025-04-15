@@ -208,6 +208,8 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
     Route::get('/report-history', [ReportController::class, 'history'])->name('admin.report.history');
     Route::get('/report-history/download/{report}', [ReportController::class, 'downloadHistory'])->name('admin.report.history.download');
     
+    Route::get('/report-template/tutorial', [ReportController::class, 'tutorialView'])
+    ->name('report.template.tutorial');
     // Report Format
     Route::prefix('report-template')->name('report.template.')->group(function () {
         // Sample template download route

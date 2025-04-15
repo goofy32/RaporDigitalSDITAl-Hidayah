@@ -18,54 +18,45 @@
     </div>
 
     <!-- Form Edit Data Prestasi -->
-    <form id="updatePrestasiForm" action="{{ route('achievement.update', $prestasi->id) }}"  @submit="handleSubmit" x-data="formProtection" method="post" class="space-y-6">
+    <form id="updatePrestasiForm" action="{{ route('achievement.update', $prestasi->id) }}"  @submit="handleSubmit" x-data="formProtection" method="post" class="space-y-6" data-needs-protection>
         @csrf
         @method('PUT')
 
         <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+        <!-- Menyimpan siswa_id dalam hidden input untuk memastikan datanya terkirim -->
+        <input type="hidden" name="siswa_id" value="{{ $prestasi->siswa_id }}">
 
-        <!-- Kelas -->
+        <!-- Kelas (Read-only) -->
         <div>
-            <label for="kelas" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
-            <select 
-                id="kelas" 
-                name="kelas_id" 
-                x-model="selectedKelasId" 
-                required
-                @change="updateSiswaOptions"
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
+            <label for="kelas_display" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
+            <input 
+                type="text" 
+                id="kelas_display" 
+                value="Kelas {{ $prestasi->kelas->nomor_kelas ?? '' }} - {{ $prestasi->kelas->nama_kelas ?? '' }}"
+                disabled
+                readonly
+                class="block w-full p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
             >
-                <option value="">Pilih Kelas</option>
-                @foreach ($kelas as $item)
-                    <option value="{{ $item->id }}" {{ $prestasi->kelas_id == $item->id ? 'selected' : '' }}>
-                        Kelas {{ $item->nomor_kelas }} - {{ $item->nama_kelas }}
-                    </option>
-                @endforeach
-            </select>
+            <!-- Hidden input to ensure kelas_id is still submitted -->
+            <input type="hidden" name="kelas_id" value="{{ $prestasi->kelas_id }}">
+            <p class="text-sm text-gray-500 mt-1"></p>
             @error('kelas_id')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror
         </div>
 
-        <!-- Nama Siswa -->
+        <!-- Nama Siswa (Read-only) -->
         <div>
-            <label for="nama_siswa" class="block mb-2 text-sm font-medium text-gray-900">Nama Siswa</label>
-            <select 
-                id="nama_siswa" 
-                name="siswa_id" 
-                x-model="selectedSiswaId"
-                required
-                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 text-gray-900"
+            <label for="nama_siswa_display" class="block mb-2 text-sm font-medium text-gray-900">Nama Siswa</label>
+            <input 
+                type="text" 
+                id="nama_siswa_display" 
+                value="{{ $prestasi->siswa->nis ?? '' }} - {{ $prestasi->siswa->nama ?? '' }}"
+                disabled
+                readonly
+                class="block w-full p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
             >
-                <option value="">Pilih Siswa</option>
-                <template x-for="siswa in filteredSiswa" :key="siswa.id">
-                    <option 
-                        :value="siswa.id" 
-                        x-text="siswa.nama"
-                        :selected="siswa.id == {{ $prestasi->siswa_id }}"
-                    ></option>
-                </template>
-            </select>
+            <p class="text-sm text-gray-500 mt-1"></p>
             @error('siswa_id')
             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
             @enderror
@@ -102,33 +93,7 @@
             allSiswa: @json($siswa),
             
             init() {
-                // Pastikan dropdown siswa terisi saat halaman dimuat
-                this.updateSiswaOptions();
-                
-                // Pastikan siswa yang sedang diedit tetap terpilih
-                this.selectedSiswaId = {{ $prestasi->siswa_id }};
-            },
-            
-            updateSiswaOptions() {
-                // Pastikan dropdown siswa diperbarui
-                const filteredSiswa = this.filteredSiswa;
-                
-                // Selalu tampilkan siswa dari kelas yang sedang diedit
-                if (this.selectedSiswaId && !filteredSiswa.some(siswa => siswa.id == this.selectedSiswaId)) {
-                    // Tambahkan siswa yang sedang diedit meskipun tidak sesuai kelas yang dipilih
-                    const currentSiswa = this.allSiswa.find(siswa => siswa.id == this.selectedSiswaId);
-                    if (currentSiswa) {
-                        filteredSiswa.push(currentSiswa);
-                    }
-                }
-            },
-            
-            get filteredSiswa() {
-                if (!this.selectedKelasId) return [];
-                
-                return this.allSiswa
-                    .filter(siswa => siswa.kelas_id == this.selectedKelasId)
-                    .sort((a, b) => a.nama.localeCompare(b.nama));
+                // Tidak perlu melakukan apapun pada edit karena kita tidak bisa mengganti siswa
             }
         }
     }

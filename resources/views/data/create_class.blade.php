@@ -85,7 +85,7 @@
                     <input type="number" name="nomor_kelas" min="1" max="99" value="{{ old('nomor_kelas') }}" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 @error('nomor_kelas') border-red-500 @enderror"
                         placeholder="Masukkan nomor kelas">
-                    <p class="mt-1 text-sm text-gray-500">Masukkan angka antara 1-99</p>
+                    <p class="mt-1 text-sm text-gray-500"></p>
                     @error('nomor_kelas')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror

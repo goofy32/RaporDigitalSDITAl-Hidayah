@@ -40,7 +40,7 @@
                     <input
                         class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
                         id="logo" name="logo" type="file" accept="image/*">
-                    <p class="mt-1 text-sm text-gray-500">SVG, PNG, JPG atau GIF (MAX. 800x400px).</p>
+                    <p class="mt-1 text-sm text-gray-500">PNG, JPG (MAX. 800x400px).</p>
 
                     @error('logo')
                         <p class="text-red-500 text-sm">{{ $message }}</p>

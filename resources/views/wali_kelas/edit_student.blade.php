@@ -73,11 +73,6 @@
                     <select id="agama" name="agama" class="w-full p-2 border rounded @error('agama') border-red-500 @enderror" required>
                         <option value="">Pilih Agama</option>
                         <option value="Islam" {{ (old('agama', $student->agama) == 'Islam') ? 'selected' : '' }}>Islam</option>
-                        <option value="Kristen" {{ (old('agama', $student->agama) == 'Kristen') ? 'selected' : '' }}>Kristen</option>
-                        <option value="Katolik" {{ (old('agama', $student->agama) == 'Katolik') ? 'selected' : '' }}>Katolik</option>
-                        <option value="Hindu" {{ (old('agama', $student->agama) == 'Hindu') ? 'selected' : '' }}>Hindu</option>
-                        <option value="Buddha" {{ (old('agama', $student->agama) == 'Buddha') ? 'selected' : '' }}>Buddha</option>
-                        <option value="Konghucu" {{ (old('agama', $student->agama) == 'Konghucu') ? 'selected' : '' }}>Konghucu</option>
                     </select>
                     @error('agama')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>

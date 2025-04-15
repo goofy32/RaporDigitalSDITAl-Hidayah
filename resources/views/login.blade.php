@@ -30,6 +30,11 @@
             pointer-events: none !important;
             position: absolute !important;
         }
+        
+        /* Specific override for the role select to match the size of other inputs */
+        select {
+            font-size: 14px !important; /* Match other inputs */
+        }
     </style>
 </head>
 
@@ -112,7 +117,7 @@
             <div class="mb-6">
                 <label for="role" class="block mb-2 text-sm font-medium text-gray-700">Role</label>
                 <select name="role" id="role" required
-                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm">
                     <option value="" disabled selected>Pilih Role</option>
                     <option value="admin">Admin</option>
                     <option value="guru">Guru</option>

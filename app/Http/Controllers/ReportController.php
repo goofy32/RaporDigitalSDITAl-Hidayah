@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\ReportTemplate;
 use App\Models\ReportPlaceholder;
 use App\Models\Siswa;
+use App\Models\Notification;
 use App\Services\RaporTemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ProfilSekolah;
@@ -60,7 +61,7 @@ class ReportController extends Controller
             $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
             $variables = $templateProcessor->getVariables();
             
-            // Dapatkan placeholder wajib berdasarkan tipe
+            // Validasi placeholder wajib
             $requiredPlaceholders = \App\Models\ReportPlaceholder::where('is_required', true)
                 ->where(function($query) use ($request) {
                     if ($request->type === 'UTS') {
@@ -72,7 +73,6 @@ class ReportController extends Controller
                 ->pluck('placeholder_key')
                 ->toArray();
             
-            // Periksa apakah semua placeholder wajib ada
             $missingPlaceholders = array_diff($requiredPlaceholders, $variables);
             if (count($missingPlaceholders) > 0) {
                 // Hapus file yang sudah diupload
@@ -92,8 +92,26 @@ class ReportController extends Controller
                 'kelas_id' => $request->kelas_id ?: null, 
                 'is_active' => false, 
                 'tahun_ajaran' => $request->tahun_ajaran,
-                'semester' => $request->semester
+                'semester' => $request->semester,
+                'tahun_ajaran_id' => $request->tahun_ajaran_id
             ]);
+    
+            // Kirim notifikasi ke admin dan wali kelas terkait (jika ada)
+            if ($request->kelas_id) {
+                $kelas = \App\Models\Kelas::find($request->kelas_id);
+                if ($kelas) {
+                    $waliKelasId = $kelas->getWaliKelasId();
+                    if ($waliKelasId) {
+                        $notification = new Notification();
+                        $notification->title = "Template Rapor {$request->type} Baru Tersedia";
+                        $notification->content = "Template rapor {$request->type} baru untuk kelas {$kelas->nama_kelas} telah diunggah. " .
+                                               "Template ini belum aktif. Hubungi admin untuk mengaktifkannya.";
+                        $notification->target = 'specific';
+                        $notification->specific_users = [$waliKelasId];
+                        $notification->save();
+                    }
+                }
+            }
     
             return response()->json([
                 'success' => true,
@@ -126,6 +144,11 @@ class ReportController extends Controller
         $tahunAjarans = TahunAjaran::orderBy('tanggal_mulai', 'desc')->get();
         
         return view('admin.report.history', compact('reports', 'tahunAjarans', 'tahunAjaranId'));
+    }
+
+    public function tutorialView()
+    {
+        return view('admin.report.tutorial');
     }
 
     // Di ReportController.php, tambahkan method ini:
@@ -712,6 +735,23 @@ class ReportController extends Controller
             // Kemudian, aktifkan template yang dipilih
             $template->update(['is_active' => true]);
             
+            // Kirim notifikasi ke wali kelas terkait
+            if ($template->kelas_id) {
+                $kelas = \App\Models\Kelas::find($template->kelas_id);
+                if ($kelas) {
+                    $waliKelasId = $kelas->getWaliKelasId();
+                    if ($waliKelasId) {
+                        $notification = new Notification();
+                        $notification->title = "Template Rapor {$template->type} Diaktifkan";
+                        $notification->content = "Template rapor {$template->type} untuk kelas {$kelas->nama_kelas} telah diaktifkan. " .
+                                               "Anda sekarang dapat menghasilkan rapor untuk siswa-siswa di kelas Anda.";
+                        $notification->target = 'specific';
+                        $notification->specific_users = [$waliKelasId];
+                        $notification->save();
+                    }
+                }
+            }
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Template berhasil diaktifkan',
@@ -730,72 +770,142 @@ class ReportController extends Controller
         }
     }
     
+    /**
+     * Generate batch report for multiple students
+     */
     public function generateBatchReport(Request $request)
     {
         try {
             $siswaIds = $request->input('siswa_ids', []);
             $type = $request->input('type', 'UTS');
+            $tahunAjaranId = session('tahun_ajaran_id');
             
             // Validasi siswa
-            $guru = auth()->user();
+            $guru = auth()->guard('guru')->user();
             $kelas = $guru->kelasWali;
             
             if (!$kelas) {
                 throw new \Exception('Anda tidak memiliki kelas yang diwalikan');
             }
             
-            // Cek template aktif
+            // Validasi siswa IDs - pastikan semua siswa di kelas ini
+            if (empty($siswaIds)) {
+                throw new \Exception('Tidak ada siswa yang dipilih');
+            }
+            
+            // Verifikasi semua siswa valid dan berada di kelas wali
+            $siswaList = Siswa::whereIn('id', $siswaIds)
+                ->where('kelas_id', $kelas->id)
+                ->get();
+                
+            if ($siswaList->count() !== count($siswaIds)) {
+                throw new \Exception('Beberapa siswa tidak ditemukan atau bukan dari kelas Anda');
+            }
+            
+            // Cek template aktif dengan filter tahun ajaran
             $template = ReportTemplate::where([
                 'type' => $type,
-                'is_active' => true
-            ])->firstOrFail();
+                'is_active' => true,
+                'kelas_id' => $kelas->id,
+            ])->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })->first();
             
-            // Array untuk menyimpan siswa yang berhasil digenerate
+            if (!$template) {
+                // Cek template global
+                $template = ReportTemplate::where([
+                    'type' => $type,
+                    'is_active' => true,
+                ])->whereNull('kelas_id')
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })->first();
+                
+                if (!$template) {
+                    throw new \Exception("Tidak ada template {$type} aktif untuk kelas ini di tahun ajaran yang dipilih");
+                }
+            }
+            
+            // Array untuk menyimpan hasil proses
             $successSiswa = [];
             $errorSiswa = [];
             $files = [];
             
-            foreach ($siswaIds as $siswaId) {
-                $siswa = Siswa::find($siswaId);
-                if (!$siswa || $siswa->kelas_id != $kelas->id) {
-                    $errorSiswa[] = "Siswa ID $siswaId tidak ditemukan atau bukan dari kelas Anda";
-                    continue;
-                }
-                
-                // Validasi data siswa
-                $semester = $type === 'UTS' ? 1 : 2;
-                $hasNilai = $siswa->nilais()
-                    ->whereHas('mataPelajaran', function($q) use ($semester) {
-                        $q->where('semester', $semester);
-                    })
-                    ->exists();
-                    
-                $hasAbsensi = $siswa->absensi()
-                    ->where('semester', $semester)
-                    ->exists();
-                    
-                if (!$hasNilai || !$hasAbsensi) {
-                    $errorSiswa[] = "Siswa {$siswa->nama} tidak memiliki data nilai atau kehadiran lengkap";
-                    continue;
-                }
-                
-                // Generate rapor
+            // Lakukan proses generate secara batched untuk menghindari timeout
+            foreach ($siswaList as $index => $siswa) {
                 try {
-                    $processor = new RaporTemplateProcessor($template, $siswa, $type);
+                    // Validasi data siswa lengkap
+                    $semester = $type === 'UTS' ? 1 : 2;
+                    
+                    // Cek nilai dengan filter tahun ajaran
+                    $hasNilai = $siswa->nilais()
+                        ->whereHas('mataPelajaran', function($q) use ($semester) {
+                            $q->where('semester', $semester);
+                        })
+                        ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                        })
+                        ->where('nilai_akhir_rapor', '!=', null)
+                        ->exists();
+                        
+                    // Cek kehadiran untuk semester yang sesuai dengan filter tahun ajaran
+                    $hasAbsensi = $siswa->absensi()
+                        ->where('semester', $semester)
+                        ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                        })
+                        ->exists();
+                        
+                    if (!$hasNilai || !$hasAbsensi) {
+                        throw new \Exception("Data nilai atau kehadiran belum lengkap");
+                    }
+                    
+                    // Generate rapor
+                    $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
                     $result = $processor->generate();
+                    
                     $files[] = [
                         'path' => storage_path('app/public/' . $result['path']),
                         'name' => $result['filename']
                     ];
-                    $successSiswa[] = $siswa->nama;
+                    
+                    // Simpan history generate
+                    \App\Models\ReportGeneration::create([
+                        'siswa_id' => $siswa->id,
+                        'kelas_id' => $siswa->kelas_id,
+                        'report_template_id' => $template->id,
+                        'generated_file' => $result['path'],
+                        'type' => $type,
+                        'tahun_ajaran' => $template->tahun_ajaran,
+                        'semester' => $template->semester,
+                        'tahun_ajaran_id' => $tahunAjaranId,
+                        'generated_at' => now(),
+                        'generated_by' => $guru->id
+                    ]);
+                    
+                    // Update tracking
+                    $successSiswa[] = [
+                        'id' => $siswa->id,
+                        'name' => $siswa->nama,
+                        'filename' => $result['filename']
+                    ];
+                    
                 } catch (\Exception $e) {
-                    \Log::error("Error generating report for siswa ID $siswaId: " . $e->getMessage());
-                    $errorSiswa[] = "Gagal generate rapor untuk {$siswa->nama}: " . $e->getMessage();
+                    // Log error
+                    \Log::error("Error generating report for siswa {$siswa->id} ({$siswa->nama}): " . $e->getMessage());
+                    
+                    // Update tracking
+                    $errorSiswa[] = [
+                        'id' => $siswa->id,
+                        'name' => $siswa->nama,
+                        'error' => $e->getMessage()
+                    ];
                 }
             }
             
+            // Cek jika tidak ada rapor yang berhasil dibuat
             if (empty($files)) {
-                throw new \Exception('Tidak ada rapor yang dapat digenerate. ' . implode("\n", $errorSiswa));
+                throw new \Exception('Tidak ada rapor yang dapat digenerate. ' . implode("\n", array_column($errorSiswa, 'error')));
             }
             
             // Buat zip file
@@ -809,6 +919,41 @@ class ReportController extends Controller
             
             $zip = new \ZipArchive();
             if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+                // Tambahkan report summary
+                $summaryContent = "# Laporan Generate Batch Rapor\n\n";
+                $summaryContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
+                $summaryContent .= "Kelas: {$kelas->nama_kelas}\n";
+                $summaryContent .= "Tipe Rapor: $type\n";
+                $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n\n";
+                
+                $summaryContent .= "## Ringkasan\n";
+                $summaryContent .= "Total Siswa: " . count($siswaIds) . "\n";
+                $summaryContent .= "Berhasil: " . count($successSiswa) . "\n";
+                $summaryContent .= "Gagal: " . count($errorSiswa) . "\n\n";
+                
+                if (!empty($successSiswa)) {
+                    $summaryContent .= "## Siswa Berhasil\n";
+                    foreach ($successSiswa as $index => $siswa) {
+                        $summaryContent .= ($index + 1) . ". {$siswa['name']} - {$siswa['filename']}\n";
+                    }
+                    $summaryContent .= "\n";
+                }
+                
+                if (!empty($errorSiswa)) {
+                    $summaryContent .= "## Siswa Gagal\n";
+                    foreach ($errorSiswa as $index => $siswa) {
+                        $summaryContent .= ($index + 1) . ". {$siswa['name']} - {$siswa['error']}\n";
+                    }
+                }
+                
+                // Tulis file summary
+                $summaryPath = storage_path("app/public/generated/summary_{$kelas->nama_kelas}_{$type}_" . time() . ".md");
+                file_put_contents($summaryPath, $summaryContent);
+                
+                // Tambahkan file summary ke zip
+                $zip->addFile($summaryPath, "RINGKASAN_RAPOR.md");
+                
+                // Tambahkan semua file ke zip
                 foreach ($files as $file) {
                     if (file_exists($file['path'])) {
                         $zip->addFile($file['path'], $file['name']);
@@ -816,46 +961,50 @@ class ReportController extends Controller
                         \Log::warning("File not found: {$file['path']}");
                     }
                 }
+                
                 $zip->close();
                 
-                // Hapus file individual setelah di-zip
+                // Hapus file individual dan summary setelah di-zip
                 foreach ($files as $file) {
                     if (file_exists($file['path'])) {
                         @unlink($file['path']);
                     }
                 }
+                @unlink($summaryPath);
                 
-                // Jika ada error, tambahkan file log
-                if (!empty($errorSiswa)) {
-                    $logContent = "Laporan Error Batch Rapor\n";
-                    $logContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
-                    $logContent .= "Kelas: {$kelas->nama_kelas}\n";
-                    $logContent .= "Tipe: $type\n\n";
-                    $logContent .= "Siswa berhasil (" . count($successSiswa) . "):\n";
-                    $logContent .= implode("\n", $successSiswa) . "\n\n";
-                    $logContent .= "Siswa gagal (" . count($errorSiswa) . "):\n";
-                    $logContent .= implode("\n", $errorSiswa);
-                    
-                    $logFileName = "error_log_batch_rapor_{$kelas->nama_kelas}_{$type}_" . time() . ".txt";
-                    $logFilePath = storage_path("app/public/generated/{$logFileName}");
-                    file_put_contents($logFilePath, $logContent);
-                    
-                    // Tambahkan file log ke zip
-                    $zip->open($zipPath);
-                    $zip->addFile($logFilePath, $logFileName);
-                    $zip->close();
-                    
-                    // Hapus file log setelah disimpan dalam zip
-                    @unlink($logFilePath);
-                }
+                // Buat notifikasi sukses untuk wali kelas
+                $notification = new Notification();
+                $notification->title = "Batch Rapor {$type} Kelas {$kelas->nama_kelas} Siap Diunduh";
+                $notification->content = "Generate batch rapor {$type} untuk kelas {$kelas->nama_kelas} telah selesai. " . 
+                                "Berhasil: " . count($successSiswa) . " siswa, " . 
+                                "Gagal: " . count($errorSiswa) . " siswa. " .
+                                "Silahkan unduh file ZIP dari halaman history rapor.";
+                $notification->target = 'specific';
+                $notification->specific_users = [$guru->id];
+                $notification->save();
                 
+                // Return download response
                 return response()->download($zipPath)->deleteFileAfterSend(true);
             }
             
             throw new \Exception('Gagal membuat file zip');
             
         } catch (\Exception $e) {
-            \Log::error("Batch generate report error: " . $e->getMessage());
+            \Log::error("Batch generate report error: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Buat notifikasi error khusus untuk wali kelas
+            if (isset($guru) && $guru) {
+                $notification = new Notification();
+                $notification->title = "Gagal Generate Batch Rapor {$type}";
+                $notification->content = "Terjadi kesalahan saat membuat batch rapor {$type}: " . $e->getMessage() . 
+                                        ". Silahkan coba lagi atau hubungi admin jika masalah berlanjut.";
+                $notification->target = 'specific';
+                $notification->specific_users = [$guru->id];
+                $notification->save();
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()

@@ -43,7 +43,9 @@ class AchievementController extends Controller
                     $q->where('jenis_prestasi', 'LIKE', "%{$search}%")
                       ->orWhere('keterangan', 'LIKE', "%{$search}%")
                       ->orWhereHas('siswa', function($siswaQ) use ($search) {
-                          $siswaQ->where('nama', 'LIKE', "%{$search}%");
+                          $siswaQ->where('nama', 'LIKE', "%{$search}%")
+                                ->orWhere('nis', 'LIKE', "%{$search}%")
+                                ->orWhere('nisn', 'LIKE', "%{$search}%");
                       })
                       ->orWhereHas('kelas', function($kelasQ) use ($search) {
                           $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
@@ -56,6 +58,7 @@ class AchievementController extends Controller
         $prestasis = $query->paginate(10);
         return view('admin.achievement', compact('prestasis'));
     }
+
     // Menampilkan form tambah prestasi
     public function create()
     {
@@ -79,6 +82,7 @@ class AchievementController extends Controller
             
         return view('data.add_prestasi', compact('kelas', 'siswa'));
     }
+
     // Menyimpan data prestasi
     public function store(Request $request)
     {
@@ -101,7 +105,7 @@ class AchievementController extends Controller
     public function edit($id)
     {
         $tahunAjaranId = session('tahun_ajaran_id');
-        $prestasi = Prestasi::findOrFail($id);
+        $prestasi = Prestasi::with('siswa')->findOrFail($id);
         
         $kelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
@@ -110,7 +114,7 @@ class AchievementController extends Controller
             ->orderBy('nama_kelas')
             ->get();
         
-        // Ubah menjadi mengambil siswa berdasarkan tahun ajaran
+        // Ambil semua siswa untuk referensi tapi siswa tidak akan bisa diubah di form edit
         $siswa = Siswa::with('kelas')
             ->whereHas('kelas', function($query) use ($tahunAjaranId) {
                 if ($tahunAjaranId) {
@@ -137,10 +141,26 @@ class AchievementController extends Controller
         $validated['tahun_ajaran_id'] = $tahunAjaranId;
         
         $prestasi = Prestasi::findOrFail($id);
-        $prestasi->update($validated);
+        
+        // Pastikan siswa dan kelas tidak berubah
+        if ($prestasi->siswa_id != $validated['siswa_id']) {
+            return redirect()->back()->with('error', 'Siswa tidak boleh diubah saat mengedit prestasi.');
+        }
+        
+        if ($prestasi->kelas_id != $validated['kelas_id']) {
+            return redirect()->back()->with('error', 'Kelas tidak boleh diubah saat mengedit prestasi.');
+        }
+        
+        // Hanya update field jenis_prestasi dan keterangan
+        $prestasi->update([
+            'jenis_prestasi' => $validated['jenis_prestasi'],
+            'keterangan' => $validated['keterangan'],
+            'tahun_ajaran_id' => $tahunAjaranId
+        ]);
     
         return redirect()->route('achievement.index')->with('success', 'Data Prestasi berhasil diperbarui');
     }
+    
     // Menghapus data prestasi
     public function destroy($id)
     {

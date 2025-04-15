@@ -35,7 +35,7 @@
                             maxlength="10" 
                             pattern="[0-9]*"
                             oninput="numbersOnly(this); maxLength(this, 10);"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nis') border-red-500 @enderror" 
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                             value="{{ old('nis') }}" required>
                             @error('nis')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -49,7 +49,7 @@
                                 maxlength="10" 
                                 pattern="[0-9]*"
                                 oninput="numbersOnly(this); maxLength(this, 10);"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nisn') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 value="{{ old('nisn') }}" required>
                             @error('nisn')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -61,7 +61,7 @@
                             <label for="nama" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span class="text-red-500">*</span></label>
                             <input type="text" id="nama" name="nama" 
                                 oninput="lettersOnly(this);"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nama') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 value="{{ old('nama') }}" required>
                             @error('nama')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -72,7 +72,7 @@
                         <div>
                             <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir <span class="text-red-500">*</span></label>
                             <input type="date" id="tanggal_lahir" name="tanggal_lahir" 
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('tanggal_lahir') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 value="{{ old('tanggal_lahir') }}" required>
                             @error('tanggal_lahir')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -83,7 +83,7 @@
                         <div>
                             <label for="jenis_kelamin" class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin <span class="text-red-500">*</span></label>
                             <select id="jenis_kelamin" name="jenis_kelamin" 
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('jenis_kelamin') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 required>
                                 <option value="">Pilih Jenis Kelamin</option>
                                 <option value="Laki-laki" {{ old('jenis_kelamin') == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
@@ -98,15 +98,15 @@
                         <div>
                             <label for="agama" class="block text-sm font-medium text-gray-700 mb-1">Agama <span class="text-red-500">*</span></label>
                             <select id="agama" name="agama" 
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('agama') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 required>
                                 <option value="">Pilih Agama</option>
                                 <option value="Islam" {{ old('agama') == 'Islam' ? 'selected' : '' }}>Islam</option>
-                                <option value="Kristen" {{ old('agama') == 'Kristen' ? 'selected' : '' }}>Kristen</option>
-                                <option value="Katolik" {{ old('agama') == 'Katolik' ? 'selected' : '' }}>Katolik</option>
-                                <option value="Hindu" {{ old('agama') == 'Hindu' ? 'selected' : '' }}>Hindu</option>
-                                <option value="Buddha" {{ old('agama') == 'Buddha' ? 'selected' : '' }}>Buddha</option>
-                                <option value="Konghucu" {{ old('agama') == 'Konghucu' ? 'selected' : '' }}>Konghucu</option>
+                                <!-- <option value="Kristen" {{ old('agama') == 'Kristen' ? 'selected' : '' }}>Kristen</option>-->
+                                <!-- <option value="Katolik" {{ old('agama') == 'Katolik' ? 'selected' : '' }}>Katolik</option>-->
+                                <!-- <option value="Hindu" {{ old('agama') == 'Hindu' ? 'selected' : '' }}>Hindu</option>-->
+                                <!-- <option value="Buddha" {{ old('agama') == 'Buddha' ? 'selected' : '' }}>Buddha</option>-->
+                                <!-- <option value="Konghucu" {{ old('agama') == 'Konghucu' ? 'selected' : '' }}>Konghucu</option>-->
                             </select>
                             @error('agama')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -117,7 +117,7 @@
                         <div>
                             <label for="alamat" class="block text-sm font-medium text-gray-700 mb-1">Alamat <span class="text-red-500">*</span></label>
                             <textarea id="alamat" name="alamat" rows="3" 
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('alamat') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 required>{{ old('alamat') }}</textarea>
                             @error('alamat')
                                 <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -128,7 +128,7 @@
                         <div>
                             <label for="kelas_id" class="block text-sm font-medium text-gray-700 mb-1">Kelas <span class="text-red-500">*</span></label>
                             <select id="kelas_id" name="kelas_id" 
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('kelas_id') border-red-500 @enderror" 
+                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                 required>
                                 <option value="">Pilih Kelas</option>
                                 @foreach($kelas as $k)
@@ -175,7 +175,7 @@
                             <div>
                                 <label for="nama_ayah" class="block text-sm font-medium text-gray-700 mb-1">Nama Ayah <span class="text-red-500">*</span></label>
                                 <input type="text" id="nama_ayah" name="nama_ayah" 
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nama_ayah') border-red-500 @enderror" 
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                     value="{{ old('nama_ayah') }}" required>
                                 @error('nama_ayah')
                                     <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -194,7 +194,7 @@
                             <div>
                                 <label for="nama_ibu" class="block text-sm font-medium text-gray-700 mb-1">Nama Ibu <span class="text-red-500">*</span></label>
                                 <input type="text" id="nama_ibu" name="nama_ibu" 
-                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 @error('nama_ibu') border-red-500 @enderror" 
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 required-field" 
                                     value="{{ old('nama_ibu') }}" required>
                                 @error('nama_ibu')
                                     <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
@@ -245,23 +245,62 @@
    </div>
 </div>
 
+<style>
+    /* Add custom styles for required fields */
+    .required-field:invalid {
+        border-color: rgb(239, 68, 68) !important;
+    }
+    
+    /* Style for empty required fields on page load */
+    .required-field.empty {
+        border-color: rgb(239, 68, 68) !important;
+    }
+</style>
+
 <script>
+// Global validation functions
+function numbersOnly(input) {
+    input.value = input.value.replace(/[^0-9]/g, '');
+}
+
+function lettersOnly(input) {
+    input.value = input.value.replace(/[^a-zA-Z\s]/g, '');
+}
+
+function maxLength(input, max) {
+    if (input.value.length > max) {
+        input.value = input.value.slice(0, max);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Fungsi validasi
-    function numbersOnly(input) {
-        input.value = input.value.replace(/[^0-9]/g, '');
-    }
-
-    function lettersOnly(input) {
-        input.value = input.value.replace(/[^a-zA-Z\s]/g, '');
-    }
-
-    function maxLength(input, max) {
-        if (input.value.length > max) {
-            input.value = input.value.slice(0, max);
+    // Mark required fields with red border initially if empty
+    const requiredFields = document.querySelectorAll('.required-field');
+    
+    requiredFields.forEach(field => {
+        // Initial check - add red border if empty
+        if (!field.value.trim()) {
+            field.classList.add('empty');
         }
-    }
+        
+        // Listen for changes and update styling
+        field.addEventListener('input', function() {
+            if (!this.value.trim()) {
+                this.classList.add('empty');
+            } else {
+                this.classList.remove('empty');
+            }
+        });
+        
+        // Listen for blur events
+        field.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                this.classList.add('empty');
+            } else {
+                this.classList.remove('empty');
+            }
+        });
+    });
 
     // NIS dan NISN validasi
     const nisInput = document.getElementById('nis');
@@ -289,10 +328,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Form validation
     document.querySelector('form').addEventListener('submit', function(e) {
         const nis = document.getElementById('nis').value;
         const nisn = document.getElementById('nisn').value;
+        
+        // Check all required fields
+        let hasError = false;
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('empty');
+                hasError = true;
+            }
+        });
+        
+        if (hasError) {
+            e.preventDefault();
+            alert('Semua field yang bertanda (*) wajib diisi!');
+            return false;
+        }
 
+        // Specific validations
         if (nis.length < 5) { // Minimal 5 digit
             e.preventDefault();
             alert('NIS harus minimal 5 digit!');
@@ -342,6 +398,5 @@ document.getElementById('photo').onchange = function(evt) {
         }
     }
 };
-
 </script>
 @endsection
