@@ -17,6 +17,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TahunAjaranController;
+use App\Http\Controllers\GeminiChatController;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
 
@@ -98,6 +99,9 @@ Route::get('/admin/check-password-format/{id}', function($id) {
 
 // Admin Routes - Guard: web, Role: admin only
 Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
+
+    Route::post('/gemini/send-message', [GeminiChatController::class, 'sendMessage'])->name('gemini.send');
+    Route::get('/gemini/history', [GeminiChatController::class, 'getHistory'])->name('gemini.history');
 
     Route::get('/set-tahun-ajaran/{id}', function($id) {
         session(['tahun_ajaran_id' => $id]);
