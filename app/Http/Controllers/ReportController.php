@@ -42,13 +42,22 @@ class ReportController extends Controller
      */
     public function upload(Request $request)
     {
-        $request->validate([
+        // Validasi permintaan
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'template' => 'required|file|mimes:docx',
             'type' => 'required|in:UTS,UAS',
-            'kelas_id' => 'nullable|exists:kelas,id',
+            'kelas_ids' => 'nullable|array',
+            'kelas_ids.*' => 'exists:kelas,id',
             'tahun_ajaran' => 'required',
             'semester' => 'required|in:1,2'
         ]);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal: ' . implode(', ', $validator->errors()->all())
+            ], 422);
+        }
     
         try {
             // Proses upload file
@@ -61,7 +70,7 @@ class ReportController extends Controller
             $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
             $variables = $templateProcessor->getVariables();
             
-            // Validasi placeholder wajib
+            // Dapatkan placeholder wajib berdasarkan tipe
             $requiredPlaceholders = \App\Models\ReportPlaceholder::where('is_required', true)
                 ->where(function($query) use ($request) {
                     if ($request->type === 'UTS') {
@@ -73,6 +82,7 @@ class ReportController extends Controller
                 ->pluck('placeholder_key')
                 ->toArray();
             
+            // Periksa apakah semua placeholder wajib ada
             $missingPlaceholders = array_diff($requiredPlaceholders, $variables);
             if (count($missingPlaceholders) > 0) {
                 // Hapus file yang sudah diupload
@@ -84,44 +94,37 @@ class ReportController extends Controller
                 ], 422);
             }
             
-            // Simpan data dengan kelas_id
+            // Buat template utama
             $template = ReportTemplate::create([
                 'filename' => $fileName,
                 'path' => $filePath,
                 'type' => $request->type,
-                'kelas_id' => $request->kelas_id ?: null, 
+                'kelas_id' => null, // Kosongkan kelas_id karena kita akan menggunakan relasi many-to-many
                 'is_active' => false, 
                 'tahun_ajaran' => $request->tahun_ajaran,
                 'semester' => $request->semester,
                 'tahun_ajaran_id' => $request->tahun_ajaran_id
             ]);
     
-            // Kirim notifikasi ke admin dan wali kelas terkait (jika ada)
-            if ($request->kelas_id) {
-                $kelas = \App\Models\Kelas::find($request->kelas_id);
-                if ($kelas) {
-                    $waliKelasId = $kelas->getWaliKelasId();
-                    if ($waliKelasId) {
-                        $notification = new Notification();
-                        $notification->title = "Template Rapor {$request->type} Baru Tersedia";
-                        $notification->content = "Template rapor {$request->type} baru untuk kelas {$kelas->nama_kelas} telah diunggah. " .
-                                               "Template ini belum aktif. Hubungi admin untuk mengaktifkannya.";
-                        $notification->target = 'specific';
-                        $notification->specific_users = [$waliKelasId];
-                        $notification->save();
-                    }
-                }
+            // Tambahkan relasi ke kelas yang dipilih
+            $kelasIds = $request->input('kelas_ids', []);
+            if (!empty($kelasIds)) {
+                $template->kelasList()->attach($kelasIds);
             }
     
             return response()->json([
                 'success' => true,
-                'message' => 'Template berhasil diunggah'
+                'message' => 'Template berhasil diunggah' . (!empty($kelasIds) ? ' untuk ' . count($kelasIds) . ' kelas' : ''),
+                'template' => $template
             ]);
         } catch (\Exception $e) {
             // Jika terjadi error saat memproses template, hapus file yang sudah diupload
             if (isset($filePath) && \Storage::disk('public')->exists($filePath)) {
                 \Storage::disk('public')->delete($filePath);
             }
+            
+            \Log::error('Error uploading template: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             
             return response()->json([
                 'success' => false,
@@ -727,30 +730,12 @@ class ReportController extends Controller
             }
     
             // Jika belum aktif, maka akan diaktifkan
-            // Pertama, nonaktifkan semua template dengan tipe dan kelas yang sama
+            // Nonaktifkan semua template dengan tipe yang sama
             ReportTemplate::where('type', $template->type)
-                ->where('kelas_id', $template->kelas_id)
                 ->update(['is_active' => false]);
             
             // Kemudian, aktifkan template yang dipilih
             $template->update(['is_active' => true]);
-            
-            // Kirim notifikasi ke wali kelas terkait
-            if ($template->kelas_id) {
-                $kelas = \App\Models\Kelas::find($template->kelas_id);
-                if ($kelas) {
-                    $waliKelasId = $kelas->getWaliKelasId();
-                    if ($waliKelasId) {
-                        $notification = new Notification();
-                        $notification->title = "Template Rapor {$template->type} Diaktifkan";
-                        $notification->content = "Template rapor {$template->type} untuk kelas {$kelas->nama_kelas} telah diaktifkan. " .
-                                               "Anda sekarang dapat menghasilkan rapor untuk siswa-siswa di kelas Anda.";
-                        $notification->target = 'specific';
-                        $notification->specific_users = [$waliKelasId];
-                        $notification->save();
-                    }
-                }
-            }
             
             return response()->json([
                 'success' => true,
@@ -1016,16 +1001,29 @@ class ReportController extends Controller
     {
         $tahunAjaranId = session('tahun_ajaran_id');
         
-        // First look for class-specific template
+        // First look for class-specific template using the many-to-many relationship
         $template = ReportTemplate::where('type', $type)
-            ->where('kelas_id', $siswa->kelas_id)
             ->where('is_active', true)
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
             })
+            ->whereHas('kelasList', function($query) use ($siswa) {
+                $query->where('kelas_id', $siswa->kelas_id);
+            })
             ->first();
         
-        // If not found, look for global template
+        // If not found, try the old relationship
+        if (!$template) {
+            $template = ReportTemplate::where('type', $type)
+                ->where('kelas_id', $siswa->kelas_id)
+                ->where('is_active', true)
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->first();
+        }
+
+        // If still not found, look for global template
         if (!$template) {
             $template = ReportTemplate::where('type', $type)
                 ->whereNull('kelas_id')
@@ -1034,6 +1032,40 @@ class ReportController extends Controller
                     return $query->where('tahun_ajaran_id', $tahunAjaranId);
                 })
                 ->first();
+        }
+        
+        return $template;
+    }
+    
+    public static function getActiveTemplate($type, $kelasId)
+    {
+        // Cari template spesifik untuk kelas di tahun ajaran aktif
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        
+        // First try with the new many-to-many relationship
+        $query = ReportTemplate::where('type', $type)
+            ->where('is_active', true)
+            ->whereHas('kelasList', function($q) use ($kelasId) {
+                $q->where('kelas_id', $kelasId);
+            });
+        
+        if ($tahunAjaranAktif) {
+            $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
+        }
+        
+        $template = $query->first();
+        
+        // If not found, try with old relationship for backward compatibility
+        if (!$template) {
+            $query = ReportTemplate::where('type', $type)
+                ->where('kelas_id', $kelasId)
+                ->where('is_active', true);
+            
+            if ($tahunAjaranAktif) {
+                $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
+            }
+            
+            $template = $query->first();
         }
         
         return $template;

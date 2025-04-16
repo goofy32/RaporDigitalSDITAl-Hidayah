@@ -19,6 +19,97 @@ document.addEventListener('turbo:before-render', () => {
     }
 });
 
+Alpine.data('geminiChat', () => ({
+    isOpen: false,
+    message: '',
+    chats: [],
+    isLoading: false,
+    error: null,
+    
+    init() {
+        this.loadHistory();
+    },
+    
+    toggleChat() {
+        this.isOpen = !this.isOpen;
+        if (this.isOpen && this.chats.length === 0) {
+            this.loadHistory();
+        }
+    },
+    
+    async loadHistory() {
+        try {
+            const response = await fetch('/admin/gemini/history');
+            const data = await response.json();
+            
+            if (data.success) {
+                this.chats = data.chats.reverse(); // Reverse agar yang terbaru ada di bawah
+            }
+        } catch (error) {
+            console.error('Error loading chat history:', error);
+            this.error = 'Gagal memuat riwayat chat';
+        }
+    },
+    
+    async sendMessage() {
+        if (!this.message.trim()) return;
+        
+        const userMessage = this.message;
+        this.message = '';
+        this.isLoading = true;
+        
+        // Tambahkan pesan user ke chat list
+        this.chats.push({
+            message: userMessage,
+            response: '...',
+            created_at: new Date().toISOString()
+        });
+        
+        // Scroll ke bawah
+        this.$nextTick(() => {
+            const chatContainer = this.$refs.chatContainer;
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+        
+        try {
+            const response = await fetch('/admin/gemini/send-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ message: userMessage })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update chat terakhir dengan response
+                this.chats[this.chats.length - 1].response = data.response;
+            } else {
+                // Update chat terakhir dengan pesan error
+                this.chats[this.chats.length - 1].response = 'Maaf, terjadi kesalahan saat memproses pesan Anda.';
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            // Update chat terakhir dengan pesan error
+            this.chats[this.chats.length - 1].response = 'Maaf, terjadi kesalahan saat mengirim pesan.';
+        } finally {
+            this.isLoading = false;
+            
+            // Scroll ke bawah lagi setelah respons
+            this.$nextTick(() => {
+                const chatContainer = this.$refs.chatContainer;
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            });
+        }
+    }
+}));
+
 document.addEventListener('turbo:request-timeout', () => {
     Alpine.store('pageLoading').stopLoading();
     console.warn('Turbo request timed out');
@@ -162,6 +253,7 @@ document.addEventListener('turbo:render', () => {
         window.Alpine.initTree(document.body);
     }
 });
+
 
 
 document.addEventListener('alpine:init', () => {
@@ -674,7 +766,7 @@ Alpine.store('notification', {
     loading: false,
     refreshInterval: null,
 
-    // Ambil semua notifikasi
+    // Fetch all notifications
     async fetchNotifications() {
         if (this.loading) return;
         
@@ -683,7 +775,7 @@ Alpine.store('notification', {
             const path = window.location.pathname;
             let url;
             
-            // Perbaiki URL sesuai dengan routes yang baru
+            // Fix URL based on the new routes
             if (path.includes('/admin/')) {
                 url = '/admin/information/list';
             } else if (path.includes('/pengajar/')) {
@@ -694,13 +786,21 @@ Alpine.store('notification', {
             
             if (!url) return;
 
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Network response was not ok');
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.status}`);
+            }
             
             const data = await response.json();
             this.items = data.items || [];
             
-            // Log untuk debugging
+            // Log for debugging
             console.log('Fetched notifications:', this.items);
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -709,7 +809,7 @@ Alpine.store('notification', {
         }
     },
 
-    // Perbaiki URL untuk markAsRead
+    // Fix URL for markAsRead
     async markAsRead(notificationId) {
         try {
             const path = window.location.pathname;
@@ -727,11 +827,14 @@ Alpine.store('notification', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             });
             
             if (response.ok) {
+                // Update local state
                 this.items = this.items.map(item => {
                     if (item.id === notificationId) {
                         return { ...item, is_read: true };
@@ -740,16 +843,30 @@ Alpine.store('notification', {
                 });
                 
                 await this.fetchUnreadCount();
+                return true;
             }
+            
+            return false;
         } catch (error) {
             console.error('Error marking notification as read:', error);
+            return false;
         }
     },
 
-    // Ambil jumlah notifikasi yang belum dibaca
+    // Get unread notifications count
     async fetchUnreadCount() {
         try {
-            const response = await fetch('/notifications/unread-count');
+            const response = await fetch('/notifications/unread-count', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.status}`);
+            }
+            
             const data = await response.json();
             this.unreadCount = data.count;
             return data.count;
@@ -759,21 +876,29 @@ Alpine.store('notification', {
         }
     },
 
-    // Tambah notifikasi baru (untuk admin)
+    // Add new notification (for admin)
     async addNotification(notification) {
         try {
             const response = await fetch('/admin/information', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify(notification)
             });
             
-            if (response.ok) {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to add notification');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
                 await this.fetchNotifications();
-                await this.fetchUnreadCount();
                 return true;
             }
             return false;
@@ -783,20 +908,28 @@ Alpine.store('notification', {
         }
     },
 
-    // Hapus notifikasi (untuk admin)
+    // Delete notification (for admin)
     async deleteNotification(id) {
         try {
             const response = await fetch(`/admin/information/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             });
 
-            if (response.ok) {
+            if (!response.ok) {
+                throw new Error('Failed to delete notification');
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Update local state by removing the deleted item
                 this.items = this.items.filter(item => item.id !== id);
-                await this.fetchUnreadCount();
                 return true;
             }
             return false;
@@ -806,16 +939,16 @@ Alpine.store('notification', {
         }
     },
 
-    // Mulai interval pembaruan otomatis
+    // Start auto-refresh interval
     startAutoRefresh() {
-        this.stopAutoRefresh(); // Hentikan interval yang mungkin sudah berjalan
+        this.stopAutoRefresh(); // Stop any existing interval
         this.refreshInterval = setInterval(() => {
             this.fetchNotifications();
             this.fetchUnreadCount();
-        }, 30000); // Update setiap 30 detik
+        }, 30000); // Update every 30 seconds
     },
 
-    // Hentikan interval pembaruan otomatis
+    // Stop auto-refresh interval
     stopAutoRefresh() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
@@ -902,13 +1035,13 @@ Alpine.data('notificationHandler', () => ({
     isOpen: false,
     errorMessage: '',
     successMessage: '',
+    isSubmitting: false,
+    guruSearchTerm: '',
     notificationForm: {
         title: '',
-        sender_id: '',
         content: '',
         target: '',
         specific_users: [],
-        showGuruDropdown: false
     },
 
     init() {
@@ -917,7 +1050,7 @@ Alpine.data('notificationHandler', () => ({
         this.$store.notification.startAutoRefresh();
     },
 
-    // Fungsi untuk mendapatkan teks target berdasarkan data notifikasi
+    // Get target text based on notification data
     getTargetText(item) {
         if (!item.target) return 'Semua';
 
@@ -929,16 +1062,18 @@ Alpine.data('notificationHandler', () => ({
             case 'wali_kelas':
                 return 'Semua Wali Kelas';
             case 'specific':
-                // Jika ada data pengguna spesifik
-                if (item.specific_users && item.specific_users.length === 1) {
-                    // Coba cari guru berdasarkan ID
-                    const guruId = item.specific_users[0];
-                    const selectedOption = document.querySelector(`select[x-model="notificationForm.sender_id"] option[value="${guruId}"]`);
-                    
-                    if (selectedOption) {
-                        return selectedOption.textContent.trim();
+                // If specific user(s) data is present
+                if (item.specific_users && item.specific_users.length > 0) {
+                    // If target_display is provided by the server
+                    if (item.target_display) {
+                        return item.target_display;
                     }
-                    return 'Guru Tertentu';
+                    
+                    // Otherwise, show generic count
+                    if (item.specific_users.length === 1) {
+                        return 'Guru Tertentu (1)';
+                    }
+                    return item.specific_users.length + ' Guru Tertentu';
                 }
                 return 'Guru Tertentu';
             default:
@@ -946,67 +1081,75 @@ Alpine.data('notificationHandler', () => ({
         }
     },
 
-    updateFromSenderSelection() {
-        if (this.notificationForm.sender_id) {
-            // Dapatkan elemen option yang dipilih
-            const selectedOption = document.querySelector(`select[x-model="notificationForm.sender_id"] option[value="${this.notificationForm.sender_id}"]`);
-            
-            if (selectedOption) {
-                // Set title berdasarkan nama guru
-                const guruNama = selectedOption.getAttribute('data-nama');
-                this.notificationForm.title = guruNama || selectedOption.textContent.trim();
-                
-                // Set target ke "specific" (guru tertentu)
-                this.notificationForm.target = 'specific';
-                this.notificationForm.specific_users = [this.notificationForm.sender_id];
-                
-                // Tampilkan label Judul alih-alih Nama Anda
-                this.notificationForm.showGuruDropdown = true;
-            }
-        } else {
-            // Reset kembali ke label Nama Anda jika dropdown kosong
-            this.notificationForm.showGuruDropdown = false;
-        }
-    },
-
     async submitNotification() {
-        try {
-            // Jika dropdown guru dipilih, pastikan target dan specific_users sudah benar
-            if (this.notificationForm.sender_id) {
-                this.notificationForm.target = 'specific';
-                this.notificationForm.specific_users = [this.notificationForm.sender_id];
-            }
+        if (this.isSubmitting) return;
+        
+        // Basic validation
+        if (!this.notificationForm.title.trim()) {
+            this.errorMessage = 'Judul tidak boleh kosong';
+            setTimeout(() => { this.errorMessage = ''; }, 3000);
+            return;
+        }
+        
+        if (!this.notificationForm.content.trim()) {
+            this.errorMessage = 'Isi tidak boleh kosong';
+            setTimeout(() => { this.errorMessage = ''; }, 3000);
+            return;
+        }
+        
+        if (!this.notificationForm.target) {
+            this.errorMessage = 'Target notifikasi harus dipilih';
+            setTimeout(() => { this.errorMessage = ''; }, 3000);
+            return;
+        }
+        
+        // Validate specific users if target is specific
+        if (this.notificationForm.target === 'specific' && this.notificationForm.specific_users.length === 0) {
+            this.errorMessage = 'Pilih minimal satu guru untuk notifikasi';
+            setTimeout(() => { this.errorMessage = ''; }, 3000);
+            return;
+        }
 
+        try {
+            this.isSubmitting = true;
             const result = await this.$store.notification.addNotification(this.notificationForm);
             
             if (result) {
                 this.successMessage = 'Notifikasi berhasil ditambahkan';
                 this.resetForm();
-                this.showModal = false; // Tutup modal
-                await this.$store.notification.fetchNotifications(); // Refresh notifikasi
+                this.showModal = false; // Close modal after success
+                await this.$store.notification.fetchNotifications(); // Refresh notifications
             } else {
                 this.errorMessage = 'Gagal menambahkan notifikasi';
             }
         } catch (error) {
             console.error('Error:', error);
-            this.errorMessage = 'Terjadi kesalahan';
+            this.errorMessage = 'Terjadi kesalahan: ' + (error.message || 'Tidak dapat menambahkan notifikasi');
+        } finally {
+            this.isSubmitting = false;
+            
+            if (this.errorMessage) {
+                setTimeout(() => {
+                    this.errorMessage = '';
+                }, 3000);
+            }
+            
+            if (this.successMessage) {
+                setTimeout(() => {
+                    this.successMessage = '';
+                }, 3000);
+            }
         }
-
-        setTimeout(() => {
-            this.successMessage = '';
-            this.errorMessage = '';
-        }, 3000);
     },
 
     resetForm() {
         this.notificationForm = {
             title: '',
-            sender_id: '',
             content: '',
             target: '',
             specific_users: [],
-            showGuruDropdown: false
         };
+        this.guruSearchTerm = '';
     },
 
     toggleNotifications() {
@@ -1158,3 +1301,4 @@ if (!window.alpineInitialized) {
     Alpine.start();
     window.alpineInitialized = true;
 }
+

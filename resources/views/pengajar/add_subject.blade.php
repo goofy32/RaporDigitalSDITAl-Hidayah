@@ -287,6 +287,20 @@ document.addEventListener('DOMContentLoaded', function() {
             allowNonWaliCheckbox.checked = false;
         }
     });
+    const firstEntry = document.querySelector('.subject-entry');
+    if (firstEntry) {
+        firstEntry.classList.remove('bg-gray-50');
+        firstEntry.classList.add('bg-green-50', 'border-l-4', 'border-green-300', 'shadow-md');
+        
+        // Pastikan tombol hapus di entry pertama tersembunyi
+        const removeBtn = firstEntry.querySelector('.remove-btn');
+        if (removeBtn) {
+            removeBtn.classList.add('hidden');
+        }
+    }
+    
+    // Pastikan subjectCount diinisialisasi dengan benar
+    subjectCount = document.querySelectorAll('.subject-entry').length;
 });
 
 // Validasi Duplikasi
@@ -414,9 +428,21 @@ function addSubjectEntry() {
     });
     
     // Update heading
-    template.querySelector('h4').textContent = `Mata Pelajaran ${subjectCount}`;
+    template.querySelector('h4').textContent = `Mata Pelajaran ${document.querySelectorAll('.subject-entry').length + 1}`;
     
-    // Show the remove button
+    // Styling untuk entry baru
+    if (subjectCount % 2 === 0) {
+        template.classList.remove('bg-gray-50');
+        template.classList.add('bg-blue-50', 'border-l-4', 'border-blue-300');
+    } else {
+        template.classList.remove('bg-gray-50');
+        template.classList.add('bg-green-50', 'border-l-4', 'border-green-300');
+    }
+    
+    // Tambahkan bayangan dan jarak
+    template.classList.add('shadow-md', 'my-6');
+    
+    // Show the remove button for this new entry
     template.querySelector('.remove-btn').classList.remove('hidden');
     
     // Reset lingkup materi container - keep only one entry
@@ -429,10 +455,18 @@ function addSubjectEntry() {
     // Add the new entry to the container
     container.appendChild(template);
     
-    // Show all remove buttons if more than one entry
-    if (document.querySelectorAll('.subject-entry').length > 1) {
-        document.querySelectorAll('.subject-entry .remove-btn').forEach(btn => {
-            btn.classList.remove('hidden');
+    // Show all remove buttons if more than one entry, but ONLY for entries after the first one
+    const allEntries = document.querySelectorAll('.subject-entry');
+    if (allEntries.length > 1) {
+        allEntries.forEach((entry, index) => {
+            const removeBtn = entry.querySelector('.remove-btn');
+            if (index === 0) {
+                // Selalu sembunyikan tombol hapus untuk entry pertama
+                removeBtn.classList.add('hidden');
+            } else {
+                // Tampilkan tombol hapus untuk entry lainnya
+                removeBtn.classList.remove('hidden');
+            }
         });
     }
 
@@ -446,18 +480,47 @@ function removeSubjectEntry(button) {
     // Only allow removal if there's more than one entry
     const allEntries = document.querySelectorAll('.subject-entry');
     if (allEntries.length > 1) {
+        // Remove this entry
         entry.remove();
         
-        // Update subject numbers in headings
-        document.querySelectorAll('.subject-entry h4').forEach((heading, index) => {
-            heading.textContent = `Mata Pelajaran ${index + 1}`;
-        });
+        // Fix subject count
+        subjectCount = allEntries.length - 1;
+        
+        // Update subject numbers in headings correctly (1, 2, 3, ...)
+        fixSubjectNumbering();
         
         // If there's only one entry left, hide its remove button
         if (document.querySelectorAll('.subject-entry').length === 1) {
             document.querySelector('.subject-entry .remove-btn').classList.add('hidden');
         }
+        
+        // Update styling for all entries
+        updateEntryStyles();
     }
+}
+
+
+function fixSubjectNumbering() {
+    document.querySelectorAll('.subject-entry').forEach((entry, index) => {
+        // Perbarui teks heading
+        entry.querySelector('h4').textContent = `Mata Pelajaran ${index + 1}`;
+    });
+}
+
+// Fungsi baru untuk memperbarui styling setelah penghapusan
+function updateEntryStyles() {
+    const entries = document.querySelectorAll('.subject-entry');
+    entries.forEach((entry, index) => {
+        // Reset all classes first
+        entry.classList.remove('bg-gray-50', 'bg-blue-50', 'bg-green-50', 'border-l-4', 'border-blue-300', 'border-green-300');
+        
+        // Apply correct styling based on index
+        if (index % 2 === 0) {
+            entry.classList.add('bg-green-50', 'border-l-4', 'border-green-300', 'shadow-md');
+        } else {
+            entry.classList.add('bg-blue-50', 'border-l-4', 'border-blue-300', 'shadow-md');
+        }
+    });
 }
 
 function addLingkupMateri(button) {

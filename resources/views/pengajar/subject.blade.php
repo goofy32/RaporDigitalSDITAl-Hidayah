@@ -53,10 +53,6 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 text-center flex justify-around">
-                            <!-- View TP Button -->
-                            <a href="{{ route('pengajar.tujuan_pembelajaran.view', $subject->id) }}" class="text-blue-600 hover:underline" title="Lihat Tujuan Pembelajaran">
-                                <img src="{{ asset('images/icons/detail.png') }}" alt="View Icon" class="w-5 h-5">
-                            </a>
 
                             <!-- Edit TP Button -->
                             <a href="{{ route('pengajar.tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline" title="Edit Tujuan Pembelajaran">

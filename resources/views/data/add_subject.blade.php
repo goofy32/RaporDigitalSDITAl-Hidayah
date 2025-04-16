@@ -216,11 +216,22 @@ function addSubjectEntry() {
             label.setAttribute('for', forAttr.replace(/_0$/, `_${subjectCount-1}`));
         }
     });
-    
+
     // Update heading
     template.querySelector('h4').textContent = `Mata Pelajaran ${subjectCount}`;
     
-    // Show the remove button for this entry
+    if (subjectCount % 2 === 0) {
+        template.classList.remove('bg-gray-50');
+        template.classList.add('bg-blue-50', 'border-l-4', 'border-blue-300');
+    } else {
+        template.classList.remove('bg-gray-50');
+        template.classList.add('bg-green-50', 'border-l-4', 'border-green-300');
+    }
+    
+    // Tambahkan bayangan dan jarak
+    template.classList.add('shadow-md', 'my-6');
+    
+    // Show the remove button for this entry (entry baru)
     template.querySelector('.remove-btn').classList.remove('hidden');
     
     // Reset lingkup materi container - keep only one entry
@@ -236,13 +247,25 @@ function addSubjectEntry() {
     // Clear any info messages
     template.querySelector('.info-container').innerHTML = '';
     
+    const divider = document.createElement('div');
+    divider.className = 'border-t-2 border-dashed border-gray-300 my-8';
+    container.appendChild(divider);
+
     // Add the new entry to the container
     container.appendChild(template);
     
-    // If there's more than one entry, show all remove buttons
-    if (document.querySelectorAll('.subject-entry').length > 1) {
-        document.querySelectorAll('.subject-entry .remove-btn').forEach(btn => {
-            btn.classList.remove('hidden');
+    const allEntries = document.querySelectorAll('.subject-entry');
+    if (allEntries.length > 1) {
+        // Tampilkan tombol hapus di SEMUA entry kecuali yang pertama
+        allEntries.forEach((entry, index) => {
+            const removeBtn = entry.querySelector('.remove-btn');
+            if (index === 0) {
+                // Entry pertama: sembunyikan tombol hapus
+                removeBtn.classList.add('hidden');
+            } else {
+                // Entry lainnya: tampilkan tombol hapus
+                removeBtn.classList.remove('hidden');
+            }
         });
     }
 }
@@ -253,8 +276,20 @@ function removeSubjectEntry(button) {
     // Only allow removal if there's more than one entry
     const allEntries = document.querySelectorAll('.subject-entry');
     if (allEntries.length > 1) {
-        entry.remove();
+        // Hapus divider sebelum atau setelah entry jika ada
+        const nextElement = entry.nextElementSibling;
+        if (nextElement && nextElement.classList.contains('border-t-2')) {
+            nextElement.remove();
+        } else {
+            const prevElement = entry.previousElementSibling;
+            if (prevElement && prevElement.classList.contains('border-t-2')) {
+                prevElement.remove();
+            }
+        }
         
+        // Hapus entry
+        entry.remove();
+        fixSubjectNumbering();
         // Update subject numbers in headings
         document.querySelectorAll('.subject-entry h4').forEach((heading, index) => {
             heading.textContent = `Mata Pelajaran ${index + 1}`;
@@ -265,6 +300,7 @@ function removeSubjectEntry(button) {
             document.querySelector('.subject-entry .remove-btn').classList.add('hidden');
         }
     }
+    updateEntryStyles();
 }
 
 function addLingkupMateri(button) {
@@ -286,6 +322,21 @@ function addLingkupMateri(button) {
     
     container.appendChild(div);
 }
+
+
+function fixSubjectNumbering() {
+    const entries = document.querySelectorAll('.subject-entry');
+    
+    // Update subjectCount agar sesuai dengan jumlah entri yang ada
+    subjectCount = entries.length;
+    
+    // Update semua heading mata pelajaran
+    entries.forEach((entry, index) => {
+        // Perbarui teks heading
+        entry.querySelector('h4').textContent = `Mata Pelajaran ${index + 1}`;
+    });
+}
+
 
 function removeLingkupMateri(button) {
     button.parentElement.remove();
@@ -488,6 +539,21 @@ function updateGuruOptions(subjectEntry) {
     }
 }
 
+function updateEntryStyles() {
+    const entries = document.querySelectorAll('.subject-entry');
+    entries.forEach((entry, index) => {
+        // Reset all classes first
+        entry.classList.remove('bg-gray-50', 'bg-blue-50', 'bg-green-50', 'border-l-4', 'border-blue-300', 'border-green-300');
+        
+        // Apply correct styling based on index
+        if (index % 2 === 0) {
+            entry.classList.add('bg-green-50', 'border-l-4', 'border-green-300', 'shadow-md');
+        } else {
+            entry.classList.add('bg-blue-50', 'border-l-4', 'border-blue-300', 'shadow-md');
+        }
+    });
+}
+
 function showInfo(container, type, message, isImportant = false) {
     let className, icon;
     
@@ -659,6 +725,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.subject-entry').forEach(entry => {
         updateGuruOptions(entry);
     });
+
+    const firstEntry = document.querySelector('.subject-entry');
+    if (firstEntry) {
+        firstEntry.classList.remove('bg-gray-50');
+        firstEntry.classList.add('bg-green-50', 'border-l-4', 'border-green-300', 'shadow-md');
+    }
 });
 
 function validateForm() {

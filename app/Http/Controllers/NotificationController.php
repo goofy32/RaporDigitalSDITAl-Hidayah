@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use App\Models\Guru;
+use App\Events\NotificationCreated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
@@ -24,11 +26,14 @@ class NotificationController extends Controller
             $notification->content = $validated['content'];
             $notification->target = $validated['target'];
             
-            if ($validated['target'] === 'specific') {
+            if ($validated['target'] === 'specific' && !empty($validated['specific_users'])) {
                 $notification->specific_users = array_map('intval', $validated['specific_users']);
             }
             
             $notification->save();
+            
+            // Dispatch notification event for real-time updates
+            event(new NotificationCreated($notification));
 
             // Return the newly created notification with additional data
             return response()->json([
@@ -39,62 +44,78 @@ class NotificationController extends Controller
                     'title' => $notification->title,
                     'content' => $notification->content,
                     'target' => $notification->target,
+                    'specific_users' => $notification->specific_users,
                     'created_at' => $notification->created_at->diffForHumans(),
                     'is_read' => false
                 ]
             ]);
         } catch (\Exception $e) {
-            \Log::error('Notification creation error: ' . $e->getMessage());
+            Log::error('Notification creation error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menambahkan notifikasi'
+                'message' => 'Gagal menambahkan notifikasi: ' . $e->getMessage()
             ], 500);
         }
     }
 
     public function list()
     {
-        $notifications = Notification::latest()->get()->map(function($notification) {
-            return [
-                'id' => $notification->id,
-                'title' => $notification->title,
-                'content' => $notification->content,
-                'target' => $notification->target,
-                'specific_users' => $notification->specific_users,
-                'created_at' => $notification->created_at->diffForHumans()
-            ];
-        });
-    
-        return response()->json(['items' => $notifications]);
+        try {
+            $notifications = Notification::latest()->get()->map(function($notification) {
+                // Get target display information
+                $targetDisplay = $this->getTargetDisplay($notification);
+                
+                return [
+                    'id' => $notification->id,
+                    'title' => $notification->title,
+                    'content' => $notification->content,
+                    'target' => $notification->target,
+                    'specific_users' => $notification->specific_users,
+                    'target_display' => $targetDisplay,
+                    'created_at' => $notification->created_at->diffForHumans()
+                ];
+            });
+        
+            return response()->json(['items' => $notifications]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching notifications list: ' . $e->getMessage());
+            return response()->json(['items' => []], 500);
+        }
     }
     
     public function index()
     {
-        $guru = Auth::guard('guru')->user();
-        $selected_role = session('selected_role');
-    
-        $notifications = Notification::where(function($query) use ($guru, $selected_role) {
-            $query->where('target', 'all')
-                  ->orWhere('target', $selected_role) // Menggunakan selected_role dari session
-                  ->orWhere(function($q) use ($guru) {
-                      $q->where('target', 'specific')
-                        ->whereJsonContains('specific_users', $guru->id);
-                  });
-        })
-        ->orderBy('created_at', 'desc') // Tambahkan ordering
-        ->take(5) // Batasi 5 notifikasi terakhir
-        ->get()
-        ->map(function ($notification) use ($guru) {
-            return [
-                'id' => $notification->id,
-                'title' => $notification->title,
-                'content' => $notification->content,
-                'created_at' => $notification->created_at->diffForHumans(),
-                'is_read' => $notification->isReadBy($guru->id)
-            ];
-        });
-    
-        return response()->json(['items' => $notifications]);
+        try {
+            $guru = Auth::guard('guru')->user();
+            $selected_role = session('selected_role');
+        
+            $notifications = Notification::where(function($query) use ($guru, $selected_role) {
+                $query->where('target', 'all')
+                      ->orWhere('target', $selected_role) // Menggunakan selected_role dari session
+                      ->orWhere(function($q) use ($guru) {
+                          $q->where('target', 'specific')
+                            ->whereJsonContains('specific_users', $guru->id);
+                      });
+            })
+            ->orderBy('created_at', 'desc') // Tambahkan ordering
+            ->take(5) // Batasi 5 notifikasi terakhir
+            ->get()
+            ->map(function ($notification) use ($guru) {
+                return [
+                    'id' => $notification->id,
+                    'title' => $notification->title,
+                    'content' => $notification->content,
+                    'target' => $notification->target,
+                    'created_at' => $notification->created_at->diffForHumans(),
+                    'is_read' => $notification->isReadBy($guru->id)
+                ];
+            });
+        
+            return response()->json(['items' => $notifications]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching notifications: ' . $e->getMessage());
+            return response()->json(['items' => []], 500);
+        }
     }
     
     public function markAsRead(Notification $notification)
@@ -113,7 +134,7 @@ class NotificationController extends Controller
                 'message' => 'Notifikasi telah dibaca'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error marking notification as read: ' . $e->getMessage());
+            Log::error('Error marking notification as read: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menandai notifikasi sebagai telah dibaca'
@@ -123,23 +144,28 @@ class NotificationController extends Controller
 
     public function getUnreadCount()
     {
-        $guru = Auth::guard('guru')->user();
-        $role = session('selected_role');
-        
-        $count = Notification::where(function($query) use ($guru, $role) {
-            $query->where('target', 'all')
-                  ->orWhere('target', $role)
-                  ->orWhere(function($q) use ($guru) {
-                      $q->where('target', 'specific')
-                        ->whereRaw("JSON_CONTAINS(specific_users, ?)", [$guru->id]);
-                  });
-        })
-        ->whereDoesntHave('readers', function($query) use ($guru) {
-            $query->where('guru_id', $guru->id);
-        })
-        ->count();
+        try {
+            $guru = Auth::guard('guru')->user();
+            $role = session('selected_role');
+            
+            $count = Notification::where(function($query) use ($guru, $role) {
+                $query->where('target', 'all')
+                      ->orWhere('target', $role)
+                      ->orWhere(function($q) use ($guru) {
+                          $q->where('target', 'specific')
+                            ->whereRaw("JSON_CONTAINS(specific_users, ?)", [$guru->id]);
+                      });
+            })
+            ->whereDoesntHave('readers', function($query) use ($guru) {
+                $query->where('guru_id', $guru->id);
+            })
+            ->count();
 
-        return response()->json(['count' => $count]);
+            return response()->json(['count' => $count]);
+        } catch (\Exception $e) {
+            Log::error('Error getting unread count: ' . $e->getMessage());
+            return response()->json(['count' => 0], 500);
+        }
     }
 
     public function destroy(Notification $notification)
@@ -151,11 +177,43 @@ class NotificationController extends Controller
                 'message' => 'Notifikasi berhasil dihapus'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error deleting notification: ' . $e->getMessage());
+            Log::error('Error deleting notification: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus notifikasi'
             ], 500);
+        }
+    }
+    
+    /**
+     * Get display text for notification target
+     */
+    private function getTargetDisplay($notification)
+    {
+        switch ($notification->target) {
+            case 'all':
+                return 'Semua';
+            case 'guru':
+                return 'Semua Guru';
+            case 'wali_kelas':
+                return 'Semua Wali Kelas';
+            case 'specific':
+                if (empty($notification->specific_users)) {
+                    return 'Guru Tertentu';
+                }
+                
+                // For a single specific user, show their name
+                if (count($notification->specific_users) === 1) {
+                    $guru = Guru::find($notification->specific_users[0]);
+                    if ($guru) {
+                        return $guru->nama;
+                    }
+                }
+                
+                // For multiple users, show the count
+                return count($notification->specific_users) . ' Guru Tertentu';
+            default:
+                return 'Semua';
         }
     }
 }

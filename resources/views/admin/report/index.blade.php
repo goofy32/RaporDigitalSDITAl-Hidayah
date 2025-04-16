@@ -121,7 +121,25 @@
                         </td>
                         <td class="px-6 py-4" id="filename-{{ $template->id }}">{{ $template->filename }}</td>
                         <td class="px-6 py-4">
-                            @if($template->kelas_id)
+                            @if($template->kelasList && $template->kelasList->count() > 0)
+                                @if($template->kelasList->count() <= 2)
+                                    {{ $template->kelasList->pluck('full_kelas')->join(', ') }}
+                                @else
+                                    <span class="group relative">
+                                        <span class="cursor-pointer text-blue-600 hover:text-blue-800">
+                                            {{ $template->kelasList->count() }} kelas
+                                        </span>
+                                        <div class="hidden group-hover:block absolute z-10 w-64 bg-white shadow-lg rounded-lg p-2 border border-gray-200 text-xs">
+                                            <div class="font-medium mb-1">Kelas yang menggunakan template ini:</div>
+                                            <ul class="list-disc ml-4">
+                                                @foreach($template->kelasList as $kelas)
+                                                    <li>{{ $kelas->full_kelas }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    </span>
+                                @endif
+                            @elseif($template->kelas_id)
                                 {{ $template->kelas->full_kelas }}
                             @else
                                 <span class="text-gray-500">Template Global</span>
@@ -250,19 +268,60 @@
                 <!-- Kelas Selection -->
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
-                    <select name="kelas_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5 w-full" required>
-                        @php
-                            $tahunAjaranId = session('tahun_ajaran_id');
-                            $kelasList = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                                return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                            })->orderBy('nomor_kelas')->get();
-                        @endphp
-                        @foreach($kelasList as $kelas)
-                            <option value="{{ $kelas->id }}">{{ $kelas->full_kelas }}</option>
-                        @endforeach
-                    </select>
+                    
+                    <div class="relative">
+                        <button 
+                            type="button" 
+                            id="kelas-dropdown-btn"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5 w-full flex justify-between items-center"
+                            onclick="toggleKelasDropdown()">
+                            <span id="selected-kelas">Pilih Kelas</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div id="kelas-dropdown" class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            <div class="p-2">
+                                <label class="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                                    <input 
+                                        type="checkbox" 
+                                        id="select-all-kelas" 
+                                        class="h-4 w-4 text-green-600 focus:ring-green-500 mr-2"
+                                        onchange="toggleAllKelas(this)">
+                                    <span class="text-sm font-medium">Pilih Semua Kelas</span>
+                                </label>
+                                
+                                <div class="border-t my-2"></div>
+                                
+                                <!-- Kelas list from tahun ajaran will be here -->
+                                <div class="space-y-1">
+                                    @php
+                                        $tahunAjaranId = session('tahun_ajaran_id');
+                                        $kelasList = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                                            return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                                        })->orderBy('nomor_kelas')->get();
+                                    @endphp
+                                    
+                                    @foreach($kelasList as $kelas)
+                                    <label class="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                                        <input 
+                                            type="checkbox" 
+                                            name="kelas_ids[]" 
+                                            value="{{ $kelas->id }}" 
+                                            class="kelas-checkbox h-4 w-4 text-green-600 focus:ring-green-500 mr-2"
+                                            onchange="updateSelectedKelasText()">
+                                        <span class="text-sm">{{ $kelas->full_kelas }}</span>
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <p class="mt-1 text-xs text-gray-500">
                         Pilih kelas untuk template ini (hanya kelas dari tahun ajaran aktif).
+                        Centang beberapa kelas jika template akan digunakan untuk banyak kelas.
                     </p>
                 </div>
                 
@@ -547,6 +606,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 button.disabled = true;
                 button.textContent = 'Uploading...';
                 
+                // Ambil semua checkbox kelas yang dicentang
+                const selectedKelas = document.querySelectorAll('.kelas-checkbox:checked');
+                
+                // Hapus kelas_ids[] yang sudah ada di formData (jika ada)
+                for (const pair of [...formData.entries()]) {
+                    if (pair[0] === 'kelas_ids[]') {
+                        formData.delete(pair[0]);
+                    }
+                }
+                
+                // Tambahkan kelas_ids yang dicentang ke formData
+                selectedKelas.forEach(checkbox => {
+                    formData.append('kelas_ids[]', checkbox.value);
+                });
+                
                 const response = await fetch(this.action, {
                     method: 'POST',
                     body: formData,
@@ -814,6 +888,74 @@ document.addEventListener('keydown', function(e) {
         closeDocxPreviewModal();
     }
 });
+
+function showTemplateClasses(classes) {
+    let classesList = '';
+    classes.forEach(kelas => {
+        classesList += `<li class="py-1">${kelas}</li>`;
+    });
+    
+    Swal.fire({
+        title: 'Kelas yang Menggunakan Template',
+        html: `<ul class="text-left list-disc pl-5">${classesList}</ul>`,
+        confirmButtonText: 'Tutup'
+    });
+}
+
+// Kelas dropdown functionality
+function toggleKelasDropdown() {
+    const dropdown = document.getElementById('kelas-dropdown');
+    dropdown.classList.toggle('hidden');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('kelas-dropdown');
+    const button = document.getElementById('kelas-dropdown-btn');
+    
+    if (dropdown && button) {
+        if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+            dropdown.classList.add('hidden');
+        }
+    }
+});
+
+// Toggle all kelas checkboxes
+function toggleAllKelas(checkbox) {
+    const isChecked = checkbox.checked;
+    document.querySelectorAll('.kelas-checkbox').forEach(cb => {
+        cb.checked = isChecked;
+    });
+    updateSelectedKelasText();
+}
+
+// Update the selected kelas text
+function updateSelectedKelasText() {
+    const checkboxes = document.querySelectorAll('.kelas-checkbox:checked');
+    const selectAllCheckbox = document.getElementById('select-all-kelas');
+    const selectedKelasElement = document.getElementById('selected-kelas');
+    
+    if (checkboxes.length === 0) {
+        selectedKelasElement.textContent = 'Pilih Kelas';
+        selectAllCheckbox.checked = false;
+    } else if (checkboxes.length === document.querySelectorAll('.kelas-checkbox').length) {
+        selectedKelasElement.textContent = 'Semua Kelas';
+        selectAllCheckbox.checked = true;
+    } else {
+        if (checkboxes.length <= 2) {
+            // Show the name of selected classes if only a few are selected
+            const kelasNames = Array.from(checkboxes).map(cb => {
+                return cb.parentElement.querySelector('span').textContent.trim();
+            });
+            selectedKelasElement.textContent = kelasNames.join(', ');
+        } else {
+            // Just show the count if many are selected
+            selectedKelasElement.textContent = `${checkboxes.length} kelas dipilih`;
+        }
+        selectAllCheckbox.checked = false;
+    }
+}
+
 </script>
 @endpush
 @endsection

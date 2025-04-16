@@ -19,13 +19,13 @@
         </h2>
 
         <div class="flex gap-4">
-        <button type="button" 
-                x-data
-                @click="window.saveData()"
-                x-bind:disabled="$store.formProtection.isSubmitting"
-                class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
-            <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpan & Preview'"></span>
-        </button>
+            <button type="button" 
+                    x-data
+                    @click="window.saveData()"
+                    x-bind:disabled="$store.formProtection.isSubmitting || {{ count($students) == 0 ? 'true' : 'false' }}"
+                    class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpan & Preview'"></span>
+            </button>
         </div>
     </div>
 
@@ -178,6 +178,12 @@
                             </td>
                         </tr>
                     @endforeach
+                    @if(count($students) == 0)
+                        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+                            <p class="font-bold">Perhatian!</p>
+                            <p>Belum ada murid yang terdaftar di kelas ini. Silahkan tambahkan murid terlebih dahulu.</p>
+                        </div>
+                    @endif
                 </tbody>
             </table>
         </div>
@@ -408,8 +414,10 @@ window.saveData = async function() {
                 title: 'Berhasil!',
                 text: 'Nilai berhasil disimpan!',
                 confirmButtonText: 'Lihat Preview',
+                confirmButtonColor: '#10b981', // Green color
                 showCancelButton: true,
                 cancelButtonText: 'Lihat Detail',
+                cancelButtonColor: '#6b7280', // Gray color
                 reverseButtons: true
             });
             
@@ -445,7 +453,8 @@ window.saveData = async function() {
                     title: 'Detail Nilai',
                     html: detailMessage,
                     width: '600px',
-                    confirmButtonText: 'Lihat Preview'
+                    confirmButtonText: 'Lihat Preview',
+                    confirmButtonColor: '#10b981' // Green color
                 });
                 
                 if (detailResult.isConfirmed) {

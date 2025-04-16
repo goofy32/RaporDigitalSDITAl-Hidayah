@@ -183,6 +183,12 @@ class Kelas extends Model
         return $this->hasMany(ReportTemplate::class, 'kelas_id');
     }
     
+    public function reportTemplateMulti()
+    {
+        return $this->belongsToMany(ReportTemplate::class, 'report_template_kelas');
+    }
+
+    
     /**
      * Scope untuk filter berdasarkan tahun ajaran
      */

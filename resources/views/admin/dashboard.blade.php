@@ -201,29 +201,29 @@
 
         <!-- Modal -->
         <div x-show="showModal" 
-             class="fixed inset-0 z-50 overflow-y-auto"
-             style="display: none;">
+            class="fixed inset-0 z-50 overflow-y-auto"
+            style="display: none;">
             <!-- Modal backdrop -->
             <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
-                 x-show="showModal"
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"
-                 @click="showModal = false"></div>
+                x-show="showModal"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                @click="showModal = false"></div>
 
             <!-- Modal content -->
             <div class="relative flex min-h-screen items-center justify-center p-4">
                 <div class="relative w-full max-w-md rounded-lg bg-white shadow-xl"
-                     x-show="showModal"
-                     x-transition:enter="ease-out duration-300"
-                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave="ease-in duration-200"
-                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                    x-show="showModal"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                     <!-- Modal Header -->
                     <div class="flex items-center justify-between p-4 border-b">
@@ -241,7 +241,7 @@
                     <div class="p-4">
                         <form @submit.prevent="submitNotification">
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-medium text-gray-900" x-text="notificationForm.showGuruDropdown ? 'Judul' : 'Nama Anda'"></label>
+                                <label class="block mb-2 text-sm font-medium text-gray-900">Judul</label>
                                 <input type="text" 
                                     x-model="notificationForm.title"
                                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
@@ -250,31 +250,11 @@
                             </div>
 
                             <div class="mb-4">
-                                <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru (Opsional)</label>
-                                <select x-model="notificationForm.sender_id" 
-                                    @change="updateFromSenderSelection()"
-                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
-                                    <option value="">-- Pilih Guru --</option>
-                                    @foreach($guru as $g)
-                                    <option value="{{ $g->id }}" data-nama="{{ $g->nama }}" data-jabatan="{{ $g->jabatan }}">
-                                        {{ $g->nama }} 
-                                        @if($g->jabatan == 'guru_wali')
-                                            (Wali Kelas {{ $g->kelasWali->first()->nomor_kelas ?? '' }}{{ $g->kelasWali->first()->nama_kelas ?? '' }})
-                                        @else
-                                            (Guru)
-                                        @endif
-                                    </option>
-                                    @endforeach
-                                </select>
-                                <p class="mt-1 text-xs text-gray-500">*Jika dipilih, notifikasi akan otomatis dikirim ke guru yang dipilih</p>
-                            </div>
-
-                            <div class="mb-4" x-show="!notificationForm.sender_id">
                                 <label class="block mb-2 text-sm font-medium text-gray-900">Informasi untuk</label>
                                 <select x-model="notificationForm.target"
                                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
                                     required>
-                                    <option value="">-- Pilih --</option>
+                                    <option value="">-- Pilih Target --</option>
                                     <option value="all">Semua</option>
                                     <option value="guru">Semua Guru</option>
                                     <option value="wali_kelas">Semua Wali Kelas</option>
@@ -292,47 +272,68 @@
                             </div>
 
                             <!-- Specific teachers container -->
-                            <div x-show="notificationForm.target === 'specific' && !notificationForm.sender_id" class="mb-4">
+                            <div x-show="notificationForm.target === 'specific'" class="mb-4">
                                 <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
-                                <div class="max-h-40 overflow-y-auto">
+                                <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                                    <div class="sticky top-0 bg-white pb-2 mb-2 border-b">
+                                        <input type="text" 
+                                            placeholder="Cari guru..." 
+                                            class="w-full px-3 py-2 border rounded-lg text-sm" 
+                                            x-model="guruSearchTerm">
+                                    </div>
                                     @foreach($guru as $g)
-                                    <div class="flex items-center mb-2">
+                                    <div class="flex items-center mb-2" x-show="guruSearchTerm === '' || '{{ strtolower($g->nama) }}'.includes(guruSearchTerm.toLowerCase())">
                                         <input type="checkbox" 
+                                            id="guru-{{ $g->id }}"
                                             value="{{ $g->id }}" 
                                             x-model="notificationForm.specific_users"
                                             class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
-                                            <label class="ml-2 text-sm text-gray-900">
+                                        <label for="guru-{{ $g->id }}" class="ml-2 text-sm text-gray-900 cursor-pointer flex-grow">
                                             {{ $g->nama }} 
                                             @if($g->jabatan == 'guru_wali')
-                                                (Wali Kelas {{ $g->kelasWali->first()->nomor_kelas ?? '' }}{{ $g->kelasWali->first()->nama_kelas ?? '' }})
+                                                <span class="text-xs text-gray-500">
+                                                    (Wali Kelas {{ $g->kelasWali ? $g->kelasWali->nama_kelas : '-' }})
+                                                </span>
                                             @else
-                                                (Guru {{ implode(', ', $g->mataPelajarans->pluck('nama_pelajaran')->toArray()) }})
+                                                <span class="text-xs text-gray-500">
+                                                    (Guru {{ implode(', ', array_slice($g->mataPelajarans->pluck('nama_pelajaran')->toArray(), 0, 2)) }}{{ count($g->mataPelajarans) > 2 ? '...' : '' }})
+                                                </span>
                                             @endif
                                         </label>
                                     </div>
                                     @endforeach
                                 </div>
-                            </div>
-
-                            <!-- Tampilkan info target saat guru dipilih dari dropdown -->
-                            <div x-show="notificationForm.sender_id" class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <p class="text-sm">
-                                    <span class="font-medium">Target: </span>
-                                    <span class="text-green-600">Guru yang Dipilih</span> - Notifikasi akan dikirim hanya ke guru yang dipilih di dropdown
-                                </p>
+                                <div class="mt-2 flex justify-between text-sm text-gray-500">
+                                    <span x-text="notificationForm.specific_users.length + ' guru dipilih'"></span>
+                                    <button type="button" 
+                                            class="text-green-600 hover:underline" 
+                                            @click="notificationForm.specific_users = []">
+                                        Reset
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Success/Error Messages -->
-                            <div x-show="successMessage" x-text="successMessage" class="mb-4 text-green-600"></div>
-                            <div x-show="errorMessage" x-text="errorMessage" class="mb-4 text-red-600"></div>
+                            <div x-show="successMessage" 
+                                x-text="successMessage" 
+                                class="mb-4 p-2 bg-green-100 text-green-700 rounded-lg"></div>
+                            <div x-show="errorMessage" 
+                                x-text="errorMessage" 
+                                class="mb-4 p-2 bg-red-100 text-red-700 rounded-lg"></div>
 
                             <button type="submit" 
                                     class="w-full text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                                Simpan
+                                <span x-show="!isSubmitting">Simpan</span>
+                                <span x-show="isSubmitting" class="flex items-center justify-center">
+                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Menyimpan...
+                                </span>
                             </button>
                         </form>
                     </div>
-
                 </div>
             </div>
         </div>

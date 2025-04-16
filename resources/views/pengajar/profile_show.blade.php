@@ -31,7 +31,7 @@
             <table class="w-full text-sm text-left text-gray-500">
                 <tbody>
                     <tr class="border-b">
-                        <th class="px-4 py-2 font-medium text-gray-900">NIP</th>
+                        <th class="px-4 py-2 font-medium text-gray-900">NUPTK</th>
                         <td class="px-4 py-2">{{ Auth::guard('guru')->user()->nuptk ?? 'Belum Diisi' }}</td>
                     </tr>
                     <tr class="border-b">

@@ -236,7 +236,7 @@ class ScoreController extends Controller
         $subject = [
             'id' => $mataPelajaran->id,
             'name' => $mataPelajaran->nama_pelajaran,
-            'class' => $mataPelajaran->kelas->nama_kelas
+            'class' => $mataPelajaran->kelas->nomor_kelas . ' ' . $mataPelajaran->kelas->nama_kelas
         ];
 
         // Filter siswa berdasarkan tahun ajaran yang aktif

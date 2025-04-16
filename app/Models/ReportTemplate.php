@@ -9,6 +9,8 @@ class ReportTemplate extends Model
 {
     use HasTahunAjaran;
     
+    use HasTahunAjaran;
+    
     protected $fillable = [
         'filename',
         'path',
@@ -18,7 +20,7 @@ class ReportTemplate extends Model
         'tahun_ajaran_text',
         'semester',
         'kelas_id',
-        'tahun_ajaran_id' // Tambahkan field ini
+        'tahun_ajaran_id'
     ];
 
     protected $casts = [
@@ -30,10 +32,41 @@ class ReportTemplate extends Model
     {
         return $this->belongsTo(Kelas::class, 'kelas_id');
     }
+
+    public function kelasList()
+    {
+        return $this->belongsToMany(Kelas::class, 'report_template_kelas');
+    }
     
     public function tahunAjaran()
     {
         return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
+    }
+
+    public function getAllKelasIds()
+    {
+        $ids = $this->kelasList()->pluck('kelas_id')->toArray();
+        
+        // Tambahkan kelas_id dari relasi lama jika ada
+        if ($this->kelas_id && !in_array($this->kelas_id, $ids)) {
+            $ids[] = $this->kelas_id;
+        }
+        
+        return $ids;
+    }
+    
+    /**
+     * Memeriksa apakah template ini untuk kelas tertentu
+     */
+    public function isForKelas($kelasId)
+    {
+        // Periksa relasi many-to-many
+        if ($this->kelasList()->where('kelas_id', $kelasId)->exists()) {
+            return true;
+        }
+        
+        // Periksa relasi lama
+        return $this->kelas_id == $kelasId;
     }
 
     // Get template aktif berdasarkan kelas dan tipe
