@@ -254,8 +254,11 @@ class StudentController extends Controller
     public function waliKelasShow($id)
     {
         $waliKelas = auth()->guard('guru')->user();
+        $kelasWaliId = $waliKelas->getWaliKelasId();
+        
+        // Ensure we're only showing students from the wali's class
         $student = Siswa::with('kelas')
-            ->where('kelas_id', $waliKelas->kelas_pengajar_id)
+            ->where('kelas_id', $kelasWaliId)
             ->findOrFail($id);
             
         return view('wali_kelas.detail_student', compact('student'));
