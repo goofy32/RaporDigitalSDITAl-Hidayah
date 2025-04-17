@@ -161,6 +161,7 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::post('/{id}/set-active', [TahunAjaranController::class, 'setActive'])->name('set-active');
         Route::get('/{id}/copy', [TahunAjaranController::class, 'copy'])->name('copy');
         Route::post('/{id}/copy', [TahunAjaranController::class, 'processCopy'])->name('process-copy');
+        Route::delete('/{id}', [TahunAjaranController::class, 'destroy'])->name('destroy');
     });
     
     // Teacher Management

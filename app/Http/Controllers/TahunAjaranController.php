@@ -261,23 +261,47 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('error', 'Gagal mengaktifkan tahun ajaran: ' . $e->getMessage());
         }
     }
+    
+    /**
+     * Menghapus tahun ajaran yang spesifik.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
     public function destroy($id)
     {
-        $tahunAjaran = TahunAjaran::findOrFail($id);
-        
-        // Cek apakah tahun ajaran sedang aktif
-        if ($tahunAjaran->is_active) {
+        try {
+            $tahunAjaran = TahunAjaran::findOrFail($id);
+            
+            // Cek apakah tahun ajaran sedang aktif
+            if ($tahunAjaran->is_active) {
+                return redirect()->back()
+                    ->with('error', 'Tidak dapat menghapus tahun ajaran yang sedang aktif. Aktifkan tahun ajaran lain terlebih dahulu.');
+            }
+            
+            // Cek apakah ini adalah satu-satunya tahun ajaran
+            $totalTahunAjaran = TahunAjaran::count();
+            if ($totalTahunAjaran <= 1) {
+                return redirect()->back()
+                    ->with('error', 'Tidak dapat menghapus tahun ajaran karena minimal harus ada satu tahun ajaran dalam sistem.');
+            }
+            
+            // Jika aman, hapus tahun ajaran
+            $tahunAjaran->delete();
+            
+            return redirect()->route('tahun.ajaran.index')
+                ->with('success', 'Tahun ajaran berhasil dihapus.');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error saat menghapus tahun ajaran: ' . $e->getMessage(), [
+                'tahun_ajaran_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Tidak dapat menghapus tahun ajaran yang sedang aktif. Aktifkan tahun ajaran lain terlebih dahulu.');
+                ->with('error', 'Terjadi kesalahan saat menghapus tahun ajaran: ' . $e->getMessage());
         }
-        
-        // Proses penghapusan
-        $tahunAjaran->delete();
-        
-        return redirect()->route('tahun.ajaran.index')
-            ->with('success', 'Tahun ajaran berhasil dihapus.');
     }
-    
 
     /**
      * Generate tahun ajaran baru berdasarkan tahun ajaran yang sudah ada.
@@ -522,4 +546,5 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
+
 }

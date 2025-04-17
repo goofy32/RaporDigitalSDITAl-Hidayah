@@ -124,6 +124,18 @@
                 </button>
             </form>
             @endif
+
+            @if(!$tahunAjaran->is_active)
+            <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit" 
+                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    onclick="return confirm('Apakah Anda yakin ingin menghapus tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nPeringatan: Menghapus tahun ajaran ini TIDAK akan menghapus data kelas, siswa, dan data lain yang terkait. Namun, filter berdasarkan tahun ajaran ini tidak akan berfungsi lagi.')">
+                    Hapus Tahun Ajaran
+                </button>
+            </form>
+            @endif
         </div>
     </div>
 </div>
