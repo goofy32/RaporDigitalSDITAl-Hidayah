@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Guru;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use App\Services\AuditService;
 
 class LoginController extends Controller
 {
@@ -24,6 +25,9 @@ class LoginController extends Controller
                 'username' => $credentials['username'],
                 'password' => $credentials['password']
             ])) {
+                // Log successful admin login
+                AuditService::logLogin('success', $credentials['username']);
+                
                 return redirect()->route('admin.dashboard');
             }
         } else {
@@ -37,6 +41,8 @@ class LoginController extends Controller
                 if ($credentials['role'] === 'wali_kelas') {
                     // Cek apakah guru memiliki jabatan guru_wali
                     if ($guru->jabatan !== 'guru_wali') {
+                        AuditService::logLogin('failed', $credentials['username']);
+                        
                         return back()->withErrors([
                             'role' => 'Akun ini tidak memiliki akses sebagai wali kelas. Silakan pilih role lain.'
                         ])->withInput($request->except('password'));
@@ -49,6 +55,8 @@ class LoginController extends Controller
                         ->exists();
                         
                     if (!$isWaliKelas) {
+                        AuditService::logLogin('failed', $credentials['username']);
+                        
                         return back()->withErrors([
                             'role' => 'Akun ini belum ditugaskan sebagai wali kelas.'
                         ])->withInput($request->except('password'));
@@ -59,11 +67,17 @@ class LoginController extends Controller
                 Auth::guard('guru')->login($guru);
                 session(['selected_role' => $credentials['role']]);
                 
+                // Log successful guru/wali_kelas login
+                AuditService::logLogin('success', $credentials['username']);
+                
                 return redirect()->route($credentials['role'] === 'wali_kelas' ? 
                     'wali_kelas.dashboard' : 'pengajar.dashboard');
             }
         }
     
+        // Log failed login attempt
+        AuditService::logLogin('failed', $credentials['username']);
+        
         return back()->withErrors([
             'username' => 'Kredensial yang diberikan tidak cocok dengan data kami.',
         ])->withInput($request->except('password'));
@@ -72,6 +86,9 @@ class LoginController extends Controller
     public function logout(Request $request)
     {
         $message = 'Anda telah berhasil logout.';
+        
+        // Log logout event before actually logging out
+        AuditService::logLogout();
         
         Auth::guard('web')->logout();
         Auth::guard('guru')->logout();

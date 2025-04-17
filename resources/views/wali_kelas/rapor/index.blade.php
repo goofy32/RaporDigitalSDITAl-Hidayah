@@ -3,11 +3,17 @@
 @section('title', 'Manajemen Rapor')
 
 @section('content')
+@push('styles')
 <style>
     [x-cloak] { display: none !important; }
 </style>
+@endpush
 
-<div x-data="raporManager" class="p-4 bg-white mt-14">
+<div x-data="raporManager" 
+     x-cloak 
+     class="p-4 bg-white mt-14"
+     x-bind:class="{ 'hidden': !initialized || (!templateUTSActive && !templateUASActive) }">
+     
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-gray-800">Manajemen Rapor Kelas {{ auth()->user()->kelasWali->nama_kelas }}</h2>
@@ -204,12 +210,50 @@
     </div>
 </div>
 
+<div x-data="raporManager"
+     x-cloak
+     x-show="!initialized"
+     class="p-4 bg-white mt-14">
+    <div class="flex items-center justify-center p-12">
+        <div class="flex items-center space-x-2">
+            <svg class="animate-spin h-8 w-8 text-green-600" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <p class="text-gray-600">Memuat data rapor...</p>
+        </div>
+    </div>
+</div>
+
+
+<div x-data="raporManager"
+     x-cloak
+     x-show="initialized && !templateUTSActive && !templateUASActive"
+     class="p-4 bg-white mt-14">
+     <div class="text-center py-8">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak Ada Template Aktif</h3>
+        <p class="mt-1 text-sm text-gray-500">Admin belum mengaktifkan template rapor untuk kelas ini.</p>
+        <div class="mt-6">
+            <button type="button" onclick="refreshPage()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Muat Ulang
+            </button>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 document.addEventListener('alpine:init', function() {
     Alpine.data('raporManager', () => ({
         activeTab: 'UTS',
         loading: false,
+        initialized: false, // tambahkan ini
         selectedSiswa: [],
         searchQuery: '',
         showPreview: false,
@@ -222,6 +266,8 @@ document.addEventListener('alpine:init', function() {
             console.log('Initializing raporManager');
             // Cek template yang aktif terlebih dahulu
             this.checkActiveTemplates().then((data) => {
+                this.initialized = true;
+
                 // Kita perlu tahu mana template yang aktif
                 const utsActive = data.UTS_active;
                 const uasActive = data.UAS_active;
@@ -621,6 +667,10 @@ document.addEventListener('alpine:init', function() {
         }
     }));
 });
+
+function refreshPage() {
+    window.location.reload();
+}
 </script>
 @endpush
 @endsection

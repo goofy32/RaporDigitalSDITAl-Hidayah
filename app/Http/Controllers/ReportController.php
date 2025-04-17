@@ -154,10 +154,10 @@ class ReportController extends Controller
         return view('admin.report.tutorial');
     }
 
-    // Di ReportController.php, tambahkan method ini:
     public function checkActiveTemplates(Request $request)
     {
-        $kelasId = auth()->user()->kelasWali->id ?? null;
+        $guru = auth()->user();
+        $kelasId = $guru->kelasWali->id ?? null;
         
         if (!$kelasId) {
             return response()->json([
@@ -167,22 +167,49 @@ class ReportController extends Controller
             ]);
         }
         
-        // Cek template aktif untuk UTS di kelas spesifik
-        $utsTemplate = ReportTemplate::where('type', 'UTS')
-            ->where('kelas_id', $kelasId)
-            ->where('is_active', true)
-            ->exists();
+        // Cek template aktif untuk UTS
+        $utsTemplate = $this->getTemplateStatus('UTS', $kelasId);
             
-        // Cek template aktif untuk UAS di kelas spesifik
-        $uasTemplate = ReportTemplate::where('type', 'UAS')
-            ->where('kelas_id', $kelasId)
-            ->where('is_active', true)
-            ->exists();
+        // Cek template aktif untuk UAS
+        $uasTemplate = $this->getTemplateStatus('UAS', $kelasId);
         
         return response()->json([
             'UTS_active' => $utsTemplate,
             'UAS_active' => $uasTemplate
         ]);
+    }
+
+    protected function getTemplateStatus($type, $kelasId)
+    {
+        // Cek template yang langsung terkait dengan kelas
+        $templateByKelas = ReportTemplate::where('type', $type)
+            ->where('kelas_id', $kelasId)
+            ->where('is_active', true)
+            ->exists();
+            
+        if ($templateByKelas) {
+            return true;
+        }
+        
+        // Cek template melalui many-to-many relationship
+        $templateByMany = ReportTemplate::where('type', $type)
+            ->where('is_active', true)
+            ->whereHas('kelasList', function($query) use ($kelasId) {
+                $query->where('kelas_id', $kelasId);
+            })
+            ->exists();
+            
+        if ($templateByMany) {
+            return true;
+        }
+        
+        // Cek template global
+        $templateGlobal = ReportTemplate::where('type', $type)
+            ->whereNull('kelas_id')
+            ->where('is_active', true)
+            ->exists();
+            
+        return $templateGlobal;
     }
     /**
      * Menampilkan history rapor

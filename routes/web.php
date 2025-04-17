@@ -18,6 +18,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TahunAjaranController;
 use App\Http\Controllers\GeminiChatController;
+use App\Http\Controllers\AuditController;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
 
@@ -117,6 +118,13 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::post('/', [NotificationController::class, 'store'])->name('store');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
         Route::get('/list', [NotificationController::class, 'list'])->name('list');
+    });
+
+    Route::prefix('audit')->name('audit.')->group(function () {
+        Route::get('/', [AuditController::class, 'index'])->name('index');
+        Route::get('/export', [AuditController::class, 'export'])->name('export');
+        Route::post('/clear', [AuditController::class, 'clear'])->name('clear');
+        Route::get('/{auditLog}', [AuditController::class, 'show'])->name('show');
     });
 
     // Profile Routes

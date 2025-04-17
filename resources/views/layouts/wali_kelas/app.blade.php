@@ -9,12 +9,36 @@
     <meta name="turbo-cache-control" content="no-cache">
     <meta name="turbo-visit-control" content="reload">
     
-    <title>@yield('title')</title>
+    <style>
+      #global-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: white;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+      }
+      
+      #global-loader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* Tambahkan juga style untuk x-cloak supaya bekerja sebelum Alpine.js dimuat */
+      [x-cloak] { display: none !important; }
+    </style>
     
     <!-- Styles -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @stack('styles')
+
     <script>
     document.addEventListener('turbo:before-render', function (event) {
         // Cek apakah ada session error
@@ -116,6 +140,16 @@
         }
     }">
     
+    <div id="global-loader">
+      <div class="flex flex-col items-center">
+        <svg class="animate-spin h-12 w-12 text-green-600 mb-3" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <p class="text-gray-600">Memuat aplikasi...</p>
+      </div>
+    </div>
+    
     <!-- Permanent Components - Won't be reloaded by Turbo -->
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
     <x-wali-kelas.sidebar data-turbo-permanent id="sidebar"></x-wali-kelas.sidebar>
@@ -135,6 +169,44 @@
             @yield('content')
         </div>
     </div>
+
+    <!-- Tambahkan script untuk loader di sini -->
+    <script>
+      // Hide loader when page is fully loaded
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loader = document.getElementById('global-loader');
+          if (loader) {
+            loader.classList.add('fade-out');
+            setTimeout(function() {
+              loader.style.display = 'none';
+            }, 300);
+          }
+        }, 300); // Small delay to ensure everything is rendered
+      });
+      
+      // Also hide loader when Alpine is initialized
+      document.addEventListener('alpine:initialized', function() {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+          loader.classList.add('fade-out');
+          setTimeout(function() {
+            loader.style.display = 'none';
+          }, 300);
+        }
+      });
+      
+      // Bonus: Also hide loader if turbo has loaded the page
+      document.addEventListener('turbo:load', function() {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+          loader.classList.add('fade-out');
+          setTimeout(function() {
+            loader.style.display = 'none';
+          }, 300);
+        }
+      });
+    </script>
 
     <!-- Placeholder to detect when Turbo has loaded the page completely -->
     <div id="turbo-loaded" data-turbo-permanent x-data x-init="
