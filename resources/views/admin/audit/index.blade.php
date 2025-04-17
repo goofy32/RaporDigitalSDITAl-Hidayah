@@ -10,18 +10,24 @@
         </div>
         <div class="sm:flex">
             <div class="flex items-center space-x-2 sm:space-x-3 ml-auto">
-                <button type="button" data-modal-toggle="filter-modal" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300">
+                <button type="button" data-modal-toggle="filter-modal" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:ring-gray-300">
                     <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     Filter Log
                 </button>
-                <a href="{{ route('admin.audit.export') }}" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300">
+                <a href="{{ route('admin.audit.export') }}" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300">
                     <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                     Export CSV
                 </a>
+                <button type="button" data-modal-target="clear-logs-modal" data-modal-toggle="clear-logs-modal" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-300">
+                    <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear Logs
+                </button>
             </div>
         </div>
     </div>
@@ -54,11 +60,11 @@
             <input type="date" name="date_to" id="date_to" value="{{ request('date_to') }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
         </div>
     </div>
-    <div class="mt-4 flex justify-end">
+        <div class="mt-4 flex justify-end">
         <a href="{{ route('admin.audit.index') }}" class="px-4 py-2 mr-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 focus:ring-4 focus:ring-gray-200">
             Reset
         </a>
-        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300">
+        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
             Apply Filters
         </button>
     </div>
@@ -112,19 +118,19 @@
                                     @endif
                                 </td>
                                 <td class="p-4 text-sm font-semibold text-gray-900">
-                                    <span class="px-2 py-1 text-xs rounded-full 
-                                        @if(in_array($log->action, ['login_success', 'created']))
-                                            bg-green-100 text-green-800 
-                                        @elseif(in_array($log->action, ['login_failed', 'deleted']))
-                                            bg-red-100 text-red-800
-                                        @elseif($log->action === 'updated')
-                                            bg-yellow-100 text-yellow-800
-                                        @else
-                                            bg-blue-100 text-blue-800
-                                        @endif
-                                    ">
-                                        {{ ucfirst(str_replace('_', ' ', $log->action)) }}
-                                    </span>
+                                <span class="px-2 py-1 text-xs rounded-full 
+                                    @if(in_array($log->action, ['login_success', 'created']))
+                                        bg-green-100 text-green-800 
+                                    @elseif(in_array($log->action, ['login_failed', 'deleted']))
+                                        bg-red-100 text-red-800
+                                    @elseif($log->action === 'updated')
+                                        bg-yellow-100 text-yellow-800
+                                    @else
+                                        bg-gray-100 text-gray-800
+                                    @endif
+                                ">
+                                    {{ ucfirst(str_replace('_', ' ', $log->action)) }}
+                                </span>
                                 </td>
                                 <td class="p-4 text-sm text-gray-900 max-w-xs truncate">
                                     {{ $log->description ?? 'No description' }}
@@ -133,7 +139,7 @@
                                     {{ $log->ip_address ?? 'N/A' }}
                                 </td>
                                 <td class="p-4 whitespace-nowrap">
-                                    <a href="{{ route('admin.audit.show', $log->id) }}" class="text-blue-600 hover:underline font-medium">
+                                <a href="{{ route('admin.audit.show', $log->id) }}" class="text-green-600 hover:underline font-medium">
                                         View Details
                                     </a>
                                 </td>

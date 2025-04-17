@@ -10,7 +10,7 @@
         </div>
         <div class="sm:flex">
             <div class="flex items-center space-x-2 sm:space-x-3 ml-auto">
-                <a href="{{ route('admin.audit.index') }}" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300">
+                <a href="{{ route('admin.audit.index') }}" class="w-full sm:w-auto flex items-center justify-center px-4 py-2 text-sm font-medium text-white rounded-lg bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300">
                     <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                     </svg>
@@ -44,7 +44,7 @@
                         @elseif($auditLog->action === 'updated')
                             bg-yellow-100 text-yellow-800
                         @else
-                            bg-blue-100 text-blue-800
+                            bg-gray-100 text-gray-800
                         @endif
                     ">
                         {{ ucfirst(str_replace('_', ' ', $auditLog->action)) }}
@@ -84,6 +84,18 @@
                         N/A
                     @endif
                 </p>
+            </div>
+            <!-- Tambahan: Lokasi -->
+            <div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Lokasi</p>
+                    <p class="text-base font-medium text-gray-900">
+                        @php
+                            $location = app(App\Services\GeoLocationService::class)->getLocation($auditLog->ip_address);
+                        @endphp
+                        {{ $location }}
+                    </p>
+                </div>
             </div>
         </div>
     </div>
