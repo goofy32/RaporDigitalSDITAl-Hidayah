@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class TahunAjaran extends Model
 {
@@ -63,25 +64,30 @@ class TahunAjaran extends Model
     {
         \Log::info("Memperbarui data terkait untuk tahun ajaran #{$tahunAjaranId} dari semester {$oldSemester} ke {$newSemester}");
 
+        // Check if the tables have the semester column before updating
         // Update absensi dengan semester baru
-        DB::table('absensis')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
+        if (Schema::hasColumn('absensis', 'semester')) {
+            DB::table('absensis')
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->update(['semester' => $newSemester]);
+        }
         
         // Update mata pelajaran dengan semester baru
-        DB::table('mata_pelajarans')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
+        if (Schema::hasColumn('mata_pelajarans', 'semester')) {
+            DB::table('mata_pelajarans')
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->update(['semester' => $newSemester]);
+        }
         
         // Update nilai-nilai dengan semester baru
-        DB::table('nilais')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
+        // Skip this - nilais doesn't have a semester column
         
         // Update template rapor dengan semester baru
-        DB::table('report_templates')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
+        if (Schema::hasColumn('report_templates', 'semester')) {
+            DB::table('report_templates')
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->update(['semester' => $newSemester]);
+        }
         
         // Tambahkan model lain yang memiliki semester dan tahun_ajaran_id jika ada
     }

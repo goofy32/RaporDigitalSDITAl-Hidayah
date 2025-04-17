@@ -6,6 +6,7 @@ use App\Models\TahunAjaran;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class TahunAjaranObserver
 {
@@ -69,25 +70,32 @@ class TahunAjaranObserver
         DB::beginTransaction();
         
         try {
-            // Update absensi dengan semester baru
-            $absensiCount = DB::table('absensis')
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->update(['semester' => $newSemester]);
+            // Update absensi dengan semester baru (if column exists)
+            $absensiCount = 0;
+            if (Schema::hasColumn('absensis', 'semester')) {
+                $absensiCount = DB::table('absensis')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->update(['semester' => $newSemester]);
+            }
             
-            // Update mata pelajaran dengan semester baru
-            $mapelCount = DB::table('mata_pelajarans')
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->update(['semester' => $newSemester]);
+            // Update mata pelajaran dengan semester baru (if column exists)
+            $mapelCount = 0;
+            if (Schema::hasColumn('mata_pelajarans', 'semester')) {
+                $mapelCount = DB::table('mata_pelajarans')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->update(['semester' => $newSemester]);
+            }
             
-            // Update nilai-nilai dengan semester baru
-            $nilaiCount = DB::table('nilais')
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->update(['semester' => $newSemester]);
+            // Update nilai-nilai dengan semester baru - DO NOT UPDATE, NO COLUMN
+            $nilaiCount = 0;
             
-            // Update report templates dengan semester baru
-            $templateCount = DB::table('report_templates')
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->update(['semester' => $newSemester]);
+            // Update report templates dengan semester baru (if column exists)
+            $templateCount = 0;
+            if (Schema::hasColumn('report_templates', 'semester')) {
+                $templateCount = DB::table('report_templates')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->update(['semester' => $newSemester]);
+            }
                 
             // Jika ada tabel lain yang memiliki field semester dan tahun_ajaran_id,
             // tambahkan update di sini

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class TahunAjaranController extends Controller
 {
@@ -185,34 +186,34 @@ class TahunAjaranController extends Controller
      */
     private function updateRelatedData($tahunAjaranId, $newSemester)
     {
-        // Update absensi dengan semester baru
-        DB::table('absensis')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
-        
-        // Update mata pelajaran dengan semester baru
-        DB::table('mata_pelajarans')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
-        
-        // Update nilai-nilai dengan semester baru
-        DB::table('nilais')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
-        
-        // Update report templates dengan semester baru
-        DB::table('report_templates')
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->update(['semester' => $newSemester]);
-        
-        // Tambahkan model lain yang memiliki semester dan tahun_ajaran_id jika ada
-        // Contoh:
-        // DB::table('model_lain')
-        //    ->where('tahun_ajaran_id', $tahunAjaranId)
-        //    ->update(['semester' => $newSemester]);
-        
-        // Log perubahan untuk debugging
-        \Log::info("Semester diperbarui untuk tahun ajaran #{$tahunAjaranId} ke semester {$newSemester}");
+        try {
+            // Update absensi dengan semester baru if column exists
+            if (Schema::hasColumn('absensis', 'semester')) {
+                DB::table('absensis')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->update(['semester' => $newSemester]);
+            }
+            
+            // Update mata pelajaran dengan semester baru if column exists
+            if (Schema::hasColumn('mata_pelajarans', 'semester')) {
+                DB::table('mata_pelajarans')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->update(['semester' => $newSemester]);
+            }
+            
+            // Update nilai-nilai dengan semester baru - skip this as the column doesn't exist
+            // Update report templates dengan semester baru if column exists
+            if (Schema::hasColumn('report_templates', 'semester')) {
+                DB::table('report_templates')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->update(['semester' => $newSemester]);
+            }
+            
+            // Log perubahan untuk debugging
+            \Log::info("Semester diperbarui untuk tahun ajaran #{$tahunAjaranId} ke semester {$newSemester}");
+        } catch (\Exception $e) {
+            \Log::error("Error updating related data: " . $e->getMessage());
+        }
     }
 
 
@@ -428,8 +429,8 @@ class TahunAjaranController extends Controller
             $newMapel = $mapel->replicate();
             $newMapel->tahun_ajaran_id = $newTahunAjaran->id;
             
-            // Set semester baru jika disediakan
-            if ($newSemester !== null) {
+            // Set semester baru jika disediakan dan kolom semester ada
+            if ($newSemester !== null && Schema::hasColumn('mata_pelajarans', 'semester')) {
                 $newMapel->semester = $newSemester;
             }
             
@@ -488,8 +489,8 @@ class TahunAjaranController extends Controller
             $newTemplate->path = $newPath;
             $newTemplate->is_active = false; // Default tidak aktif
             
-            // Set semester baru jika disediakan
-            if ($newSemester !== null) {
+            // Set semester baru jika disediakan dan kolom semester ada
+            if ($newSemester !== null && Schema::hasColumn('report_templates', 'semester')) {
                 $newTemplate->semester = $newSemester;
             }
             
