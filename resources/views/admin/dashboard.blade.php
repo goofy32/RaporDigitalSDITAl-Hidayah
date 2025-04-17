@@ -288,18 +288,38 @@
                                             value="{{ $g->id }}" 
                                             x-model="notificationForm.specific_users"
                                             class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
-                                        <label for="guru-{{ $g->id }}" class="ml-2 text-sm text-gray-900 cursor-pointer flex-grow">
-                                            {{ $g->nama }} 
-                                            @if($g->jabatan == 'guru_wali')
-                                                <span class="text-xs text-gray-500">
-                                                    (Wali Kelas {{ $g->kelasWali ? $g->kelasWali->nama_kelas : '-' }})
-                                                </span>
-                                            @else
-                                                <span class="text-xs text-gray-500">
-                                                    (Guru {{ implode(', ', array_slice($g->mataPelajarans->pluck('nama_pelajaran')->toArray(), 0, 2)) }}{{ count($g->mataPelajarans) > 2 ? '...' : '' }})
-                                                </span>
-                                            @endif
-                                        </label>
+                                            <label for="guru-{{ $g->id }}" class="ml-2 text-sm text-gray-900 cursor-pointer flex-grow">
+                                                {{ $g->nama }} 
+                                                @if($g->jabatan == 'guru_wali')
+                                                    <span class="text-xs text-gray-500">
+                                                        (Wali Kelas 
+                                                        @if($g->kelasWali)
+                                                            {{ $g->kelasWali->nomor_kelas }} {{ $g->kelasWali->nama_kelas }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                        )
+                                                    </span>
+                                                @else
+                                                    <span class="text-xs text-gray-500">
+                                                        (Guru 
+                                                        @if(count($g->mataPelajarans) > 0)
+                                                            @php
+                                                                $firstMapel = $g->mataPelajarans->first();
+                                                                $kelas = \App\Models\Kelas::find($firstMapel->kelas_id);
+                                                            @endphp
+                                                            @if($kelas)
+                                                                {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        @else
+                                                            -
+                                                        @endif
+                                                        )
+                                                    </span>
+                                                @endif
+                                            </label>
                                     </div>
                                     @endforeach
                                 </div>

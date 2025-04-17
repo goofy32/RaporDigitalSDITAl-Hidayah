@@ -15,7 +15,7 @@ class Absensi extends Model
         'izin',
         'tanpa_keterangan',
         'semester',
-        'tahun_ajaran_id' // This is correctly included in fillable
+        'tahun_ajaran_id'
     ];
     
     public function siswa()
@@ -41,6 +41,28 @@ class Absensi extends Model
         }
         
         return session('tahun_ajaran_id');
+    }
+
+    /**
+     * Mendapatkan semester dari tahun ajaran yang aktif
+     * jika tidak ada semester yang diberikan
+     */
+    public function getSemesterAttribute($value)
+    {
+        if ($value !== null) {
+            return $value;
+        }
+        
+        // Jika tidak ada semester, ambil dari tahun ajaran
+        if ($this->tahun_ajaran_id) {
+            $tahunAjaran = TahunAjaran::find($this->tahun_ajaran_id);
+            if ($tahunAjaran) {
+                return $tahunAjaran->semester;
+            }
+        }
+        
+        // Jika masih belum ada, gunakan semester default (1)
+        return 1;
     }
 
     public function scopeTahunAjaran($query, $tahunAjaranId)

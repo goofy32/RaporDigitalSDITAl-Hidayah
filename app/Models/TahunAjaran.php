@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class TahunAjaran extends Model
 {
@@ -26,6 +27,65 @@ class TahunAjaran extends Model
         'tanggal_selesai' => 'date',
         'semester' => 'integer'
     ];
+
+    // Boot method untuk setup model events
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Event ketika model diupdate
+        static::updated(function ($tahunAjaran) {
+            // Jika semester berubah dan tahun ajaran ini aktif
+            if ($tahunAjaran->is_active && $tahunAjaran->isDirty('semester')) {
+                $oldSemester = $tahunAjaran->getOriginal('semester');
+                $newSemester = $tahunAjaran->semester;
+                static::updateRelatedData($tahunAjaran->id, $newSemester, $oldSemester);
+            }
+
+            // Jika status aktif berubah menjadi true
+            if ($tahunAjaran->is_active && $tahunAjaran->isDirty('is_active')) {
+                // Update data profil sekolah
+                $profil = ProfilSekolah::first();
+                if ($profil) {
+                    $profil->update([
+                        'tahun_pelajaran' => $tahunAjaran->tahun_ajaran,
+                        'semester' => $tahunAjaran->semester
+                    ]);
+                }
+            }
+        });
+    }
+
+    /**
+     * Update data terkait ketika semester berubah
+     */
+    protected static function updateRelatedData($tahunAjaranId, $newSemester, $oldSemester)
+    {
+        \Log::info("Memperbarui data terkait untuk tahun ajaran #{$tahunAjaranId} dari semester {$oldSemester} ke {$newSemester}");
+
+        // Update absensi dengan semester baru
+        DB::table('absensis')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->update(['semester' => $newSemester]);
+        
+        // Update mata pelajaran dengan semester baru
+        DB::table('mata_pelajarans')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->update(['semester' => $newSemester]);
+        
+        // Update nilai-nilai dengan semester baru
+        DB::table('nilais')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->update(['semester' => $newSemester]);
+        
+        // Update template rapor dengan semester baru
+        DB::table('report_templates')
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->update(['semester' => $newSemester]);
+        
+        // Tambahkan model lain yang memiliki semester dan tahun_ajaran_id jika ada
+    }
+
 
     // Relasi dengan kelas (bisa ada banyak kelas dalam satu tahun ajaran)
     public function kelas()

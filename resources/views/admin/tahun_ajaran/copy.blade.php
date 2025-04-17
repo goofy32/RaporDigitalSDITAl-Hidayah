@@ -1,223 +1,197 @@
+<!-- resources/views/admin/tahun_ajaran/copy.blade.php -->
 @extends('layouts.app')
 
 @section('title', 'Salin Tahun Ajaran')
 
 @section('content')
-<div class="p-4 bg-white rounded-lg shadow-md">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700">Salin Tahun Ajaran</h2>
-        <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            <i class="fas fa-arrow-left mr-2"></i> Kembali
-        </a>
+<div class="p-4">
+    <div class="mb-4">
+        <h2 class="text-2xl font-bold">Salin Tahun Ajaran</h2>
+        <p class="text-gray-600">Buat tahun ajaran baru dengan menyalin data dari tahun ajaran yang sudah ada</p>
     </div>
 
-    @if ($errors->any())
-    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-        <p class="font-bold">Terjadi kesalahan:</p>
-        <ul class="list-disc ml-5">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
+    <div class="bg-white rounded-lg shadow p-6">
+        <form action="{{ route('tahun.ajaran.process-copy', $sourceTahunAjaran->id) }}" method="POST" id="formCopyTahunAjaran"
+              x-data="{ 
+                  isActive: false, 
+                  semester: {{ $sourceTahunAjaran->semester }},
+                  copyKelas: true,
+                  copyMataPelajaran: true,
+                  copyTemplates: true,
+                  showSemesterInfo: false
+              }"
+              x-init="$watch('semester', value => {
+                  showSemesterInfo = value != {{ $sourceTahunAjaran->semester }};
+              })">
+            @csrf
 
-    <!-- Current Tahun Ajaran Info -->
-    <div class="mb-8">
-        <h3 class="text-lg font-semibold text-gray-800 mb-3">Tahun Ajaran Sumber</h3>
-        <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <p class="text-sm text-gray-500">Tahun Ajaran</p>
-                    <p class="text-lg font-medium">{{ $sourceTahunAjaran->tahun_ajaran }}</p>
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">Tahun Ajaran Sumber</h3>
+                    <div class="bg-gray-50 p-4 rounded-md">
+                        <p><strong>Tahun Ajaran:</strong> {{ $sourceTahunAjaran->tahun_ajaran }}</p>
+                        <p><strong>Semester:</strong> {{ $sourceTahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }}</p>
+                        <p><strong>Periode:</strong> {{ $sourceTahunAjaran->tanggal_mulai->format('d/m/Y') }} - 
+                            {{ $sourceTahunAjaran->tanggal_selesai->format('d/m/Y') }}</p>
+                        <p><strong>Status:</strong> 
+                            @if($sourceTahunAjaran->is_active)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Aktif
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Tidak Aktif
+                                </span>
+                            @endif
+                        </p>
+                    </div>
                 </div>
-                
+
                 <div>
-                    <p class="text-sm text-gray-500">Semester</p>
-                    <p class="text-lg font-medium">{{ $sourceTahunAjaran->semester }} ({{ $sourceTahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }})</p>
+                    <h3 class="text-lg font-semibold mb-3 text-gray-800">Tahun Ajaran Baru</h3>
+                    <div>
+                        <!-- Tahun Ajaran -->
+                        <div class="mb-4">
+                            <label for="tahun_ajaran" class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran <span class="text-red-500">*</span></label>
+                            <input type="text" name="tahun_ajaran" id="tahun_ajaran" value="{{ old('tahun_ajaran', $newTahunAjaran) }}" 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                   placeholder="2024/2025" required>
+                            @error('tahun_ajaran')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Semester -->
+                        <div class="mb-4">
+                            <label for="semester" class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
+                            <select name="semester" id="semester" x-model="semester"
+                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    required>
+                                <option value="1">Ganjil</option>
+                                <option value="2">Genap</option>
+                            </select>
+                            @error('semester')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Tanggal Mulai -->
+                        <div class="mb-4">
+                            <label for="tanggal_mulai" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai <span class="text-red-500">*</span></label>
+                            <input type="date" name="tanggal_mulai" id="tanggal_mulai" 
+                                   value="{{ old('tanggal_mulai', now()->addYear()->startOfYear()->format('Y-m-d')) }}" 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                   required>
+                            @error('tanggal_mulai')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Tanggal Selesai -->
+                        <div class="mb-4">
+                            <label for="tanggal_selesai" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai <span class="text-red-500">*</span></label>
+                            <input type="date" name="tanggal_selesai" id="tanggal_selesai" 
+                                   value="{{ old('tanggal_selesai', now()->addYear()->endOfYear()->format('Y-m-d')) }}" 
+                                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                   required>
+                            @error('tanggal_selesai')
+                                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Deskripsi -->
+                        <div class="mb-4">
+                            <label for="deskripsi" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                            <textarea name="deskripsi" id="deskripsi" rows="2" 
+                                      class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">{{ old('deskripsi', 'Tahun Ajaran ' . $newTahunAjaran) }}</textarea>
+                        </div>
+
+                        <!-- Aktif -->
+                        <div>
+                            <div class="flex items-center">
+                                <input type="checkbox" name="is_active" id="is_active" value="1" x-model="isActive"
+                                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                       {{ old('is_active') ? 'checked' : '' }}>
+                                <label for="is_active" class="ml-2 block text-sm font-medium text-gray-700">Aktifkan Tahun Ajaran Ini</label>
+                            </div>
+                            <p class="text-gray-500 text-sm mt-1">Mengaktifkan tahun ajaran ini akan menonaktifkan tahun ajaran lain</p>
+                        </div>
+                    </div>
                 </div>
-                
-                <div>
-                    <p class="text-sm text-gray-500">Status</p>
-                    <p class="text-lg font-medium">
-                        @if($sourceTahunAjaran->is_active)
-                        <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
-                        @else
-                        <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
-                        @endif
-                    </p>
+            </div>
+
+            <!-- Peringatan perubahan semester -->
+            <div x-show="showSemesterInfo" x-cloak
+                 class="mt-4 bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700">
+                            <strong>Informasi!</strong> Semester berbeda dengan tahun ajaran sumber. Semua data yang disalin (mata pelajaran, absensi, template rapor) akan menggunakan semester baru.
+                        </p>
+                    </div>
                 </div>
-                
-                <div>
-                    <p class="text-sm text-gray-500">Periode</p>
-                    <p class="text-lg font-medium">{{ $sourceTahunAjaran->tanggal_mulai->format('d M Y') }} - {{ $sourceTahunAjaran->tanggal_selesai->format('d M Y') }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Copy Form -->
-    <form action="{{ route('tahun.ajaran.process-copy', $sourceTahunAjaran->id) }}" method="POST" class="space-y-6" data-needs-protection>
-        @csrf
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label for="tahun_ajaran" class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran Baru <span class="text-red-500">*</span></label>
-                <input type="text" name="tahun_ajaran" id="tahun_ajaran" value="{{ old('tahun_ajaran', $newTahunAjaran) }}" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                    placeholder="contoh: 2024/2025">
-                <p class="mt-1 text-sm text-gray-500">Format: YYYY/YYYY (contoh: 2024/2025)</p>
             </div>
 
-            <div>
-                <label for="semester" class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
-                <select name="semester" id="semester" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-                    <option value="">Pilih Semester</option>
-                    <option value="1" {{ old('semester', 1) == 1 ? 'selected' : '' }}>1 (Ganjil)</option>
-                    <option value="2" {{ old('semester', 1) == 2 ? 'selected' : '' }}>2 (Genap)</option>
-                </select>
-            </div>
-
-            <div>
-                <label for="tanggal_mulai" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai <span class="text-red-500">*</span></label>
-                <input type="date" name="tanggal_mulai" id="tanggal_mulai" 
-                    value="{{ old('tanggal_mulai', date('Y-m-d', strtotime('+1 year', strtotime($sourceTahunAjaran->tanggal_mulai)))) }}" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-            </div>
-
-            <div>
-                <label for="tanggal_selesai" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai <span class="text-red-500">*</span></label>
-                <input type="date" name="tanggal_selesai" id="tanggal_selesai" 
-                    value="{{ old('tanggal_selesai', date('Y-m-d', strtotime('+1 year', strtotime($sourceTahunAjaran->tanggal_selesai)))) }}" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-            </div>
-
-            <div class="md:col-span-2">
-                <label for="deskripsi" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                <textarea name="deskripsi" id="deskripsi" rows="3"
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                    placeholder="Berikan deskripsi singkat tentang tahun ajaran ini (opsional)">{{ old('deskripsi', 'Tahun Ajaran ' . $newTahunAjaran) }}</textarea>
-            </div>
-
-            <div class="md:col-span-2">
-                <h4 class="text-md font-semibold text-gray-800 mb-3">Data yang Akan Disalin</h4>
-                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+            <!-- Opsi Penyalinan -->
+            <div class="mt-6 border-t pt-6">
+                <h3 class="text-lg font-semibold mb-3 text-gray-800">Data yang akan disalin</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="flex items-center">
-                        <input type="checkbox" name="copy_kelas" id="copy_kelas" value="1" {{ old('copy_kelas', '1') ? 'checked' : '' }}
-                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
-                        <label for="copy_kelas" class="ml-2 block text-sm text-gray-700">
-                            Salin struktur kelas (tanpa siswa)
-                        </label>
+                        <input type="checkbox" name="copy_kelas" id="copy_kelas" value="1" x-model="copyKelas"
+                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                               {{ old('copy_kelas', true) ? 'checked' : '' }}>
+                        <label for="copy_kelas" class="ml-2 block text-sm font-medium text-gray-700">Salin Kelas</label>
                     </div>
                     
                     <div class="flex items-center">
-                        <input type="checkbox" name="copy_mata_pelajaran" id="copy_mata_pelajaran" value="1" {{ old('copy_mata_pelajaran', '1') ? 'checked' : '' }}
-                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
-                        <label for="copy_mata_pelajaran" class="ml-2 block text-sm text-gray-700">
-                            Salin mata pelajaran, lingkup materi, dan tujuan pembelajaran
-                        </label>
+                        <input type="checkbox" name="copy_mata_pelajaran" id="copy_mata_pelajaran" value="1" x-model="copyMataPelajaran"
+                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                               {{ old('copy_mata_pelajaran', true) ? 'checked' : '' }}>
+                        <label for="copy_mata_pelajaran" class="ml-2 block text-sm font-medium text-gray-700">Salin Mata Pelajaran</label>
                     </div>
                     
                     <div class="flex items-center">
-                        <input type="checkbox" name="copy_templates" id="copy_templates" value="1" {{ old('copy_templates', '1') ? 'checked' : '' }}
-                            class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
-                        <label for="copy_templates" class="ml-2 block text-sm text-gray-700">
-                            Salin template rapor
-                        </label>
+                        <input type="checkbox" name="copy_templates" id="copy_templates" value="1" x-model="copyTemplates"
+                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                               {{ old('copy_templates', true) ? 'checked' : '' }}>
+                        <label for="copy_templates" class="ml-2 block text-sm font-medium text-gray-700">Salin Template Rapor</label>
                     </div>
                 </div>
             </div>
 
-            <div class="md:col-span-2">
-                <div class="flex items-center">
-                    <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active') ? 'checked' : '' }}
-                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
-                    <label for="is_active" class="ml-2 block text-sm text-gray-700">
-                        Aktifkan tahun ajaran baru ini sekarang
-                    </label>
-                </div>
-                <p class="mt-1 text-sm text-gray-500">Jika diaktifkan, tahun ajaran lain akan dinonaktifkan secara otomatis.</p>
+            <!-- Tombol -->
+            <div class="mt-6 flex items-center justify-end gap-4">
+                <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                    Kembali
+                </a>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Salin Tahun Ajaran
+                </button>
             </div>
-        </div>
-
-        <div class="flex justify-end space-x-3 mt-8">
-            <a href="{{ route('tahun.ajaran.index') }}"
-                class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Batal
-            </a>
-            <button type="submit"
-                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Proses Penyalinan
-            </button>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Validasi format tahun ajaran
-        const tahunAjaranInput = document.getElementById('tahun_ajaran');
-        tahunAjaranInput.addEventListener('blur', function() {
-            const value = this.value.trim();
-            const pattern = /^\d{4}\/\d{4}$/;
+        // Tambahan validasi form client-side jika diperlukan
+        const form = document.getElementById('formCopyTahunAjaran');
+        
+        form.addEventListener('submit', function(e) {
+            // Validasi format tahun ajaran (2023/2024)
+            const tahunAjaranInput = document.getElementById('tahun_ajaran');
+            const tahunAjaranPattern = /^\d{4}\/\d{4}$/;
             
-            if (value && !pattern.test(value)) {
-                const errorMsg = document.createElement('p');
-                errorMsg.classList.add('text-red-500', 'text-sm', 'mt-1', 'tahun-ajaran-error');
-                errorMsg.textContent = 'Format tahun ajaran harus YYYY/YYYY, contoh: 2024/2025';
-                
-                // Remove any existing error message
-                const existingError = document.querySelector('.tahun-ajaran-error');
-                if (existingError) existingError.remove();
-                
-                // Add the error message
-                this.parentNode.appendChild(errorMsg);
-                
-                // Add invalid class to input
-                this.classList.add('border-red-500');
-            } else {
-                // Remove error message if format is correct
-                const existingError = document.querySelector('.tahun-ajaran-error');
-                if (existingError) existingError.remove();
-                
-                // Remove invalid class
-                this.classList.remove('border-red-500');
-            }
-        });
-        
-        // Validasi tanggal selesai harus setelah tanggal mulai
-        const tanggalMulaiInput = document.getElementById('tanggal_mulai');
-        const tanggalSelesaiInput = document.getElementById('tanggal_selesai');
-        
-        tanggalSelesaiInput.addEventListener('change', function() {
-            if (tanggalMulaiInput.value && this.value) {
-                const mulai = new Date(tanggalMulaiInput.value);
-                const selesai = new Date(this.value);
-                
-                if (selesai <= mulai) {
-                    const errorMsg = document.createElement('p');
-                    errorMsg.classList.add('text-red-500', 'text-sm', 'mt-1', 'tanggal-error');
-                    errorMsg.textContent = 'Tanggal selesai harus setelah tanggal mulai';
-                    
-                    // Remove any existing error message
-                    const existingError = document.querySelector('.tanggal-error');
-                    if (existingError) existingError.remove();
-                    
-                    // Add the error message
-                    this.parentNode.appendChild(errorMsg);
-                    
-                    // Add invalid class
-                    this.classList.add('border-red-500');
-                } else {
-                    // Remove error message
-                    const existingError = document.querySelector('.tanggal-error');
-                    if (existingError) existingError.remove();
-                    
-                    // Remove invalid class
-                    this.classList.remove('border-red-500');
-                }
+            if (!tahunAjaranPattern.test(tahunAjaranInput.value)) {
+                e.preventDefault();
+                alert('Format tahun ajaran harus XXXX/XXXX, contoh: 2023/2024');
+                tahunAjaranInput.focus();
             }
         });
     });

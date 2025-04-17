@@ -27,6 +27,11 @@ trait HasTahunAjaran
                     'tahun_ajaran_id' => $model->tahun_ajaran_id
                 ]);
             }
+            
+            // Jika model memiliki field semester tapi tidak diisi, ambil dari tahun ajaran
+            if (array_key_exists('semester', $model->getAttributes()) && $model->semester === null) {
+                $model->loadSemesterFromTahunAjaran();
+            }
         });
         
         // Tambahkan hook untuk updating
@@ -49,6 +54,12 @@ trait HasTahunAjaran
                     'tahun_ajaran_id' => $model->tahun_ajaran_id
                 ]);
             }
+            
+            // Jika tahun_ajaran_id berubah dan model memiliki field semester,
+            // perbarui semester sesuai tahun ajaran baru
+            if ($model->isDirty('tahun_ajaran_id') && array_key_exists('semester', $model->getAttributes())) {
+                $model->loadSemesterFromTahunAjaran();
+            }
         });
         
         static::created(function ($model) {
@@ -58,6 +69,26 @@ trait HasTahunAjaran
                 'final_tahun_ajaran_id' => $model->tahun_ajaran_id
             ]);
         });
+    }
+
+    /**
+     * Mengisi field semester dari tahun ajaran yang terkait
+     */
+    protected function loadSemesterFromTahunAjaran()
+    {
+        if (!$this->tahun_ajaran_id) {
+            return;
+        }
+        
+        $tahunAjaran = \App\Models\TahunAjaran::find($this->tahun_ajaran_id);
+        if ($tahunAjaran) {
+            $this->semester = $tahunAjaran->semester;
+            \Log::info("HasTahunAjaran: auto-setting semester from tahun ajaran", [
+                'model' => get_class($this),
+                'tahun_ajaran_id' => $this->tahun_ajaran_id,
+                'semester' => $this->semester
+            ]);
+        }
     }
 
     /**
@@ -80,6 +111,18 @@ trait HasTahunAjaran
     public function scopeAktif($query)
     {
         return $this->scopeTahunAjaran($query);
+    }
+    
+    /**
+     * Scope untuk filter berdasarkan semester
+     */
+    public function scopeSemester($query, $semester)
+    {
+        if (array_key_exists('semester', $this->getAttributes())) {
+            return $query->where('semester', $semester);
+        }
+        
+        return $query;
     }
     
     /**
