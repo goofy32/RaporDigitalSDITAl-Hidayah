@@ -5,18 +5,28 @@
 @section('content')
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700 flex items-center gap-2">
-            <span>{{ $subject['class'] }} - </span>       
-            <select class="border border-gray-300 rounded-lg px-4 py-2" 
-                    onchange="window.location.href=this.value">
-                @foreach($mataPelajaranList as $mapel)
-                    <option value="{{ route('pengajar.score.input_score', $mapel->id) }}" 
-                            {{ $mapel->id == $mataPelajaran->id ? 'selected' : '' }}>
-                        {{ $mapel->nama_pelajaran }}
-                    </option>
-                @endforeach
-            </select>
-        </h2>
+        <div>
+            <h2 class="text-2xl font-bold text-green-700">
+                {{ $subject['class'] }} - {{ $mataPelajaran->nama_pelajaran }}
+            </h2>
+            <div class="mt-2 flex flex-wrap gap-2">
+                <div class="bg-gray-100 px-3 py-1 rounded-lg flex items-center">
+                    <span class="text-sm font-semibold text-gray-700">KKM: {{ $kkmSetting->nilai_kkm ?? 70 }}</span>
+                </div>
+                <div class="bg-green-50 px-3 py-1 rounded-lg">
+                    <span class="text-sm text-green-700">
+                        Bobot S.TP: {{ $kkmSetting->bobot_tp ?? 1 }} | 
+                        S.LM: {{ $kkmSetting->bobot_lm ?? 1 }} | 
+                        S.AS: {{ $kkmSetting->bobot_as ?? 2 }}
+                    </span>
+                </div>
+                <div class="bg-blue-50 px-3 py-1 rounded-lg">
+                    <span class="text-xs text-blue-700">
+                        Formula: ({{ $kkmSetting->bobot_tp ?? 1 }}*S.TP + {{ $kkmSetting->bobot_lm ?? 1 }}*S.LM + {{ $kkmSetting->bobot_as ?? 2 }}*S.AS)/{{ ($kkmSetting->bobot_tp ?? 1) + ($kkmSetting->bobot_lm ?? 1) + ($kkmSetting->bobot_as ?? 2) }}
+                    </span>
+                </div>
+            </div>
+        </div>
 
         <div class="flex gap-4">
             <button type="button" 
@@ -34,12 +44,12 @@
 
         <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto relative">
             <table id="students-table" class="min-w-full text-sm text-left text-gray-500 border-collapse">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                        <th rowspan="2" class="px-4 py-2 border">No</th>
-                        <th rowspan="2" class="px-4 py-2 border">Nama Siswa</th>
+                        <th rowspan="2" class="px-4 py-2 border sticky left-0 bg-gray-50 z-10">No</th>
+                        <th rowspan="2" class="px-4 py-2 border sticky left-8 bg-gray-50 z-10">Nama Siswa</th>
                         <th colspan="{{ $mataPelajaran->lingkupMateris->sum(function($lm) { 
                             return $lm->tujuanPembelajarans->count(); 
                         }) }}" class="px-4 py-2 border text-center">
@@ -75,8 +85,8 @@
                 <tbody>
                     @foreach($students as $index => $student)
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-2 border">{{ $index + 1 }}</td>
-                            <td class="px-4 py-2 border student-name">{{ $student['name'] }}</td>
+                            <td class="px-4 py-2 border sticky left-0 bg-white">{{ $index + 1 }}</td>
+                            <td class="px-4 py-2 border sticky left-8 bg-white student-name">{{ $student['name'] }}</td>
                             
                             <!-- Nilai TP -->
                             @foreach($mataPelajaran->lingkupMateris as $lm)
@@ -179,17 +189,20 @@
                         </tr>
                     @endforeach
                     @if(count($students) == 0)
-                        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
-                            <p class="font-bold">Perhatian!</p>
-                            <p>Belum ada murid yang terdaftar di kelas ini. Silahkan tambahkan murid terlebih dahulu.</p>
-                        </div>
+                        <tr>
+                            <td colspan="{{ 5 + $mataPelajaran->lingkupMateris->sum(function($lm) { return $lm->tujuanPembelajarans->count(); }) + $mataPelajaran->lingkupMateris->count() + 5 }}" class="px-4 py-4 text-center">
+                                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+                                    <p class="font-bold">Perhatian!</p>
+                                    <p>Belum ada murid yang terdaftar di kelas ini. Silahkan tambahkan murid terlebih dahulu.</p>
+                                </div>
+                            </td>
+                        </tr>
                     @endif
                 </tbody>
             </table>
         </div>
     </form>
 </div>
-
 
 <script>
 // Single source of truth for form change state

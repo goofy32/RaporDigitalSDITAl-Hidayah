@@ -19,6 +19,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TahunAjaranController;
 use App\Http\Controllers\GeminiChatController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\KkmController;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
 
@@ -100,6 +101,10 @@ Route::get('/admin/check-password-format/{id}', function($id) {
 
 // Admin Routes - Guard: web, Role: admin only
 Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
+
+
+    Route::get('/kkm/{mataPelajaranId}/edit', [KkmController::class, 'edit'])->name('kkm.edit');
+    Route::put('/kkm/{mataPelajaranId}', [KkmController::class, 'update'])->name('kkm.update');
 
     Route::post('/gemini/send-message', [GeminiChatController::class, 'sendMessage'])->name('gemini.send');
     Route::get('/gemini/history', [GeminiChatController::class, 'getHistory'])->name('gemini.history');
@@ -260,6 +265,10 @@ Route::middleware(['auth:guru', 'role:guru'])
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
+
+    Route::get('/kkm/{mataPelajaranId}/edit', [KkmController::class, 'editByTeacher'])->name('kkm.edit');
+    Route::put('/kkm/{mataPelajaranId}', [KkmController::class, 'updateByTeacher'])->name('kkm.update');
+    Route::get('/kkm/{mataPelajaranId}/settings', [KkmController::class, 'getKkmSettings'])->name('kkm.settings');
     
     Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
     Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgressPengajar'])

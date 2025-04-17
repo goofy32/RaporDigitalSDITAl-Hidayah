@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Data Siswa')
+@section('title', 'Data Mata Pelajaran')
 
 @section('content')
 <div>
@@ -11,7 +11,7 @@
         </div>
 
         <div class="flex justify-start mb-4">
-            <a href="{{ route('subject.create') }}"" class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
+            <a href="{{ route('subject.create') }}" class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2">
                 <svg class="h-3.5 w-3.5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
                 </svg>
@@ -44,6 +44,7 @@
                         <th scope="col" class="px-6 py-3">Kelas</th>
                         <th scope="col" class="px-6 py-3">Semester</th>
                         <th scope="col" class="px-6 py-3">Guru Pengampu</th>
+                        <th scope="col" class="px-6 py-3">KKM</th>
                         <th scope="col" class="px-6 py-3">Lingkup Materi</th>
                         <th scope="col" class="px-6 py-3 text center">Aksi</th>
                     </tr>
@@ -57,6 +58,12 @@
                         <td class="px-6 py-4">Semester {{ $subject->semester }}</td>
                         <td class="px-6 py-4">{{ $subject->guru->nama }}</td>
                         <td class="px-6 py-4">
+                            @php
+                                $kkmSetting = \App\Models\KkmSetting::getForMataPelajaran($subject->id);
+                            @endphp
+                            {{ $kkmSetting->nilai_kkm }}
+                        </td>
+                        <td class="px-6 py-4">
                             @if($subject->lingkupMateris->isNotEmpty())
                                 <ul class="list-disc list-inside">
                                     @foreach($subject->lingkupMateris as $lm)
@@ -69,36 +76,36 @@
                         </td>
 
                         <td class="px-6 py-4 text-center">
-                        <div class="flex space-x-2">
-                            <!-- Lihat TP -->
-                            <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
-                                <!-- Ikon Lihat TP -->
-                                <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-8 h-5">
-
-                            </a>
-                        
-                            <!-- Edit Data Mata Pelajaran -->
-                            <a href="{{ route('subject.edit', $subject->id) }}" data-turbo-action="replace" class="text-green-600 hover:underline">
-                                <!-- Ikon Edit -->
-                                <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
-
-                            </a>
-                        
-                            <!-- Hapus Mata Pelajaran dan Lingkup Materi terkait -->
-                            <form action="{{ route('subject.destroy', $subject->id) }}" method="POST" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
-                                    <!-- Ikon Hapus -->
-                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
-                                </button>
-                            </form>
+                            <div class="flex space-x-2">
+                                <!-- Set KKM -->
+                                <a href="{{ route('kkm.edit', $subject->id) }}" class="text-blue-600 hover:underline">
+                                    <img src="{{ asset('images/icons/settings.png') }}" alt="Set KKM Icon" class="w-5 h-5" title="Set KKM">
+                                </a>
+                                
+                                <!-- Lihat TP -->
+                                <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
+                                    <img src="{{ asset('images/icons/edittp.png') }}" alt="Lihat TP Icon" class="w-8 h-5" title="Edit Tujuan Pembelajaran">
+                                </a>
+                            
+                                <!-- Edit Data Mata Pelajaran -->
+                                <a href="{{ route('subject.edit', $subject->id) }}" data-turbo-action="replace" class="text-green-600 hover:underline">
+                                    <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5" title="Edit Mata Pelajaran">
+                                </a>
+                            
+                                <!-- Hapus Mata Pelajaran dan Lingkup Materi terkait -->
+                                <form action="{{ route('subject.destroy', $subject->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                                        <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5" title="Hapus Mata Pelajaran">
+                                    </button>
+                                </form>
+                            </div>
                         </td>
-                        </div>
                     </tr>
                     @empty
                     <tr class="bg-white border-b">
-                        <td colspan="7" class="px-6 py-4 text-center">Tidak ada data mata pelajaran</td>
+                        <td colspan="8" class="px-6 py-4 text-center">Tidak ada data mata pelajaran</td>
                     </tr>
                     @endforelse
                 </tbody>

@@ -53,6 +53,9 @@ class ScoreController extends Controller
             $notSavedData = []; // Tracking data yang tidak tersimpan
             $tahunAjaranId = session('tahun_ajaran_id');
     
+            // Load KKM setting
+            $kkmSetting = \App\Models\KkmSetting::getForMataPelajaran($id, $tahunAjaranId);
+    
             foreach($request->scores as $siswaId => $scoreData) {
                 $studentData = [
                     'nama' => Siswa::find($siswaId)->nama,
@@ -91,7 +94,8 @@ class ScoreController extends Controller
                                     $studentData['nilai'][] = [
                                         'tipe' => 'TP',
                                         'kode' => $tp->kode_tp,
-                                        'nilai' => $nilai
+                                        'nilai' => $nilai,
+                                        'memenuhi_kkm' => $nilai >= $kkmSetting->nilai_kkm
                                     ];
                                 } catch (\Exception $e) {
                                     $studentNotSaved[] = "TP {$tp->kode_tp}: {$e->getMessage()}";
@@ -129,7 +133,8 @@ class ScoreController extends Controller
                                 $studentData['nilai'][] = [
                                     'tipe' => 'LM',
                                     'kode' => $lm->judul_lingkup_materi,
-                                    'nilai' => $nilai
+                                    'nilai' => $nilai,
+                                    'memenuhi_kkm' => $nilai >= $kkmSetting->nilai_kkm
                                 ];
                             } catch (\Exception $e) {
                                 $studentNotSaved[] = "LM {$lm->judul_lingkup_materi}: {$e->getMessage()}";
@@ -139,13 +144,45 @@ class ScoreController extends Controller
                 }
     
                 // Simpan nilai agregat
+                $naTP = $scoreData['na_tp'] ?? null;
+                $naLM = $scoreData['na_lm'] ?? null;
+                $nilaiTes = $scoreData['nilai_tes'] ?? null;
+                $nilaiNonTes = $scoreData['nilai_non_tes'] ?? null;
+                $nilaiAkhirSemester = $scoreData['nilai_akhir'] ?? null;
+                
+                // Hitung nilai akhir rapor berdasarkan rumus dengan bobot KKM
+                $nilaiAkhirRapor = null;
+                if ($naTP !== null && $naTP !== '' && 
+                    $naLM !== null && $naLM !== '' && 
+                    $nilaiAkhirSemester !== null && $nilaiAkhirSemester !== '') {
+                    
+                    // Konversi ke float
+                    $naTP = (float)$naTP;
+                    $naLM = (float)$naLM;
+                    $nilaiAkhirSemester = (float)$nilaiAkhirSemester;
+                    
+                    // Hitung dengan bobot
+                    $totalBobot = $kkmSetting->bobot_tp + $kkmSetting->bobot_lm + $kkmSetting->bobot_as;
+                    
+                    if ($totalBobot > 0) {
+                        $nilaiAkhirRapor = (
+                            ($naTP * $kkmSetting->bobot_tp) +
+                            ($naLM * $kkmSetting->bobot_lm) +
+                            ($nilaiAkhirSemester * $kkmSetting->bobot_as)
+                        ) / $totalBobot;
+                        
+                        // Bulatkan ke bilangan bulat
+                        $nilaiAkhirRapor = round($nilaiAkhirRapor);
+                    }
+                }
+                
                 $finalScores = array_filter([
-                    'na_tp' => $scoreData['na_tp'] ?? null,
-                    'na_lm' => $scoreData['na_lm'] ?? null,
-                    'nilai_tes' => $scoreData['nilai_tes'] ?? null,
-                    'nilai_non_tes' => $scoreData['nilai_non_tes'] ?? null,
-                    'nilai_akhir_semester' => $scoreData['nilai_akhir'] ?? null,
-                    'nilai_akhir_rapor' => $scoreData['nilai_akhir_rapor'] ?? null
+                    'na_tp' => $naTP,
+                    'na_lm' => $naLM,
+                    'nilai_tes' => $nilaiTes,
+                    'nilai_non_tes' => $nilaiNonTes,
+                    'nilai_akhir_semester' => $nilaiAkhirSemester,
+                    'nilai_akhir_rapor' => $nilaiAkhirRapor
                 ], function($value) {
                     return $value !== null && $value !== '' && $value > 0;
                 });
@@ -167,9 +204,11 @@ class ScoreController extends Controller
     
                         foreach($finalScores as $key => $value) {
                             if ($key !== 'tahun_ajaran_id') { // Skip this from display
+                                $memenuhi_kkm = $value >= $kkmSetting->nilai_kkm;
                                 $studentData['nilai'][] = [
                                     'tipe' => str_replace('_', ' ', ucwords($key)),
-                                    'nilai' => $value
+                                    'nilai' => $value,
+                                    'memenuhi_kkm' => $memenuhi_kkm
                                 ];
                             }
                         }
@@ -483,8 +522,11 @@ class ScoreController extends Controller
                     }
                 }
             }
+            
+            // Load KKM setting
+            $kkmSetting = \App\Models\KkmSetting::getForMataPelajaran($id, $tahunAjaranId);
     
-            return view('pengajar.preview_score', compact('mataPelajaran', 'existingScores', 'students'));
+            return view('pengajar.preview_score', compact('mataPelajaran', 'existingScores', 'students', 'kkmSetting'));
         } catch (\Exception $e) {
             \Log::error('Error in previewScore: ' . $e->getMessage());
             return redirect()->route('pengajar.score.index')

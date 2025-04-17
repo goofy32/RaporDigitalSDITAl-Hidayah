@@ -6,9 +6,18 @@
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700">
-            {{ $mataPelajaran->kelas->nama_kelas }} - {{ $mataPelajaran->nama_pelajaran }}
-        </h2>
+        <div>
+            <h2 class="text-2xl font-bold text-green-700">
+                {{ $mataPelajaran->kelas->nomor_kelas }} {{ $mataPelajaran->kelas->nama_kelas }} - {{ $mataPelajaran->nama_pelajaran }}
+            </h2>
+            <div class="mt-2 flex items-center">
+                <span class="text-sm text-gray-600 mr-4">KKM: {{ $kkmSetting->nilai_kkm ?? 70 }}</span>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-red-100 mr-1"></div>
+                    <span class="text-sm text-gray-600">Nilai di bawah KKM</span>
+                </div>
+            </div>
+        </div>
         <div class="flex gap-4">
             <a href="{{ route('pengajar.score.input_score', $mataPelajaran->id) }}"
                class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
@@ -64,47 +73,79 @@
                         <!-- Nilai TP -->
                         @foreach($mataPelajaran->lingkupMateris as $lm)
                             @foreach($lm->tujuanPembelajarans as $tp)
-                                <td class="px-4 py-2 border text-center">
-                                    {{ $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? '-' }}
+                                @php
+                                    $nilaiTp = $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? '-';
+                                    $isBelow = $nilaiTp !== '-' && $nilaiTp < $kkmSetting->nilai_kkm;
+                                @endphp
+                                <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                                    {{ $nilaiTp }}
                                 </td>
                             @endforeach
                         @endforeach
                         
                         <!-- Nilai LM -->
                         @foreach($mataPelajaran->lingkupMateris as $lm)
-                            <td class="px-4 py-2 border text-center">
-                                {{ $existingScores[$student['id']]['lm'][$lm->id] ?? '-' }}
+                            @php
+                                $nilaiLm = $existingScores[$student['id']]['lm'][$lm->id] ?? '-';
+                                $isBelow = $nilaiLm !== '-' && $nilaiLm < $kkmSetting->nilai_kkm;
+                            @endphp
+                            <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                                {{ $nilaiLm }}
                             </td>
                         @endforeach
                         
                         <!-- NA TP -->
-                        <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$student['id']]['na_tp'] ?? '-' }}
+                        @php
+                            $naTp = $existingScores[$student['id']]['na_tp'] ?? '-';
+                            $isBelow = $naTp !== '-' && $naTp < $kkmSetting->nilai_kkm;
+                        @endphp
+                        <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                            {{ $naTp }}
                         </td>
                         
                         <!-- NA LM -->
-                        <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$student['id']]['na_lm'] ?? '-' }}
+                        @php
+                            $naLm = $existingScores[$student['id']]['na_lm'] ?? '-';
+                            $isBelow = $naLm !== '-' && $naLm < $kkmSetting->nilai_kkm;
+                        @endphp
+                        <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                            {{ $naLm }}
                         </td>
                         
                         <!-- Nilai Tes -->
-                        <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$student['id']]['nilai_tes'] ?? '-' }}
+                        @php
+                            $nilaiTes = $existingScores[$student['id']]['nilai_tes'] ?? '-';
+                            $isBelow = $nilaiTes !== '-' && $nilaiTes < $kkmSetting->nilai_kkm;
+                        @endphp
+                        <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                            {{ $nilaiTes }}
                         </td>
                         
                         <!-- Nilai Non-Tes -->
-                        <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$student['id']]['nilai_non_tes'] ?? '-' }}
+                        @php
+                            $nilaiNonTes = $existingScores[$student['id']]['nilai_non_tes'] ?? '-';
+                            $isBelow = $nilaiNonTes !== '-' && $nilaiNonTes < $kkmSetting->nilai_kkm;
+                        @endphp
+                        <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                            {{ $nilaiNonTes }}
                         </td>
                         
                         <!-- NA Sumatif Akhir Semester -->
-                        <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$student['id']]['nilai_akhir_semester'] ?? '-' }}
+                        @php
+                            $nilaiAS = $existingScores[$student['id']]['nilai_akhir_semester'] ?? '-';
+                            $isBelow = $nilaiAS !== '-' && $nilaiAS < $kkmSetting->nilai_kkm;
+                        @endphp
+                        <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                            {{ $nilaiAS }}
                         </td>
                         
                         <!-- Nilai Akhir Rapor -->
-                        <td class="px-4 py-2 border text-center">
-                            {{ $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '-' }}
+                        @php
+                            $nilaiRapor = $existingScores[$student['id']]['nilai_akhir_rapor'] ?? '-';
+                            $isBelow = $nilaiRapor !== '-' && $nilaiRapor < $kkmSetting->nilai_kkm;
+                        @endphp
+                        <td class="px-4 py-2 border text-center {{ $isBelow ? 'bg-red-100' : '' }}">
+                            {{ $nilaiRapor }}
                         </td>
                     </tr>
                 @endforeach

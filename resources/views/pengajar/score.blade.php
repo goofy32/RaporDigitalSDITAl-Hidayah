@@ -39,13 +39,14 @@
                     <th scope="col" class="px-6 py-3">No</th>
                     <th scope="col" class="px-6 py-3">Kelas</th>
                     <th scope="col" class="px-6 py-3">Mata Pelajaran</th>
+                    <th scope="col" class="px-6 py-3">KKM</th>
                     <th scope="col" class="px-6 py-3">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 @if($kelasData->isEmpty())
                     <tr class="bg-white border-b">
-                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                             Tidak ada data pembelajaran yang tersedia
                         </td>
                     </tr>
@@ -55,8 +56,28 @@
                         @foreach($kelas->mataPelajarans as $mapel)
                             <tr class="bg-white border-b hover:bg-gray-50">
                                 <td class="px-6 py-4">{{ $nomor++ }}</td> <!-- Increment counter di sini -->
-                                <td class="px-6 py-4">{{ $kelas->nama_kelas }}</td>
+                                <td class="px-6 py-4">{{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}</td>
                                 <td class="px-6 py-4">{{ $mapel->nama_pelajaran }}</td>
+                                <td class="px-6 py-4">
+                                    @php
+                                        $kkmSetting = \App\Models\KkmSetting::getForMataPelajaran($mapel->id);
+                                        $allNilaiRapor = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
+                                            ->whereNotNull('nilai_akhir_rapor')
+                                            ->get();
+                                        $nilaiDiBawahKkm = $allNilaiRapor->filter(function($nilai) use ($kkmSetting) {
+                                            return $nilai->nilai_akhir_rapor < $kkmSetting->nilai_kkm;
+                                        })->count();
+                                        $hasNilaiDiBawahKkm = $nilaiDiBawahKkm > 0;
+                                    @endphp
+                                    <div class="flex items-center">
+                                        <span>{{ $kkmSetting->nilai_kkm }}</span>
+                                        @if($hasNilaiDiBawahKkm)
+                                            <span class="ml-2 bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded">
+                                                {{ $nilaiDiBawahKkm }} nilai di bawah KKM
+                                            </span>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4">
                                     <div class="flex gap-2">
                                     @if($mapel->lingkupMateris->every(function($lm) { return $lm->tujuanPembelajarans->isNotEmpty(); }))
