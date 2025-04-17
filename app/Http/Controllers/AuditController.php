@@ -15,7 +15,7 @@ class AuditController extends Controller
      */
     public function index(Request $request)
     {
-        $query = AuditLog::with('user');
+        $query = AuditLog::query();
         
         // Apply filters
         if ($request->has('action') && $request->action) {
@@ -76,7 +76,7 @@ class AuditController extends Controller
         
         $users = $adminUsers->concat($guruUsers);
         
-        // Order by most recent first
+        // Order by most recent first - we're avoiding eager loading 'user' here
         $logs = $query->latest()->paginate(20);
         
         return view('admin.audit.index', compact('logs', 'actions', 'modelTypes', 'users'));

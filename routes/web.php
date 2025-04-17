@@ -120,13 +120,13 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::get('/list', [NotificationController::class, 'list'])->name('list');
     });
 
-    Route::prefix('audit')->name('audit.')->group(function () {
+    Route::prefix('audit')->name('admin.audit.')->group(function () {
         Route::get('/', [AuditController::class, 'index'])->name('index');
         Route::get('/export', [AuditController::class, 'export'])->name('export');
         Route::post('/clear', [AuditController::class, 'clear'])->name('clear');
         Route::get('/{auditLog}', [AuditController::class, 'show'])->name('show');
     });
-
+    
     // Profile Routes
     Route::get('profile', [SchoolProfileController::class, 'show'])->name('profile');
     Route::get('profile/edit', [SchoolProfileController::class, 'edit'])->name('profile.edit');

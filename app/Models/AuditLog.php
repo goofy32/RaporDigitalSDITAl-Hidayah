@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class AuditLog extends Model
 {
@@ -27,13 +28,25 @@ class AuditLog extends Model
         'new_values' => 'array',
     ];
 
-    // Define relationships
-    public function user()
+    /**
+     * Define relationship to the user who performed the action.
+     * This uses a polymorphic relationship to handle different user types.
+     */
+    public function user(): MorphTo
+    {
+        return $this->morphTo('user');
+    }
+
+    /**
+     * Get the specific user model related to this log.
+     * This method is used for display purposes only and shouldn't be used for eager loading.
+     */
+    public function getUserAttribute()
     {
         if ($this->user_type === 'App\\Models\\User') {
-            return $this->belongsTo(User::class, 'user_id');
+            return User::find($this->user_id);
         } elseif ($this->user_type === 'App\\Models\\Guru') {
-            return $this->belongsTo(Guru::class, 'user_id');
+            return Guru::find($this->user_id);
         }
         
         return null;
