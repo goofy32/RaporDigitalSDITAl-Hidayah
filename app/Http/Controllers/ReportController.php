@@ -736,17 +736,35 @@ class ReportController extends Controller
         }
         
         $type = request('type', 'UTS');
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
         $siswa = $kelas->siswas()
             ->with(['nilais.mataPelajaran', 'absensi'])
             ->get();
-            
-        // Diagnosa masalah kelengkapan data untuk setiap siswa
+        
+        // Prepare data for each student
         $diagnosisResults = [];
+        $nilaiCounts = []; // Add this array to track nilai counts
+        
         foreach ($siswa as $s) {
             $diagnosisResults[$s->id] = $s->diagnoseDataCompleteness($type);
-        }
             
-        return view('wali_kelas.rapor.index', compact('siswa', 'diagnosisResults'));
+            // Calculate nilai count for each student
+            $nilaiCount = $s->nilais()
+                ->whereHas('mataPelajaran', function($q) use ($type) {
+                    $semester = $type === 'UTS' ? 1 : 2;
+                    $q->where('semester', $semester);
+                })
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->where('nilai_akhir_rapor', '!=', null)
+                ->count();
+                
+            $nilaiCounts[$s->id] = $nilaiCount;
+        }
+        
+        return view('wali_kelas.rapor.index', compact('siswa', 'diagnosisResults', 'nilaiCounts'));
     }
 
     public function activate(ReportTemplate $template)
