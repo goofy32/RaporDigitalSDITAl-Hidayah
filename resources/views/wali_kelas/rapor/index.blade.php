@@ -117,24 +117,29 @@
                     <!-- Status Nilai dengan detail -->
                     <td class="px-6 py-4">
                         <div class="flex flex-col gap-1">
-                            @php
-                                $nilaiCount = $s->nilais()
-                                    ->whereHas('mataPelajaran', function($q) {
-                                        $q->where('semester', request('type', 'UTS') === 'UTS' ? 1 : 2);
-                                    })->count();
-
-                                $totalMapel = $s->kelas->mataPelajarans()
-                                    ->where('semester', request('type', 'UTS') === 'UTS' ? 1 : 2)
-                                    ->count();
-                            @endphp
-                            
-                            @if($nilaiCount > 0)
+                            @if($diagnosisResults[$s->id]['nilai_status'])
                                 <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                    Lengkap ({{ $nilaiCount }} nilai diinput)
+                                    Lengkap
                                 </span>
                             @else
-                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                    Belum Lengkap ({{ $nilaiCount }}/{{ $totalMapel }})
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full relative group">
+                                    Belum Lengkap
+                                    <!-- Tooltip dengan masalah spesifik -->
+                                    <div class="absolute left-0 top-full mt-2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg 
+                                            opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-10">
+                                        <p>Masalah terdeteksi:</p>
+                                        <p class="font-medium mt-1">{{ $diagnosisResults[$s->id]['nilai_message'] }}</p>
+                                        
+                                        <!-- Saran tindakan berdasarkan pesan -->
+                                        <p class="mt-2">Solusi:</p>
+                                        @if(strpos($diagnosisResults[$s->id]['nilai_message'], 'nilai akhir rapor belum dihitung') !== false)
+                                            <p>Minta pengajar untuk menyimpan nilai dengan klik "Simpan & Preview"</p>
+                                        @elseif(strpos($diagnosisResults[$s->id]['nilai_message'], 'Tidak ada mata pelajaran') !== false)
+                                            <p>Tambahkan mata pelajaran untuk semester ini</p>
+                                        @else
+                                            <p>Minta pengajar mengisi nilai siswa terlebih dahulu</p>
+                                        @endif
+                                    </div>
                                 </span>
                             @endif
                         </div>
@@ -143,7 +148,7 @@
                     <!-- Status Kehadiran dengan detail -->
                     <td class="px-6 py-4">
                         <div class="flex flex-col gap-1">
-                            @if($s->absensi)
+                            @if($diagnosisResults[$s->id]['absensi_status'])
                                 <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
                                     Lengkap
                                 </span>
@@ -153,8 +158,17 @@
                                     A:{{ $s->absensi->tanpa_keterangan }}
                                 </span>
                             @else
-                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full relative group">
                                     Belum Lengkap
+                                    <!-- Tooltip dengan masalah spesifik -->
+                                    <div class="absolute left-0 top-full mt-2 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg 
+                                            opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-10">
+                                        <p>Masalah terdeteksi:</p>
+                                        <p class="font-medium mt-1">{{ $diagnosisResults[$s->id]['absensi_message'] }}</p>
+                                        
+                                        <p class="mt-2">Solusi:</p>
+                                        <p>Input data absensi dengan memilih semester {{ request('type', 'UTS') === 'UTS' ? '1 (Ganjil)' : '2 (Genap)' }}</p>
+                                    </div>
                                 </span>
                             @endif
                         </div>

@@ -11,7 +11,7 @@ use App\Services\RaporTemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB; // Add this import for DB facade
+use Illuminate\Support\Facades\DB; 
 use Barryvdh\DomPDF\Facade\PDF;
 use App\Models\ReportGeneration;
 
@@ -735,11 +735,18 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
         }
         
+        $type = request('type', 'UTS');
         $siswa = $kelas->siswas()
             ->with(['nilais.mataPelajaran', 'absensi'])
             ->get();
             
-        return view('wali_kelas.rapor.index', compact('siswa'));
+        // Diagnosa masalah kelengkapan data untuk setiap siswa
+        $diagnosisResults = [];
+        foreach ($siswa as $s) {
+            $diagnosisResults[$s->id] = $s->diagnoseDataCompleteness($type);
+        }
+            
+        return view('wali_kelas.rapor.index', compact('siswa', 'diagnosisResults'));
     }
 
     public function activate(ReportTemplate $template)
