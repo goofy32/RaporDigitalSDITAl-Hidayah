@@ -7,6 +7,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <title>Profil Sekolah</title>
+    <meta name="turbo-cache-control" content="no-cache">
+    <meta name="turbo-visit-control" content="reload">
 </head>
 
 <body>
@@ -27,7 +29,14 @@
         <div class="p-4 bg-white mt-14">
             <form action="{{ route('profile.submit') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-
+                
+                <!-- Tambahkan div debug yang hanya terlihat saat debugging -->
+                <div x-show="debugInfo" class="mb-4 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700">
+                    <p class="font-bold">Debug Info:</p>
+                    <p x-text="debugInfo"></p>
+                    <p>Mapping data:</p>
+                    <pre x-text="JSON.stringify(tahunAjaranMapping, null, 2)"></pre>
+                </div>
                 <!-- Logo Sekolah -->
                 <div class="flex flex-col mb-4">
                     @if(isset($profil->logo))
@@ -176,7 +185,7 @@
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" required>
                             <option value="">Pilih Tahun Pelajaran</option>
                             @foreach($tahunAjarans as $ta)
-                                <option value="{{ $ta->tahun_ajaran }}" {{ (old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') == $ta->tahun_ajaran) ? 'selected' : '' }}>
+                                <option value="{{ $ta->tahun_ajaran }}" data-semester="{{ $ta->semester }}" {{ (old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') == $ta->tahun_ajaran) ? 'selected' : '' }}>
                                     {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
                                 </option>
                             @endforeach
@@ -185,7 +194,6 @@
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror
                     </div>
-
                     <!-- Semester -->
                     <div>
                         <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
@@ -195,6 +203,9 @@
                             <option value="1" {{ (old('semester', $profil->semester ?? '') == 1) ? 'selected' : '' }}>Ganjil</option>
                             <option value="2" {{ (old('semester', $profil->semester ?? '') == 2) ? 'selected' : '' }}>Genap</option>
                         </select>
+                        <p id="semester-info" class="text-sm text-gray-500 mt-1" style="display: none;">
+                            Semester otomatis diisi berdasarkan tahun ajaran yang dipilih
+                        </p>
                         @error('semester')
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror
@@ -286,7 +297,6 @@
                     class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">
                     Simpan
                 </button>
-            </form>
         </div>
     </div>
     
@@ -303,6 +313,70 @@
                 output.classList.add('object-center'); // Posisikan gambar di tengah
             };
             reader.readAsDataURL(input.files[0]);
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tahunSelect = document.getElementById('tahun_pelajaran');
+            const semesterSelect = document.getElementById('semester');
+            const semesterInfo = document.getElementById('semester-info');
+            
+            // Cek apakah ini load pertama atau form submission dengan error
+            const hasOldSemester = "{{ old('semester') }}" !== "";
+            
+            console.log('Initial state:', {
+                'Selected tahun ajaran': tahunSelect.value,
+                'Current semester value': semesterSelect.value,
+                'Has old semester value': hasOldSemester,
+                'Old semester value': "{{ old('semester') }}",
+                'DB semester value': "{{ $profil->semester ?? '' }}"
+            });
+            
+            // Fungsi untuk update semester berdasarkan tahun ajaran
+            function updateSemester() {
+                // Hanya update jika tidak ada old data (form belum pernah disubmit dengan error)
+                if (hasOldSemester) {
+                    console.log('Keeping old semester value:', semesterSelect.value);
+                    return;
+                }
+                
+                const selectedOption = tahunSelect.options[tahunSelect.selectedIndex];
+                if (selectedOption && selectedOption.value) {
+                    const semester = selectedOption.getAttribute('data-semester');
+                    if (semester) {
+                        console.log('Setting semester to:', semester);
+                        semesterSelect.value = semester;
+                        semesterInfo.style.display = 'block';
+                    }
+                }
+            }
+            
+            // Tambahkan event listener untuk perubahan tahun ajaran
+            tahunSelect.addEventListener('change', function() {
+                console.log('Tahun ajaran changed to:', this.value);
+                // Selalu update saat user secara aktif mengubah tahun ajaran
+                const selectedOption = tahunSelect.options[tahunSelect.selectedIndex];
+                if (selectedOption && selectedOption.value) {
+                    const semester = selectedOption.getAttribute('data-semester');
+                    if (semester) {
+                        console.log('Setting semester to:', semester);
+                        semesterSelect.value = semester;
+                        semesterInfo.style.display = 'block';
+                    }
+                } else {
+                    semesterInfo.style.display = 'none';
+                }
+            });
+            
+            // Jika tahun ajaran sudah terpilih dan ini adalah load pertama,
+            // kita bisa update semester
+            if (tahunSelect.value && !hasOldSemester) {
+                console.log('Initial load with pre-selected tahun ajaran');
+                updateSemester();
+            } else {
+                console.log('Using existing semester value');
+            }
         });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
