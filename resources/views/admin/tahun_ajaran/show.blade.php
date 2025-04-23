@@ -7,11 +7,11 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 class="text-2xl font-bold text-green-700">Detail Tahun Ajaran</h2>
         <div class="flex flex-wrap gap-2">
-            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                Edit
-            </a>
-            <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 Kembali
+            </a>
+            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Edit
             </a>
         </div>
     </div>

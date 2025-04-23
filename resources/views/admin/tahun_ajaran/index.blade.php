@@ -103,57 +103,54 @@
                             @endif
                         </td>
                         <td class="py-4 px-4 border-b text-sm">
-                            <div class="flex space-x-2">
-                                <a href="{{ route('tahun.ajaran.show', $tahunAjaran->id) }}" class="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center transition duration-150 ease-in-out">
-                                    <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-4 h-4 mr-1">
-                                    Detail
-                                </a>
-                                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center transition duration-150 ease-in-out">
-                                    <img src="{{ asset('images/icons/edit.png') }}" alt="Edit" class="w-4 h-4 mr-1">
-                                    Edit
+                            <div class="flex space-x-4">
+                                <!-- Tombol Detail -->
+                                <a href="{{ route('tahun.ajaran.show', $tahunAjaran->id) }}" title="Detail">
+                                    <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-5 h-5">
                                 </a>
                                 
-                                <!-- Gunakan kode yang belum diubah, seperti yang Anda minta -->
+                                <!-- Tombol Edit -->
+                                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" title="Edit">
+                                    <img src="{{ asset('images/icons/edit.png') }}" alt="Edit" class="w-5 h-5">
+                                </a>
+                                
                                 @if($tahunAjaran->is_active)
+                                <!-- Tombol Sedang Aktif (disabled) -->
                                 <div class="tooltip" title="Untuk menonaktifkan, aktifkan tahun ajaran lain terlebih dahulu">
-                                    <span class="px-2 py-1 bg-gray-300 text-gray-500 rounded cursor-not-allowed flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <span class="text-gray-400 cursor-not-allowed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Sedang Aktif
                                     </span>
                                 </div>
                                 @else
+                                <!-- Tombol Aktifkan -->
                                 <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
                                     @csrf
-                                    <button type="submit" class="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center transition duration-150 ease-in-out" 
+                                    <button type="submit" class="border-0 bg-transparent p-0" title="Aktifkan"
                                             onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                         </svg>
-                                        Aktifkan
                                     </button>
                                 </form>
                                 
-                                <!-- Pertahankan tombol Salin -->
-                                <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" class="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center transition duration-150 ease-in-out">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <!-- Tombol Salin -->
+                                <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" title="Salin">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                     </svg>
-                                    Salin
                                 </a>
                                 @endif
 
                                 @if(!$tahunAjaran->is_active)
+                                    <!-- Tombol Hapus -->
                                     <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 flex items-center transition duration-150 ease-in-out" 
+                                        <button type="submit" class="border-0 bg-transparent p-0" title="Hapus" 
                                                 onclick="return confirm('Apakah Anda yakin ingin menghapus tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nPeringatan: Menghapus tahun ajaran ini TIDAK akan menghapus data kelas, siswa, dan data lain yang terkait. Namun, filter berdasarkan tahun ajaran ini tidak akan berfungsi lagi.')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                            Hapus
+                                            <img src="{{ asset('images/icons/delete.png') }}" alt="Hapus" class="w-5 h-5">
                                         </button>
                                     </form>
                                 @endif
