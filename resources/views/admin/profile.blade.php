@@ -206,7 +206,7 @@
 
                     <!-- NIP Kepala Sekolah -->
                     <div>
-                        <label for="nip_kepala_sekolah" class="block mb-2 text-sm font-medium text-gray-900">NIP Kepala Sekolah</label>
+                        <label for="nip_kepala_sekolah" class="block mb-2 text-sm font-medium text-gray-900">NUPTK Kepala Sekolah</label>
                         <input type="text" id="nip_kepala_sekolah" name="nip_kepala_sekolah" value="{{ old('nip_kepala_sekolah', $profil->nip_kepala_sekolah ?? '') }}"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                         @error('nip_kepala_sekolah')
@@ -214,15 +214,7 @@
                         @enderror
                     </div>
 
-                    <!-- NIP Wali Kelas (Default untuk Template UAS) -->
-                    <div>
-                        <label for="nip_wali_kelas" class="block mb-2 text-sm font-medium text-gray-900">NIP Wali Kelas (Default)</label>
-                        <input type="text" id="nip_wali_kelas" name="nip_wali_kelas" value="{{ old('nip_wali_kelas', $profil->nip_wali_kelas ?? '') }}"
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
-                        @error('nip_wali_kelas')
-                            <p class="text-red-500 text-sm">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    <input type="hidden" id="nip_wali_kelas" name="nip_wali_kelas" value="{{ old('nip_wali_kelas', $profil->nip_wali_kelas ?? '') }}">
 
                     <!-- Kelas (Opsional) -->
                     <div>
