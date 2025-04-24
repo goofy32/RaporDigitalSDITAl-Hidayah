@@ -29,6 +29,26 @@
         </div>
     </div>
 
+    <div class="flex justify-between items-center mb-4">
+        <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Informasi Penilaian</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">KKM: <span class="font-semibold">{{ $kkmValue }}</span></p>
+                    <p class="text-sm text-gray-500">Nilai minimum untuk lulus mata pelajaran ini</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Bobot Nilai:</p>
+                    <ul class="text-sm text-gray-500 list-disc list-inside ml-2">
+                        <li>Sumatif TP: {{ number_format($bobotNilai->bobot_tp * 100, 0) }}%</li>
+                        <li>Sumatif LM: {{ number_format($bobotNilai->bobot_lm * 100, 0) }}%</li>
+                        <li>Sumatif Akhir Semester: {{ number_format($bobotNilai->bobot_as * 100, 0) }}%</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <form id="saveForm" method="POST" action="{{ route('pengajar.score.save_scores', $subject['id']) }}" x-data="formProtection" >
         @csrf
 
@@ -229,7 +249,7 @@ function updateCalculations(e) {
 }
 
 function calculateAverages(row) {
-    // 1. Calculate NA Sumatif TP
+    // 1. Calculate NA Sumatif TP (tidak perlu perubahan)
     let tpInputs = row.querySelectorAll('.tp-score');
     let tpSum = 0;
     let validTpCount = 0;
@@ -247,7 +267,7 @@ function calculateAverages(row) {
         row.querySelector('.na-tp').value = naTP.toFixed(2);
     }
 
-    // 2. Calculate NA Sumatif LM
+    // 2. Calculate NA Sumatif LM (tidak perlu perubahan)
     let lmInputs = row.querySelectorAll('.lm-score');
     let lmSum = 0;
     let validLmCount = 0;
@@ -274,15 +294,84 @@ function calculateAverages(row) {
         row.querySelector('input[name*="[nilai_akhir]"]').value = nilaiAkhirSemester.toFixed(2);
     }
 
-    // 4. Calculate Nilai Akhir Rapor
+    // 4. Calculate Nilai Akhir Rapor dengan bobot dinamis
     let naTP = parseFloat(row.querySelector('.na-tp').value) || 0;
     let naLM = parseFloat(row.querySelector('.na-lm').value) || 0;
     let nilaiAkhirSemester = parseFloat(row.querySelector('input[name*="[nilai_akhir]"]').value) || 0;
 
+    // Ambil bobot dari variabel global yang kita set
+    let bobotTP = parseFloat(window.bobotNilai?.bobot_tp || 0.25);
+    let bobotLM = parseFloat(window.bobotNilai?.bobot_lm || 0.25);
+    let bobotAS = parseFloat(window.bobotNilai?.bobot_as || 0.50);
+
     if (naTP > 0 || naLM > 0 || nilaiAkhirSemester > 0) {
-        let nilaiAkhirRapor = (naTP * 0.3) + (naLM * 0.3) + (nilaiAkhirSemester * 0.4);
+        let nilaiAkhirRapor = (naTP * bobotTP) + (naLM * bobotLM) + (nilaiAkhirSemester * bobotAS);
         row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.round(nilaiAkhirRapor);
+        
+        // Highlight nilai yang di bawah KKM
+        const nilaiAkhirInput = row.querySelector('input[name*="[nilai_akhir_rapor]"]');
+        const kkmValue = parseFloat(window.kkmValue || 70);
+        
+        if (Math.round(nilaiAkhirRapor) < kkmValue) {
+            nilaiAkhirInput.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+        } else {
+            nilaiAkhirInput.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+        }
     }
+    
+    // 5. Highlight nilai individu yang dibawah KKM
+    highlightBelowKkm(row);
+}
+
+// Fungsi untuk highlight nilai di bawah KKM
+function highlightBelowKkm(row) {
+    const kkmValue = parseFloat(window.kkmValue || 70);
+    
+    // Nilai TP
+    row.querySelectorAll('.tp-score').forEach(input => {
+        const value = parseFloat(input.value);
+        if (!isNaN(value) && value > 0 && value < kkmValue) {
+            input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+        } else {
+            input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+        }
+    });
+    
+    // Nilai LM
+    row.querySelectorAll('.lm-score').forEach(input => {
+        const value = parseFloat(input.value);
+        if (!isNaN(value) && value > 0 && value < kkmValue) {
+            input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+        } else {
+            input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+        }
+    });
+    
+    // Nilai Tes dan Non-Tes
+    ['nilai-tes', 'nilai-non-tes'].forEach(className => {
+        const input = row.querySelector(`.${className}`);
+        if (input) {
+            const value = parseFloat(input.value);
+            if (!isNaN(value) && value > 0 && value < kkmValue) {
+                input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+            } else {
+                input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+            }
+        }
+    });
+    
+    // NA TP, NA LM, dan Nilai Akhir Semester
+    ['na-tp', 'na-lm', 'nilai-akhir'].forEach(className => {
+        const input = row.querySelector(`.${className}`);
+        if (input) {
+            const value = parseFloat(input.value);
+            if (!isNaN(value) && value > 0 && value < kkmValue) {
+                input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+            } else {
+                input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+            }
+        }
+    });
 }
 
 function validateForm() {
@@ -474,5 +563,20 @@ window.saveData = async function() {
         });
     }
 };
+
+window.kkmValue = {{ $kkmValue }};
+window.bobotNilai = {
+    bobot_tp: {{ $bobotNilai->bobot_tp }},
+    bobot_lm: {{ $bobotNilai->bobot_lm }},
+    bobot_as: {{ $bobotNilai->bobot_as }}
+};
+
+// Tambahkan event listener untuk DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Inisialisasi highlight untuk semua baris tabel
+    document.querySelectorAll('#students-table tbody tr').forEach(row => {
+        highlightBelowKkm(row);
+    });
+});
 </script>
 @endsection

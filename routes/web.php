@@ -19,6 +19,8 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TahunAjaranController;
 use App\Http\Controllers\GeminiChatController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\KkmController;
+use App\Http\Controllers\BobotNilaiController;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
 
@@ -100,6 +102,30 @@ Route::get('/admin/check-password-format/{id}', function($id) {
 
 // Admin Routes - Guard: web, Role: admin only
 Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
+
+    Route::prefix('kkm')->name('admin.kkm.')->group(function() {
+        Route::get('/', [KkmController::class, 'index'])->name('index');
+        Route::post('/', [KkmController::class, 'store'])->name('store');
+        Route::get('/list', [KkmController::class, 'getKkmList'])->name('list');
+        Route::delete('/{id}', [KkmController::class, 'destroy'])->name('destroy');
+    });
+    
+    // Bobot Nilai Routes
+    Route::prefix('bobot-nilai')->name('admin.bobot_nilai.')->group(function() {
+        Route::get('/', [BobotNilaiController::class, 'index'])->name('index');
+        Route::post('/', [BobotNilaiController::class, 'update'])->name('update');
+        Route::get('/data', [BobotNilaiController::class, 'getBobot'])->name('data');
+    });
+    
+    // Endpoint untuk mendapatkan data kelas
+    Route::get('/kelas/data', function() {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $kelas = App\Models\Kelas::with(['mataPelajarans' => function($query) use ($tahunAjaranId) {
+            $query->where('tahun_ajaran_id', $tahunAjaranId);
+        }])->where('tahun_ajaran_id', $tahunAjaranId)->get();
+        
+        return response()->json(['kelas' => $kelas]);
+    })->name('kelas.data');
 
     Route::post('/gemini/send-message', [GeminiChatController::class, 'sendMessage'])->name('gemini.send');
     Route::get('/gemini/history', [GeminiChatController::class, 'getHistory'])->name('gemini.history');
@@ -260,6 +286,9 @@ Route::middleware(['auth:guru', 'role:guru'])
         Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
+
+    Route::get('/nilai/kkm/{mapelId}', [KkmController::class, 'getKkm'])->name('nilai.kkm');
+    Route::get('/nilai/bobot', [BobotNilaiController::class, 'getBobot'])->name('nilai.bobot');
     
     Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
     Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgressPengajar'])

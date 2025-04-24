@@ -8,6 +8,8 @@ use App\Models\Siswa;
 use App\Models\Nilai;
 use App\Models\TujuanPembelajaran;
 use App\Models\LingkupMateri;
+use App\Http\Controllers\KkmController;
+use App\Http\Controllers\BobotNilaiController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -319,12 +321,23 @@ class ScoreController extends Controller
             })
             ->get();
 
+        $kkm = Kkm::where('mata_pelajaran_id', $id)
+        ->where('tahun_ajaran_id', session('tahun_ajaran_id'))
+        ->first();
+        
+        $kkmValue = $kkm ? $kkm->nilai : 70;
+        
+        // Ambil bobot nilai
+        $bobotNilai = BobotNilai::getDefault();
+        
         return view('pengajar.input_score', compact(
             'subject',
             'students',
             'mataPelajaran',
             'existingScores',
-            'mataPelajaranList'
+            'mataPelajaranList',
+            'kkmValue',
+            'bobotNilai'
         ));
 
     } catch (\Exception $e) {
@@ -484,7 +497,23 @@ class ScoreController extends Controller
                 }
             }
     
-            return view('pengajar.preview_score', compact('mataPelajaran', 'existingScores', 'students'));
+            $kkm = Kkm::where('mata_pelajaran_id', $id)
+            ->where('tahun_ajaran_id', session('tahun_ajaran_id'))
+            ->first();
+            
+            $kkmValue = $kkm ? $kkm->nilai : 70; // Default ke 70 jika tidak ada KKM
+            
+            // Tambahkan ini: Ambil bobot nilai
+            $bobotNilai = BobotNilai::getDefault();
+            
+            // Kirim variabel tambahan ke view
+            return view('pengajar.preview_score', compact(
+                'mataPelajaran', 
+                'existingScores', 
+                'students',
+                'kkmValue',    // Tambahkan ini
+                'bobotNilai'   // Tambahkan ini
+            ));
         } catch (\Exception $e) {
             \Log::error('Error in previewScore: ' . $e->getMessage());
             return redirect()->route('pengajar.score.index')

@@ -129,9 +129,10 @@
                                             class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded muatan-lokal-checkbox"
                                             onchange="syncCheckboxes(this)">
                                         <label for="is_muatan_lokal_0" class="ml-2 block text-sm text-gray-900">
-                                            Mata Pelajaran Muatan Lokal
+                                            <span class="font-medium">Pelajaran Muatan Lokal</span>
                                         </label>
                                     </div>
+                                    <p class="mt-1 text-xs text-gray-500">Pelajaran khusus yang diajar oleh guru mapel</p>
                                 </div>
                                 
                                 <div class="non-muatan-lokal-options mt-2">
@@ -140,9 +141,10 @@
                                             class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded allow-non-wali-checkbox"
                                             onchange="syncCheckboxes(this)">
                                         <label for="allow_non_wali_0" class="ml-2 block text-sm text-gray-900">
-                                            Mata Pelajaran Wajib yang diajar guru biasa
+                                            <span class="font-medium">Pelajaran Wajib - Guru Mapel</span>
                                         </label>
                                     </div>
+                                    <p class="mt-1 text-xs text-gray-500">Pelajaran wajib yang diajar oleh guru mapel</p>
                                 </div>
                             </div>
                         @endif

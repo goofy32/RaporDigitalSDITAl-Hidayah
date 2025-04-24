@@ -69,28 +69,28 @@
                             <div class="muatan-lokal-container">
                                 <div class="flex items-center">
                                     <input id="is_muatan_lokal" name="is_muatan_lokal" type="checkbox" 
-                                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                        class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded muatan-lokal-checkbox"
                                         {{ old('is_muatan_lokal', $subject->is_muatan_lokal) ? 'checked' : '' }}
-                                        onchange="updateNonWaliOptions()">
+                                        onchange="syncCheckboxes(this)">
                                     <label for="is_muatan_lokal" class="ml-2 block text-sm text-gray-900">
-                                        Tandai sebagai Muatan Lokal
+                                        <span class="font-medium">Pelajaran Muatan Lokal</span>
                                     </label>
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500">Centang ini jika ingin mengajar mata pelajaran muatan lokal.</p>
+                                <p class="mt-1 text-xs text-gray-500">Pelajaran khusus yang diajar oleh guru mapel</p>
                             </div>
                             
                             <!-- Opsi allow_non_wali untuk mata pelajaran wajib di kelas non-wali -->
-                            <div class="non-muatan-lokal-options mt-2" style="{{ $subject->is_muatan_lokal ? 'display: none;' : '' }}">
+                            <div class="non-muatan-lokal-options mt-2">
                                 <div class="flex items-center">
                                     <input id="allow_non_wali" name="allow_non_wali" type="checkbox" 
                                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded allow-non-wali-checkbox"
                                         {{ old('allow_non_wali', $subject->allow_non_wali) ? 'checked' : '' }}
-                                        onchange="updateNonWaliOptions()">
+                                        onchange="syncCheckboxes(this)">
                                     <label for="allow_non_wali" class="ml-2 block text-sm text-gray-900">
-                                        Mengajar di kelas selain kelas wali
+                                        <span class="font-medium">Pelajaran Wajib - Guru Mapel</span>
                                     </label>
                                 </div>
-                                <p class="mt-1 text-xs text-gray-500" id="non-wali-info">Centang ini jika Anda ingin mengajar mata pelajaran wajib di kelas selain kelas yang Anda walikan.</p>
+                                <p class="mt-1 text-xs text-gray-500">Pelajaran wajib yang diajar oleh guru mapel</p>
                             </div>
                             @endif
                         </div>

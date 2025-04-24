@@ -187,6 +187,18 @@
             />
         );
     </script>
+    @if(Auth::guard('web')->check())
+        <x-admin.settings-modal id="settings-modal"></x-admin.settings-modal>
+    @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup event listeners for settings modal
+            document.addEventListener('open-settings', function() {
+                window.dispatchEvent(new CustomEvent('open-settings'));
+            });
+        });
+    </script>
 
     @stack('scripts')
 

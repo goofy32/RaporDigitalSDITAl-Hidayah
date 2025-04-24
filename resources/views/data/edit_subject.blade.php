@@ -66,10 +66,10 @@
                         class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded muatan-lokal-checkbox"
                         {{ old('is_muatan_lokal', $subject->is_muatan_lokal) ? 'checked' : '' }}>
                     <label for="is_muatan_lokal" class="ml-2 block text-sm text-gray-900">
-                        Tandai sebagai Muatan Lokal
+                        <span class="font-medium">Pelajaran Muatan Lokal</span>
                     </label>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">Muatan lokal hanya dapat diajar oleh guru dengan jabatan guru (bukan wali kelas)</p>
+                <p class="mt-1 text-xs text-gray-500">Pelajaran ini hanya dapat diajar oleh guru mapel (bukan wali kelas)</p>
             </div>
 
             <!-- Opsi Non-muatan lokal dengan guru bukan wali kelas -->
@@ -79,10 +79,10 @@
                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded allow-non-wali-checkbox"
                         {{ old('allow_non_wali', $subject->allow_non_wali) ? 'checked' : '' }}>
                     <label for="allow_non_wali" class="ml-2 block text-sm text-gray-900">
-                        Pelajaran non-muatan lokal dengan guru bukan wali kelas
+                        <span class="font-medium">Pelajaran Wajib - Guru Mapel</span>
                     </label>
                 </div>
-                <p class="mt-1 text-xs text-gray-500">Centang ini jika ingin mengizinkan guru biasa (bukan wali kelas) mengajar mata pelajaran non-muatan lokal</p>
+                <p class="mt-1 text-xs text-gray-500">Pelajaran wajib ini akan diajar oleh guru mapel, bukan wali kelas</p>
             </div>
 
             <!-- Kelas Dropdown -->
