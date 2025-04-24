@@ -20,7 +20,7 @@
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-green-700">Detail Data Siswa</h2>
                 <div class="flex space-x-2">
-                    <button class="bg-green-600 text-white font-medium py-2 px-4 rounded hover:bg-green-700" onclick="window.history.back()">Kembali</button>
+                    <button class="bg-gray-600 text-white font-medium py-2 px-4 rounded hover:bg-green-700" onclick="window.history.back()">Kembali</button>
                     <a href="{{ route('student.edit', $student->id) }}" 
                     class="bg-green-600 text-white font-medium py-2 px-4 rounded hover:bg-green-700">
                     Edit

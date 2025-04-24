@@ -1,3 +1,4 @@
+<!-- resources/views/data/teacher_data.blade.php -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -99,24 +100,51 @@
                                 <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
                                 <td class="px-4 py-2">
                                     @php
+                                        // Get regular teaching classes
                                         $kelasAjar = $teacher->kelas()->wherePivot('role', 'pengajar')->get();
+                                        
+                                        // Get class where teacher is a guardian (wali kelas)
+                                        $kelasWali = $teacher->kelas()
+                                            ->wherePivot('is_wali_kelas', true)
+                                            ->wherePivot('role', 'wali_kelas')
+                                            ->first();
+                                            
+                                        // Create a collection of all classes
+                                        $allClasses = collect();
+                                        
+                                        // Add regular teaching classes
+                                        if($kelasAjar->count() > 0) {
+                                            $allClasses = $allClasses->merge($kelasAjar);
+                                        }
+                                        
+                                        // Add wali kelas if it exists
+                                        if($kelasWali) {
+                                            // Check if this class isn't already in the collection
+                                            if(!$allClasses->contains('id', $kelasWali->id)) {
+                                                $allClasses->push($kelasWali);
+                                            }
+                                        }
                                     @endphp
-                                    @forelse($kelasAjar as $kelas)
-                                        {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}@if(!$loop->last), @endif
-                                    @empty
+                                    
+                                    @if($allClasses->count() > 0)
+                                        <ul class="list-disc list-inside">
+                                            @foreach($allClasses as $kelas)
+                                                <li>
+                                                    {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
+                                                    @if($kelasWali && $kelas->id == $kelasWali->id)
+                                                        <span class="text-green-600 ml-1">(Wali Kelas)</span>
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @else
                                         Belum ada kelas yang diampu
-                                    @endforelse
+                                    @endif
                                 </td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Wali Kelas</th>
                                 <td class="px-4 py-2">
-                                    @php
-                                        $kelasWali = $teacher->kelas()
-                                            ->wherePivot('is_wali_kelas', true)
-                                            ->wherePivot('role', 'wali_kelas')
-                                            ->first();
-                                    @endphp
                                     @if($kelasWali)
                                         {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
                                     @else
