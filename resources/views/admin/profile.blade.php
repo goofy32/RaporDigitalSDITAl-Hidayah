@@ -30,13 +30,6 @@
             <form action="{{ route('profile.submit') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 
-                <!-- Tambahkan div debug yang hanya terlihat saat debugging -->
-                <div x-show="debugInfo" class="mb-4 p-2 bg-yellow-100 border border-yellow-400 text-yellow-700">
-                    <p class="font-bold">Debug Info:</p>
-                    <p x-text="debugInfo"></p>
-                    <p>Mapping data:</p>
-                    <pre x-text="JSON.stringify(tahunAjaranMapping, null, 2)"></pre>
-                </div>
                 <!-- Logo Sekolah -->
                 <div class="flex flex-col mb-4">
                     @if(isset($profil->logo))
@@ -180,12 +173,15 @@
 
                     <!-- Tahun Pelajaran -->
                     <div>
-                        <label for="tahun_pelajaran" class="block mb-2 text-sm font-medium text-gray-900">Tahun Pelajaran</label>
+                        <label for="tahun_pelajaran" class="block mb-2 text-sm font-medium text-gray-900">Tahun Pelajaran dan Semester</label>
                         <select id="tahun_pelajaran" name="tahun_pelajaran" 
+                            onchange="updateSemester(this)"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" required>
                             <option value="">Pilih Tahun Pelajaran</option>
                             @foreach($tahunAjarans as $ta)
-                                <option value="{{ $ta->tahun_ajaran }}" data-semester="{{ $ta->semester }}" {{ (old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') == $ta->tahun_ajaran) ? 'selected' : '' }}>
+                                <option value="{{ $ta->tahun_ajaran }}" 
+                                        data-semester="{{ $ta->semester }}" 
+                                        {{ (old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') == $ta->tahun_ajaran) ? 'selected' : '' }}>
                                     {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
                                 </option>
                             @endforeach
@@ -194,22 +190,9 @@
                             <p class="text-red-500 text-sm">{{ $message }}</p>
                         @enderror
                     </div>
-                    <!-- Semester -->
-                    <div>
-                        <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
-                        <select id="semester" name="semester" 
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" required>
-                            <option value="">Pilih Semester</option>
-                            <option value="1" {{ (old('semester', $profil->semester ?? '') == 1) ? 'selected' : '' }}>Ganjil</option>
-                            <option value="2" {{ (old('semester', $profil->semester ?? '') == 2) ? 'selected' : '' }}>Genap</option>
-                        </select>
-                        <p id="semester-info" class="text-sm text-gray-500 mt-1" style="display: none;">
-                            Semester otomatis diisi berdasarkan tahun ajaran yang dipilih
-                        </p>
-                        @error('semester')
-                            <p class="text-red-500 text-sm">{{ $message }}</p>
-                        @enderror
-                    </div>
+
+                    <!-- Semester (hidden) -->
+                    <input type="hidden" id="semester" name="semester" value="{{ old('semester', $profil->semester ?? '') }}">
 
                     <!-- Kepala Sekolah -->
                     <div>
@@ -297,6 +280,7 @@
                     class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">
                     Simpan
                 </button>
+            </form>
         </div>
     </div>
     
@@ -316,69 +300,143 @@
         });
     </script>
 
+    <!-- Script untuk mengelola semester dan tahun ajaran -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const tahunSelect = document.getElementById('tahun_pelajaran');
-            const semesterSelect = document.getElementById('semester');
-            const semesterInfo = document.getElementById('semester-info');
-            
-            // Cek apakah ini load pertama atau form submission dengan error
-            const hasOldSemester = "{{ old('semester') }}" !== "";
-            
-            console.log('Initial state:', {
-                'Selected tahun ajaran': tahunSelect.value,
-                'Current semester value': semesterSelect.value,
-                'Has old semester value': hasOldSemester,
-                'Old semester value': "{{ old('semester') }}",
-                'DB semester value': "{{ $profil->semester ?? '' }}"
-            });
-            
-            // Fungsi untuk update semester berdasarkan tahun ajaran
-            function updateSemester() {
-                // Hanya update jika tidak ada old data (form belum pernah disubmit dengan error)
-                if (hasOldSemester) {
-                    console.log('Keeping old semester value:', semesterSelect.value);
-                    return;
-                }
+document.addEventListener('DOMContentLoaded', function() {
+    const tahunSelect = document.getElementById('tahun_pelajaran');
+    const semesterInput = document.getElementById('semester');
+    
+    // Fungsi untuk mencari opsi yang cocok dengan tahun ajaran dan semester
+    function findAndSelectMatchingOption() {
+        // Dapatkan nilai tahun ajaran dan semester dari database/old input
+        const currentTahunAjaran = "{{ old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') }}";
+        const currentSemester = "{{ old('semester', $profil->semester ?? '') }}";
+        
+        console.log('Finding option for:', {
+            tahunAjaran: currentTahunAjaran,
+            semester: currentSemester
+        });
+        
+        // Mencari opsi di dropdown yang cocok dengan tahun ajaran DAN semester
+        let matchFound = false;
+        
+        Array.from(tahunSelect.options).forEach(option => {
+            if (option.value === currentTahunAjaran) {
+                const optionSemester = option.getAttribute('data-semester');
                 
-                const selectedOption = tahunSelect.options[tahunSelect.selectedIndex];
-                if (selectedOption && selectedOption.value) {
-                    const semester = selectedOption.getAttribute('data-semester');
-                    if (semester) {
-                        console.log('Setting semester to:', semester);
-                        semesterSelect.value = semester;
-                        semesterInfo.style.display = 'block';
+                // Log untuk debugging
+                console.log(`Comparing option: ${option.value} (semester: ${optionSemester}) with current semester: ${currentSemester}`);
+                
+                // Jika tahun ajaran cocok tetapi semester berbeda
+                if (optionSemester !== currentSemester && currentSemester !== '') {
+                    console.log('⚠️ MISMATCH DETECTED: Selected tahun ajaran but semester differs!');
+                    
+                    // Prioritaskan mencari tahun ajaran yang sama dengan semester yang benar
+                    Array.from(tahunSelect.options).forEach(opt => {
+                        if (opt.value === currentTahunAjaran && opt.getAttribute('data-semester') === currentSemester) {
+                            console.log(`✅ Found perfect match: ${opt.value} (semester: ${opt.getAttribute('data-semester')})`);
+                            opt.selected = true;
+                            matchFound = true;
+                        }
+                    });
+                    
+                    // Jika tidak ada tahun ajaran yang sama dengan semester yang tepat, coba cari opsi dengan semester yang tepat
+                    if (!matchFound) {
+                        Array.from(tahunSelect.options).forEach(opt => {
+                            if (opt.getAttribute('data-semester') === currentSemester) {
+                                console.log(`⚠️ Found semester match with different tahun ajaran: ${opt.value}`);
+                                // Tidak auto-select ini karena mungkin ada pilihan yang lebih baik
+                            }
+                        });
                     }
                 }
-            }
-            
-            // Tambahkan event listener untuk perubahan tahun ajaran
-            tahunSelect.addEventListener('change', function() {
-                console.log('Tahun ajaran changed to:', this.value);
-                // Selalu update saat user secara aktif mengubah tahun ajaran
-                const selectedOption = tahunSelect.options[tahunSelect.selectedIndex];
-                if (selectedOption && selectedOption.value) {
-                    const semester = selectedOption.getAttribute('data-semester');
-                    if (semester) {
-                        console.log('Setting semester to:', semester);
-                        semesterSelect.value = semester;
-                        semesterInfo.style.display = 'block';
-                    }
-                } else {
-                    semesterInfo.style.display = 'none';
-                }
-            });
-            
-            // Jika tahun ajaran sudah terpilih dan ini adalah load pertama,
-            // kita bisa update semester
-            if (tahunSelect.value && !hasOldSemester) {
-                console.log('Initial load with pre-selected tahun ajaran');
-                updateSemester();
-            } else {
-                console.log('Using existing semester value');
             }
         });
-    </script>
+        
+        // Jika tidak ada kecocokan yang ditemukan, update nilai semester sesuai opsi yang dipilih
+        if (!matchFound) {
+            updateSemester(tahunSelect);
+        }
+    }
+    
+    // Panggil fungsi untuk memastikan dropdown menampilkan opsi yang benar
+    findAndSelectMatchingOption();
+    
+    // Memastikan nilai semester selalu sinkron dengan opsi yang dipilih
+    tahunSelect.addEventListener('change', function() {
+        updateSemester(this);
+    });
+});
+
+// Fungsi global untuk update semester saat tahun ajaran berubah
+function updateSemester(selectElement) {
+    if (!selectElement) {
+        selectElement = document.getElementById('tahun_pelajaran');
+    }
+    
+    if (!selectElement.value) return;
+    
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const semester = selectedOption.getAttribute('data-semester');
+    
+    if (semester) {
+        document.getElementById('semester').value = semester;
+        console.log(`Semester updated to: ${semester} from tahun ajaran: ${selectElement.value}`);
+    }
+}
+</script>
+
+<!-- Tambahan script untuk modifikasi dropdown dinamis jika diperlukan -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tahunSelect = document.getElementById('tahun_pelajaran');
+    const semesterInput = document.getElementById('semester');
+    const currentSemester = "{{ old('semester', $profil->semester ?? '') }}";
+    const currentTahunAjaran = "{{ old('tahun_pelajaran', $profil->tahun_pelajaran ?? '') }}";
+    
+    console.log('Current values:', {
+        tahunAjaran: currentTahunAjaran,
+        semester: currentSemester
+    });
+    
+    // Jika ada ketidakcocokan antara tahun ajaran dan semester
+    let mismatchDetected = false;
+    
+    if (currentTahunAjaran && currentSemester) {
+        // Cek apakah opsi yang dipilih memiliki semester yang tepat
+        const selectedOption = tahunSelect.options[tahunSelect.selectedIndex];
+        
+        if (selectedOption && selectedOption.value === currentTahunAjaran) {
+            const optionSemester = selectedOption.getAttribute('data-semester');
+            
+            if (optionSemester !== currentSemester) {
+                console.log('⚠️ Data mismatch: Current semester and option semester don\'t match');
+                mismatchDetected = true;
+                
+                // Modifikasi opsi yang dipilih untuk menampilkan semester yang benar
+                if (currentSemester === '1') {
+                    selectedOption.textContent = `${currentTahunAjaran} - Ganjil`;
+                } else {
+                    selectedOption.textContent = `${currentTahunAjaran} - Genap`;
+                }
+                
+                // Update atribut data-semester
+                selectedOption.setAttribute('data-semester', currentSemester);
+                
+                console.log('✅ Modified selected option to match the database semester');
+            }
+        }
+    }
+    
+    // Log final state
+    console.log('Final dropdown state:', {
+        selectedValue: tahunSelect.value,
+        selectedText: tahunSelect.options[tahunSelect.selectedIndex]?.textContent,
+        semesterValue: semesterInput.value,
+        mismatchDetected: mismatchDetected
+    });
+});
+</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
 </body>
 </html>
