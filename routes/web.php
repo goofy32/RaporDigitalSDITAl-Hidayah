@@ -107,8 +107,11 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::get('/', [KkmController::class, 'index'])->name('index');
         Route::post('/', [KkmController::class, 'store'])->name('store');
         Route::get('/list', [KkmController::class, 'getKkmList'])->name('list');
+        // Route baru untuk KKM massal
+        Route::post('/global', [KkmController::class, 'applyGlobalKkm'])->name('global');
         Route::delete('/{id}', [KkmController::class, 'destroy'])->name('destroy');
     });
+
     // Bobot Nilai Routes
     Route::prefix('bobot-nilai')->name('admin.bobot_nilai.')->group(function() {
         Route::get('/', [BobotNilaiController::class, 'index'])->name('index');
