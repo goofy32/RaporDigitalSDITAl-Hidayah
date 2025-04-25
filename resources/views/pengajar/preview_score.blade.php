@@ -7,20 +7,19 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">
-            {{ $mataPelajaran->kelas->nama_kelas }} - {{ $mataPelajaran->nama_pelajaran }}
+            Kelas {{ $mataPelajaran->kelas->nomor_kelas }} {{ $mataPelajaran->kelas->nama_kelas }} - {{ $mataPelajaran->nama_pelajaran }}
         </h2>
         <div class="flex gap-4">
             <a href="{{ route('pengajar.score.input_score', $mataPelajaran->id) }}"
-               class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
+            class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
                 Edit Nilai
             </a>
             <a href="{{ route('pengajar.score.index') }}" 
-               class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+            class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
                 Kembali
             </a>
         </div>
     </div>
-
     <!-- Tambahkan ini di bagian atas konten, sebelum tabel -->
     <div class="flex justify-between items-center mb-4">
         <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
@@ -173,37 +172,88 @@
     <div class="mt-6 space-y-4">
         <h3 class="text-lg font-medium text-gray-900">Hasil Analisis Nilai</h3>
         
-        @foreach($students as $student)
-            @php
-                $nilaiAkhir = $existingScores[$student['id']]['nilai_akhir_rapor'] ?? null;
-                $needRemedial = $nilaiAkhir && $nilaiAkhir < $kkmValue;
-            @endphp
+        @php
+            $studentsNeedingRemedial = [];
             
-            @if($needRemedial)
-                <div class="bg-red-50 border-l-4 border-red-400 p-4">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-red-700">
-                                <span class="font-bold">{{ $student['name'] }}</span> memiliki nilai akhir 
-                                <span class="font-bold">{{ $nilaiAkhir }}</span>, di bawah KKM 
-                                <span class="font-bold">{{ $kkmValue }}</span>. 
-                                Siswa ini perlu melakukan remedial.
-                            </p>
-                        </div>
+            // Periksa semua siswa dan semua jenis nilai mereka
+            foreach($students as $student) {
+                $needRemedial = false;
+                $belowKkmValues = [];
+                
+                // Cek Nilai TP
+                foreach($mataPelajaran->lingkupMateris as $lm) {
+                    foreach($lm->tujuanPembelajarans as $tp) {
+                        $nilaiTP = $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? null;
+                        if ($nilaiTP && $nilaiTP < $kkmValue) {
+                            $needRemedial = true;
+                            $belowKkmValues[] = "TP {$tp->kode_tp}: {$nilaiTP}";
+                        }
+                    }
+                }
+                
+                // Cek Nilai LM
+                foreach($mataPelajaran->lingkupMateris as $lm) {
+                    $nilaiLM = $existingScores[$student['id']]['lm'][$lm->id] ?? null;
+                    if ($nilaiLM && $nilaiLM < $kkmValue) {
+                        $needRemedial = true;
+                        $belowKkmValues[] = "LM {$lm->judul_lingkup_materi}: {$nilaiLM}";
+                    }
+                }
+                
+                // Cek Nilai Tes, Non-Tes dan Nilai Akhir
+                $nilaiTes = $existingScores[$student['id']]['nilai_tes'] ?? null;
+                if ($nilaiTes && $nilaiTes < $kkmValue) {
+                    $needRemedial = true;
+                    $belowKkmValues[] = "Nilai Tes: {$nilaiTes}";
+                }
+                
+                $nilaiNonTes = $existingScores[$student['id']]['nilai_non_tes'] ?? null;
+                if ($nilaiNonTes && $nilaiNonTes < $kkmValue) {
+                    $needRemedial = true;
+                    $belowKkmValues[] = "Nilai Non-Tes: {$nilaiNonTes}";
+                }
+                
+                $nilaiAkhirSemester = $existingScores[$student['id']]['nilai_akhir_semester'] ?? null;
+                if ($nilaiAkhirSemester && $nilaiAkhirSemester < $kkmValue) {
+                    $needRemedial = true;
+                    $belowKkmValues[] = "Nilai Akhir Semester: {$nilaiAkhirSemester}";
+                }
+                
+                $nilaiAkhirRapor = $existingScores[$student['id']]['nilai_akhir_rapor'] ?? null;
+                if ($nilaiAkhirRapor && $nilaiAkhirRapor < $kkmValue) {
+                    $needRemedial = true;
+                    $belowKkmValues[] = "Nilai Akhir Rapor: {$nilaiAkhirRapor}";
+                }
+                
+                if ($needRemedial) {
+                    $studentsNeedingRemedial[$student['id']] = [
+                        'name' => $student['name'],
+                        'belowKkmValues' => $belowKkmValues
+                    ];
+                }
+            }
+        @endphp
+        
+        @foreach($studentsNeedingRemedial as $studentId => $studentData)
+            <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700">
+                            <span class="font-bold">{{ $studentData['name'] }}</span> memiliki nilai di bawah KKM {{ $kkmValue }}.
+                            Siswa ini perlu melakukan remedial untuk nilai berikut: 
+                            <span class="font-medium">{{ implode(', ', $studentData['belowKkmValues']) }}</span>
+                        </p>
                     </div>
                 </div>
-            @endif
+            </div>
         @endforeach
         
-        @if(!collect($students)->some(function ($student) use ($existingScores, $kkmValue) {
-            $nilaiAkhir = $existingScores[$student['id']]['nilai_akhir_rapor'] ?? null;
-            return $nilaiAkhir && $nilaiAkhir < $kkmValue;
-        }))
+        @if(count($studentsNeedingRemedial) == 0)
             <div class="bg-green-50 border-l-4 border-green-400 p-4">
                 <div class="flex">
                     <div class="flex-shrink-0">
