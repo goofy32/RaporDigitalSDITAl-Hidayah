@@ -37,13 +37,13 @@
                 <div class="border-b mb-4">
                     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
                         <li class="mr-2" @click="activeTab = 'kkm'">
-                            <button :class="{'text-blue-600 border-blue-600 border-b-2 rounded-t-lg active': activeTab === 'kkm', 'text-gray-500 hover:text-gray-600 border-b-2 border-transparent hover:border-gray-300': activeTab !== 'kkm'}" 
+                            <button :class="{'text-green-600 border-green-600 border-b-2 rounded-t-lg active': activeTab === 'kkm', 'text-gray-500 hover:text-gray-600 border-b-2 border-transparent hover:border-gray-300': activeTab !== 'kkm'}" 
                                     class="inline-block p-4">
                                 KKM (Kriteria Ketuntasan Minimal)
                             </button>
                         </li>
                         <li class="mr-2" @click="activeTab = 'bobot'">
-                            <button :class="{'text-blue-600 border-blue-600 border-b-2 rounded-t-lg active': activeTab === 'bobot', 'text-gray-500 hover:text-gray-600 border-b-2 border-transparent hover:border-gray-300': activeTab !== 'bobot'}" 
+                            <button :class="{'text-green-600 border-green-600 border-b-2 rounded-t-lg active': activeTab === 'bobot', 'text-gray-500 hover:text-gray-600 border-b-2 border-transparent hover:border-gray-300': activeTab !== 'bobot'}" 
                                     class="inline-block p-4">
                                 Bobot Nilai
                             </button>
@@ -68,8 +68,8 @@
                     </div>
                     
                     <!-- Pengaturan KKM Massal -->
-                    <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 class="text-lg font-medium text-blue-800 mb-2">Pengaturan KKM Massal</h4>
+                    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 class="text-lg font-medium text-green-800 mb-2">Pengaturan KKM Massal</h4>
                         <div class="mb-4">
                             <label for="global_kkm_value" class="block mb-2 text-sm font-medium text-gray-900">
                                 Nilai KKM untuk Semua Mata Pelajaran
@@ -81,12 +81,12 @@
                                     x-model="globalKkmData.nilai" 
                                     min="0" 
                                     max="100" 
-                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mb-2 sm:mb-0"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5 mb-2 sm:mb-0"
                                     placeholder="Contoh: 70"
                                 >
                                 <button 
                                     @click="applyGlobalKkm" 
-                                    class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    class="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                                 >
                                     Terapkan
                                 </button>
@@ -95,7 +95,7 @@
                                 <label class="inline-flex items-center">
                                     <input 
                                         type="checkbox" 
-                                        class="form-checkbox h-5 w-5 text-blue-600" 
+                                        class="form-checkbox h-5 w-5 text-green-600" 
                                         x-model="globalKkmData.overwriteExisting"
                                     >
                                     <span class="ml-2 text-sm text-gray-700">Timpa nilai KKM yang sudah ada</span>
@@ -112,7 +112,7 @@
                         <h4 class="text-lg font-medium text-gray-900 mb-2">KKM per Mata Pelajaran</h4>
                         <label for="mata_pelajaran_id" class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
                         <select id="mata_pelajaran_id" x-model="kkmData.mata_pelajaran_id" 
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                             <option value="">Pilih Mata Pelajaran</option>
                             <template x-for="kelas in kelasData" :key="kelas.id">
                                 <optgroup :label="'Kelas ' + kelas.nomor_kelas + ' - ' + kelas.nama_kelas">
@@ -127,7 +127,7 @@
                     <div class="mb-4">
                         <label for="nilai_kkm" class="block mb-2 text-sm font-medium text-gray-900">Nilai KKM</label>
                         <input type="number" id="nilai_kkm" x-model="kkmData.nilai" min="0" max="100" 
-                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                         <p class="mt-1 text-sm text-gray-500">Nilai dari 0-100</p>
                     </div>
                     
@@ -151,7 +151,7 @@
                                             <td class="px-6 py-4" x-text="kkm.mata_pelajaran ? kkm.mata_pelajaran.nama_pelajaran : '-'"></td>
                                             <td class="px-6 py-4" x-text="kkm.nilai"></td>
                                             <td class="px-6 py-4 flex gap-2">
-                                                <button @click="editKkm(kkm)" class="text-blue-600 hover:underline">
+                                                <button @click="editKkm(kkm)" class="text-green-600 hover:underline">
                                                     Edit
                                                 </button>
                                                 <button @click="deleteKkm(kkm.id)" class="text-red-600 hover:underline">
@@ -171,7 +171,7 @@
                     </div>
                     
                     <div class="mt-4 flex justify-end">
-                        <button @click="saveKkm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <button @click="saveKkm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                             Simpan KKM
                         </button>
                     </div>
@@ -179,7 +179,7 @@
                 
                 <!-- Tab Bobot Nilai -->
                 <div x-show="activeTab === 'bobot'" class="space-y-4">
-                    <div class="p-4 text-sm text-blue-800 border-l-4 border-blue-300 bg-blue-50">
+                    <div class="p-4 text-sm text-green-800 border-l-4 border-green-300 bg-green-50">
                         <div class="flex">
                             <div class="flex-shrink-0">
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -206,7 +206,7 @@
                         <label class="block mb-2 text-sm font-medium text-gray-900">Bobot Sumatif Tujuan Pembelajaran (S.TP)</label>
                         <div class="flex items-center">
                             <input type="number" x-model="bobotData.bobot_tp" step="0.01" min="0" max="1" 
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                             <span class="ml-2 text-gray-700">x 100% = <span x-text="Math.round(bobotData.bobot_tp * 100) + '%'"></span></span>
                         </div>
                     </div>
@@ -215,7 +215,7 @@
                         <label class="block mb-2 text-sm font-medium text-gray-900">Bobot Sumatif Lingkup Materi (S.LM)</label>
                         <div class="flex items-center">
                             <input type="number" x-model="bobotData.bobot_lm" step="0.01" min="0" max="1" 
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                             <span class="ml-2 text-gray-700">x 100% = <span x-text="Math.round(bobotData.bobot_lm * 100) + '%'"></span></span>
                         </div>
                     </div>
@@ -224,7 +224,7 @@
                         <label class="block mb-2 text-sm font-medium text-gray-900">Bobot Sumatif Akhir Semester (S.AS)</label>
                         <div class="flex items-center">
                             <input type="number" x-model="bobotData.bobot_as" step="0.01" min="0" max="1" 
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                             <span class="ml-2 text-gray-700">x 100% = <span x-text="Math.round(bobotData.bobot_as * 100) + '%'"></span></span>
                         </div>
                     </div>
@@ -252,7 +252,7 @@
                     
                     <div class="mt-4 flex justify-end">
                         <button @click="saveBobot" :disabled="!isTotalValid" 
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
                             Simpan Bobot Nilai
                         </button>
                     </div>
