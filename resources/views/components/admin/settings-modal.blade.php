@@ -69,12 +69,12 @@
                 </div>
                 
                 <div class="mb-4">
-                    <label for="mata_pelajaran" class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
-                    <select id="mata_pelajaran" x-model="kkmData.mata_pelajaran_id" 
+                    <label for="mata_pelajaran_id" class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
+                    <select id="mata_pelajaran_id" x-model="kkmData.mata_pelajaran_id" 
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                         <option value="">Pilih Mata Pelajaran</option>
                         <template x-for="kelas in kelasData" :key="kelas.id">
-                            <optgroup :label="'Kelas ' + kelas.nama_kelas">
+                            <optgroup :label="'Kelas ' + kelas.nomor_kelas + ' - ' + kelas.nama_kelas">
                                 <template x-for="mapel in kelas.mata_pelajarans" :key="mapel.id">
                                     <option :value="mapel.id" x-text="mapel.nama_pelajaran"></option>
                                 </template>
@@ -97,30 +97,30 @@
                         <table class="w-full text-sm text-left text-gray-500">
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="py-3 px-6">Kelas</th>
-                                    <th scope="col" class="py-3 px-6">Mata Pelajaran</th>
-                                    <th scope="col" class="py-3 px-6">KKM</th>
-                                    <th scope="col" class="py-3 px-6">Aksi</th>
+                                    <th scope="col" class="px-6 py-3">Kelas</th>
+                                    <th scope="col" class="px-6 py-3">Mata Pelajaran</th>
+                                    <th scope="col" class="px-6 py-3">KKM</th>
+                                    <th scope="col" class="px-6 py-3">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-for="kkm in kkmList" :key="kkm.id">
-                                    <tr class="bg-white border-b">
-                                        <td class="py-4 px-6" x-text="kkm.kelas?.nama_kelas || '-'"></td>
-                                        <td class="py-4 px-6" x-text="kkm.mata_pelajaran?.nama_pelajaran || '-'"></td>
-                                        <td class="py-4 px-6" x-text="kkm.nilai"></td>
-                                        <td class="py-4 px-6">
-                                            <button @click="editKkm(kkm)" class="text-blue-600 hover:text-blue-900 mr-2">
+                                    <tr class="bg-white border-b hover:bg-gray-50">
+                                        <td class="px-6 py-4" x-text="kkm.mata_pelajaran && kkm.mata_pelajaran.kelas ? 'Kelas ' + kkm.mata_pelajaran.kelas.nomor_kelas + ' - ' + kkm.mata_pelajaran.kelas.nama_kelas : '-'"></td>
+                                        <td class="px-6 py-4" x-text="kkm.mata_pelajaran ? kkm.mata_pelajaran.nama_pelajaran : '-'"></td>
+                                        <td class="px-6 py-4" x-text="kkm.nilai"></td>
+                                        <td class="px-6 py-4">
+                                            <button @click="editKkm(kkm)" class="text-blue-600 hover:underline mr-2">
                                                 Edit
                                             </button>
-                                            <button @click="deleteKkm(kkm.id)" class="text-red-600 hover:text-red-900">
+                                            <button @click="deleteKkm(kkm.id)" class="text-red-600 hover:underline" onclick="return confirm('Yakin ingin menghapus KKM ini?')">
                                                 Hapus
                                             </button>
                                         </td>
                                     </tr>
                                 </template>
                                 <tr x-show="kkmList.length === 0">
-                                    <td colspan="4" class="py-4 px-6 text-center text-gray-500">
+                                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">
                                         Belum ada data KKM
                                     </td>
                                 </tr>

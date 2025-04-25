@@ -9,9 +9,9 @@ class BobotNilaiController extends Controller
 {
     public function index()
     {
-        $bobotNilai = BobotNilai::getDefault();
-        
-        return view('admin.bobot_nilai.index', compact('bobotNilai'));
+        // Alihkan ke dashboard dengan pesan
+        return redirect()->route('admin.dashboard')
+            ->with('info', 'Pengaturan Bobot Nilai tersedia melalui menu pengaturan di navbar');
     }
     
     public function update(Request $request)
@@ -25,13 +25,19 @@ class BobotNilaiController extends Controller
         // Pastikan total bobot adalah 1 (100%)
         $total = $validated['bobot_tp'] + $validated['bobot_lm'] + $validated['bobot_as'];
         if (round($total, 2) != 1) {
-            return redirect()->back()->with('error', 'Total bobot harus 100% (1.0)');
+            return response()->json([
+                'success' => false,
+                'message' => 'Total bobot harus 100% (1.0)'
+            ], 422);
         }
         
         $bobotNilai = BobotNilai::getDefault();
         $bobotNilai->update($validated);
         
-        return redirect()->route('admin.bobot_nilai.index')->with('success', 'Bobot nilai berhasil diperbarui!');
+        return response()->json([
+            'success' => true,
+            'message' => 'Bobot nilai berhasil diperbarui!'
+        ]);
     }
     
     public function getBobot()

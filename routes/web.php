@@ -109,7 +109,6 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::get('/list', [KkmController::class, 'getKkmList'])->name('list');
         Route::delete('/{id}', [KkmController::class, 'destroy'])->name('destroy');
     });
-    
     // Bobot Nilai Routes
     Route::prefix('bobot-nilai')->name('admin.bobot_nilai.')->group(function() {
         Route::get('/', [BobotNilaiController::class, 'index'])->name('index');
