@@ -31,8 +31,42 @@ class BobotNilaiController extends Controller
             ], 422);
         }
         
+        // Ambil nilai bobot lama untuk logging
         $bobotNilai = BobotNilai::getDefault();
+        $oldValues = [
+            'bobot_tp' => $bobotNilai->bobot_tp,
+            'bobot_lm' => $bobotNilai->bobot_lm,
+            'bobot_as' => $bobotNilai->bobot_as
+        ];
+        
+        // Update bobot nilai
         $bobotNilai->update($validated);
+        
+        // Log perubahan untuk audit
+        $user = auth()->user();
+        Log::info('Bobot nilai diperbarui', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'old_values' => $oldValues,
+            'new_values' => $validated,
+            'timestamp' => now()->toDateTimeString()
+        ]);
+        
+        // Tambahkan ke AuditLog jika model tersedia
+        if (class_exists('App\Models\AuditLog')) {
+            \App\Models\AuditLog::create([
+                'user_type' => get_class($user),
+                'user_id' => $user->id,
+                'action' => 'update',
+                'model_type' => 'App\Models\BobotNilai',
+                'model_id' => $bobotNilai->id,
+                'description' => 'Perubahan bobot nilai',
+                'old_values' => $oldValues,
+                'new_values' => $validated,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent()
+            ]);
+        }
         
         return response()->json([
             'success' => true,

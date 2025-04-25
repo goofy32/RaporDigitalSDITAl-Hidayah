@@ -191,6 +191,16 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                        <h4 class="text-md font-medium text-yellow-800 mb-2">Penting Diperhatikan:</h4>
+                        <ul class="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                            <li>Perubahan bobot nilai akan mempengaruhi perhitungan nilai akhir rapor untuk <strong>semua siswa</strong>.</li>
+                            <li>Nilai yang sudah diinput sebelumnya akan otomatis dihitung ulang sesuai bobot baru.</li>
+                            <li>Pastikan semua guru/pengajar mengetahui perubahan bobot ini untuk menghindari kesalahpahaman.</li>
+                            <li>Disarankan untuk melakukan perubahan bobot di awal semester atau sebelum proses penilaian dimulai.</li>
+                        </ul>
+                    </div>
                     
                     <div class="mb-4">
                         <label class="block mb-2 text-sm font-medium text-gray-900">Bobot Sumatif Tujuan Pembelajaran (S.TP)</label>
@@ -409,14 +419,34 @@ document.addEventListener('alpine:init', () => {
         
         async applyGlobalKkm() {
             try {
-                // Tampilkan konfirmasi terlebih dahulu
-                let confirmMessage = 'Apakah Anda yakin ingin menerapkan nilai KKM ' + this.globalKkmData.nilai + ' ke semua mata pelajaran?';
+                // Siapkan pesan konfirmasi
+                let confirmMessage = `Apakah Anda yakin ingin menerapkan nilai KKM ${this.globalKkmData.nilai} ke semua mata pelajaran?`;
+                
                 if (this.globalKkmData.overwriteExisting) {
-                    confirmMessage += ' Tindakan ini akan menimpa nilai KKM yang sudah ada.';
+                    confirmMessage += '<br/><br/><strong class="text-red-600">Perhatian!</strong> Tindakan ini akan menimpa nilai KKM yang sudah ada sebelumnya.';
+                } else {
+                    confirmMessage += '<br/><br/>Hanya mata pelajaran yang belum memiliki KKM yang akan diperbarui.';
                 }
                 
-                if (!confirm(confirmMessage)) return;
+                // Tampilkan dialog konfirmasi
+                const isConfirmed = await Swal.fire({
+                    title: 'Konfirmasi Pengaturan KKM Massal',
+                    html: confirmMessage,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Terapkan',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    return result.isConfirmed;
+                });
                 
+                if (!isConfirmed) {
+                    return;
+                }
+                
+                // Tampilkan loading
                 Swal.fire({
                     title: 'Menerapkan KKM Massal...',
                     text: 'Mohon tunggu...',
@@ -439,7 +469,7 @@ document.addEventListener('alpine:init', () => {
                 
                 if (data.success) {
                     this.fetchKkmList();
-                    this.showAlert('success', 'KKM massal berhasil diterapkan. ' + data.count + ' mata pelajaran diperbarui.');
+                    this.showAlert('success', `KKM massal berhasil diterapkan. ${data.count} mata pelajaran diperbarui.`);
                 } else {
                     this.showAlert('error', data.message || 'Gagal menerapkan KKM massal');
                 }
@@ -455,7 +485,42 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             
+            // Tampilkan konfirmasi terlebih dahulu
+            const confirmMessage = `
+            Perhatian! Perubahan bobot nilai akan mempengaruhi:
+            1. Perhitungan nilai akhir rapor semua siswa
+            2. Nilai yang sudah diinput sebelumnya akan dihitung ulang
+            
+            Apakah Anda yakin ingin menyimpan perubahan bobot nilai ini?
+            `;
+            
+            const isConfirmed = await Swal.fire({
+                title: 'Konfirmasi Perubahan Bobot Nilai',
+                html: confirmMessage,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Simpan',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                return result.isConfirmed;
+            });
+            
+            if (!isConfirmed) {
+                return;
+            }
+            
             try {
+                Swal.fire({
+                    title: 'Menyimpan Bobot Nilai...',
+                    text: 'Mohon tunggu...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
                 const response = await fetch('/admin/bobot-nilai', {
                     method: 'POST',
                     headers: {
@@ -468,7 +533,7 @@ document.addEventListener('alpine:init', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    this.showAlert('success', 'Bobot nilai berhasil disimpan');
+                    this.showAlert('success', 'Bobot nilai berhasil disimpan dan akan diterapkan pada semua perhitungan nilai');
                 } else {
                     this.showAlert('error', data.message || 'Gagal menyimpan bobot nilai');
                 }
