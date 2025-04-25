@@ -45,18 +45,54 @@
             <!-- Data Pembelajaran -->
             <li>
                 <a href="{{ route('pengajar.score.index') }}" 
-                   data-turbo-action="replace"
-                   data-path="score"
-                   onclick="return !window.formChanged || confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')"
-                   class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100">
+                data-turbo-action="replace"
+                data-path="score"
+                onclick="return !window.formChanged || confirm('Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?')"
+                class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 relative">
                     <div x-data class="w-5 h-5">
                         <img src="{{ asset('images/icons/score.png') }}" 
-                             alt="Score Icon"
-                             class="w-full h-full transition-opacity duration-300"
-                             :class="Alpine.store('navigation').isImageLoaded('score-icon') ? 'opacity-100' : 'opacity-0'"
-                             id="score-icon">
+                            alt="Score Icon"
+                            class="w-full h-full transition-opacity duration-300"
+                            :class="Alpine.store('navigation').isImageLoaded('score-icon') ? 'opacity-100' : 'opacity-0'"
+                            id="score-icon">
                     </div>
                     <span class="ml-3">Data Pembelajaran</span>
+                    
+                    <!-- Warning Indicator -->
+                    @php
+                    $hasLowScores = false;
+                    $countLowScores = 0;
+                    $kkmValue = 70; // Default KKM value
+                    
+                    // Cek apakah ada guru yang login
+                    if (Auth::guard('guru')->check()) {
+                        $guru = Auth::guard('guru')->user();
+                        
+                        // Cari KKM untuk mata pelajaran yang diajar guru ini
+                        $nilaiDibawahKKM = DB::table('nilais')
+                            ->join('mata_pelajarans', 'nilais.mata_pelajaran_id', '=', 'mata_pelajarans.id')
+                            ->join('kkms', 'mata_pelajarans.id', '=', 'kkms.mata_pelajaran_id')
+                            ->where('mata_pelajarans.guru_id', $guru->id)
+                            ->where('nilais.nilai_akhir_rapor', '<', DB::raw('kkms.nilai'))
+                            ->count();
+                            
+                        if ($nilaiDibawahKKM > 0) {
+                            $hasLowScores = true;
+                            $countLowScores = $nilaiDibawahKKM;
+                        }
+                    }
+                    @endphp
+                    
+                    @if($hasLowScores)
+                    <div class="absolute right-0 top-0 -mr-1 -mt-1">
+                        <span class="flex h-5 w-5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center">
+                                {{ $countLowScores > 99 ? '99+' : $countLowScores }}
+                            </span>
+                        </span>
+                    </div>
+                    @endif
                 </a>
             </li>
 
