@@ -35,17 +35,14 @@
                 </div>
 
                 <!-- Semester -->
-                <div>
-                    <label for="semester" class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
-                    <select name="semester" id="semester" x-model="semester"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                            required>
-                        <option value="1" {{ old('semester', $tahunAjaran->semester) == 1 ? 'selected' : '' }}>Ganjil</option>
-                        <option value="2" {{ old('semester', $tahunAjaran->semester) == 2 ? 'selected' : '' }}>Genap</option>
-                    </select>
-                    @error('semester')
-                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                    @enderror
+                <div class="mb-4">
+                    <label for="semester" class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                    <div class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700">
+                        Ganjil (Semester 1)
+                        <p class="mt-1 text-xs text-gray-500">Tahun ajaran baru selalu dimulai dengan semester ganjil</p>
+                    </div>
+                    <!-- Hidden input untuk memastikan nilai semester tetap dikirim -->
+                    <input type="hidden" name="semester" value="1">
                 </div>
 
                 <!-- Tanggal Mulai -->

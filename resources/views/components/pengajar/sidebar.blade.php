@@ -69,11 +69,17 @@
                         $guru = Auth::guard('guru')->user();
                         
                         // Cari KKM untuk mata pelajaran yang diajar guru ini
+                        $tahunAjaranId = session('tahun_ajaran_id');
                         $nilaiDibawahKKM = DB::table('nilais')
                             ->join('mata_pelajarans', 'nilais.mata_pelajaran_id', '=', 'mata_pelajarans.id')
                             ->join('kkms', 'mata_pelajarans.id', '=', 'kkms.mata_pelajaran_id')
                             ->where('mata_pelajarans.guru_id', $guru->id)
                             ->where('nilais.nilai_akhir_rapor', '<', DB::raw('kkms.nilai'))
+                            ->where(function($query) use ($tahunAjaranId) {
+                                $query->where('nilais.tahun_ajaran_id', $tahunAjaranId)
+                                    ->where('mata_pelajarans.tahun_ajaran_id', $tahunAjaranId)
+                                    ->where('kkms.tahun_ajaran_id', $tahunAjaranId);
+                            })
                             ->count();
                             
                         if ($nilaiDibawahKKM > 0) {
