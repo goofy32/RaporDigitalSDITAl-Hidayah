@@ -287,6 +287,46 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
     });
 });
 
+// Get students for a given class
+Route::get('/debug/check-students/{kelasId}', function($kelasId) {
+        $kelas = \App\Models\Kelas::findOrFail($kelasId);
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        // Log basic info
+        \Log::info("Debug check for kelas ID: {$kelasId}");
+        \Log::info("Current tahun_ajaran_id: {$tahunAjaranId}");
+        \Log::info("Kelas tahun_ajaran_id: {$kelas->tahun_ajaran_id}");
+        
+        $directStudents = $kelas->siswas;
+        // Get students directly from the class
+        \Log::info("Direct kelas->siswas count: " . $directStudents->count());
+        
+        // Get students with the query builder approach
+        $queryStudents = \App\Models\Siswa::where('kelas_id', $kelasId)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
+                    $q->where('tahun_ajaran_id', $tahunAjaranId);
+                });
+            })
+            ->get();
+        \Log::info("Query builder students count: " . $queryStudents->count());
+        
+        // Return the debug info
+        return [
+            'kelas_id' => $kelasId,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'kelas_tahun_ajaran_id' => $kelas->tahun_ajaran_id,
+            'direct_students_count' => $directStudents->count(),
+            'direct_students' => $directStudents->map(function($s) {
+                return ['id' => $s->id, 'nama' => $s->nama];
+            }),
+            'query_students_count' => $queryStudents->count(),
+            'query_students' => $queryStudents->map(function($s) {
+                return ['id' => $s->id, 'nama' => $s->nama];
+            })
+        ];
+    })->middleware(['auth:guru', 'role:guru']);
+
 // Pengajar Routes - Guard: guru, Role: guru
 Route::middleware(['auth:guru', 'role:guru'])
     ->prefix('pengajar')
@@ -308,7 +348,7 @@ Route::middleware(['auth:guru', 'role:guru'])
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
     
     // Score Management
-    Route::prefix('score')->name('score.')->group(function () {
+    Route::prefix('score')->name('score.')->middleware(['auto.sync.tahun.ajaran'])->group(function () {
         Route::get('/', [ScoreController::class, 'index'])->name('index');
         Route::get('/{id}/input', [ScoreController::class, 'inputScore'])->name('input_score');
         Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('save_scores');
@@ -407,7 +447,7 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
     Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}/view', [TujuanPembelajaranController::class, 'teacherView'])
         ->name('tujuan_pembelajaran.view');
         
-    Route::prefix('rapor')->name('rapor.')->group(function () {
+    Route::prefix('rapor')->name('rapor.')->middleware(['auto.sync.tahun.ajaran'])->group(function () {
         Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
         
         // Gunakan model binding dan middleware

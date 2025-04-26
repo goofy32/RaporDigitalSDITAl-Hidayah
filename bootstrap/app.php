@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
+            'auto.sync.tahun.ajaran' => \App\Http\Middleware\AutoSyncTahunAjaran::class,
             'auth.guru' => \App\Http\Middleware\AuthenticateGuru::class,
             'role' => \App\Http\Middleware\CheckRole::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
