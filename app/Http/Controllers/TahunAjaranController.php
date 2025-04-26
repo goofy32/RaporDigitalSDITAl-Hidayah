@@ -271,13 +271,13 @@ class TahunAjaranController extends Controller
             // Update juga di profil sekolah
             $this->updateProfilSekolah($tahunAjaran);
             
-            // Set session
+            // Set session untuk tampilan data
             session(['tahun_ajaran_id' => $id]);
             
             DB::commit();
             
             return redirect()->route('tahun.ajaran.index')
-                        ->with('success', 'Tahun ajaran ' . $tahunAjaran->tahun_ajaran . ' berhasil diaktifkan!');
+            ->with('success', 'Tahun ajaran ' . $tahunAjaran->tahun_ajaran . ' berhasil diaktifkan!');
         } catch (\Exception $e) {
             DB::rollback();
             
