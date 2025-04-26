@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class TahunAjaranController extends Controller
 {
@@ -22,8 +23,8 @@ class TahunAjaranController extends Controller
     public function index()
     {
         $tahunAjarans = TahunAjaran::orderBy('is_active', 'desc')
-                                   ->orderBy('tanggal_mulai', 'desc')
-                                   ->get();
+                               ->orderBy('tanggal_mulai', 'desc')
+                               ->get();
         
         return view('admin.tahun_ajaran.index', compact('tahunAjarans'));
     }
@@ -52,21 +53,26 @@ class TahunAjaranController extends Controller
 
         if ($validator->fails()) {
             return redirect()->back()
-                             ->withErrors($validator)
-                             ->withInput();
+                         ->withErrors($validator)
+                         ->withInput();
         }
 
         // Jika menandai sebagai aktif, nonaktifkan tahun ajaran lain
         if ($request->has('is_active') && $request->is_active) {
             TahunAjaran::where('is_active', true)
-                       ->update(['is_active' => false]);
+                   ->update(['is_active' => false]);
         }
 
         // Buat tahun ajaran baru
-        TahunAjaran::create($request->all());
+        $tahunAjaran = TahunAjaran::create($request->all());
+
+        // Jika aktif, update profil sekolah
+        if ($request->has('is_active') && $request->is_active) {
+            $this->updateProfilSekolah($tahunAjaran);
+        }
 
         return redirect()->route('tahun.ajaran.index')
-                         ->with('success', 'Tahun ajaran berhasil dibuat!');
+                     ->with('success', 'Tahun ajaran berhasil dibuat!');
     }
 
     /**
@@ -116,8 +122,8 @@ class TahunAjaranController extends Controller
     
         if ($validator->fails()) {
             return redirect()->back()
-                             ->withErrors($validator)
-                             ->withInput();
+                         ->withErrors($validator)
+                         ->withInput();
         }
     
         $tahunAjaran = TahunAjaran::findOrFail($id);
@@ -141,7 +147,7 @@ class TahunAjaranController extends Controller
         // Jika menandai sebagai aktif, nonaktifkan tahun ajaran lain
         if ($request->has('is_active') && $request->is_active && !$tahunAjaran->is_active) {
             TahunAjaran::where('is_active', true)
-                       ->update(['is_active' => false]);
+                   ->update(['is_active' => false]);
         }
     
         DB::beginTransaction();
@@ -151,13 +157,7 @@ class TahunAjaranController extends Controller
             
             // Jika ini adalah tahun ajaran aktif, perbarui profil sekolah
             if ($tahunAjaran->is_active) {
-                $profil = ProfilSekolah::first();
-                if ($profil) {
-                    $profil->update([
-                        'tahun_pelajaran' => $tahunAjaran->tahun_ajaran,
-                        'semester' => $tahunAjaran->semester
-                    ]);
-                }
+                $this->updateProfilSekolah($tahunAjaran);
                 
                 // Jika semester berubah, update data terkait
                 if ($oldSemester != $newSemester) {
@@ -166,6 +166,14 @@ class TahunAjaranController extends Controller
             }
             
             DB::commit();
+            
+            // Pesan sukses khusus untuk perubahan semester
+            if ($oldSemester != $newSemester) {
+                $semesterLabel = $newSemester == 1 ? 'Ganjil' : 'Genap';
+                return redirect()->route('tahun.ajaran.index')
+                            ->with('success', "Tahun ajaran berhasil diperbarui! Semester diubah menjadi {$semesterLabel}.");
+            }
+            
             return redirect()->route('tahun.ajaran.index')
                             ->with('success', 'Tahun ajaran berhasil diperbarui!');
         } catch (\Exception $e) {
@@ -176,6 +184,24 @@ class TahunAjaranController extends Controller
         }
     }
     
+    /**
+     * Update profil sekolah dengan informasi tahun ajaran
+     */
+    private function updateProfilSekolah(TahunAjaran $tahunAjaran)
+    {
+        $profil = ProfilSekolah::first();
+        if ($profil) {
+            $profil->update([
+                'tahun_pelajaran' => $tahunAjaran->tahun_ajaran,
+                'semester' => $tahunAjaran->semester
+            ]);
+            
+            Log::info('Profil sekolah diperbarui dengan tahun ajaran aktif', [
+                'tahun_ajaran' => $tahunAjaran->tahun_ajaran,
+                'semester' => $tahunAjaran->semester
+            ]);
+        }
+    }
 
     /**
      * Update data yang terkait dengan tahun ajaran saat semester berubah
@@ -187,35 +213,44 @@ class TahunAjaranController extends Controller
     private function updateRelatedData($tahunAjaranId, $newSemester)
     {
         try {
+            Log::info("Memperbarui data terkait untuk tahun ajaran #{$tahunAjaranId} ke semester {$newSemester}");
+            
             // Update absensi dengan semester baru if column exists
             if (Schema::hasColumn('absensis', 'semester')) {
-                DB::table('absensis')
+                $absensiCount = DB::table('absensis')
                     ->where('tahun_ajaran_id', $tahunAjaranId)
                     ->update(['semester' => $newSemester]);
+                
+                Log::info("Updated {$absensiCount} absensi records to semester {$newSemester}");
             }
             
             // Update mata pelajaran dengan semester baru if column exists
             if (Schema::hasColumn('mata_pelajarans', 'semester')) {
-                DB::table('mata_pelajarans')
+                $mapelCount = DB::table('mata_pelajarans')
                     ->where('tahun_ajaran_id', $tahunAjaranId)
                     ->update(['semester' => $newSemester]);
+                
+                Log::info("Updated {$mapelCount} mata pelajaran records to semester {$newSemester}");
             }
             
-            // Update nilai-nilai dengan semester baru - skip this as the column doesn't exist
-            // Update report templates dengan semester baru if column exists
+            // Update template rapor dengan semester baru if column exists
             if (Schema::hasColumn('report_templates', 'semester')) {
-                DB::table('report_templates')
+                $templateCount = DB::table('report_templates')
                     ->where('tahun_ajaran_id', $tahunAjaranId)
                     ->update(['semester' => $newSemester]);
+                
+                Log::info("Updated {$templateCount} report template records to semester {$newSemester}");
             }
+            
+            // Tambahkan model lain yang memiliki field semester dan tahun_ajaran_id jika ada
             
             // Log perubahan untuk debugging
             \Log::info("Semester diperbarui untuk tahun ajaran #{$tahunAjaranId} ke semester {$newSemester}");
         } catch (\Exception $e) {
             \Log::error("Error updating related data: " . $e->getMessage());
+            throw $e; // Re-throw to handle in the caller
         }
     }
-
 
     /**
      * Set a tahun ajaran as active.
@@ -234,7 +269,7 @@ class TahunAjaranController extends Controller
             $tahunAjaran->update(['is_active' => true]);
             
             // Update juga di profil sekolah
-            ProfilSekolah::syncWithTahunAjaran();
+            $this->updateProfilSekolah($tahunAjaran);
             
             // Set session
             session(['tahun_ajaran_id' => $id]);
@@ -334,8 +369,13 @@ class TahunAjaranController extends Controller
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
             'semester' => 'required|integer|in:1,2',
             'copy_kelas' => 'boolean',
+            'increment_kelas' => 'boolean',
+            'create_kelas_one' => 'boolean',
             'copy_mata_pelajaran' => 'boolean',
             'copy_templates' => 'boolean',
+            'copy_ekstrakurikuler' => 'boolean',
+            'copy_kkm' => 'boolean',
+            'copy_bobot_nilai' => 'boolean',
             'is_active' => 'boolean'
         ]);
     
@@ -367,29 +407,48 @@ class TahunAjaranController extends Controller
             ]);
     
             // Copy kelas jika diminta
+            $kelasMapping = [];
             if ($request->copy_kelas) {
-                $this->copyKelas($sourceTahunAjaran, $newTahunAjaran);
+                $kelasMapping = $this->copyKelas(
+                    $sourceTahunAjaran, 
+                    $newTahunAjaran, 
+                    $request->increment_kelas ?? false
+                );
+                
+                // Buat kelas 1 baru jika diminta
+                if ($request->create_kelas_one) {
+                    $this->createKelasOne($newTahunAjaran);
+                }
             }
     
             // Copy mata pelajaran jika diminta
             if ($request->copy_mata_pelajaran) {
-                $this->copyMataPelajaran($sourceTahunAjaran, $newTahunAjaran, $request->semester);
+                $this->copyMataPelajaran($sourceTahunAjaran, $newTahunAjaran, $request->semester, $kelasMapping);
             }
     
             // Copy template rapor jika diminta
             if ($request->copy_templates) {
-                $this->copyReportTemplates($sourceTahunAjaran, $newTahunAjaran, $request->semester);
+                $this->copyReportTemplates($sourceTahunAjaran, $newTahunAjaran, $request->semester, $kelasMapping);
+            }
+            
+            // Copy ekstrakurikuler jika diminta
+            if ($request->copy_ekstrakurikuler) {
+                $this->copyEkstrakurikuler($sourceTahunAjaran, $newTahunAjaran);
+            }
+            
+            // Copy KKM jika diminta
+            if ($request->copy_kkm) {
+                $this->copyKkm($sourceTahunAjaran, $newTahunAjaran, $kelasMapping);
+            }
+            
+            // Copy Bobot Nilai jika diminta
+            if ($request->copy_bobot_nilai) {
+                $this->copyBobotNilai($sourceTahunAjaran, $newTahunAjaran);
             }
             
             // Update profil sekolah jika tahun ajaran baru diaktifkan
             if ($newTahunAjaran->is_active) {
-                $profil = ProfilSekolah::first();
-                if ($profil) {
-                    $profil->update([
-                        'tahun_pelajaran' => $newTahunAjaran->tahun_ajaran,
-                        'semester' => $newTahunAjaran->semester
-                    ]);
-                }
+                $this->updateProfilSekolah($newTahunAjaran);
             }
             
             DB::commit();
@@ -401,18 +460,31 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('error', 'Gagal menyalin tahun ajaran: ' . $e->getMessage());
         }
     }
-
-    /**
-     * Helper method untuk copy kelas dari satu tahun ajaran ke tahun ajaran lain.
-     */
-    private function copyKelas($sourceTahunAjaran, $newTahunAjaran)
+    
+    // Metode helper untuk menyalin kelas dengan opsi peningkatan nomor kelas
+    private function copyKelas($sourceTahunAjaran, $newTahunAjaran, $incrementKelasNumbers = false)
     {
         $sourceKelas = Kelas::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+        $kelasMapping = [];
         
         foreach ($sourceKelas as $kelas) {
             $newKelas = $kelas->replicate();
             $newKelas->tahun_ajaran_id = $newTahunAjaran->id;
+            
+            // Tingkatkan nomor kelas jika diminta
+            if ($incrementKelasNumbers) {
+                $newKelas->nomor_kelas = $kelas->nomor_kelas + 1;
+                
+                // Skip kelas yang nomor kelasnya melebihi 6 (untuk SD)
+                if ($newKelas->nomor_kelas > 6) {
+                    continue;
+                }
+            }
+            
             $newKelas->save();
+            
+            // Simpan mapping kelas lama ke kelas baru
+            $kelasMapping[$kelas->id] = $newKelas->id;
             
             // Sync guru untuk kelas baru
             $guruRelations = DB::table('guru_kelas')
@@ -429,6 +501,87 @@ class TahunAjaranController extends Controller
                     'updated_at' => now()
                 ]);
             }
+        }
+        
+        return $kelasMapping;
+    }
+    
+    // Metode baru untuk membuat kelas 1 di tahun ajaran baru
+    private function createKelasOne($tahunAjaran)
+    {
+        // Ambil semua kelas 1 dari tahun ajaran sebelumnya sebagai referensi
+        $lastYearKelas = Kelas::where('nomor_kelas', 1)
+            ->where('tahun_ajaran_id', '!=', $tahunAjaran->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Jika tidak ada referensi, buat kelas 1A dan 1B
+        if ($lastYearKelas->isEmpty()) {
+            $kelasA = new Kelas([
+                'nomor_kelas' => 1,
+                'nama_kelas' => 'A',
+                'tahun_ajaran_id' => $tahunAjaran->id
+            ]);
+            $kelasA->save();
+            
+            $kelasB = new Kelas([
+                'nomor_kelas' => 1,
+                'nama_kelas' => 'B',
+                'tahun_ajaran_id' => $tahunAjaran->id
+            ]);
+            $kelasB->save();
+        } else {
+            // Salin struktur kelas 1 dari tahun sebelumnya
+            foreach ($lastYearKelas as $kelas) {
+                $newKelas = $kelas->replicate();
+                $newKelas->tahun_ajaran_id = $tahunAjaran->id;
+                $newKelas->nomor_kelas = 1; // Pastikan nomor kelas adalah 1
+                $newKelas->save();
+            }
+        }
+    }
+        
+    // Metode baru untuk menyalin KKM
+    private function copyKkm($sourceTahunAjaran, $newTahunAjaran, $kelasMapping = [])
+    {
+        if (empty($kelasMapping)) {
+            return;
+        }
+        
+        $kkms = \App\Models\Kkm::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+        
+        foreach ($kkms as $kkm) {
+            // Hanya salin jika kelas ada dalam mapping
+            if (isset($kelasMapping[$kkm->kelas_id])) {
+                $newKkm = $kkm->replicate();
+                $newKkm->tahun_ajaran_id = $newTahunAjaran->id;
+                $newKkm->kelas_id = $kelasMapping[$kkm->kelas_id];
+                $newKkm->save();
+            }
+        }
+    }
+    
+    // Metode baru untuk menyalin Bobot Nilai
+    private function copyBobotNilai($sourceTahunAjaran, $newTahunAjaran)
+    {
+        $bobotNilai = \App\Models\BobotNilai::where('tahun_ajaran_id', $sourceTahunAjaran->id)->first();
+        
+        if ($bobotNilai) {
+            $newBobotNilai = $bobotNilai->replicate();
+            $newBobotNilai->tahun_ajaran_id = $newTahunAjaran->id;
+            $newBobotNilai->save();
+        }
+    }
+    
+    // Metode baru untuk menyalin Ekstrakurikuler
+    private function copyEkstrakurikuler($sourceTahunAjaran, $newTahunAjaran)
+    {
+        $ekstrakurikulers = \App\Models\Ekstrakurikuler::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+        
+        foreach ($ekstrakurikulers as $ekskul) {
+            $newEkskul = $ekskul->replicate();
+            $newEkskul->tahun_ajaran_id = $newTahunAjaran->id;
+            $newEkskul->save();
         }
     }
 
@@ -533,6 +686,7 @@ class TahunAjaranController extends Controller
             }
         }
     }
+
     public function setSessionTahunAjaran($id)
     {
         try {
@@ -546,5 +700,4 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-
 }

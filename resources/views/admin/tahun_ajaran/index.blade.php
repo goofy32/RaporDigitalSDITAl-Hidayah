@@ -96,11 +96,16 @@
                             {{ date('d/m/Y', strtotime($tahunAjaran->tanggal_selesai)) }}
                         </td>
                         <td class="py-4 px-4 border-b">
-                            @if($tahunAjaran->is_active)
-                            <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
-                            @else
-                            <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
-                            @endif
+                            <div class="flex flex-col gap-1">
+                                @if($tahunAjaran->is_active)
+                                    <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
+                                @endif
+                                <span class="px-2 py-1 text-xs font-semibold {{ $tahunAjaran->semester == 1 ? 'text-blue-800 bg-blue-100' : 'text-purple-800 bg-purple-100' }} rounded-full">
+                                    Semester {{ $tahunAjaran->semester }} ({{ $tahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }})
+                                </span>
+                            </div>
                         </td>
                         <td class="py-4 px-4 border-b text-sm">
                             <div class="flex space-x-4">

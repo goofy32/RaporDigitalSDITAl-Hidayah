@@ -1,0 +1,281 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Kelas;
+use App\Models\Siswa;
+use App\Models\TahunAjaran;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class KenaikanKelasController extends Controller
+{
+    /**
+     * Menampilkan halaman untuk proses kenaikan kelas
+     */
+    public function index()
+    {
+        // Ambil tahun ajaran aktif
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        
+        // Cari tahun ajaran baru (tahun ajaran selanjutnya)
+        // Mencari berdasarkan angka tahun yang lebih besar dari tahun ajaran aktif
+        $tahunAjaranBaru = null;
+        
+        if ($tahunAjaranAktif) {
+            // Ekstrak tahun dari format "2023/2024"
+            $tahunParts = explode('/', $tahunAjaranAktif->tahun_ajaran);
+            $tahunAwal = (int)$tahunParts[0];
+            
+            // Cari tahun ajaran dengan tahun awal yang lebih besar dari tahun ajaran aktif
+            $tahunAjaranBaru = TahunAjaran::where(function($query) use ($tahunAwal) {
+                    $query->whereRaw("SUBSTRING_INDEX(tahun_ajaran, '/', 1) > ?", [$tahunAwal]);
+                })
+                ->orderBy('tahun_ajaran')
+                ->first();
+        }
+        
+        // Jika tidak ada tahun ajaran berikutnya, berikan peringatan
+        if (!$tahunAjaranBaru) {
+            // Ambil kelas dari tahun ajaran aktif untuk ditampilkan
+            $kelasAktif = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
+                        ->orderBy('nomor_kelas')
+                        ->orderBy('nama_kelas')
+                        ->get();
+                        
+            return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'tahunAjaranAktif'))
+                ->with('warning', 'Belum ada tahun ajaran selanjutnya. Silakan buat tahun ajaran baru dengan tahun yang lebih tinggi dari ' . $tahunAjaranAktif->tahun_ajaran);
+        }
+        
+        // Lanjutkan dengan kode yang sudah ada sebelumnya
+        $kelasAktif = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
+                    ->orderBy('nomor_kelas')
+                    ->orderBy('nama_kelas')
+                    ->get();
+                    
+        $kelasBaru = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                    ->orderBy('nomor_kelas')
+                    ->orderBy('nama_kelas')
+                    ->get();
+                    
+        return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'kelasBaru', 'tahunAjaranAktif', 'tahunAjaranBaru'));
+    }
+
+    /**
+     * Menampilkan daftar siswa untuk satu kelas
+     */
+    public function showKelasSiswa($kelasId)
+    {
+        $kelas = Kelas::findOrFail($kelasId);
+        $siswaList = Siswa::where('kelas_id', $kelasId)
+                    ->where('status', 'aktif')
+                    ->orderBy('nama')
+                    ->get();
+        
+        // Cek apakah ini kelas terakhir (untuk kelulusan)
+        $isKelasAkhir = $kelas->nomor_kelas == 6; // Untuk SD, kelas 6 adalah kelas terakhir
+        
+        // Ambil tahun ajaran baru
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        $tahunAjaranBaru = TahunAjaran::where('tahun_ajaran', '>', $tahunAjaranAktif->tahun_ajaran)
+                          ->orderBy('tahun_ajaran')
+                          ->first();
+        
+        // Ambil daftar kelas yang bisa menjadi tujuan kenaikan
+        $kelasTujuan = [];
+        if ($tahunAjaranBaru) {
+            // Jika bukan kelas akhir, hanya tampilkan kelas dengan nomor +1
+            if (!$isKelasAkhir) {
+                $kelasTujuan = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                             ->where('nomor_kelas', $kelas->nomor_kelas + 1)
+                             ->orderBy('nama_kelas')
+                             ->get();
+            }
+        }
+        
+        return view('admin.kenaikan_kelas.show_siswa', compact(
+            'kelas', 'siswaList', 'isKelasAkhir', 'kelasTujuan', 'tahunAjaranBaru'
+        ));
+    }
+
+    /**
+     * Proses kenaikan kelas untuk sekelompok siswa
+     */
+    public function processKenaikanKelas(Request $request)
+    {
+        $request->validate([
+            'siswa_ids' => 'required|array',
+            'siswa_ids.*' => 'exists:siswas,id',
+            'kelas_tujuan_id' => 'required|exists:kelas,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->siswa_ids as $siswaId) {
+                $siswa = Siswa::findOrFail($siswaId);
+                $siswa->kelas_id = $request->kelas_tujuan_id;
+                $siswa->is_naik_kelas = true;
+                $siswa->save();
+            }
+            
+            DB::commit();
+            return redirect()->back()->with('success', 'Berhasil memproses kenaikan kelas untuk ' . count($request->siswa_ids) . ' siswa');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses kenaikan kelas: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Proses tinggal kelas untuk sekelompok siswa
+     */
+    public function processTinggalKelas(Request $request)
+    {
+        $request->validate([
+            'siswa_ids' => 'required|array',
+            'siswa_ids.*' => 'exists:siswas,id',
+            'kelas_tujuan_id' => 'required|exists:kelas,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->siswa_ids as $siswaId) {
+                $siswa = Siswa::findOrFail($siswaId);
+                $siswa->kelas_id = $request->kelas_tujuan_id;
+                $siswa->is_naik_kelas = false;
+                $siswa->save();
+            }
+            
+            DB::commit();
+            return redirect()->back()->with('success', 'Berhasil memproses siswa tinggal kelas untuk ' . count($request->siswa_ids) . ' siswa');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses tinggal kelas: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Proses kenaikan kelas massal untuk semua siswa
+     */
+    public function processMassPromotion()
+    {
+        // Cek tahun ajaran aktif dan tahun ajaran baru
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        
+        // Cari tahun ajaran baru
+        $tahunParts = explode('/', $tahunAjaranAktif->tahun_ajaran);
+        $tahunAwal = (int)$tahunParts[0];
+            
+        $tahunAjaranBaru = TahunAjaran::where(function($query) use ($tahunAwal) {
+                $query->whereRaw("SUBSTRING_INDEX(tahun_ajaran, '/', 1) > ?", [$tahunAwal]);
+            })
+            ->orderBy('tahun_ajaran')
+            ->first();
+        
+        if (!$tahunAjaranBaru) {
+            return redirect()->back()->with('error', 'Tidak dapat menemukan tahun ajaran berikutnya.');
+        }
+        
+        DB::beginTransaction();
+        try {
+            // Ambil semua kelas dari tahun ajaran aktif (diurutkan dari tinggi ke rendah untuk menghindari konflik)
+            $kelasAktif = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
+                        ->orderBy('nomor_kelas', 'desc')
+                        ->get();
+            
+            // Siapkan penghitung untuk statistik
+            $promoted = 0;
+            $graduated = 0;
+            $notProcessed = 0;
+            
+            foreach ($kelasAktif as $kelas) {
+                // Ambil siswa-siswa dari kelas saat ini
+                $siswaList = Siswa::where('kelas_id', $kelas->id)
+                            ->where('status', 'aktif')
+                            ->get();
+                
+                // Jika ini kelas 6 (kelas akhir)
+                if ($kelas->nomor_kelas == 6) {
+                    // Tandai semua siswa kelas 6 sebagai lulus
+                    foreach ($siswaList as $siswa) {
+                        $siswa->status = 'lulus';
+                        $siswa->is_naik_kelas = true;
+                        $siswa->kelas_tujuan_id = null;
+                        $siswa->save();
+                        $graduated++;
+                    }
+                    continue;
+                }
+                
+                // Untuk kelas 1-5, cari kelas tujuan di tahun ajaran baru
+                $kelasTujuan = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                            ->where('nomor_kelas', $kelas->nomor_kelas + 1)
+                            ->where('nama_kelas', $kelas->nama_kelas)
+                            ->first();
+                
+                // Jika tidak ada kelas dengan nama yang sama, cari kelas lain dengan tingkat yang sama
+                if (!$kelasTujuan) {
+                    $kelasTujuan = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                                ->where('nomor_kelas', $kelas->nomor_kelas + 1)
+                                ->first();
+                }
+                
+                // Jika masih tidak menemukan kelas tujuan
+                if (!$kelasTujuan) {
+                    $notProcessed += $siswaList->count();
+                    continue;
+                }
+                
+                // Pindahkan siswa ke kelas tujuan
+                foreach ($siswaList as $siswa) {
+                    $siswa->kelas_id = $kelasTujuan->id;
+                    $siswa->is_naik_kelas = true;
+                    $siswa->kelas_tujuan_id = null;
+                    $siswa->save();
+                    $promoted++;
+                }
+            }
+            
+            DB::commit();
+            
+            // Buat pesan sukses dengan statistik
+            $message = "Kenaikan kelas berhasil diproses. Detail: {$promoted} siswa naik kelas, {$graduated} siswa lulus";
+            if ($notProcessed > 0) {
+                $message .= ", {$notProcessed} siswa tidak dapat diproses karena tidak ada kelas tujuan.";
+            }
+            
+            return redirect()->route('admin.kenaikan-kelas.index')->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal memproses kenaikan kelas: ' . $e->getMessage());
+        }
+    }
+
+
+    /**
+     * Proses kelulusan untuk sekelompok siswa
+     */
+    public function processKelulusan(Request $request)
+    {
+        $request->validate([
+            'siswa_ids' => 'required|array',
+            'siswa_ids.*' => 'exists:siswas,id',
+            'status' => 'required|in:lulus,pindah,dropout',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->siswa_ids as $siswaId) {
+                $siswa = Siswa::findOrFail($siswaId);
+                $siswa->status = $request->status;
+                $siswa->save();
+            }
+            
+            DB::commit();
+            return redirect()->back()->with('success', 'Berhasil memproses ' . count($request->siswa_ids) . ' siswa dengan status ' . $request->status);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses: ' . $e->getMessage());
+        }
+    }
+}

@@ -115,26 +115,46 @@
             </a>
             
             @if(!$tahunAjaran->is_active)
-            <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
-                @csrf
-                <button type="submit" 
-                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                    Aktifkan Tahun Ajaran
-                </button>
-            </form>
+                <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
+                        Aktifkan Tahun Ajaran
+                    </button>
+                </form>
+            @endif
+
+            <!-- Button to advance semester (only shown for active academic year with odd semester) -->
+            @if($tahunAjaran->is_active && $tahunAjaran->semester == 1)
+                <form action="{{ route('tahun.ajaran.update', $tahunAjaran->id) }}" method="POST" class="inline">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="tahun_ajaran" value="{{ $tahunAjaran->tahun_ajaran }}">
+                    <input type="hidden" name="tanggal_mulai" value="{{ $tahunAjaran->tanggal_mulai->format('Y-m-d') }}">
+                    <input type="hidden" name="tanggal_selesai" value="{{ $tahunAjaran->tanggal_selesai->format('Y-m-d') }}">
+                    <input type="hidden" name="deskripsi" value="{{ $tahunAjaran->deskripsi }}">
+                    <input type="hidden" name="is_active" value="1">
+                    <input type="hidden" name="semester" value="2">
+                    
+                    <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        onclick="return confirm('Apakah Anda yakin ingin melanjutkan ke semester Genap? Tindakan ini akan memperbarui semua data terkait (mata pelajaran, absensi, dll) ke semester 2.')">
+                        Lanjutkan ke Semester Genap
+                    </button>
+                </form>
             @endif
 
             @if(!$tahunAjaran->is_active)
-            <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
-                @csrf
-                @method('DELETE')
-                <button type="submit" 
-                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                    onclick="return confirm('Apakah Anda yakin ingin menghapus tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nPeringatan: Menghapus tahun ajaran ini TIDAK akan menghapus data kelas, siswa, dan data lain yang terkait. Namun, filter berdasarkan tahun ajaran ini tidak akan berfungsi lagi.')">
-                    Hapus Tahun Ajaran
-                </button>
-            </form>
+                <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" 
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        onclick="return confirm('Apakah Anda yakin ingin menghapus tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nPeringatan: Menghapus tahun ajaran ini TIDAK akan menghapus data kelas, siswa, dan data lain yang terkait. Namun, filter berdasarkan tahun ajaran ini tidak akan berfungsi lagi.')">
+                        Hapus Tahun Ajaran
+                    </button>
+                </form>
             @endif
         </div>
     </div>

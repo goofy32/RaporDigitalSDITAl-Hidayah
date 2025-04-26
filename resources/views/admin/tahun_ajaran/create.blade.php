@@ -24,6 +24,9 @@
 
     <form action="{{ route('tahun.ajaran.store') }}" method="POST" class="space-y-6" data-needs-protection>
         @csrf
+        
+        <!-- Hidden semester field - always 1 (Ganjil) for new academic years -->
+        <input type="hidden" name="semester" value="1">
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -35,13 +38,11 @@
             </div>
 
             <div>
-                <label for="semester" class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
-                <select name="semester" id="semester" required
-                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-                    <option value="">Pilih Semester</option>
-                    <option value="1" {{ old('semester') == 1 ? 'selected' : '' }}>1 (Ganjil)</option>
-                    <option value="2" {{ old('semester') == 2 ? 'selected' : '' }}>2 (Genap)</option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                <div class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700">
+                    Ganjil (Semester 1)
+                    <p class="mt-1 text-xs text-gray-500">Tahun ajaran baru selalu dimulai dengan semester ganjil</p>
+                </div>
             </div>
 
             <div>

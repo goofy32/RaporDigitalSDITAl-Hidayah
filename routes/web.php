@@ -21,6 +21,7 @@ use App\Http\Controllers\GeminiChatController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\KkmController;
 use App\Http\Controllers\BobotNilaiController;
+use App\Http\Controllers\KenaikanKelasController;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
 
@@ -217,6 +218,15 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
             ->name('teacher.verify-password');
     });
     
+    Route::prefix('kenaikan-kelas')->name('admin.kenaikan-kelas.')->group(function () {
+        Route::get('/', [KenaikanKelasController::class, 'index'])->name('index');
+        Route::get('/kelas/{id}', [KenaikanKelasController::class, 'showKelasSiswa'])->name('show-siswa');
+        Route::post('/kenaikan', [KenaikanKelasController::class, 'processKenaikanKelas'])->name('process-kenaikan');
+        Route::post('/tinggal', [KenaikanKelasController::class, 'processTinggalKelas'])->name('process-tinggal');
+        Route::post('/kelulusan', [KenaikanKelasController::class, 'processKelulusan'])->name('process-kelulusan');
+        Route::post('/mass-promotion', [KenaikanKelasController::class, 'processMassPromotion'])->name('process-mass');
+    });
+
     // Achievement Routes
     Route::resource('achievement', AchievementController::class)->names([
         'index' => 'achievement.index',
