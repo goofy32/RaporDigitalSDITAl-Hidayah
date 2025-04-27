@@ -128,6 +128,16 @@
         </ol>
     </div>
 </div>
+
+<style>
+    .tablinks.active {
+        font-weight: bold;
+    }
+    .swal2-html-container {
+        overflow-x: hidden;
+    }
+</style>
+
 @if(session('mass_promotion'))
 <script>
 document.addEventListener('DOMContentLoaded', function() {
