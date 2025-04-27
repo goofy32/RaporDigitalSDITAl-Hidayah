@@ -128,4 +128,154 @@
         </ol>
     </div>
 </div>
+@if(session('mass_promotion'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Siapkan statistik
+    const stats = {
+        promoted: {{ session('stats.promoted') }},
+        graduated: {{ session('stats.graduated') }},
+        notProcessed: {{ session('stats.notProcessed') }}
+    };
+    
+    // Siapkan detail HTML
+    let detailHtml = '<div class="text-center mb-4">';
+    detailHtml += '<div class="grid grid-cols-3 gap-4 mb-4">';
+    detailHtml += '<div class="bg-green-100 p-3 rounded-lg"><div class="text-green-700 text-lg font-bold">' + stats.promoted + '</div><div class="text-green-600 text-sm">Naik Kelas</div></div>';
+    detailHtml += '<div class="bg-blue-100 p-3 rounded-lg"><div class="text-blue-700 text-lg font-bold">' + stats.graduated + '</div><div class="text-blue-600 text-sm">Lulus</div></div>';
+    detailHtml += '<div class="bg-red-100 p-3 rounded-lg"><div class="text-red-700 text-lg font-bold">' + stats.notProcessed + '</div><div class="text-red-600 text-sm">Tidak Diproses</div></div>';
+    detailHtml += '</div>';
+    
+    // Tab style navigation
+    detailHtml += '<div class="mb-4 border-b border-gray-200">';
+    detailHtml += '<ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="kenaikanTabs" role="tablist">';
+    
+    if (stats.promoted > 0) {
+        detailHtml += '<li class="mr-2" role="presentation">';
+        detailHtml += '<button class="inline-block p-2 border-b-2 border-green-500 rounded-t-lg hover:bg-green-50 tablinks active" id="promoted-tab" data-target="promoted" type="button">Naik Kelas (' + stats.promoted + ')</button>';
+        detailHtml += '</li>';
+    }
+    
+    if (stats.graduated > 0) {
+        detailHtml += '<li class="mr-2" role="presentation">';
+        detailHtml += '<button class="inline-block p-2 border-b-2 border-transparent rounded-t-lg hover:bg-blue-50 tablinks" id="graduated-tab" data-target="graduated" type="button">Lulus (' + stats.graduated + ')</button>';
+        detailHtml += '</li>';
+    }
+    
+    if (stats.notProcessed > 0) {
+        detailHtml += '<li class="mr-2" role="presentation">';
+        detailHtml += '<button class="inline-block p-2 border-b-2 border-transparent rounded-t-lg hover:bg-red-50 tablinks" id="notProcessed-tab" data-target="notProcessed" type="button">Tidak Diproses (' + stats.notProcessed + ')</button>';
+        detailHtml += '</li>';
+    }
+    
+    detailHtml += '</ul>';
+    detailHtml += '</div>';
+    
+    // Tab content
+    detailHtml += '<div class="tabcontent-container">';
+    
+    // Promoted tab content
+    if (stats.promoted > 0) {
+        detailHtml += '<div id="promoted" class="tabcontent block">';
+        detailHtml += '<div class="max-h-60 overflow-y-auto py-2">';
+        detailHtml += '<ul class="text-left">';
+        
+        @foreach(session('details.promoted') as $detail)
+            detailHtml += '<li class="mb-2 flex items-start">' + 
+                        '<span class="text-green-600 mr-1">↗</span> ' +
+                        '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
+                        '{{ $detail['kelas_asal'] }} → {{ $detail['kelas_tujuan'] }}</div></li>';
+        @endforeach
+        
+        detailHtml += '</ul>';
+        detailHtml += '</div>';
+        detailHtml += '</div>';
+    }
+    
+    // Graduated tab content
+    if (stats.graduated > 0) {
+        detailHtml += '<div id="graduated" class="tabcontent hidden">';
+        detailHtml += '<div class="max-h-60 overflow-y-auto py-2">';
+        detailHtml += '<ul class="text-left">';
+        
+        @foreach(session('details.graduated') as $detail)
+            detailHtml += '<li class="mb-2 flex items-start">' + 
+                        '<span class="text-blue-600 mr-1">🎓</span> ' +
+                        '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
+                        'Dari {{ $detail['kelas_asal'] }} → Lulus</div></li>';
+        @endforeach
+        
+        detailHtml += '</ul>';
+        detailHtml += '</div>';
+        detailHtml += '</div>';
+    }
+    
+    // Not Processed tab content
+    if (stats.notProcessed > 0) {
+        detailHtml += '<div id="notProcessed" class="tabcontent hidden">';
+        detailHtml += '<div class="max-h-60 overflow-y-auto py-2">';
+        detailHtml += '<ul class="text-left">';
+        
+        @foreach(session('details.notProcessed') as $detail)
+            detailHtml += '<li class="mb-2 flex items-start">' + 
+                        '<span class="text-red-600 mr-1">⚠</span> ' +
+                        '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
+                        '{{ $detail['kelas_asal'] }} → <span class="text-red-500">{{ $detail['alasan'] }}</span></div></li>';
+        @endforeach
+        
+        detailHtml += '</ul>';
+        detailHtml += '</div>';
+        detailHtml += '</div>';
+    }
+    
+    detailHtml += '</div>';
+    detailHtml += '</div>'; // End of main container
+    
+    // Tampilkan SweetAlert dengan detail
+    Swal.fire({
+        title: 'Kenaikan Kelas Massal Berhasil',
+        html: detailHtml,
+        icon: 'success',
+        width: 600,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'OK'
+    }).then(() => {
+        // Event handler untuk tab
+        document.querySelectorAll('.tablinks').forEach(tabLink => {
+            tabLink.addEventListener('click', function(e) {
+                const target = this.getAttribute('data-target');
+                
+                // Hide all tabcontent
+                document.querySelectorAll('.tabcontent').forEach(tabContent => {
+                    tabContent.classList.add('hidden');
+                    tabContent.classList.remove('block');
+                });
+                
+                // Remove active class from tabs
+                document.querySelectorAll('.tablinks').forEach(tab => {
+                    tab.classList.remove('active', 'border-green-500', 'border-blue-500', 'border-red-500');
+                    tab.classList.add('border-transparent');
+                });
+                
+                // Show current tab
+                document.getElementById(target).classList.remove('hidden');
+                document.getElementById(target).classList.add('block');
+                
+                // Add active class to current tab
+                this.classList.add('active');
+                
+                // Add proper border color based on tab
+                if (target === 'promoted') {
+                    this.classList.add('border-green-500');
+                } else if (target === 'graduated') {
+                    this.classList.add('border-blue-500');
+                } else if (target === 'notProcessed') {
+                    this.classList.add('border-red-500');
+                }
+            });
+        });
+    });
+});
+</script>
+@endif
 @endsection

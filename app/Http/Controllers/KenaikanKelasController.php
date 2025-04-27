@@ -238,6 +238,11 @@ class KenaikanKelasController extends Controller
             $graduated = 0;
             $notProcessed = 0;
             
+            // Array untuk menyimpan detail siswa 
+            $promotedDetails = [];
+            $graduatedDetails = [];
+            $notProcessedDetails = [];
+            
             foreach ($kelasAktif as $kelas) {
                 // Ambil siswa-siswa dari kelas saat ini
                 $siswaList = Siswa::where('kelas_id', $kelas->id)
@@ -253,6 +258,13 @@ class KenaikanKelasController extends Controller
                         $siswa->kelas_tujuan_id = null;
                         $siswa->save();
                         $graduated++;
+                        
+                        // Tambahkan detail
+                        $graduatedDetails[] = [
+                            'id' => $siswa->id,
+                            'nama' => $siswa->nama,
+                            'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}"
+                        ];
                     }
                     continue;
                 }
@@ -273,6 +285,16 @@ class KenaikanKelasController extends Controller
                 // Jika masih tidak menemukan kelas tujuan
                 if (!$kelasTujuan) {
                     $notProcessed += $siswaList->count();
+                    
+                    // Tambahkan detail siswa yang tidak diproses
+                    foreach ($siswaList as $siswa) {
+                        $notProcessedDetails[] = [
+                            'id' => $siswa->id,
+                            'nama' => $siswa->nama,
+                            'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}",
+                            'alasan' => "Tidak ada kelas tujuan untuk tingkat berikutnya"
+                        ];
+                    }
                     continue;
                 }
                 
@@ -283,6 +305,14 @@ class KenaikanKelasController extends Controller
                     $siswa->kelas_tujuan_id = null;
                     $siswa->save();
                     $promoted++;
+                    
+                    // Tambahkan detail
+                    $promotedDetails[] = [
+                        'id' => $siswa->id,
+                        'nama' => $siswa->nama,
+                        'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}",
+                        'kelas_tujuan' => "Kelas {$kelasTujuan->nomor_kelas} {$kelasTujuan->nama_kelas}"
+                    ];
                 }
             }
             
@@ -294,7 +324,20 @@ class KenaikanKelasController extends Controller
                 $message .= ", {$notProcessed} siswa tidak dapat diproses karena tidak ada kelas tujuan.";
             }
             
-            return redirect()->route('admin.kenaikan-kelas.index')->with('success', $message);
+            return redirect()->route('admin.kenaikan-kelas.index')->with([
+                'success' => $message,
+                'mass_promotion' => true,
+                'stats' => [
+                    'promoted' => $promoted,
+                    'graduated' => $graduated,
+                    'notProcessed' => $notProcessed
+                ],
+                'details' => [
+                    'promoted' => $promotedDetails,
+                    'graduated' => $graduatedDetails,
+                    'notProcessed' => $notProcessedDetails
+                ]
+            ]);
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Gagal memproses kenaikan kelas: ' . $e->getMessage());
