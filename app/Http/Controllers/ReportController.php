@@ -653,8 +653,8 @@ class ReportController extends Controller
                 throw new \Exception($result['message'] ?? 'Gagal generate rapor');
             }
             
-            // Simpan history generate dengan tahun ajaran
-            $this->saveGenerationHistory($siswa, $template, $type, $tahunAjaranId);
+            // Simpan history generate dengan tahun ajaran dan path file
+            $this->saveGenerationHistory($siswa, $template, $type, $tahunAjaranId, $result['path']);
             
             // Jika hanya preview, kembalikan URL
             if ($action == 'preview') {
@@ -700,31 +700,160 @@ class ReportController extends Controller
         }
     }
 
-    protected function saveGenerationHistory(Siswa $siswa, ReportTemplate $template, $type, $tahunAjaranId = null)
+    protected function saveGenerationHistory(Siswa $siswa, ReportTemplate $template, $type, $tahunAjaranId = null, $filePath = null)
     {
         try {
             \App\Models\ReportGeneration::create([
                 'siswa_id' => $siswa->id,
                 'kelas_id' => $siswa->kelas_id,
                 'report_template_id' => $template->id,
-                'generated_file' => null, // File tidak disimpan secara permanen
+                'generated_file' => $filePath, // Gunakan path file yang diberikan
                 'type' => $type,
                 'tahun_ajaran' => $template->tahun_ajaran,
                 'semester' => $template->semester,
-                'tahun_ajaran_id' => $tahunAjaranId ?: session('tahun_ajaran_id'), // Tambahkan tahun ajaran ID
+                'tahun_ajaran_id' => $tahunAjaranId ?: session('tahun_ajaran_id'),
                 'generated_at' => now(),
                 'generated_by' => auth()->id() ?? auth()->guard('guru')->id()
             ]);
+    
+            \Log::info('History generation saved successfully', [
+                'siswa_id' => $siswa->id,
+                'template_id' => $template->id,
+                'file_path' => $filePath
+            ]);
         } catch (\Exception $e) {
-            // Hanya log error, tidak mempengaruhi proses utama
             \Log::error('Error saving generation history: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
                 'template_id' => $template->id,
-                'tahun_ajaran_id' => $tahunAjaranId
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'file_path' => $filePath
             ]);
         }
     }
     
+
+    /**
+     * Regenerate rapor dari history
+     * 
+     * @param ReportGeneration $report
+     * @return \Illuminate\Http\Response
+     */
+    public function regenerateHistoryRapor(ReportGeneration $report)
+    {
+        try {
+            // Ambil data yang diperlukan
+            $siswa = $report->siswa;
+            $template = $report->template;
+            $type = $report->type;
+            $tahunAjaranId = $report->tahun_ajaran_id;
+            
+            if (!$template) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Template rapor tidak ditemukan. Harap upload template baru.'
+                ], 404);
+            }
+            
+            if (!$siswa) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data siswa tidak ditemukan.'
+                ], 404);
+            }
+            
+            // Generate rapor baru
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
+            $result = $processor->generate(true); // Bypass validation
+            
+            if (!$result['success']) {
+                throw new \Exception($result['message'] ?? 'Gagal regenerate rapor');
+            }
+            
+            // Update record dengan file baru
+            $report->generated_file = $result['path'];
+            $report->generated_at = now();
+            $report->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Rapor berhasil digenerate ulang'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error regenerating report: ' . $e->getMessage(), [
+                'report_id' => $report->id,
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat regenerasi rapor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Preview rapor dari history
+     * 
+     * @param ReportGeneration $report
+     * @return \Illuminate\Http\Response
+     */
+    public function previewHistoryRapor(ReportGeneration $report)
+    {
+        try {
+            // Ambil data siswa dengan relasi yang diperlukan
+            $siswa = $report->siswa()->with([
+                'kelas',
+                'nilais' => function($query) use ($report) {
+                    // Filter nilai sesuai dengan semester dan tahun ajaran rapor
+                    $semester = $report->type === 'UTS' ? 1 : 2;
+                    $query->whereHas('mataPelajaran', function($q) use ($semester) {
+                        $q->where('semester', $semester);
+                    })
+                    ->when($report->tahun_ajaran_id, function($q) use ($report) {
+                        $q->where('tahun_ajaran_id', $report->tahun_ajaran_id);
+                    });
+                },
+                'nilais.mataPelajaran',
+                'nilaiEkstrakurikuler' => function($query) use ($report) {
+                    $query->when($report->tahun_ajaran_id, function($q) use ($report) {
+                        $q->where('tahun_ajaran_id', $report->tahun_ajaran_id);
+                    });
+                },
+                'nilaiEkstrakurikuler.ekstrakurikuler',
+                'absensi' => function($query) use ($report) {
+                    $semester = $report->type === 'UTS' ? 1 : 2;
+                    $query->where('semester', $semester)
+                        ->when($report->tahun_ajaran_id, function($q) use ($report) {
+                            $q->where('tahun_ajaran_id', $report->tahun_ajaran_id);
+                        });
+                }
+            ])->first();
+            
+            if (!$siswa) {
+                return redirect()->back()->with('error', 'Data siswa tidak ditemukan.');
+            }
+            
+            // Render view ke HTML
+            $html = view('admin.report.preview_history', [
+                'siswa' => $siswa,
+                'report' => $report
+            ])->render();
+            
+            return response()->json([
+                'success' => true,
+                'html' => $html
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in previewHistoryRapor: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat preview rapor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     public function indexWaliKelas()
     {

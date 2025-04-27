@@ -92,12 +92,47 @@
                 <td class="px-6 py-4">{{ $report->generator->nama }}</td>
                 <td class="px-6 py-4">{{ $report->created_at->format('d M Y H:i') }}</td>
                 <td class="px-6 py-4">
-                    <a href="{{ route('admin.report.history.download', $report->id) }}" 
-                        class="text-green-600 hover:text-green-900">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
-                    </a>
+                    <div class="flex space-x-2">
+                        <!-- Tombol Preview -->
+                        <button onclick="previewRapor({{ $report->id }})" 
+                                class="text-blue-600 hover:text-blue-900"
+                                title="Preview Rapor">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                        
+                        <!-- Tombol Download - tampilkan dengan kondisi jika file ada -->
+                        @if($report->generated_file && Storage::disk('public')->exists($report->generated_file))
+                            <a href="{{ route('admin.report.history.download', $report->id) }}" 
+                                class="text-green-600 hover:text-green-900"
+                                title="Download Rapor">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                            </a>
+                        @else
+                            <button onclick="showFileNotAvailableAlert()"
+                                    class="text-gray-400 cursor-not-allowed"
+                                    title="File Tidak Tersedia">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                            </button>
+                        @endif
+                        
+                        <!-- Tombol Regenerate jika file tidak ada -->
+                        @if(!$report->generated_file || !Storage::disk('public')->exists($report->generated_file))
+                            <button onclick="regenerateRapor({{ $report->id }})" 
+                                    class="text-yellow-600 hover:text-yellow-900"
+                                    title="Regenerate Rapor">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                            </button>
+                        @endif
+                    </div>
                 </td>
             </tr>
             @empty
@@ -121,6 +156,45 @@
         {{ $reports->links() }}
     </div>
 </div>
+
+<div id="previewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto max-w-4xl bg-white rounded shadow-lg p-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-900">Preview Rapor</h3>
+            <button onclick="closePreviewModal()" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Content -->
+        <div id="previewContent" class="overflow-y-auto max-h-[70vh]">
+            <div class="flex justify-center items-center h-40">
+                <svg class="animate-spin h-8 w-8 text-green-600" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <p class="ml-2">Memuat preview...</p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="mt-6 flex justify-end space-x-3">
+            <button id="printPreviewBtn" onclick="printPreview()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <svg class="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                </svg>
+                Print
+            </button>
+            <button onclick="closePreviewModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
 
 @push('scripts')
 <script>
@@ -168,6 +242,145 @@
             });
         }
     });
+
+
+    function previewRapor(reportId) {
+        // Show modal
+        document.getElementById('previewModal').classList.remove('hidden');
+        
+        // Show loading
+        document.getElementById('previewContent').innerHTML = `
+            <div class="flex justify-center items-center h-40">
+                <svg class="animate-spin h-8 w-8 text-green-600" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <p class="ml-2">Memuat preview...</p>
+            </div>
+        `;
+        
+        // Fetch preview
+        fetch(`{{ url('/admin/report-history/preview') }}/${reportId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('previewContent').innerHTML = data.html;
+                } else {
+                    document.getElementById('previewContent').innerHTML = `
+                        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+                            <p>Error: ${data.message || 'Gagal memuat preview'}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching preview:', error);
+                document.getElementById('previewContent').innerHTML = `
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+                        <p>Error: Terjadi kesalahan saat memuat preview</p>
+                    </div>
+                `;
+            });
+    }
+    
+    function closePreviewModal() {
+        document.getElementById('previewModal').classList.add('hidden');
+    }
+    
+    function printPreview() {
+        const printContent = document.getElementById('previewContent').innerHTML;
+        const originalContent = document.body.innerHTML;
+        
+        document.body.innerHTML = `
+            <div class="p-8">
+                <h1 class="text-2xl font-bold text-center mb-6">Preview Rapor</h1>
+                ${printContent}
+            </div>
+        `;
+        
+        window.print();
+        document.body.innerHTML = originalContent;
+        
+        // Reattach event listeners
+        document.querySelectorAll('[onclick]').forEach(el => {
+            const onclickAttr = el.getAttribute('onclick');
+            if (onclickAttr) {
+                el.onclick = new Function(onclickAttr);
+            }
+        });
+    }
+    
+    function showFileNotAvailableAlert() {
+        Swal.fire({
+            icon: 'error',
+            title: 'File Tidak Tersedia',
+            text: 'File rapor tidak tersedia. Silakan gunakan tombol regenerate untuk membuat ulang file rapor.',
+            confirmButtonColor: '#3085d6'
+        });
+    }
+    
+    function regenerateRapor(reportId) {
+        Swal.fire({
+            title: 'Regenerasi Rapor?',
+            text: "Rapor akan digenerate ulang. Lanjutkan?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Generate Ulang',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Tampilkan loading
+                Swal.fire({
+                    title: 'Memproses...',
+                    text: 'Sedang melakukan regenerasi rapor',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Ajax request untuk regenerasi
+                fetch(`/admin/report-history/regenerate/${reportId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Rapor berhasil digenerate ulang.',
+                            confirmButtonColor: '#3085d6'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: data.message || 'Terjadi kesalahan saat regenerasi rapor.',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: 'Terjadi kesalahan pada server.',
+                        confirmButtonColor: '#3085d6'
+                    });
+                });
+            }
+        });
+    }
 </script>
 @endpush
 @endsection

@@ -119,7 +119,12 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::post('/', [BobotNilaiController::class, 'update'])->name('update');
         Route::get('/data', [BobotNilaiController::class, 'getBobot'])->name('data');
     });
-    
+    Route::post('/report-history/regenerate/{report}', [ReportController::class, 'regenerateHistoryRapor'])
+    ->name('admin.report.history.regenerate');
+
+    Route::get('/report-history/preview/{report}', [ReportController::class, 'previewHistoryRapor'])
+    ->name('admin.report.history.preview');
+
     // Endpoint untuk mendapatkan data kelas
     Route::get('/kelas/data', function() {
         $tahunAjaranId = session('tahun_ajaran_id');
