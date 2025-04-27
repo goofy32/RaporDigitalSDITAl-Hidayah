@@ -61,9 +61,6 @@ class KenaikanKelasController extends Controller
         return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'kelasBaru', 'tahunAjaranAktif', 'tahunAjaranBaru'));
     }
 
-    /**
-     * Menampilkan daftar siswa untuk satu kelas
-     */
     public function showKelasSiswa($kelasId)
     {
         $kelas = Kelas::findOrFail($kelasId);
@@ -72,19 +69,23 @@ class KenaikanKelasController extends Controller
                     ->orderBy('nama')
                     ->get();
         
-        // Cek apakah ini kelas terakhir (untuk kelulusan)
-        $isKelasAkhir = $kelas->nomor_kelas == 6; // Untuk SD, kelas 6 adalah kelas terakhir
+        // Check if this is the final grade (for graduation)
+        $isKelasAkhir = $kelas->nomor_kelas == 6; // For SD, grade 6 is the final grade
         
-        // Ambil tahun ajaran baru
+        // Get the active tahun ajaran
         $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
-        $tahunAjaranBaru = TahunAjaran::where('tahun_ajaran', '>', $tahunAjaranAktif->tahun_ajaran)
-                          ->orderBy('tahun_ajaran')
-                          ->first();
+        $tahunAjaranBaru = TahunAjaran::where(function($query) use ($tahunAjaranAktif) {
+            $tahunParts = explode('/', $tahunAjaranAktif->tahun_ajaran);
+            $tahunAwal = (int)$tahunParts[0];
+            $query->whereRaw("SUBSTRING_INDEX(tahun_ajaran, '/', 1) > ?", [$tahunAwal]);
+        })
+        ->orderBy('tahun_ajaran')
+        ->first();
         
-        // Ambil daftar kelas yang bisa menjadi tujuan kenaikan
+        // Get classes that can be promotion targets
         $kelasTujuan = [];
         if ($tahunAjaranBaru) {
-            // Jika bukan kelas akhir, hanya tampilkan kelas dengan nomor +1
+            // If not the final grade, only show classes with nomor +1
             if (!$isKelasAkhir) {
                 $kelasTujuan = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
                              ->where('nomor_kelas', $kelas->nomor_kelas + 1)
@@ -93,11 +94,21 @@ class KenaikanKelasController extends Controller
             }
         }
         
+        // Check report status for each student
+        $raporStatus = [];
+        foreach ($siswaList as $siswa) {
+            // Check if reports have been generated for this student
+            $hasReport = \App\Models\ReportGeneration::where('siswa_id', $siswa->id)
+                ->where('tahun_ajaran_id', $tahunAjaranAktif->id)
+                ->exists();
+            
+            $raporStatus[$siswa->id] = $hasReport;
+        }
+        
         return view('admin.kenaikan_kelas.show_siswa', compact(
-            'kelas', 'siswaList', 'isKelasAkhir', 'kelasTujuan', 'tahunAjaranBaru'
+            'kelas', 'siswaList', 'isKelasAkhir', 'kelasTujuan', 'tahunAjaranBaru', 'raporStatus'
         ));
     }
-
     /**
      * Proses kenaikan kelas untuk sekelompok siswa
      */
