@@ -64,7 +64,9 @@
                             </svg>
                             {{ isset($activeTahunAjaran) ? $activeTahunAjaran->tahun_ajaran . ' - ' . ($activeTahunAjaran->semester == 1 ? 'Ganjil' : 'Genap') : 'Pilih Tahun Ajaran' }}
                             @if(session('tahun_ajaran_id') && isset($activeTahunAjaran) && session('tahun_ajaran_id') != $activeTahunAjaran->id)
-                                <span class="ml-2 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Tampilan Data</span>
+                                <span class="ml-2 px-2 py-1 text-xs font-medium bg-blue-200 text-blue-800 rounded-full animate-pulse">
+                                    Tampilan Data Berbeda
+                                </span>
                             @endif
                         </span>
                         
@@ -108,9 +110,9 @@
                                 </div>
                             </div>
                             @foreach($tahunAjarans as $ta)
-                            <a 
-                                href="{{ route('tahun.ajaran.set-session', ['id' => $ta->id]) }}" 
-                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ isset($activeTahunAjaran) && $ta->id === $activeTahunAjaran->id ? 'bg-green-50 text-green-700' : '' }} {{ session('tahun_ajaran_id') == $ta->id ? 'bg-blue-50' : '' }}"
+                            <button 
+                                @click="changeTahunAjaran('{{ $ta->id }}', '{{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}', {{ $ta->is_active ? 'true' : 'false' }})" 
+                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left {{ isset($activeTahunAjaran) && $ta->id === $activeTahunAjaran->id ? 'bg-green-50 text-green-700' : '' }} {{ session('tahun_ajaran_id') == $ta->id ? 'bg-blue-50' : '' }}"
                             >
                                 <div class="flex-1">
                                     <span>{{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}</span>
@@ -123,7 +125,7 @@
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                 </svg>
                                 @endif
-                            </a>
+                            </button>
                             @endforeach
                         </div>
                     </div>
@@ -273,9 +275,27 @@ document.addEventListener('alpine:init', () => {
         toggleDropdown() {
             this.isOpen = !this.isOpen;
         },
-        
-        changeTahunAjaran(id) {
-            window.location.href = `/set-tahun-ajaran/${id}`;
+
+        // Add this new method
+        changeTahunAjaran(id, tahunAjaranText, isActive) {
+            if (!isActive) {
+                const activeTahunAjaran = '{{ isset($activeTahunAjaran) ? $activeTahunAjaran->tahun_ajaran : "" }}';
+                
+                Swal.fire({
+                    title: 'Perhatian!',
+                    html: `Anda akan melihat data untuk tahun ajaran <strong>${tahunAjaranText}</strong>, sedangkan tahun ajaran aktif adalah <strong>${activeTahunAjaran}</strong>.<br><br>Data baru tetap akan disimpan di tahun ajaran aktif.`,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: 'Lanjutkan',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = `/admin/set-tahun-ajaran/${id}`;
+                    }
+                });
+            } else {
+                window.location.href = `/admin/set-tahun-ajaran/${id}`;
+            }
         }
     }));
 });
