@@ -119,23 +119,43 @@ class KenaikanKelasController extends Controller
             'siswa_ids.*' => 'exists:siswas,id',
             'kelas_tujuan_id' => 'required|exists:kelas,id',
         ]);
-
+    
         DB::beginTransaction();
         try {
+            $kelasTujuan = Kelas::findOrFail($request->kelas_tujuan_id);
+            $siswaDetails = [];
+    
             foreach ($request->siswa_ids as $siswaId) {
                 $siswa = Siswa::findOrFail($siswaId);
+                $kelasAsal = $siswa->kelas;
+                
                 $siswa->kelas_id = $request->kelas_tujuan_id;
                 $siswa->is_naik_kelas = true;
                 $siswa->save();
+                
+                // Simpan detail untuk feedback
+                $siswaDetails[] = [
+                    'id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
+                    'kelas_tujuan' => "Kelas {$kelasTujuan->nomor_kelas} {$kelasTujuan->nama_kelas}"
+                ];
             }
             
             DB::commit();
-            return redirect()->back()->with('success', 'Berhasil memproses kenaikan kelas untuk ' . count($request->siswa_ids) . ' siswa');
+            
+            // Kirim data detail untuk SweetAlert
+            return redirect()->back()->with([
+                'success' => 'Berhasil memproses kenaikan kelas untuk ' . count($request->siswa_ids) . ' siswa',
+                'siswa_details' => $siswaDetails,
+                'action_type' => 'kenaikan'
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal memproses kenaikan kelas: ' . $e->getMessage());
         }
     }
+    
 
     /**
      * Proses tinggal kelas untuk sekelompok siswa
@@ -150,15 +170,34 @@ class KenaikanKelasController extends Controller
 
         DB::beginTransaction();
         try {
+            $kelasTujuan = Kelas::findOrFail($request->kelas_tujuan_id);
+            $siswaDetails = [];
+
             foreach ($request->siswa_ids as $siswaId) {
                 $siswa = Siswa::findOrFail($siswaId);
+                $kelasAsal = $siswa->kelas;
+                
                 $siswa->kelas_id = $request->kelas_tujuan_id;
                 $siswa->is_naik_kelas = false;
                 $siswa->save();
+                
+                // Simpan detail untuk feedback
+                $siswaDetails[] = [
+                    'id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
+                    'kelas_tujuan' => "Kelas {$kelasTujuan->nomor_kelas} {$kelasTujuan->nama_kelas}"
+                ];
             }
             
             DB::commit();
-            return redirect()->back()->with('success', 'Berhasil memproses siswa tinggal kelas untuk ' . count($request->siswa_ids) . ' siswa');
+            
+            // Kirim data detail untuk SweetAlert
+            return redirect()->back()->with([
+                'success' => 'Berhasil memproses siswa tinggal kelas untuk ' . count($request->siswa_ids) . ' siswa',
+                'siswa_details' => $siswaDetails,
+                'action_type' => 'tinggal'
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal memproses tinggal kelas: ' . $e->getMessage());
@@ -273,17 +312,36 @@ class KenaikanKelasController extends Controller
             'siswa_ids.*' => 'exists:siswas,id',
             'status' => 'required|in:lulus,pindah,dropout',
         ]);
-
+    
         DB::beginTransaction();
         try {
+            $siswaDetails = [];
+            
             foreach ($request->siswa_ids as $siswaId) {
                 $siswa = Siswa::findOrFail($siswaId);
+                $kelasAsal = $siswa->kelas;
+                
                 $siswa->status = $request->status;
                 $siswa->save();
+                
+                // Simpan detail untuk feedback
+                $siswaDetails[] = [
+                    'id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
+                    'status' => ucfirst($request->status)
+                ];
             }
             
             DB::commit();
-            return redirect()->back()->with('success', 'Berhasil memproses ' . count($request->siswa_ids) . ' siswa dengan status ' . $request->status);
+            
+            // Kirim data detail untuk SweetAlert
+            return redirect()->back()->with([
+                'success' => 'Berhasil memproses ' . count($request->siswa_ids) . ' siswa dengan status ' . $request->status,
+                'siswa_details' => $siswaDetails,
+                'action_type' => 'kelulusan',
+                'status' => $request->status
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal memproses: ' . $e->getMessage());

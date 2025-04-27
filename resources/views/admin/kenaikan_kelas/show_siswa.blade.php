@@ -312,4 +312,44 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSelectedStudents();
 });
 </script>
+
+@if(session('siswa_details'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Siapkan detail siswa
+    let detailHtml = '<div class="max-h-60 overflow-y-auto py-2">';
+    detailHtml += '<ul class="text-left">';
+    
+    @foreach(session('siswa_details') as $detail)
+        @if(session('action_type') == 'kenaikan')
+            detailHtml += '<li class="mb-2 flex items-start">' + 
+                          '<span class="text-green-600 mr-1">↗</span> ' +
+                          '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
+                          '{{ $detail['kelas_asal'] }} → {{ $detail['kelas_tujuan'] }}</div></li>';
+        @elseif(session('action_type') == 'tinggal')
+            detailHtml += '<li class="mb-2 flex items-start">' + 
+                          '<span class="text-yellow-600 mr-1">↔</span> ' +
+                          '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
+                          '{{ $detail['kelas_asal'] }} → {{ $detail['kelas_tujuan'] }}</div></li>';
+        @elseif(session('action_type') == 'kelulusan')
+            detailHtml += '<li class="mb-2 flex items-start">' + 
+                          '<span class="{{ session('status') == 'lulus' ? 'text-blue-600' : (session('status') == 'pindah' ? 'text-purple-600' : 'text-red-600') }} mr-1">{{ session('status') == 'lulus' ? '🎓' : (session('status') == 'pindah' ? '🔄' : '⛔') }}</span> ' +
+                          '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
+                          '{{ $detail['kelas_asal'] }} → {{ session('status') }}</div></li>';
+        @endif
+    @endforeach
+    
+    detailHtml += '</ul></div>';
+    
+    // Tampilkan SweetAlert dengan detail
+    Swal.fire({
+        title: 'Berhasil!',
+        html: detailHtml,
+        icon: 'success',
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'OK'
+    });
+});
+</script>
+@endif
 @endsection
