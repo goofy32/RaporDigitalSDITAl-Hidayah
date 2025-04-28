@@ -78,6 +78,21 @@
     <!-- Babel for JSX (development only - remove in production) -->
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
+        #logo-sidebar a.bg-green-100 {
+            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
+        }
+
+        /* Pastikan item aktif selalu menggunakan warna abu-abu */
+        #logo-sidebar a.active, 
+        #logo-sidebar a[aria-current="page"] {
+            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
+        }
+
+        /* Memastikan tidak ada highlight warna lain */
+        #logo-sidebar a:focus, 
+        #logo-sidebar a:active {
+            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
+        }
         input:required:invalid,
         select:required:invalid {
             border-color: #EF4444;
@@ -87,6 +102,62 @@
             color: #EF4444;
             font-size: 0.875rem;
             margin-top: 0.25rem;
+        }
+
+
+        #logo-sidebar img {
+            opacity: 1 !important; /* Force opacity untuk mencegah flickering */
+            height: 1.25rem;
+            width: 1.25rem;
+            min-height: 1.25rem;
+            min-width: 1.25rem;
+            background-color: rgba(229, 231, 235, 0.2); /* Sedikit background placeholder */
+        }
+
+        /* Mencegah duplikasi sidebar */
+        #logo-sidebar:not(:first-of-type) {
+            display: none !important;
+        }
+
+        /* Memperbaiki transisi sidebar */
+        #logo-sidebar {
+            will-change: transform;
+            transition: transform 0.3s ease;
+        }
+
+        /* Memastikan sidebar selalu terlihat pada layar besar */
+        @media (min-width: 640px) {
+            #logo-sidebar {
+                transform: translateX(0) !important;
+            }
+        }
+
+        /* Memastikan konten disesuaikan dengan sidebar */
+        @media (min-width: 640px) {
+            .sm\:ml-64 {
+                margin-left: 16rem !important;
+            }
+        }
+
+        /* Fix untuk highlight menu - pastikan background-color selalu gray-100 */
+        #logo-sidebar a.bg-green-100 {
+            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
+        }
+
+        /* Pastikan item aktif selalu menggunakan warna abu-abu */
+        #logo-sidebar a.active, 
+        #logo-sidebar a[aria-current="page"] {
+            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
+        }
+
+        /* Gunakan lebih banyak selector untuk memastikan override bekerja */
+        #logo-sidebar .bg-green-100,
+        #logo-sidebar a:focus, 
+        #logo-sidebar a:active,
+        #logo-sidebar a[data-path$="kelas"]:active,
+        #logo-sidebar a[data-path]:focus,
+        #logo-sidebar a[data-path].active {
+            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
         }
     </style>
     <style>
@@ -125,6 +196,7 @@
             margin-left: 16rem !important;
         }
     </style>
+
     
 </head>
 <body>

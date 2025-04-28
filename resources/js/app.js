@@ -7,6 +7,30 @@ import { renderAsync } from 'docx-preview';
 
 window.renderAsync = renderAsync;
 const cleanupHandlers = new Set();
+const sidebarImageCache = new Map();
+
+document.addEventListener('turbo:before-render', (event) => {
+    // Simpan semua elemen permanen sebelum render
+    const permanentElements = document.querySelectorAll('[data-turbo-permanent]');
+    
+    permanentElements.forEach(element => {
+        if (element.id) {
+            // Simpan juga semua gambar dalam elemen tersebut
+            const images = element.querySelectorAll('img');
+            images.forEach(img => {
+                if (img.complete && img.src) {
+                    sidebarImageCache.set(img.src, true);
+                }
+            });
+            
+            // Cari elemen yang sama di konten baru dan ganti dengan elemen saat ini
+            const newElement = event.detail.newBody.querySelector(`#${element.id}`);
+            if (newElement) {
+                newElement.replaceWith(element);
+            }
+        }
+    });
+});
 
 document.addEventListener('turbo:before-render', () => {
     // Bersihkan state Alpine
@@ -121,6 +145,41 @@ document.addEventListener('turbo:before-fetch-request', (event) => {
 });
 
 document.addEventListener('turbo:load', () => {
+    const imgObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                
+                // Jika gambar sudah dimuat sebelumnya
+                if (img.dataset.loaded === 'true' || sidebarImageCache.has(img.src)) {
+                    img.style.opacity = '1';
+                    imgObserver.unobserve(img);
+                    return;
+                }
+                
+                // Tunggu gambar selesai dimuat
+                img.onload = () => {
+                    img.style.opacity = '1';
+                    img.dataset.loaded = 'true';
+                    sidebarImageCache.set(img.src, true);
+                };
+                
+                imgObserver.unobserve(img);
+            }
+        });
+    });
+    
+    // Terapkan observer pada semua gambar di sidebar
+    document.querySelectorAll('#logo-sidebar img').forEach(img => {
+        // Set opacity awal untuk mencegah flickering
+        if (!img.dataset.loaded && !sidebarImageCache.has(img.src)) {
+            img.style.opacity = '0';
+            img.style.transition = 'opacity 0.2s';
+        }
+        
+        imgObserver.observe(img);
+    });
+
     if (typeof initFlowbite === 'function') {
         initFlowbite();
     }
@@ -129,6 +188,19 @@ document.addEventListener('turbo:load', () => {
     if (window.Alpine && window.alpineInitialized) {
         window.Alpine.initTree(document.body);
     }
+
+    if (window.Alpine) {
+        const savedState = localStorage.getItem('sidebar_dropdown_state');
+        if (savedState) {
+            try {
+                const state = JSON.parse(savedState);
+                Alpine.store('sidebar').dropdownState = { ...Alpine.store('sidebar').dropdownState, ...state };
+            } catch (e) {
+                console.error('Error restoring sidebar state:', e);
+            }
+        }
+    }
+
 
     setTimeout(() => {
         if (Alpine.store('pageLoading')) {
@@ -248,7 +320,21 @@ document.addEventListener('turbo:before-fetch-response', (event) => {
 });
 
 document.addEventListener('turbo:render', () => {
-    console.log('Turbo render, reinitializing Alpine');
+    const sidebar = document.getElementById('logo-sidebar');
+    if (sidebar) {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('sm:translate-x-0');
+        
+        // Pastikan semua gambar yang sudah di-cache tidak dimuat ulang
+        sidebar.querySelectorAll('img').forEach(img => {
+            if (sidebarImageCache.has(img.src)) {
+                // Mencegah flickering saat navigasi
+                img.style.opacity = '1';
+            }
+        });
+    }
+    
+    // Reinisialisasi Alpine.js jika ada
     if (window.Alpine) {
         window.Alpine.initTree(document.body);
     }
@@ -1237,21 +1323,15 @@ function updateSidebarActiveState() {
 
         sidebarLinks.forEach(link => {
             const path = link.dataset.path;
-            link.classList.remove('bg-green-100', 'bg-gray-100', 'shadow-md');
+            
+            // Hapus semua kelas highlight dari semua link
+            link.classList.remove('bg-green-100', 'bg-gray-100', 'shadow-md', 'active');
             
             if (path && currentPath.includes(path)) {
-                if (currentPath.includes('admin')) {
-                    link.classList.add('bg-green-100', 'shadow-md');
-                } else {
-                    link.classList.add('bg-gray-100');
-                }
+                // Tambahkan kelas active dan background abu-abu untuk yang aktif
+                link.classList.add('bg-gray-100', 'active');
             }
         });
-
-        const dropdownButton = document.querySelector('[data-collapse-toggle="dropdown-rapor"]');
-        if (dropdownButton && currentPath.includes('report-format')) {
-            dropdownButton.classList.add('bg-green-100', 'shadow-md');
-        }
     } catch (error) {
         console.error('Error updating sidebar state:', error);
     }
@@ -1275,6 +1355,15 @@ document.addEventListener('turbo:load', ensureSidebarVisible);
 document.addEventListener('turbo:render', ensureSidebarVisible);
 // Cleanup listeners
 document.addEventListener('turbo:before-cache', () => {
+    if (window.Alpine) {
+        document.querySelectorAll('[x-data]').forEach(el => {
+            // Simpan status dropdown sebelum cache
+            if (el.__x && el.__x.$data && el.__x.$data.openDropdown !== undefined) {
+                localStorage.setItem('sidebar_dropdown_state', JSON.stringify(el.__x.$data.openDropdown));
+            }
+        });
+    }
+
     const notificationHandler = document.querySelector('[x-data="notificationHandler"]');
     if (notificationHandler && notificationHandler.__x) {
         notificationHandler.__x.destroy();
@@ -1284,6 +1373,20 @@ document.addEventListener('turbo:before-cache', () => {
     if (reportManager && reportManager.__x) {
         reportManager.__x.destroy();
     }
+
+    const sidebarElements = document.querySelectorAll('#logo-sidebar');
+    if (sidebarElements.length > 1) {
+        for (let i = 1; i < sidebarElements.length; i++) {
+            sidebarElements[i].remove();
+        }
+    }
+    
+    // Pastikan gambar tidak diload ulang dengan menyimpan status loaded
+    document.querySelectorAll('#logo-sidebar img').forEach(img => {
+        if (img.complete) {
+            img.dataset.loaded = 'true';
+        }
+    });
 
     const dropdowns = document.querySelectorAll('[x-data]');
     dropdowns.forEach(dropdown => {
@@ -1301,4 +1404,3 @@ if (!window.alpineInitialized) {
     Alpine.start();
     window.alpineInitialized = true;
 }
-
