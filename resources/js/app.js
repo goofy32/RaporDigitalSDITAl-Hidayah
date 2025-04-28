@@ -134,6 +134,10 @@ Alpine.data('geminiChat', () => ({
     }
 }));
 
+document.addEventListener('turbo:frame-render', () => {
+    Alpine.store('pageLoading').stopLoading();
+});
+
 document.addEventListener('turbo:request-timeout', () => {
     Alpine.store('pageLoading').stopLoading();
     console.warn('Turbo request timed out');
@@ -1321,17 +1325,32 @@ function updateSidebarActiveState() {
         
         if (!sidebarLinks.length) return;
 
+        // Hapus dulu semua kelas aktif dari semua menu
+        sidebarLinks.forEach(link => {
+            link.classList.remove('bg-green-100', 'bg-gray-100', 'shadow-md', 'active');
+            link.removeAttribute('aria-current');
+        });
+        
+        // Cari menu yang paling spesifik dengan path saat ini
+        let mostSpecificLink = null;
+        let maxMatchLength = 0;
+
         sidebarLinks.forEach(link => {
             const path = link.dataset.path;
-            
-            // Hapus semua kelas highlight dari semua link
-            link.classList.remove('bg-green-100', 'bg-gray-100', 'shadow-md', 'active');
-            
             if (path && currentPath.includes(path)) {
-                // Tambahkan kelas active dan background abu-abu untuk yang aktif
-                link.classList.add('bg-gray-100', 'active');
+                // Temukan menu dengan path terpanjang yang cocok
+                if (path.length > maxMatchLength) {
+                    maxMatchLength = path.length;
+                    mostSpecificLink = link;
+                }
             }
         });
+
+        // Hanya menu yang paling spesifik yang diberi highlight
+        if (mostSpecificLink) {
+            mostSpecificLink.classList.add('bg-gray-100', 'active');
+            mostSpecificLink.setAttribute('aria-current', 'page');
+        }
     } catch (error) {
         console.error('Error updating sidebar state:', error);
     }

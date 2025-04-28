@@ -18,6 +18,12 @@ class KenaikanKelasController extends Controller
         // Ambil tahun ajaran aktif
         $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
         
+        if (!$tahunAjaranAktif) {
+            return view('admin.kenaikan_kelas.index', [
+                'error' => 'Tidak ada tahun ajaran yang aktif. Anda perlu mengaktifkan tahun ajaran terlebih dahulu.'
+            ]);
+        }
+        
         // Cari tahun ajaran baru (tahun ajaran selanjutnya)
         // Mencari berdasarkan angka tahun yang lebih besar dari tahun ajaran aktif
         $tahunAjaranBaru = null;
@@ -35,32 +41,33 @@ class KenaikanKelasController extends Controller
                 ->first();
         }
         
-        // Jika tidak ada tahun ajaran berikutnya, berikan peringatan
-        if (!$tahunAjaranBaru) {
-            // Ambil kelas dari tahun ajaran aktif untuk ditampilkan
-            $kelasAktif = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
-                        ->orderBy('nomor_kelas')
-                        ->orderBy('nama_kelas')
-                        ->get();
-                        
-            return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'tahunAjaranAktif'))
-                ->with('warning', 'Belum ada tahun ajaran selanjutnya. Silakan buat tahun ajaran baru dengan tahun yang lebih tinggi dari ' . $tahunAjaranAktif->tahun_ajaran);
-        }
-        
-        // Lanjutkan dengan kode yang sudah ada sebelumnya
+        // Ambil kelas dari tahun ajaran aktif untuk ditampilkan
         $kelasAktif = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
                     ->orderBy('nomor_kelas')
                     ->orderBy('nama_kelas')
                     ->get();
-                    
+        
+        // Jika tidak ada tahun ajaran berikutnya, berikan peringatan
+        if (!$tahunAjaranBaru) {
+            return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'tahunAjaranAktif'))
+                ->with('warning', 'Belum ada tahun ajaran selanjutnya. Silakan buat tahun ajaran baru dengan tahun yang lebih tinggi dari ' . $tahunAjaranAktif->tahun_ajaran . '. Anda bisa membuat tahun ajaran baru dengan menyalin data dari tahun ajaran yang sudah ada.');
+        }
+        
+        // Cek apakah ada kelas di tahun ajaran baru
         $kelasBaru = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
                     ->orderBy('nomor_kelas')
                     ->orderBy('nama_kelas')
                     ->get();
-                    
+        
+        // Jika tidak ada kelas di tahun ajaran baru, berikan peringatan
+        if ($kelasBaru->isEmpty()) {
+            return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'tahunAjaranAktif', 'tahunAjaranBaru'))
+                ->with('warning', 'Tahun ajaran ' . $tahunAjaranBaru->tahun_ajaran . ' belum memiliki kelas. Untuk melakukan kenaikan kelas, Anda perlu membuat kelas-kelas di tahun ajaran tersebut terlebih dahulu.');
+        }
+        
         return view('admin.kenaikan_kelas.index', compact('kelasAktif', 'kelasBaru', 'tahunAjaranAktif', 'tahunAjaranBaru'));
     }
-
+    
     public function showKelasSiswa($kelasId)
     {
         $kelas = Kelas::findOrFail($kelasId);

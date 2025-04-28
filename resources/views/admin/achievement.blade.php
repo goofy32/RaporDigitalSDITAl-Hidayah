@@ -49,7 +49,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($prestasis as $index => $prestasi)
+                    @if($prestasis->isEmpty())
+                        <tr class="bg-white border-b">
+                            <td colspan="6" class="px-6 py-4 text-center">Tidak ada data prestasi.</td>
+                        </tr>
+                    @else
+                        @foreach ($prestasis as $index => $prestasi)
                         <tr class="bg-white border-b hover:bg-gray-50">
                             <td class="px-6 py-4">{{ $index + 1 }}</td>
                             <td class="px-6 py-4">
@@ -74,11 +79,11 @@
                                 </div>
                             </td>
                         </tr>
-                    @endforeach
+                        @endforeach
+                    @endif
                 </tbody>
             </table>
         </div>
-
 
         <div>
             {{ $prestasis->links('vendor.pagination.custom') }}

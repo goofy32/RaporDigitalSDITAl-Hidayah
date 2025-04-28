@@ -6,8 +6,6 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="turbo-cache-control" content="no-preview">
-
-    <meta name="turbo-cache-control" content="no-preview">
     <meta name="turbo-visit-control" content="reload">
     <!-- Add this new meta tag -->
     <meta name="turbo-root" content="true">
@@ -78,21 +76,16 @@
     <!-- Babel for JSX (development only - remove in production) -->
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
+        /* Fix sidebar active state styles - remove background colors */
+        #logo-sidebar a.active,
+        #logo-sidebar a:focus,
+        #logo-sidebar a[aria-current="page"],
+        #logo-sidebar a.bg-gray-100,
         #logo-sidebar a.bg-green-100 {
-            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
+            background-color: transparent !important;
         }
 
-        /* Pastikan item aktif selalu menggunakan warna abu-abu */
-        #logo-sidebar a.active, 
-        #logo-sidebar a[aria-current="page"] {
-            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
-        }
-
-        /* Memastikan tidak ada highlight warna lain */
-        #logo-sidebar a:focus, 
-        #logo-sidebar a:active {
-            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
-        }
+        /* Enhanced input styles */
         input:required:invalid,
         select:required:invalid {
             border-color: #EF4444;
@@ -104,60 +97,40 @@
             margin-top: 0.25rem;
         }
 
-
+        /* Fix sidebar icons disappearing during page transitions */
         #logo-sidebar img {
-            opacity: 1 !important; /* Force opacity untuk mencegah flickering */
+            opacity: 1 !important;
+            transition: none !important;
             height: 1.25rem;
             width: 1.25rem;
             min-height: 1.25rem;
             min-width: 1.25rem;
-            background-color: rgba(229, 231, 235, 0.2); /* Sedikit background placeholder */
         }
 
-        /* Mencegah duplikasi sidebar */
+        /* Prevent sidebar duplication */
         #logo-sidebar:not(:first-of-type) {
             display: none !important;
         }
 
-        /* Memperbaiki transisi sidebar */
+        /* Improve sidebar transition */
         #logo-sidebar {
             will-change: transform;
             transition: transform 0.3s ease;
+            transform: none !important;
         }
 
-        /* Memastikan sidebar selalu terlihat pada layar besar */
+        /* Ensure sidebar is always visible on large screens */
         @media (min-width: 640px) {
             #logo-sidebar {
                 transform: translateX(0) !important;
             }
         }
 
-        /* Memastikan konten disesuaikan dengan sidebar */
+        /* Adjust content to accommodate sidebar */
         @media (min-width: 640px) {
             .sm\:ml-64 {
                 margin-left: 16rem !important;
             }
-        }
-
-        /* Fix untuk highlight menu - pastikan background-color selalu gray-100 */
-        #logo-sidebar a.bg-green-100 {
-            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
-        }
-
-        /* Pastikan item aktif selalu menggunakan warna abu-abu */
-        #logo-sidebar a.active, 
-        #logo-sidebar a[aria-current="page"] {
-            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
-        }
-
-        /* Gunakan lebih banyak selector untuk memastikan override bekerja */
-        #logo-sidebar .bg-green-100,
-        #logo-sidebar a:focus, 
-        #logo-sidebar a:active,
-        #logo-sidebar a[data-path$="kelas"]:active,
-        #logo-sidebar a[data-path]:focus,
-        #logo-sidebar a[data-path].active {
-            background-color: #F3F4F6 !important; /* Warna abu-abu (gray-100) */
         }
     </style>
     <style>
@@ -183,7 +156,7 @@
             height: 1.25rem;
         }
 
-        /* Mencegah flash saat navigasi */
+        /* Prevent flash during navigation */
         .turbo-progress-bar {
             background-color: #3B82F6 !important;
         }
@@ -200,6 +173,9 @@
     
 </head>
 <body>
+    <!-- Add loading overlay component -->
+    <x-content-loading-overlay />
+
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
     <x-admin.sidebar data-turbo-permanent id="sidebar"></x-admin.sidebar>
     <x-session-timeout-alert data-turbo-permanent id="session-alert" />

@@ -92,9 +92,6 @@
         <!-- Tabel dengan caption yang menjelaskan warna latar -->
         <div class="overflow-x-auto bg-white shadow-md rounded-lg mt-3">
             <table class="w-full text-sm text-left text-gray-500">
-                <caption class="caption-top text-sm text-gray-600 mb-2">
-                    <span class="inline-block w-3 h-3 bg-green-50 border border-green-200 rounded-sm mr-1"></span> Data baru yang belum disimpan ke database
-                </caption>
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
                         <th class="px-6 py-3">No</th>
