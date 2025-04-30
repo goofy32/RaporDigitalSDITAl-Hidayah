@@ -11,50 +11,13 @@
     <meta name="turbo-root" content="true">
     
     <!-- Preload critical images -->
-    <link rel="preload" 
-        href="{{ asset('images/icons/dashboard-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/subject-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/achievement-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/class-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/report-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/teacher-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/extracurricular-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/student-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
-
-    <link rel="preload" 
-        href="{{ asset('images/icons/profile-icon.png') }}" 
-        as="image" 
-        fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/dashboard-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/subject-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/class-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/profile-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/teacher-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/student-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/report-icon.png') }}" as="image" fetchpriority="high">
 
     
     <title>@yield('title')</title>
@@ -99,12 +62,18 @@
 
         /* Fix sidebar icons disappearing during page transitions */
         #logo-sidebar img {
-            opacity: 1 !important;
+            opacity: 1 !important; 
+            visibility: visible !important;
             transition: none !important;
-            height: 1.25rem;
-            width: 1.25rem;
             min-height: 1.25rem;
             min-width: 1.25rem;
+            height: 1.25rem;
+            width: 1.25rem;
+            /* Prevent flash during loading */
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            will-change: auto;  /* Tambahkan ini */
+            transform: translateZ(0);  /* Tambahkan ini */
         }
 
         /* Prevent sidebar duplication */
@@ -131,6 +100,15 @@
             .sm\:ml-64 {
                 margin-left: 16rem !important;
             }
+        }
+
+        #logo-sidebar svg {
+            opacity: 1 !important;
+            visibility: visible !important;
+            width: 1.25rem !important;
+            height: 1.25rem !important;
+            min-width: 1.25rem !important;
+            min-height: 1.25rem !important;
         }
     </style>
     <style>
@@ -362,5 +340,26 @@
             </div>
         </div>
     </div>
+
+    <script>
+    // Force immediate loading of sidebar images
+    (function() {
+        const sidebarImages = document.querySelectorAll('#logo-sidebar img');
+        sidebarImages.forEach(img => {
+            // Force immediate loading by creating a new Image
+            const image = new Image();
+            image.onload = function() {
+                img.style.opacity = '1';
+                img.style.visibility = 'visible';
+                img.setAttribute('data-loaded', 'true');
+            };
+            image.src = img.src;
+            
+            // Set default state
+            img.style.opacity = '1';
+            img.style.visibility = 'visible';
+        });
+    })();
+</script>
 </body>
 </html>

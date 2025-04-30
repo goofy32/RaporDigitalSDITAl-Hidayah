@@ -194,6 +194,7 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
     Route::delete('kelas/{id}', [ClassController::class, 'destroy'])->name('kelas.destroy');
     
     Route::prefix('tahun-ajaran')->name('tahun.ajaran.')->group(function () {
+        Route::post('/{id}/restore', [TahunAjaranController::class, 'restore'])->name('restore'); 
         Route::get('/', [TahunAjaranController::class, 'index'])->name('index');
         Route::get('/create', [TahunAjaranController::class, 'create'])->name('create');
         Route::post('/', [TahunAjaranController::class, 'store'])->name('store');

@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TahunAjaran extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes; // Add SoftDeletes trait
 
     protected $table = 'tahun_ajarans';
 
@@ -26,7 +27,8 @@ class TahunAjaran extends Model
         'is_active' => 'boolean',
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
-        'semester' => 'integer'
+        'semester' => 'integer',
+        'deleted_at' => 'datetime' // Add this for soft delete support
     ];
 
     // Boot method untuk setup model events
@@ -92,7 +94,6 @@ class TahunAjaran extends Model
         // Tambahkan model lain yang memiliki semester dan tahun_ajaran_id jika ada
     }
 
-
     // Relasi dengan kelas (bisa ada banyak kelas dalam satu tahun ajaran)
     public function kelas()
     {
@@ -135,5 +136,14 @@ class TahunAjaran extends Model
         $today = now();
         return $this->is_active && 
                $today->between($this->tanggal_mulai, $this->tanggal_selesai);
+    }
+
+    // Scopre untuk include softDeleted tahun ajaran
+    public function scopeWithSoftDeleted($query, $includeSoftDeleted = true)
+    {
+        if ($includeSoftDeleted) {
+            return $query->withTrashed();
+        }
+        return $query;
     }
 }

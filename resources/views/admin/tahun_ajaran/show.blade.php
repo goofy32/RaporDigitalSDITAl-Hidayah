@@ -10,9 +10,11 @@
             <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 Kembali
             </a>
-            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                Edit
-            </a>
+            @if(!$tahunAjaran->trashed())
+                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    Edit
+                </a>
+            @endif
         </div>
     </div>
 
@@ -32,18 +34,20 @@
     <div class="mb-8">
         <div class="flex items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-800">Informasi Tahun Ajaran</h3>
-            @if($tahunAjaran->is_active)
-            <span class="ml-3 px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
+            @if($tahunAjaran->trashed())
+                <span class="ml-3 px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Diarsipkan</span>
+            @elseif($tahunAjaran->is_active)
+                <span class="ml-3 px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
             @else
-            <span class="ml-3 px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
-            
-            <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline ml-2">
-                @csrf
-                <button type="submit" class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full hover:bg-blue-200" 
-                    onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                    Aktifkan Sekarang
-                </button>
-            </form>
+                <span class="ml-3 px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
+                
+                <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline ml-2">
+                    @csrf
+                    <button type="submit" class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full hover:bg-blue-200" 
+                        onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
+                        Aktifkan Sekarang
+                    </button>
+                </form>
             @endif
         </div>
         
@@ -104,17 +108,28 @@
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Tindakan</h3>
         
         <div class="flex flex-wrap gap-4">
-            <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" 
-                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                Edit Tahun Ajaran
-            </a>
+            @if(!$tahunAjaran->trashed())
+                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" 
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    Edit Tahun Ajaran
+                </a>
+            @endif
             
             <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
                 class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 Salin ke Tahun Ajaran Baru
             </a>
             
-            @if(!$tahunAjaran->is_active)
+            @if($tahunAjaran->trashed())
+                <form action="{{ route('tahun.ajaran.restore', $tahunAjaran->id) }}" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        onclick="return confirm('Apakah Anda yakin ingin memulihkan tahun ajaran ini?')">
+                        Pulihkan Tahun Ajaran
+                    </button>
+                </form>
+            @elseif(!$tahunAjaran->is_active)
                 <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" 
@@ -145,14 +160,14 @@
                 </form>
             @endif
 
-            @if(!$tahunAjaran->is_active)
+            @if(!$tahunAjaran->is_active && !$tahunAjaran->trashed())
                 <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit" 
-                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                        onclick="return confirm('Apakah Anda yakin ingin menghapus tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nPeringatan: Menghapus tahun ajaran ini TIDAK akan menghapus data kelas, siswa, dan data lain yang terkait. Namun, filter berdasarkan tahun ajaran ini tidak akan berfungsi lagi.')">
-                        Hapus Tahun Ajaran
+                        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                        onclick="return confirm('Apakah Anda yakin ingin mengarsipkan tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nData terkait masih dapat diakses setelah diarsipkan dengan menampilkan tahun ajaran terarsip.')">
+                        Arsipkan Tahun Ajaran
                     </button>
                 </form>
             @endif

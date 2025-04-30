@@ -20,13 +20,21 @@ class TahunAjaranController extends Controller
     /**
      * Display a listing of tahun ajaran.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $tahunAjarans = TahunAjaran::orderBy('is_active', 'desc')
-                               ->orderBy('tanggal_mulai', 'desc')
-                               ->get();
+        $tampilkanArsip = $request->has('showArchived');
         
-        return view('admin.tahun_ajaran.index', compact('tahunAjarans'));
+        // Jika tampilkanArsip bernilai true, sertakan rekaman yang sudah di-soft-delete
+        $query = TahunAjaran::orderBy('is_active', 'desc')
+                          ->orderBy('tanggal_mulai', 'desc');
+                          
+        if ($tampilkanArsip) {
+            $query->withTrashed();
+        }
+        
+        $tahunAjarans = $query->get();
+        
+        return view('admin.tahun_ajaran.index', compact('tahunAjarans', 'tampilkanArsip'));
     }
 
     /**
@@ -80,7 +88,8 @@ class TahunAjaranController extends Controller
      */
     public function show($id)
     {
-        $tahunAjaran = TahunAjaran::findOrFail($id);
+        // Tambahkan withTrashed() untuk bisa mengakses tahun ajaran yang diarsipkan
+        $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
         
         // Hitung statistik
         $totalKelas = Kelas::where('tahun_ajaran_id', $id)->count();
@@ -102,10 +111,11 @@ class TahunAjaranController extends Controller
      */
     public function edit($id)
     {
-        $tahunAjaran = TahunAjaran::findOrFail($id);
+        // Tambahkan withTrashed() untuk bisa mengedit tahun ajaran yang diarsipkan
+        $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
         return view('admin.tahun_ajaran.edit', compact('tahunAjaran'));
     }
-
+    
     /**
      * Update the specified resource in storage.
      */
@@ -126,7 +136,7 @@ class TahunAjaranController extends Controller
                          ->withInput();
         }
     
-        $tahunAjaran = TahunAjaran::findOrFail($id);
+        $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
         
         // Simpan semester lama untuk dibandingkan
         $oldSemester = $tahunAjaran->semester;
@@ -152,6 +162,11 @@ class TahunAjaranController extends Controller
     
         DB::beginTransaction();
         try {
+            // Jika tahun ajaran di-softdelete, restore terlebih dahulu
+            if ($tahunAjaran->trashed() && $request->has('is_active') && $request->is_active) {
+                $tahunAjaran->restore();
+            }
+            
             // Update tahun ajaran
             $tahunAjaran->update($request->all());
             
@@ -311,39 +326,40 @@ class TahunAjaranController extends Controller
             // Cek apakah tahun ajaran sedang aktif
             if ($tahunAjaran->is_active) {
                 return redirect()->back()
-                    ->with('error', 'Tidak dapat menghapus tahun ajaran yang sedang aktif. Aktifkan tahun ajaran lain terlebih dahulu.');
+                    ->with('error', 'Tidak dapat mengarsipkan tahun ajaran yang sedang aktif. Aktifkan tahun ajaran lain terlebih dahulu.');
             }
             
             // Cek apakah ini adalah satu-satunya tahun ajaran
             $totalTahunAjaran = TahunAjaran::count();
             if ($totalTahunAjaran <= 1) {
                 return redirect()->back()
-                    ->with('error', 'Tidak dapat menghapus tahun ajaran karena minimal harus ada satu tahun ajaran dalam sistem.');
+                    ->with('error', 'Tidak dapat mengarsipkan tahun ajaran karena minimal harus ada satu tahun ajaran dalam sistem.');
             }
             
-            // Jika aman, hapus tahun ajaran
+            // Soft delete tahun ajaran daripada menghapusnya permanen
             $tahunAjaran->delete();
             
             return redirect()->route('tahun.ajaran.index')
-                ->with('success', 'Tahun ajaran berhasil dihapus.');
+                ->with('success', 'Tahun ajaran berhasil diarsipkan. Data terkait masih dapat diakses dengan menampilkan tahun ajaran terarsip.');
                 
         } catch (\Exception $e) {
-            \Log::error('Error saat menghapus tahun ajaran: ' . $e->getMessage(), [
+            \Log::error('Error saat mengarsipkan tahun ajaran: ' . $e->getMessage(), [
                 'tahun_ajaran_id' => $id,
                 'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->back()
-                ->with('error', 'Terjadi kesalahan saat menghapus tahun ajaran: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan saat mengarsipkan tahun ajaran: ' . $e->getMessage());
         }
     }
+
 
     /**
      * Generate tahun ajaran baru berdasarkan tahun ajaran yang sudah ada.
      */
     public function copy($id)
     {
-        $sourceTahunAjaran = TahunAjaran::findOrFail($id);
+        $sourceTahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
         
         // Generate tahun ajaran baru
         $tahunParts = explode('/', $sourceTahunAjaran->tahun_ajaran);
@@ -388,7 +404,7 @@ class TahunAjaranController extends Controller
         DB::beginTransaction();
         
         try {
-            $sourceTahunAjaran = TahunAjaran::findOrFail($id);
+            $sourceTahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
             
             // Jika akan diaktifkan, nonaktifkan yang lain dulu
             if ($request->is_active) {
@@ -698,6 +714,32 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('success', 'Tampilan data diubah ke tahun ajaran ' . $tahunAjaran->tahun_ajaran);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function restore($id)
+    {
+        try {
+            $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
+            
+            if (!$tahunAjaran->trashed()) {
+                return redirect()->back()
+                    ->with('error', 'Tahun ajaran ini tidak dalam status diarsipkan.');
+            }
+            
+            $tahunAjaran->restore();
+            
+            return redirect()->route('tahun.ajaran.index', ['showArchived' => true])
+                ->with('success', 'Tahun ajaran ' . $tahunAjaran->tahun_ajaran . ' berhasil dipulihkan!');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error saat memulihkan tahun ajaran: ' . $e->getMessage(), [
+                'tahun_ajaran_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat memulihkan tahun ajaran: ' . $e->getMessage());
         }
     }
 }

@@ -10,26 +10,27 @@ const cleanupHandlers = new Set();
 const sidebarImageCache = new Map();
 
 document.addEventListener('turbo:before-render', (event) => {
-    // Simpan semua elemen permanen sebelum render
-    const permanentElements = document.querySelectorAll('[data-turbo-permanent]');
-    
-    permanentElements.forEach(element => {
-        if (element.id) {
-            // Simpan juga semua gambar dalam elemen tersebut
-            const images = element.querySelectorAll('img');
-            images.forEach(img => {
-                if (img.complete && img.src) {
-                    sidebarImageCache.set(img.src, true);
-                }
+    // Preserve sidebar images state
+    const sidebar = document.getElementById('logo-sidebar');
+    if (sidebar) {
+        // Mark sidebar as processed to avoid duplicates
+        sidebar.setAttribute('data-turbo-processed', 'true');
+        
+        // Find matching sidebar in new body and replace it with current one
+        const newSidebar = event.detail.newBody.querySelector('#logo-sidebar');
+        if (newSidebar) {
+            // Force all images in current sidebar to be visible
+            sidebar.querySelectorAll('img').forEach(img => {
+                img.style.opacity = '1';
+                img.style.visibility = 'visible';
+                img.setAttribute('data-loaded', 'true');
+                sidebarImageCache.set(img.src, true);
             });
             
-            // Cari elemen yang sama di konten baru dan ganti dengan elemen saat ini
-            const newElement = event.detail.newBody.querySelector(`#${element.id}`);
-            if (newElement) {
-                newElement.replaceWith(element);
-            }
+            // Replace new sidebar with current one that has visible images
+            newSidebar.replaceWith(sidebar);
         }
-    });
+    }
 });
 
 document.addEventListener('turbo:before-render', () => {
@@ -324,25 +325,68 @@ document.addEventListener('turbo:before-fetch-response', (event) => {
 });
 
 document.addEventListener('turbo:render', () => {
-    const sidebar = document.getElementById('logo-sidebar');
-    if (sidebar) {
-        sidebar.classList.remove('-translate-x-full');
-        sidebar.classList.add('sm:translate-x-0');
-        
-        // Pastikan semua gambar yang sudah di-cache tidak dimuat ulang
-        sidebar.querySelectorAll('img').forEach(img => {
-            if (sidebarImageCache.has(img.src)) {
-                // Mencegah flickering saat navigasi
+    // Find all sidebar images and ensure they're visible
+    const sidebarImages = document.querySelectorAll('#logo-sidebar img');
+    sidebarImages.forEach(img => {
+        // If the image is in our cache or marked as loaded, ensure it's visible
+        if (sidebarImageCache.has(img.src) || img.getAttribute('data-loaded') === 'true') {
+            img.style.opacity = '1';
+            img.style.visibility = 'visible';
+            img.setAttribute('data-loaded', 'true');
+        } else {
+            // For images not yet loaded, set up proper loading behavior
+            img.style.opacity = '0';
+            img.onload = () => {
                 img.style.opacity = '1';
-            }
-        });
-    }
-    
-    // Reinisialisasi Alpine.js jika ada
-    if (window.Alpine) {
-        window.Alpine.initTree(document.body);
-    }
+                img.style.visibility = 'visible';
+                img.setAttribute('data-loaded', 'true');
+                sidebarImageCache.set(img.src, true);
+            };
+        }
+    });
 });
+
+function preloadAndCacheSidebarIcons() {
+    const sidebar = document.getElementById('logo-sidebar');
+    if (!sidebar) return;
+
+    // Force preload all sidebar images
+    sidebar.querySelectorAll('img').forEach(img => {
+        // Ensure image is visible
+        img.style.opacity = '1';
+        img.style.visibility = 'visible';
+        
+        // If not already loaded or cached
+        if (!img.dataset.loaded && !sidebarImageCache.has(img.src)) {
+            // Add to cache even before loading completes
+            sidebarImageCache.set(img.src, true);
+            img.setAttribute('data-loaded', 'loading');
+            
+            // Create a new image element to preload
+            const preloader = new Image();
+            preloader.onload = () => {
+                img.setAttribute('data-loaded', 'true');
+                img.style.opacity = '1';
+            };
+            preloader.onerror = () => {
+                // Try reloading with cache buster
+                const cacheBuster = `${img.src}${img.src.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                img.src = cacheBuster;
+                img.setAttribute('data-loaded', 'retrying');
+            };
+            preloader.src = img.src;
+        }
+    });
+    
+    // Log state to console for debugging
+    console.log('Sidebar image cache state:', 
+        [...sidebarImageCache.keys()].map(key => key.split('/').pop()));
+}
+
+// Call this function at key points
+document.addEventListener('DOMContentLoaded', preloadAndCacheSidebarIcons);
+document.addEventListener('turbo:load', preloadAndCacheSidebarIcons);
+document.addEventListener('turbo:render', preloadAndCacheSidebarIcons);
 
 
 

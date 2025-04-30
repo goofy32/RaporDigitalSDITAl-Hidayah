@@ -31,7 +31,8 @@
                     data-turbo-frame="main"
                     data-path="dashboard"
                     class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                    <img src="{{ asset('images/icons/dashboard-icon.png') }}" alt="Dashboard Icon" class="w-5 h-5">
+                    <img src="{{ asset('images/icons/dashboard-icon.png') }}" alt="Dashboard Icon" class="w-5 h-5" 
+                    data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/dashboard-icon.png') }}?v=' + Date.now();">
                     <span class="ms-3">Dashboard</span>
                 </a>
             </li>
@@ -55,7 +56,7 @@
                     data-turbo-frame="main"
                     data-path="profile"
                     class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                    <img src="{{ asset('images/icons/profile-icon.png') }}" alt="Profile Icon" class="w-5 h-5">
+                    <img src="{{ asset('images/icons/profile-icon.png') }}" alt="Profile Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/profile-icon.png') }}?v=' + Date.now();">
                     <span class="ms-3">Profile Sekolah</span>
                 </a>
             </li>
@@ -68,7 +69,7 @@
                             data-turbo-frame="main"
                             data-path="kelas"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <img src="{{ asset('images/icons/class-icon.png') }}" alt="Class Icon" class="w-5 h-5">
+                            <img src="{{ asset('images/icons/class-icon.png') }}" alt="Class Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/class-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Kelas</span>
                         </a>
                     </li>
@@ -77,7 +78,7 @@
                             data-turbo-frame="main"
                             data-path="teacher"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <img src="{{ asset('images/icons/teacher-icon.png') }}" alt="Teacher Icon" class="w-5 h-5">
+                            <img src="{{ asset('images/icons/teacher-icon.png') }}" alt="Teacher Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/teacher-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Pengajar</span>
                         </a>
                     </li>
@@ -86,7 +87,7 @@
                             data-turbo-frame="main"
                             data-path="student"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <img src="{{ asset('images/icons/student-icon.png') }}" alt="Student Icon" class="w-5 h-5">
+                            <img src="{{ asset('images/icons/student-icon.png') }}" alt="Student Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/student-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Siswa</span>
                         </a>
                     </li>
@@ -95,7 +96,7 @@
                             data-turbo-frame="main"
                             data-path="subject"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <img src="{{ asset('images/icons/subject-icon.png') }}" alt="Subject Icon" class="w-5 h-5">
+                            <img src="{{ asset('images/icons/subject-icon.png') }}" alt="Subject Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/dashboard-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Pelajaran</span>
                         </a>
                     </li>
@@ -104,7 +105,7 @@
                             data-turbo-frame="main"
                             data-path="ekstra"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <img src="{{ asset('images/icons/extracurricular-icon.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                            <img src="{{ asset('images/icons/extracurricular-icon.png') }}" alt="Extracurricular Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/extracurricular-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Ekstrakurikuler</span>
                         </a>
                     </li>
@@ -113,7 +114,7 @@
                             data-turbo-frame="main"
                             data-path="achievement"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <img src="{{ asset('images/icons/achievement-icon.png') }}" alt="Achievement Icon" class="w-5 h-5">
+                            <img src="{{ asset('images/icons/achievement-icon.png') }}" alt="Achievement Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/achievement-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Prestasi</span>
                         </a>
                     </li>
@@ -122,7 +123,7 @@
                         data-turbo-frame="main" 
                         data-path="report-template"
                         class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
-                            <img src="{{ asset('images/icons/report-icon.png') }}" class="w-5 h-5" alt="Format Rapor" />
+                            <img src="{{ asset('images/icons/report-icon.png') }}" class="w-5 h-5" alt="Format Rapor" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/report-icon.png') }}?v=' + Date.now();" />
                             <span class="flex-1 ml-3 whitespace-nowrap">Format Rapor</span>
                         </a>
                     </li>
