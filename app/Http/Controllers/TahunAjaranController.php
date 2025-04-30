@@ -24,7 +24,7 @@ class TahunAjaranController extends Controller
     {
         $tampilkanArsip = $request->has('showArchived');
         
-        // Jika tampilkanArsip bernilai true, sertakan rekaman yang sudah di-soft-delete
+        // Query utama untuk tampilan
         $query = TahunAjaran::orderBy('is_active', 'desc')
                           ->orderBy('tanggal_mulai', 'desc');
                           
@@ -34,7 +34,15 @@ class TahunAjaranController extends Controller
         
         $tahunAjarans = $query->get();
         
-        return view('admin.tahun_ajaran.index', compact('tahunAjarans', 'tampilkanArsip'));
+        // Hitung jumlah arsip secara terpisah
+        $archivedCount = TahunAjaran::onlyTrashed()->count();
+        
+        // Debugging - hapus ini setelah menyelesaikan masalah
+        \Log::info("Tampilkan Arsip: " . ($tampilkanArsip ? 'Ya' : 'Tidak'));
+        \Log::info("Jumlah Arsip: " . $archivedCount);
+        \Log::info("Total Data: " . $tahunAjarans->count());
+        
+        return view('admin.tahun_ajaran.index', compact('tahunAjarans', 'tampilkanArsip', 'archivedCount'));
     }
 
     /**
@@ -279,8 +287,14 @@ class TahunAjaranController extends Controller
             TahunAjaran::where('is_active', true)
                 ->update(['is_active' => false]);
                 
-            // Aktifkan tahun ajaran yang dipilih
-            $tahunAjaran = TahunAjaran::findOrFail($id);
+            // Aktifkan tahun ajaran yang dipilih (with trashed untuk termasuk yang diarsipkan)
+            $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
+            
+            // Restore if the academic year was soft deleted
+            if ($tahunAjaran->trashed()) {
+                $tahunAjaran->restore();
+            }
+            
             $tahunAjaran->update(['is_active' => true]);
             
             // Update juga di profil sekolah

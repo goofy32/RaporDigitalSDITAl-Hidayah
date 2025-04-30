@@ -240,40 +240,26 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Cek apakah kita sedang menampilkan arsip
         const isShowingArchived = {{ $tampilkanArsip ? 'true' : 'false' }};
-        
-        // Cek jumlah tahun ajaran yang diarsipkan
-        const archivedCount = {{ $tahunAjarans->filter->trashed()->count() }};
-        
-        // Menangani klik tombol tampilkan/sembunyikan arsip
+        const archivedCount = {{ $archivedCount }};
         const toggleBtn = document.getElementById('toggleArchiveBtn');
-        
-        // Hanya tampilkan notifikasi jika:
-        // 1. Pengguna meminta untuk menampilkan arsip (bukan sembunyikan)
-        // 2. Tidak ada arsip yang ditemukan
+
+        // Jika sedang mode "Tampilkan Arsip", dan tidak ada arsip, redirect otomatis
         if (isShowingArchived && archivedCount === 0) {
-            // Tampilkan pesan SweetAlert
             Swal.fire({
                 icon: 'info',
                 title: 'Tidak Ada Arsip',
                 text: 'Tidak ada tahun ajaran yang diarsipkan saat ini.',
                 confirmButtonText: 'Mengerti'
-            }).then((result) => {
-                // Redirect ke halaman tanpa parameter showArchived
-                if (result.isConfirmed) {
-                    window.location.href = "{{ route('tahun.ajaran.index') }}";
-                }
+            }).then(() => {
+                window.location.href = "{{ route('tahun.ajaran.index') }}";
             });
         }
-        
-        // Hanya tambahkan listener jika:
-        // 1. Belum menampilkan arsip
-        // 2. Tidak ada arsip yang tersedia
+
+        // Saat sedang mode "TIDAK TAMPILKAN ARSIP" dan tidak ada arsip, cegah toggle
         if (!isShowingArchived && archivedCount === 0 && toggleBtn) {
             toggleBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                
                 Swal.fire({
                     icon: 'info',
                     title: 'Tidak Ada Arsip',
