@@ -7,18 +7,47 @@
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">Manajemen Tahun Ajaran</h2>
         <div class="flex gap-2">
-            <a href="{{ route('tahun.ajaran.index', ['showArchived' => !$tampilkanArsip]) }}" 
-            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition duration-150 ease-in-out"
-            id="toggleArchiveBtn">
-                <i class="fas fa-archive mr-2"></i> 
-                {{ $tampilkanArsip ? 'Sembunyikan Arsip' : 'Tampilkan Arsip' }}
-            </a>
+            <!-- Modified toggle button with direct link instead of JavaScript -->
+            @if($tampilkanArsip || $archivedCount > 0)
+                <a href="{{ route('tahun.ajaran.index', ['showArchived' => $tampilkanArsip ? null : 'true']) }}" 
+                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition duration-150 ease-in-out"
+                id="toggleArchiveBtn">
+                    <i class="fas fa-archive mr-2"></i> 
+                    {{ $tampilkanArsip ? 'Sembunyikan Arsip' : 'Tampilkan Arsip' }}
+                </a>
+            @else
+                <!-- When there are no archives, show disabled button with info popup -->
+                <button type="button" 
+                class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed transition duration-150 ease-in-out"
+                id="disabledArchiveBtn">
+                    <i class="fas fa-archive mr-2"></i> Tampilkan Arsip
+                </button>
+            @endif
+            
             <a href="{{ route('tahun.ajaran.create') }}" 
             class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-150 ease-in-out">
                 <i class="fas fa-plus mr-2"></i> Tambah Tahun Ajaran
             </a>
         </div>
     </div>
+
+    <!-- Show archive status indicator if we're viewing archived items -->
+    @if($tampilkanArsip && $archivedCount > 0)
+    <div class="bg-orange-50 border-l-4 border-orange-400 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-orange-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-orange-700">
+                    <strong>Menampilkan tahun ajaran terarsip.</strong> Anda melihat daftar yang menyertakan tahun ajaran yang telah diarsipkan.
+                </p>
+            </div>
+        </div>
+    </div>
+    @endif
 
     @if(session('success'))
     <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
@@ -240,26 +269,12 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const isShowingArchived = {{ $tampilkanArsip ? 'true' : 'false' }};
         const archivedCount = {{ $archivedCount }};
-        const toggleBtn = document.getElementById('toggleArchiveBtn');
-
-        // Jika sedang mode "Tampilkan Arsip", dan tidak ada arsip, redirect otomatis
-        if (isShowingArchived && archivedCount === 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Tidak Ada Arsip',
-                text: 'Tidak ada tahun ajaran yang diarsipkan saat ini.',
-                confirmButtonText: 'Mengerti'
-            }).then(() => {
-                window.location.href = "{{ route('tahun.ajaran.index') }}";
-            });
-        }
-
-        // Saat sedang mode "TIDAK TAMPILKAN ARSIP" dan tidak ada arsip, cegah toggle
-        if (!isShowingArchived && archivedCount === 0 && toggleBtn) {
-            toggleBtn.addEventListener('click', function(e) {
-                e.preventDefault();
+        const disabledBtn = document.getElementById('disabledArchiveBtn');
+        
+        // Add click handler for the disabled button
+        if (disabledBtn) {
+            disabledBtn.addEventListener('click', function() {
                 Swal.fire({
                     icon: 'info',
                     title: 'Tidak Ada Arsip',

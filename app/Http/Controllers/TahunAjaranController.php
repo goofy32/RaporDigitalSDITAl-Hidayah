@@ -22,6 +22,7 @@ class TahunAjaranController extends Controller
      */
     public function index(Request $request)
     {
+        // Check if we should show archived items
         $tampilkanArsip = $request->has('showArchived');
         
         // Query utama untuk tampilan
@@ -37,7 +38,7 @@ class TahunAjaranController extends Controller
         // Hitung jumlah arsip secara terpisah
         $archivedCount = TahunAjaran::onlyTrashed()->count();
         
-        // Debugging - hapus ini setelah menyelesaikan masalah
+        // Debug logging
         \Log::info("Tampilkan Arsip: " . ($tampilkanArsip ? 'Ya' : 'Tidak'));
         \Log::info("Jumlah Arsip: " . $archivedCount);
         \Log::info("Total Data: " . $tahunAjarans->count());
