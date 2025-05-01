@@ -142,9 +142,8 @@
 
             <!-- Button to advance semester (only shown for active academic year with odd semester) -->
             @if($tahunAjaran->is_active && $tahunAjaran->semester == 1)
-                <form action="{{ route('tahun.ajaran.update', $tahunAjaran->id) }}" method="POST" class="inline">
+                <form action="{{ route('tahun.ajaran.advance-semester', $tahunAjaran->id) }}" method="POST" class="inline">
                     @csrf
-                    @method('PUT')
                     <input type="hidden" name="tahun_ajaran" value="{{ $tahunAjaran->tahun_ajaran }}">
                     <input type="hidden" name="tanggal_mulai" value="{{ $tahunAjaran->tanggal_mulai->format('Y-m-d') }}">
                     <input type="hidden" name="tanggal_selesai" value="{{ $tahunAjaran->tanggal_selesai->format('Y-m-d') }}">

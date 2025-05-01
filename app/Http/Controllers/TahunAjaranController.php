@@ -47,6 +47,210 @@ class TahunAjaranController extends Controller
     }
 
     /**
+     * Copy related data from one semester to the next semester within the same academic year
+     * 
+     * @param TahunAjaran $sourceTahunAjaran The source (semester 1) academic year
+     * @param TahunAjaran $newTahunAjaran The target (semester 2) academic year
+     * @return void
+     */
+    private function copyRelatedDataToNewSemester($sourceTahunAjaran, $newTahunAjaran)
+    {
+        try {
+            // Log for debugging
+            \Log::info("Copying related data from semester 1 to semester 2", [
+                'source_id' => $sourceTahunAjaran->id,
+                'source_semester' => $sourceTahunAjaran->semester,
+                'target_id' => $newTahunAjaran->id,
+                'target_semester' => $newTahunAjaran->semester
+            ]);
+            
+            // Map kelas IDs to maintain relationships
+            $kelasMapping = [];
+            
+            // Copy kelas without incrementing numbers (same class structure, just different semester)
+            $sourceKelas = Kelas::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+            foreach ($sourceKelas as $kelas) {
+                $newKelas = $kelas->replicate();
+                $newKelas->tahun_ajaran_id = $newTahunAjaran->id;
+                $newKelas->save();
+                
+                // Store mapping from old kelas ID to new kelas ID
+                $kelasMapping[$kelas->id] = $newKelas->id;
+                
+                // Copy guru relationships
+                $guruRelations = DB::table('guru_kelas')
+                    ->where('kelas_id', $kelas->id)
+                    ->get();
+                
+                foreach ($guruRelations as $relation) {
+                    DB::table('guru_kelas')->insert([
+                        'guru_id' => $relation->guru_id,
+                        'kelas_id' => $newKelas->id,
+                        'is_wali_kelas' => $relation->is_wali_kelas,
+                        'role' => $relation->role,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+                
+                // Copy student relationships - maintaining the same students in each class
+                $students = Siswa::where('kelas_id', $kelas->id)->get();
+                foreach ($students as $student) {
+                    // Instead of creating duplicates, just update the students to reference the new kelas
+                    // This is a soft relationship change rather than a duplicate
+                    // We could alternatively copy, but that would create duplicate student records
+                    $student->kelas_id = $newKelas->id;
+                    $student->save();
+                }
+            }
+            
+            // Copy mata pelajaran with semester updated to 2
+            $sourceMataPelajaran = MataPelajaran::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+            
+            foreach ($sourceMataPelajaran as $mapel) {
+                $newMapel = $mapel->replicate();
+                $newMapel->tahun_ajaran_id = $newTahunAjaran->id;
+                $newMapel->semester = 2; // Set to semester 2
+                
+                // Use the new kelas ID if available in mapping
+                if (isset($kelasMapping[$mapel->kelas_id])) {
+                    $newMapel->kelas_id = $kelasMapping[$mapel->kelas_id];
+                }
+                
+                $newMapel->save();
+                
+                // Copy lingkup materi and tujuan pembelajaran
+                foreach ($mapel->lingkupMateris as $lm) {
+                    $newLM = $lm->replicate();
+                    $newLM->mata_pelajaran_id = $newMapel->id;
+                    $newLM->save();
+                    
+                    foreach ($lm->tujuanPembelajarans as $tp) {
+                        $newTP = $tp->replicate();
+                        $newTP->lingkup_materi_id = $newLM->id;
+                        $newTP->save();
+                    }
+                }
+            }
+            
+            // Copy ekstrakurikuler
+            $ekstrakurikulers = \App\Models\Ekstrakurikuler::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+            foreach ($ekstrakurikulers as $ekskul) {
+                $newEkskul = $ekskul->replicate();
+                $newEkskul->tahun_ajaran_id = $newTahunAjaran->id;
+                $newEkskul->save();
+            }
+            
+            // Copy KKM settings
+            $kkms = \App\Models\Kkm::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+            foreach ($kkms as $kkm) {
+                // Only copy if we have a mapping for the kelas
+                if (isset($kelasMapping[$kkm->kelas_id])) {
+                    $newKkm = $kkm->replicate();
+                    $newKkm->tahun_ajaran_id = $newTahunAjaran->id;
+                    $newKkm->kelas_id = $kelasMapping[$kkm->kelas_id];
+                    $newKkm->save();
+                }
+            }
+            
+            // Copy bobot nilai
+            $bobotNilai = \App\Models\BobotNilai::where('tahun_ajaran_id', $sourceTahunAjaran->id)->first();
+            if ($bobotNilai) {
+                $newBobotNilai = $bobotNilai->replicate();
+                $newBobotNilai->tahun_ajaran_id = $newTahunAjaran->id;
+                $newBobotNilai->save();
+            }
+            
+            // Copy Report Templates with updated semester
+            $reportTemplates = \App\Models\ReportTemplate::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
+            foreach ($reportTemplates as $template) {
+                // Create a new filepath for the copy
+                $newPath = str_replace(
+                    basename($template->path),
+                    'semester2_' . basename($template->path),
+                    $template->path
+                );
+                
+                // Copy the template file
+                if (\Storage::exists('public/' . $template->path)) {
+                    \Storage::copy('public/' . $template->path, 'public/' . $newPath);
+                }
+                
+                $newTemplate = $template->replicate();
+                $newTemplate->tahun_ajaran_id = $newTahunAjaran->id;
+                $newTemplate->semester = 2; // Set to semester 2
+                $newTemplate->path = $newPath;
+                $newTemplate->is_active = false; // Default to not active
+                
+                // Map to new kelas ID if available
+                if ($template->kelas_id && isset($kelasMapping[$template->kelas_id])) {
+                    $newTemplate->kelas_id = $kelasMapping[$template->kelas_id];
+                }
+                
+                $newTemplate->save();
+                
+                // Copy template mappings
+                foreach ($template->mappings as $mapping) {
+                    $newMapping = $mapping->replicate();
+                    $newMapping->report_template_id = $newTemplate->id;
+                    $newMapping->save();
+                }
+            }
+            
+            \Log::info("Successfully copied all related data to semester 2", [
+                'target_id' => $newTahunAjaran->id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error copying related data to new semester", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e; // Re-throw the exception for handling in the calling method
+        }
+    }
+
+
+    public function advanceToNextSemester($id)
+    {
+        DB::beginTransaction();
+        
+        try {
+            // Find the source academic year
+            $sourceTahunAjaran = TahunAjaran::findOrFail($id);
+            
+            // Check if it's already semester 2
+            if ($sourceTahunAjaran->semester == 2) {
+                return redirect()->back()->with('error', 'Tahun ajaran ini sudah berada di semester Genap.');
+            }
+            
+            // Create a new academic year record with semester 2
+            $newTahunAjaran = $sourceTahunAjaran->replicate();
+            $newTahunAjaran->semester = 2;
+            $newTahunAjaran->is_active = true; // Make the new semester active
+            $newTahunAjaran->deskripsi = $sourceTahunAjaran->deskripsi . ' (Semester Genap)';
+            $newTahunAjaran->save();
+            
+            // Set the old semester to inactive
+            $sourceTahunAjaran->is_active = false;
+            $sourceTahunAjaran->save();
+            
+            // Copy related data (similar to your existing copy methods)
+            $this->copyRelatedDataToNewSemester($sourceTahunAjaran, $newTahunAjaran);
+            
+            // Update school profile to use the new semester
+            $this->updateProfilSekolah($newTahunAjaran);
+            
+            DB::commit();
+            
+            return redirect()->route('tahun.ajaran.index')
+                ->with('success', 'Berhasil melanjutkan ke semester Genap. Data semester Ganjil tetap tersimpan.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal melanjutkan semester: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create()

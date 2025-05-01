@@ -33,7 +33,7 @@
         </div>
     </div>
 @endif
-<div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
+<div x-data="dashboard" x-init="initCharts(); fetchKelasProgress();">
     <div x-data="notificationHandler">  
         <!-- Main Content Container -->
         <div class="flex flex-col lg:flex-row gap-4 mt-14">
@@ -171,7 +171,7 @@
                 class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
                 <option value="">Pilih kelas...</option>
                 @foreach($kelas as $k)
-                    <option value="{{ $k->id }}">{{ $k->nama_kelas }}</option>
+                    <option value="{{ $k->id }}">Kelas {{ $k->nomor_kelas }} {{ $k->nama_kelas }}</option>
                 @endforeach
             </select>
         </div>
@@ -190,7 +190,10 @@
 
             <!-- Chart Per Kelas -->
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai <span x-text="selectedKelas ? 'Kelas ' + selectedKelas : 'Per Kelas'"></span></h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    Progress Input Nilai 
+                    <span x-text="selectedKelasName"></span>
+                </h3>
                 <div class="flex flex-col items-center">
                     <div class="w-64 h-64 relative">
                         <canvas id="classProgressChart"></canvas>
@@ -365,7 +368,7 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const overallProgress = {{ $overallProgress ?? 0 }};
+    const overallProgress = {{ number_format($overallProgress, 2) ?? 0 }};
 </script>
 <script>
 let overallChart, classChart;
@@ -396,7 +399,11 @@ function initCharts() {
                 position: 'bottom'
             },
             tooltip: {
-                enabled: false
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + Math.round(context.raw) + '%';
+                    }
+                }
             }
         }
     };
@@ -496,73 +503,70 @@ function updateClassChart(progress) {
     }
 }
 
-function fetchKelasProgress() {
-    const selectedKelas = document.getElementById('kelas')?.value;
-    if (selectedKelas) {
-        fetch(`/admin/kelas-progress/${selectedKelas}`, {
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success && !isNaN(data.progress)) {
-                updateClassChart(data.progress);
-            } else {
-                console.error('Invalid progress data:', data);
-                updateClassChart(0);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching progress:', error);
-            updateClassChart(0);
-        });
-    } else {
-        updateClassChart(0);
-    }
-}
-
 // Alpine.js Initialization
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboard', () => ({
         selectedKelas: '',
+        selectedKelasName: 'Per Kelas',
         mapelProgress: [],
         
         init() {
             this.$nextTick(() => {
-                initCharts();
-                fetchKelasProgress();
+                this.initCharts();
+                
+                // Wait for DOM to be ready
+                setTimeout(() => {
+                    this.fetchKelasProgress();
+                }, 100);
             });
-
-            this.$watch('selectedKelas', value => {
-                if (value) fetchKelasProgress();
-            });
+        },
+        
+        initCharts() {
+            destroyCharts();
+            initCharts();
+        },
+        
+        async fetchKelasProgress() {
+            if (!this.selectedKelas) {
+                this.selectedKelasName = 'Per Kelas';
+                updateClassChart(0);
+                return;
+            }
+            
+            // Update selected kelas name
+            const kelasSelect = document.getElementById('kelas');
+            if (kelasSelect) {
+                const selectedOption = kelasSelect.options[kelasSelect.selectedIndex];
+                this.selectedKelasName = selectedOption ? selectedOption.text : 'Per Kelas';
+            }
+            
+            try {
+                const response = await fetch(`/admin/kelas-progress/${this.selectedKelas}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && !isNaN(data.progress)) {
+                    updateClassChart(data.progress);
+                } else {
+                    console.error('Invalid progress data:', data);
+                    updateClassChart(0);
+                }
+            } catch (error) {
+                console.error('Error fetching progress:', error);
+                updateClassChart(0);
+            }
         }
     }));
 });
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    const isLoaded = sessionStorage.getItem(ADMIN_DASHBOARD_KEY);
-    if (!isLoaded && window.location.pathname.includes('/admin/dashboard')) {
-        sessionStorage.setItem(ADMIN_DASHBOARD_KEY, 'true');
-        window.location.reload();
-    } else {
+    setTimeout(() => {
         initCharts();
-    }
-});
-
-// Handle dropdown changes
-document.addEventListener('change', (e) => {
-    if (e.target.id === 'kelas') {
-        fetchKelasProgress();
-    }
+    }, 200);
 });
 
 // Cleanup
@@ -570,34 +574,60 @@ document.addEventListener('turbo:before-cache', () => {
     destroyCharts();
 });
 
-document.addEventListener('turbo:before-visit', () => {
-    if (!window.location.pathname.includes('/admin/dashboard')) {
-        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
-    }
-});
-
 // Handle Turbo navigation
 document.addEventListener('turbo:load', () => {
-    if (!window.location.pathname.includes('/admin/dashboard')) {
-        sessionStorage.removeItem(ADMIN_DASHBOARD_KEY);
-    }
-    destroyCharts();
-    setTimeout(() => {
-        initCharts();
-    }, 100);
-});
-
-// Reinitialize on navigation
-document.addEventListener('turbo:render', () => {
     if (window.location.pathname.includes('/admin/dashboard')) {
-        destroyCharts();
         setTimeout(() => {
+            destroyCharts();
             initCharts();
-            fetchKelasProgress();
-        }, 100);
+        }, 200);
     }
 });
 
+function fetchKelasProgress() {
+    const selectedKelas = document.getElementById('kelas')?.value;
+    if (!selectedKelas) {
+        // Update the selected kelas name display
+        if (window.Alpine && Alpine.store('dashboard')) {
+            Alpine.store('dashboard').selectedKelasName = 'Per Kelas';
+        }
+        updateClassChart(0);
+        return;
+    }
+    
+    // Update selected kelas name
+    const kelasSelect = document.getElementById('kelas');
+    if (kelasSelect && window.Alpine && Alpine.store('dashboard')) {
+        const selectedOption = kelasSelect.options[kelasSelect.selectedIndex];
+        Alpine.store('dashboard').selectedKelasName = selectedOption ? selectedOption.text : 'Per Kelas';
+    }
+    
+    fetch(`/admin/kelas-progress/${selectedKelas}`, {
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success && !isNaN(data.progress)) {
+            updateClassChart(data.progress);
+        } else {
+            console.error('Invalid progress data:', data);
+            updateClassChart(0);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching progress:', error);
+        updateClassChart(0);
+    });
+}
 function initModal() {
     const modal = document.getElementById('addInfoModal');
     const openButtons = document.querySelectorAll('[data-modal-target="addInfoModal"]');
@@ -686,7 +716,6 @@ function initModal() {
     });
 }
 
-// Delete information handler
 function deleteInformation(id) {
     if (confirm('Apakah Anda yakin ingin menghapus informasi ini?')) {
         fetch(`/admin/information/${id}`, {

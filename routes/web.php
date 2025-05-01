@@ -205,6 +205,8 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::get('/{id}/copy', [TahunAjaranController::class, 'copy'])->name('copy');
         Route::post('/{id}/copy', [TahunAjaranController::class, 'processCopy'])->name('process-copy');
         Route::delete('/{id}', [TahunAjaranController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/advance-semester', [TahunAjaranController::class, 'advanceToNextSemester'])
+        ->name('advance-semester');
     });
     
     // Teacher Management
