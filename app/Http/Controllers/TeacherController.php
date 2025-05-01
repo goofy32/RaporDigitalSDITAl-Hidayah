@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class TeacherController extends Controller
 {
@@ -22,10 +23,92 @@ class TeacherController extends Controller
         // Log incoming request data for debugging
         Log::info('Teacher search request', [
             'search' => $request->search,
-            'tahun_ajaran_id' => $tahunAjaranId
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'page' => $request->page
         ]);
         
-        // Buat query dasar
+        // Jika pencarian aktif, gunakan pendekatan 2-step untuk prioritaskan hasil yang persis sama 
+        if ($request->has('search') && !empty($request->search)) {
+            $search = trim(strtolower($request->search));
+            Log::info('Processing advanced search', ['term' => $search]);
+            
+            // Step 1: Query untuk exact match terlebih dahulu
+            $exactMatches = Guru::select('gurus.*')
+                ->where(function($q) use ($search) {
+                    $q->whereRaw('LOWER(gurus.nama) = ?', [$search])
+                      ->orWhereRaw('LOWER(gurus.nuptk) = ?', [$search])
+                      ->orWhereRaw('LOWER(gurus.username) = ?', [$search])
+                      ->orWhereRaw('LOWER(gurus.email) = ?', [$search]);
+                })
+                ->get();
+                
+            Log::info('Exact matches', [
+                'count' => $exactMatches->count(),
+                'names' => $exactMatches->pluck('nama')->toArray()
+            ]);
+            
+            // Step 2: Query untuk partial match (mengandung kata pencarian)
+            $partialMatches = Guru::select('gurus.*')
+                ->where(function($q) use ($search) {
+                    $q->whereRaw('LOWER(gurus.nama) LIKE ?', ["%{$search}%"])
+                      ->orWhereRaw('LOWER(gurus.nuptk) LIKE ?', ["%{$search}%"])
+                      ->orWhereRaw('LOWER(gurus.username) LIKE ?', ["%{$search}%"])
+                      ->orWhereRaw('LOWER(gurus.email) LIKE ?', ["%{$search}%"]);
+                })
+                ->whereNotIn('id', $exactMatches->pluck('id')->toArray()) // Exclude exact matches
+                ->get();
+                
+            Log::info('Partial matches', [
+                'count' => $partialMatches->count(),
+                'first_5_names' => $partialMatches->take(5)->pluck('nama')->toArray()
+            ]);
+            
+            // Step 3: Gabungkan hasil dengan exact match di awal
+            $combinedResults = $exactMatches->concat($partialMatches);
+            
+            // Step 4: Load relations
+            $guruIds = $combinedResults->pluck('id')->toArray();
+            $relatedData = Guru::with(['kelas' => function($q) use ($tahunAjaranId) {
+                    $q->withPivot('is_wali_kelas', 'role');
+                    if ($tahunAjaranId) {
+                        $q->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+                    }
+                }])
+                ->whereIn('id', $guruIds)
+                ->get()
+                ->keyBy('id');
+                
+            // Step 5: Integrasi data relational dengan urutan yang sama 
+            $completeResults = $combinedResults->map(function($item) use ($relatedData) {
+                return $relatedData->get($item->id);
+            })->filter(); // Remove nulls
+            
+            // Step 6: Custom pagination
+            $page = $request->input('page', 1);
+            $perPage = 10;
+            $total = $completeResults->count();
+            
+            $slice = $completeResults->slice(($page - 1) * $perPage, $perPage)->values();
+            
+            $teachers = new LengthAwarePaginator(
+                $slice,
+                $total,
+                $perPage,
+                $page,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+            
+            Log::info('Search results (custom pagination)', [
+                'total' => $total,
+                'results_on_this_page' => $slice->count(),
+                'page' => $page,
+                'first_result_name' => $slice->first() ? $slice->first()->nama : 'no results'
+            ]);
+            
+            return view('admin.teacher', compact('teachers'));
+        }
+        
+        // Standard query tanpa pencarian (kode asli)
         $query = Guru::select([
                 'gurus.*',
                 DB::raw('MIN(kelas.nomor_kelas) as nomor_kelas')
@@ -71,48 +154,21 @@ class TeacherController extends Controller
                     ->whereRaw('guru_kelas.guru_id = gurus.id');
             });
         }
-                
-        // Handle pencarian - mengadopsi pendekatan dari StudentController
-        if ($request->filled('search')) {
-            $search = strtolower($request->search);
-            Log::info('Processing search', ['term' => $search]);
-            
-            $terms = explode(' ', trim($search));
-            
-            $query->where(function($q) use ($terms, $search) {
-                // Jika kata pertama adalah "kelas"
-                if (count($terms) > 0 && $terms[0] === 'kelas') {
-                    // Jika ada nomor kelas yang dispecifikkan (kelas 1, kelas 2, dst)
-                    if (count($terms) > 1 && is_numeric($terms[1])) {
-                        $q->whereHas('kelas', function($kelasQ) use ($terms) {
-                            $kelasQ->where('nomor_kelas', $terms[1]);
-                        });
-                    }
-                } else {
-                    // Pencarian normal untuk term lainnya
-                    $q->where(function($subQ) use ($search) {
-                        $subQ->where('gurus.nama', 'LIKE', "%{$search}%")
-                             ->orWhere('gurus.nuptk', 'LIKE', "%{$search}%")
-                             ->orWhere('gurus.email', 'LIKE', "%{$search}%")
-                             ->orWhere('gurus.username', 'LIKE', "%{$search}%");
-                    });
-                }
-            });
-        }
-
+        
         // Order by untuk tampilan yang konsisten
         $query->orderBy('gurus.nama', 'asc');
 
         $teachers = $query->paginate(10);
         
-        // Log the count of results found
-        Log::info('Teacher search results', [
+        Log::info('Standard query results', [
             'count' => $teachers->count(),
-            'total' => $teachers->total()
+            'total' => $teachers->total(),
+            'current_page' => $teachers->currentPage()
         ]);
         
         return view('admin.teacher', compact('teachers'));
     }
+
 
     public function create()
     {

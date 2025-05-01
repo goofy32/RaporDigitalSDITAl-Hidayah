@@ -68,14 +68,6 @@
             </div>
             @else
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex-1">
-                <h4 class="font-medium text-yellow-800">Tahun Ajaran Tujuan</h4>
-                <p class="text-gray-700">Belum ada tahun ajaran baru. Silakan buat tahun ajaran baru terlebih dahulu.</p>
-                <a href="{{ route('tahun.ajaran.copy', $tahunAjaranAktif->id) }}" class="text-green-600 hover:underline mt-2 inline-block">
-                    <svg class="inline-block mr-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Salin Tahun Ajaran Sekarang
-                </a>
             </div>
             @endif
         </div>

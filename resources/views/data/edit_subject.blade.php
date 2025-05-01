@@ -108,13 +108,11 @@
 
             <!-- Semester -->
             <div>
-                <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
-                <select id="semester" name="semester" required
-                    class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('semester') border-red-500 @enderror">
-                    <option value="">Pilih Semester</option>
-                    <option value="1" {{ old('semester', $subject->semester) == 1 ? 'selected' : '' }}>Semester 1</option>
-                    <option value="2" {{ old('semester', $subject->semester) == 2 ? 'selected' : '' }}>Semester 2</option>
-                </select>
+                <label class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
+                <div class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
+                    {{ App\Models\TahunAjaran::find(session('tahun_ajaran_id'))->semester == 1 ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)' }}
+                </div>
+                <input type="hidden" id="semester" name="semester" value="{{ App\Models\TahunAjaran::find(session('tahun_ajaran_id'))->semester }}">
                 @error('semester')
                     <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                 @enderror

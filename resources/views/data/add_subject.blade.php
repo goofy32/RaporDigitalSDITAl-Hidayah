@@ -112,13 +112,11 @@
 
                     <!-- Semester -->
                     <div class="mb-4">
-                        <label for="semester_0" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
-                        <select id="semester_0" name="subjects[0][semester]" required
-                            class="block w-full p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                            <option value="">Pilih Semester</option>
-                            <option value="1" {{ old('semester') == 1 ? 'selected' : '' }}>Semester 1</option>
-                            <option value="2" {{ old('semester') == 2 ? 'selected' : '' }}>Semester 2</option>
-                        </select>
+                        <label class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
+                        <div class="block w-full p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                            {{ App\Models\TahunAjaran::find(session('tahun_ajaran_id'))->semester == 1 ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)' }}
+                        </div>
+                        <input type="hidden" id="semester_0" name="subjects[0][semester]" value="{{ App\Models\TahunAjaran::find(session('tahun_ajaran_id'))->semester }}">
                     </div>
 
                     <!-- Guru Pengampu -->
@@ -175,6 +173,7 @@ function addSubjectEntry() {
     subjectCount++;
     const container = document.getElementById('subjectEntriesContainer');
     const template = container.querySelector('.subject-entry').cloneNode(true);
+    
     
     // Update IDs and names
     template.querySelectorAll('input, select').forEach(input => {
@@ -250,6 +249,9 @@ function addSubjectEntry() {
     const divider = document.createElement('div');
     divider.className = 'border-t-2 border-dashed border-gray-300 my-8';
     container.appendChild(divider);
+
+    const currentSemester = {{ App\Models\TahunAjaran::find(session('tahun_ajaran_id'))->semester }};
+template.querySelector(`input[name="subjects[${subjectCount-1}][semester]"]`).value = currentSemester;
 
     // Add the new entry to the container
     container.appendChild(template);

@@ -34,7 +34,7 @@
                     Simpan
                 </button>
             </div>
-            <form action="{{ route('profile.submit') }}" method="POST" enctype="multipart/form-data">
+            <form id="profileForm" action="{{ route('profile.submit') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 
                 <!-- Logo Sekolah -->

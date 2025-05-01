@@ -160,24 +160,22 @@
                                 <img src="{{ asset('images/icons/detail.png') }}" alt="Detail Icon" class="w-5 h-5">
                             </button>
                             
-                            <!-- Activate/Deactivate Button using edit.png image or custom active/inactive SVG -->
+                            <!-- Activate/Deactivate Button using checkbox style -->
                             <form action="{{ route('report.template.activate', $template->id) }}" 
                                 method="POST" 
                                 onsubmit="return handleActivateToggle(event)"
                                 class="inline">
                                 @csrf
-                                <button type="submit" class="{{ $template->is_active ? 'text-green-600 hover:text-green-700' : 'text-gray-500 hover:text-gray-600' }}">
-                                    @if($template->is_active)
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" stroke="currentColor" fill="none" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
-                                    </svg>
-                                    @else
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2" stroke="currentColor" fill="none" />
-                                    </svg>
-                                    @endif
-                                </button>
+                                <div class="relative">
+                                    <input 
+                                        type="checkbox" 
+                                        class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                        id="active-{{ $template->id }}"
+                                        {{ $template->is_active ? 'checked' : '' }}
+                                        {{ $template->is_active ? 'disabled' : '' }}
+                                        onclick="handleActivateToggle(event)"
+                                    >
+                                </div>
                             </form>
 
                             <!-- Delete Button using delete.png image -->
@@ -457,24 +455,35 @@
 <script src="https://unpkg.com/docx-preview@0.1.15/dist/docx-preview.js"></script>
 <script>
 async function handleActivateToggle(e) {
+    // Prevent the default form submit or checkbox behavior
     e.preventDefault();
     
-    const form = e.target;
-    const button = form.querySelector('button');
-    // Ubah cara mendeteksi status aktif, jangan menggunakan atribut src dari img
-    const isCurrentlyActive = button.closest('svg') ? 
-        button.closest('svg').classList.contains('text-green-600') : 
-        button.classList.contains('text-green-600');
-        
-    const actionWord = isCurrentlyActive ? 'menonaktifkan' : 'mengaktifkan';
+    // Find the checkbox or get the checkbox directly if it was clicked
+    const checkbox = e.target.type === 'checkbox' ? e.target : e.target.querySelector('input[type="checkbox"]');
     
+    // Find the form
+    const form = checkbox.closest('form');
+    
+    // Check if the checkbox is already active (checked & disabled)
+    if (checkbox.disabled) {
+        return false; // Already active, can't deactivate directly
+    }
+    
+    // Determine the activation action based on current state
+    const actionWord = checkbox.checked ? 'menonaktifkan' : 'mengaktifkan';
+    
+    // Show confirmation dialog
     if (!confirm(`Apakah Anda yakin ingin ${actionWord} template ini?`)) {
+        // Reset checkbox state if canceled
+        checkbox.checked = !checkbox.checked;
         return false;
     }
 
-    button.disabled = true;
+    // Disable the checkbox during the request
+    checkbox.disabled = true;
     
     try {
+        // Submit the form via AJAX
         const response = await fetch(form.action, {
             method: 'POST',
             headers: {
@@ -487,16 +496,19 @@ async function handleActivateToggle(e) {
         const result = await response.json();
         
         if (result.success) {
-            // Reload halaman setelah berhasil
+            // Reload the page after successful activation
             window.location.reload();
         } else {
+            // Show error message
             alert(result.message || `Gagal ${actionWord} template`);
-            button.disabled = false;
+            checkbox.disabled = false;
+            checkbox.checked = !checkbox.checked; // Reset checkbox state
         }
     } catch (error) {
         console.error('Error:', error);
         alert(`Terjadi kesalahan saat ${actionWord} template`);
-        button.disabled = false;
+        checkbox.disabled = false;
+        checkbox.checked = !checkbox.checked; // Reset checkbox state
     }
     
     return false;

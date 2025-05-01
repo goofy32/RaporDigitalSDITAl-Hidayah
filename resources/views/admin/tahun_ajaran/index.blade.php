@@ -139,20 +139,20 @@
                         </td>
                         <td class="py-4 px-4 border-b">
                             <div class="flex flex-col gap-1">
-                                @if($tahunAjaran->trashed())
-                                    <span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Diarsipkan</span>
-                                @elseif($tahunAjaran->is_active)
-                                    <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
-                                @else
-                                    <span class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
-                                @endif
-                                <span class="px-2 py-1 text-xs font-semibold {{ $tahunAjaran->semester == 1 ? 'text-blue-800 bg-blue-100' : 'text-purple-800 bg-purple-100' }} rounded-full">
-                                    Semester {{ $tahunAjaran->semester }} ({{ $tahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }})
-                                </span>
+                            @if($tahunAjaran->trashed())
+                                <span class="px-2 py-1 text-xs font-semibold text-black-800 bg-black-100 rounded-full">Diarsipkan</span>
+                            @elseif($tahunAjaran->is_active)
+                                <span class="px-2 py-1 text-xs font-semibold text-black-800 bg-green-100 rounded-full">Aktif</span>
+                            @else
+                                <span class="px-2 py-1 text-xs font-semibold text-black-800 bg-gray-100 rounded-full">Tidak Aktif</span>
+                            @endif
+                            <span class="text-xs font-semibold {{ $tahunAjaran->semester == 1 ? 'text-black-800' : 'text-black-800' }}">
+                                Semester {{ $tahunAjaran->semester }} ({{ $tahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }})
+                            </span>
                             </div>
                         </td>
                         <td class="py-4 px-4 border-b text-sm">
-                            <div class="flex space-x-4">
+                            <div class="flex items-center space-x-4">
                                 <!-- Tombol Detail -->
                                 <a href="{{ route('tahun.ajaran.show', $tahunAjaran->id) }}" title="Detail">
                                     <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-5 h-5">
@@ -165,27 +165,25 @@
                                     </a>
                                 @endif
                                 
-                                @if($tahunAjaran->is_active)
-                                    <!-- Tombol Sedang Aktif (disabled) -->
-                                    <div class="tooltip" title="Untuk menonaktifkan, aktifkan tahun ajaran lain terlebih dahulu">
-                                        <span class="text-gray-400 cursor-not-allowed">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </span>
+                                <!-- Simple checkbox for active status (in action column) -->
+                                @if(!$tahunAjaran->trashed())
+                                    <div class="flex items-center">
+                                        <div class="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                                id="active-{{ $tahunAjaran->id }}"
+                                                {{ $tahunAjaran->is_active ? 'checked' : '' }}
+                                                {{ $tahunAjaran->is_active ? 'disabled' : '' }}
+                                                @if(!$tahunAjaran->is_active)
+                                                    onclick="return activateTahunAjaran({{ $tahunAjaran->id }}, '{{ $tahunAjaran->tahun_ajaran }}');"
+                                                @endif
+                                            >
+                                        </div>
                                     </div>
-                                @else
-                                    <!-- Tombol Aktifkan -->
-                                    <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="border-0 bg-transparent p-0" title="Aktifkan"
-                                                onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </button>
-                                    </form>
-                                    
+                                @endif
+                                
+                                @if(!$tahunAjaran->is_active && !$tahunAjaran->trashed())
                                     <!-- Tombol Salin -->
                                     <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" title="Salin">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 hover:text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -283,6 +281,55 @@
             });
         }
     });
+    
+    // Function to handle checkbox activation
+    function activateTahunAjaran(id, tahunAjaranName) {
+        // Prevent default checkbox behavior
+        event.preventDefault();
+        
+        // Show confirmation dialog
+        Swal.fire({
+            title: 'Aktivasi Tahun Ajaran',
+            html: `Apakah Anda yakin ingin mengaktifkan tahun ajaran <strong>${tahunAjaranName}</strong>?<br><br>Mengaktifkan tahun ajaran ini akan menonaktifkan tahun ajaran lain.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3F7858',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Aktifkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Create a form element
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `{{ route('tahun.ajaran.set-active', '') }}/${id}`;
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+                
+                // Add to DOM temporarily (not visible)
+                document.body.appendChild(form);
+                
+                // Show loading overlay if available
+                if (window.Alpine && Alpine.store('pageLoading')) {
+                    Alpine.store('pageLoading').startLoading();
+                }
+                
+                // Submit the form
+                form.submit();
+            } else {
+                // Reset checkbox state if canceled
+                document.getElementById(`active-${id}`).checked = false;
+            }
+        });
+        
+        return false;
+    }
 </script>
 @endpush
 @endsection

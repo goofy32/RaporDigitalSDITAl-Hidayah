@@ -112,6 +112,7 @@
                         <h4 class="text-lg font-medium text-gray-900 mb-2">KKM per Mata Pelajaran</h4>
                         <label for="mata_pelajaran_id" class="block mb-2 text-sm font-medium text-gray-900">Mata Pelajaran</label>
                         <select id="mata_pelajaran_id" x-model="kkmData.mata_pelajaran_id" 
+                                @change="handleMapelChange()"
                                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                             <option value="">Pilih Mata Pelajaran</option>
                             <template x-for="kelas in kelasData" :key="kelas.id">
@@ -127,13 +128,21 @@
                     <div class="mb-4">
                         <label for="nilai_kkm" class="block mb-2 text-sm font-medium text-gray-900">Nilai KKM</label>
                         <input type="number" id="nilai_kkm" x-model="kkmData.nilai" min="0" max="100" 
-                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
                         <p class="mt-1 text-sm text-gray-500">Nilai dari 0-100</p>
                     </div>
                     
                     <!-- KKM List Table -->
                     <div class="mt-6">
                         <h4 class="text-lg font-medium text-gray-900 mb-2">Daftar KKM</h4>
+                        
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" class="form-checkbox h-5 w-5 text-green-600" x-model="showAllKkm">
+                                <span class="ml-2 text-sm text-gray-700">Tampilkan semua data KKM</span>
+                            </label>
+                        </div>
+                        
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm text-left text-gray-500">
                                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -145,24 +154,31 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="kkm in kkmList" :key="kkm.id">
+                                    <!-- Show either all KKM entries or filtered ones -->
+                                    <template x-for="kkm in showAllKkm ? kkmList : getFilteredKkmList()" :key="kkm.id">
                                         <tr class="bg-white border-b hover:bg-gray-50">
                                             <td class="px-6 py-4" x-text="kkm.mata_pelajaran && kkm.mata_pelajaran.kelas ? 'Kelas ' + kkm.mata_pelajaran.kelas.nomor_kelas + ' - ' + kkm.mata_pelajaran.kelas.nama_kelas : '-'"></td>
                                             <td class="px-6 py-4" x-text="kkm.mata_pelajaran ? kkm.mata_pelajaran.nama_pelajaran : '-'"></td>
                                             <td class="px-6 py-4" x-text="kkm.nilai"></td>
-                                            <td class="px-6 py-4 flex gap-2">
-                                                <button @click="editKkm(kkm)" class="text-green-600 hover:underline">
-                                                    Edit
-                                                </button>
+                                            <td class="px-6 py-4">
                                                 <button @click="deleteKkm(kkm.id)" class="text-red-600 hover:underline">
                                                     Hapus
                                                 </button>
                                             </td>
                                         </tr>
                                     </template>
-                                    <tr x-show="kkmList.length === 0">
+                                    
+                                    <!-- Message when no KKM data is available -->
+                                    <tr x-show="(showAllKkm && kkmList.length === 0) || (!showAllKkm && kkmData.mata_pelajaran_id && getFilteredKkmList().length === 0)">
                                         <td colspan="4" class="px-6 py-4 text-center text-gray-500">
-                                            Belum ada data KKM
+                                            <span x-text="showAllKkm ? 'Belum ada data KKM' : 'Nilai KKM belum diatur untuk mata pelajaran ini'"></span>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Message when no subject is selected and not showing all -->
+                                    <tr x-show="!showAllKkm && !kkmData.mata_pelajaran_id">
+                                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                            Pilih mata pelajaran untuk melihat nilai KKM atau centang "Tampilkan semua data KKM"
                                         </td>
                                     </tr>
                                 </tbody>
@@ -263,12 +279,14 @@
 </div>
 
 <script>
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('adminSettings', () => ({
         isOpen: false,
         activeTab: 'kkm',
         kelasData: [],
         kkmList: [],
+        showAllKkm: false, // Add this property
         kkmData: {
             mata_pelajaran_id: '',
             nilai: 70
@@ -287,6 +305,15 @@ document.addEventListener('alpine:init', () => {
             this.fetchKelasData();
             this.fetchKkmList();
             this.fetchBobotData();
+        },
+        
+        // New method to filter KKM list based on selected mata pelajaran
+        getFilteredKkmList() {
+            if (!this.kkmData.mata_pelajaran_id) return [];
+            
+            return this.kkmList.filter(kkm => 
+                kkm.mata_pelajaran_id === parseInt(this.kkmData.mata_pelajaran_id)
+            );
         },
         
         get isTotalValid() {
@@ -353,11 +380,23 @@ document.addEventListener('alpine:init', () => {
             }
         },
         
-        editKkm(kkm) {
-            this.kkmData = {
-                mata_pelajaran_id: kkm.mata_pelajaran_id,
-                nilai: kkm.nilai
-            };
+        // Modified to just set form data from dropdown rather than editing existing data
+        async handleMapelChange() {
+            const selectedMapelId = this.kkmData.mata_pelajaran_id;
+            if (!selectedMapelId) return;
+            
+            // Look for existing KKM for this mata pelajaran
+            const existingKkm = this.kkmList.find(kkm => 
+                kkm.mata_pelajaran_id === parseInt(selectedMapelId)
+            );
+            
+            if (existingKkm) {
+                // If KKM exists, set the value in the form
+                this.kkmData.nilai = existingKkm.nilai;
+            } else {
+                // If no KKM exists, reset to default
+                this.kkmData.nilai = 70;
+            }
         },
         
         async deleteKkm(id) {
@@ -434,7 +473,7 @@ document.addEventListener('alpine:init', () => {
                     html: confirmMessage,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#3F7858',
+                    confirmButtonColor: '#3085d6',
                     cancelButtonColor: '#d33',
                     confirmButtonText: 'Ya, Terapkan',
                     cancelButtonText: 'Batal'
@@ -499,7 +538,7 @@ document.addEventListener('alpine:init', () => {
                 html: confirmMessage,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3F7858',
+                confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'Ya, Simpan',
                 cancelButtonText: 'Batal'
