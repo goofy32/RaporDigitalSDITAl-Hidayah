@@ -81,7 +81,6 @@
                     </div>
                     <div>
                         <a href="{{ route('tahun.ajaran.show', $activeTahunAjaran->id) }}" class="px-3 py-1 bg-green-600 text-white rounded-md mr-2 text-sm hover:bg-green-700 flex items-center transition duration-150 ease-in-out">
-                            <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-4 h-4 mr-1">
                             Detail
                         </a>
                     </div>

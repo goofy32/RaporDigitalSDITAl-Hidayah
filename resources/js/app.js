@@ -9,6 +9,72 @@ window.renderAsync = renderAsync;
 const cleanupHandlers = new Set();
 const sidebarImageCache = new Map();
 
+document.addEventListener('turbo:load', () => {
+    // Handle search forms dengan atribut data-turbo-search
+    const searchForms = document.querySelectorAll('form[data-turbo-search]');
+    
+    searchForms.forEach(form => {
+        const searchInput = form.querySelector('input[name="search"]');
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        if (!searchInput || !submitButton) return;
+        
+        // Submit form saat user menekan Enter
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                
+                // Tampilkan loading indicator
+                submitButton.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                `;
+                
+                // Submit form dengan Turbo
+                form.requestSubmit();
+            }
+        });
+        
+        // Handle click pada tombol submit
+        form.addEventListener('submit', function(e) {
+            // Jangan gunakan e.preventDefault() di sini agar form tetap submit
+            
+            // Tampilkan loading indicator
+            const originalContent = submitButton.innerHTML;
+            submitButton.innerHTML = `
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            `;
+            
+            // Kembalikan tombol ke normal setelah navigasi selesai
+            document.addEventListener('turbo:render', function restoreButton() {
+                submitButton.innerHTML = originalContent;
+                document.removeEventListener('turbo:render', restoreButton);
+            });
+        });
+    });
+});
+
+
+document.addEventListener('turbo:render', () => {
+    const searchForms = document.querySelectorAll('form[data-turbo-search]');
+    
+    searchForms.forEach(form => {
+        const searchInput = form.querySelector('input[name="search"]');
+        if (searchInput && searchInput.value) {
+            // Fokus dan seleksi text pada input search
+            setTimeout(() => {
+                searchInput.focus();
+                searchInput.select();
+            }, 100);
+        }
+    });
+});
+
 document.addEventListener('turbo:before-render', (event) => {
     // Preserve sidebar images state
     const sidebar = document.getElementById('logo-sidebar');
@@ -1164,6 +1230,7 @@ Alpine.data('sessionTimeout', () => ({
 }));
 
 
+// Add this to your JavaScript section
 Alpine.data('notificationHandler', () => ({
     showModal: false,
     isOpen: false,
@@ -1229,6 +1296,11 @@ Alpine.data('notificationHandler', () => ({
             this.errorMessage = 'Isi tidak boleh kosong';
             setTimeout(() => { this.errorMessage = ''; }, 3000);
             return;
+        }
+        
+        // Content length validation
+        if (this.notificationForm.content.length > 100) {
+            this.notificationForm.content = this.notificationForm.content.substring(0, 100);
         }
         
         if (!this.notificationForm.target) {

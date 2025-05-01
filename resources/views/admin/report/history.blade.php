@@ -11,42 +11,58 @@
 
     <!-- Filter Controls -->
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-        <div class="flex gap-2">
-            <select id="tahun-ajaran-selector" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
-                <option value="">Semua Tahun Ajaran</option>
-                @foreach($tahunAjarans as $ta)
-                    <option value="{{ $ta->id }}" {{ isset($tahunAjaranId) && $ta->id == $tahunAjaranId ? 'selected' : '' }}>
-                        {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
-                    </option>
-                @endforeach
-            </select>
-            <select id="filter-type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
-                <option value="">Semua Tipe</option>
-                <option value="UTS">UTS</option>
-                <option value="UAS">UAS</option>
-            </select>
-            
-            <select id="filter-kelas" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
-                <option value="">Semua Kelas</option>
-                @foreach(\App\Models\Kelas::orderBy('nomor_kelas')->get() as $kelas)
-                    <option value="{{ $kelas->id }}">{{ $kelas->full_kelas }}</option>
-                @endforeach
-            </select>
-        </div>
+    <div class="flex gap-2">
+        <select id="tahun-ajaran-selector" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+            <option value="">Semua Tahun Ajaran</option>
+            @foreach($tahunAjarans as $ta)
+                <option value="{{ $ta->id }}" {{ isset($tahunAjaranId) && $ta->id == $tahunAjaranId ? 'selected' : '' }}>
+                    {{ $ta->tahun_ajaran }} - {{ $ta->semester == 1 ? 'Ganjil' : 'Genap' }}
+                </option>
+            @endforeach
+        </select>
+        <select id="filter-type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+            <option value="">Semua Tipe</option>
+            <option value="UTS">UTS</option>
+            <option value="UAS">UAS</option>
+        </select>
         
-        <!-- Search Box -->
-        <div class="relative">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg class="w-4 h-4 text-gray-500" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-            </div>
-            <input type="search" 
-                   id="search-input"
-                   class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-green-500 focus:border-green-500" 
-                   placeholder="Cari siswa...">
-        </div>
+        <select id="filter-kelas" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+            <option value="">Semua Kelas</option>
+            @php
+                // Get the current tahun ajaran ID
+                $tahunAjaranId = session('tahun_ajaran_id');
+                
+                // Fetch classes with tahun ajaran and remove duplicates
+                $kelasList = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->orderBy('nomor_kelas')
+                ->orderBy('nama_kelas')
+                ->get()
+                ->unique(function($item) {
+                    // Make unique by nomor_kelas + nama_kelas
+                    return $item->nomor_kelas . '_' . $item->nama_kelas;
+                });
+            @endphp
+            @foreach($kelasList as $kelas)
+                <option value="{{ $kelas->id }}">{{ $kelas->full_kelas }}</option>
+            @endforeach
+        </select>
     </div>
+    
+    <!-- Search Box -->
+    <div class="relative">
+        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <svg class="w-4 h-4 text-gray-500" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div>
+        <input type="search" 
+               id="search-input"
+               class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-green-500 focus:border-green-500" 
+               placeholder="Cari siswa...">
+    </div>
+</div>
 
     <!-- Data Table -->
     <div class="overflow-x-auto shadow-md rounded-lg">

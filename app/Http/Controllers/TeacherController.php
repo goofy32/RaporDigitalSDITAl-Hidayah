@@ -16,8 +16,16 @@ class TeacherController extends Controller
 {
     public function index(Request $request)
     {
+        // Ambil tahun ajaran dari session
         $tahunAjaranId = session('tahun_ajaran_id');
         
+        // Log incoming request data for debugging
+        Log::info('Teacher search request', [
+            'search' => $request->search,
+            'tahun_ajaran_id' => $tahunAjaranId
+        ]);
+        
+        // Buat query dasar
         $query = Guru::select([
                 'gurus.*',
                 DB::raw('MIN(kelas.nomor_kelas) as nomor_kelas')
@@ -64,30 +72,45 @@ class TeacherController extends Controller
             });
         }
                 
-        if ($request->has('search')) {
+        // Handle pencarian - mengadopsi pendekatan dari StudentController
+        if ($request->filled('search')) {
             $search = strtolower($request->search);
+            Log::info('Processing search', ['term' => $search]);
+            
             $terms = explode(' ', trim($search));
             
-            if (count($terms) > 0 && $terms[0] === 'kelas') {
-                $query->whereHas('kelas', function($kelasQ) use ($terms, $tahunAjaranId) {
+            $query->where(function($q) use ($terms, $search) {
+                // Jika kata pertama adalah "kelas"
+                if (count($terms) > 0 && $terms[0] === 'kelas') {
+                    // Jika ada nomor kelas yang dispecifikkan (kelas 1, kelas 2, dst)
                     if (count($terms) > 1 && is_numeric($terms[1])) {
-                        $kelasQ->where('nomor_kelas', $terms[1]);
+                        $q->whereHas('kelas', function($kelasQ) use ($terms) {
+                            $kelasQ->where('nomor_kelas', $terms[1]);
+                        });
                     }
-                    
-                    if ($tahunAjaranId) {
-                        $kelasQ->where('kelas.tahun_ajaran_id', $tahunAjaranId);
-                    }
-                });
-            } else {
-                $query->where(function($q) use ($search) {
-                    $q->where('gurus.nama', 'LIKE', "%{$search}%")
-                    ->orWhere('gurus.nuptk', 'LIKE', "%{$search}%")
-                    ->orWhere('gurus.email', 'LIKE', "%{$search}%");
-                });
-            }
+                } else {
+                    // Pencarian normal untuk term lainnya
+                    $q->where(function($subQ) use ($search) {
+                        $subQ->where('gurus.nama', 'LIKE', "%{$search}%")
+                             ->orWhere('gurus.nuptk', 'LIKE', "%{$search}%")
+                             ->orWhere('gurus.email', 'LIKE', "%{$search}%")
+                             ->orWhere('gurus.username', 'LIKE', "%{$search}%");
+                    });
+                }
+            });
         }
 
+        // Order by untuk tampilan yang konsisten
+        $query->orderBy('gurus.nama', 'asc');
+
         $teachers = $query->paginate(10);
+        
+        // Log the count of results found
+        Log::info('Teacher search results', [
+            'count' => $teachers->count(),
+            'total' => $teachers->total()
+        ]);
+        
         return view('admin.teacher', compact('teachers'));
     }
 

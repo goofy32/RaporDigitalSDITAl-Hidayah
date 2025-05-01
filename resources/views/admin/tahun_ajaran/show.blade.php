@@ -10,11 +10,6 @@
             <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 Kembali
             </a>
-            @if(!$tahunAjaran->trashed())
-                <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Edit
-                </a>
-            @endif
         </div>
     </div>
 
@@ -115,11 +110,6 @@
                 </a>
             @endif
             
-            <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
-                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                Salin ke Tahun Ajaran Baru
-            </a>
-            
             @if($tahunAjaran->trashed())
                 <form action="{{ route('tahun.ajaran.restore', $tahunAjaran->id) }}" method="POST" class="inline">
                     @csrf
@@ -152,12 +142,17 @@
                     <input type="hidden" name="semester" value="2">
                     
                     <button type="submit" 
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                         onclick="return confirm('Apakah Anda yakin ingin melanjutkan ke semester Genap? Tindakan ini akan memperbarui semua data terkait (mata pelajaran, absensi, dll) ke semester 2.')">
                         Lanjutkan ke Semester Genap
                     </button>
                 </form>
             @endif
+
+            <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
+                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                Salin ke Tahun Ajaran Baru
+            </a>
 
             @if(!$tahunAjaran->is_active && !$tahunAjaran->trashed())
                 <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">

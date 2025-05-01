@@ -61,20 +61,7 @@
                     <option value="UTS">UTS</option>
                     <option value="UAS">UAS</option>
                 </select>
-                
-                <select id="filter-kelas" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
-                    <option value="">Semua Kelas</option>
-                    @php
-                        $tahunAjaranId = session('tahun_ajaran_id');
-                        $kelasList = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                            return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                        })->orderBy('nomor_kelas')->get();
-                    @endphp
-                    @foreach($kelasList as $kelas)
-                        <option value="{{ $kelas->full_kelas }}">{{ $kelas->full_kelas }}</option>
-                    @endforeach
-                    <option value="Template Global">Template Global</option>
-                </select>
+            
             </div>
             
             <!-- Search Box -->
@@ -351,19 +338,6 @@
                     <p class="mt-1 text-sm text-gray-500">Format yang diterima: .docx</p>
                     <div class="mt-2 flex flex-col gap-1">
                         <p class="text-sm text-gray-500">Pastikan template memiliki placeholder yang sesuai:</p>
-                        <div class="flex gap-2">
-                            <a href="javascript:void(0)" 
-                               onclick="closeUploadModal(); openPlaceholderGuide();"
-                               class="text-sm text-blue-600 hover:underline">
-                               Lihat panduan placeholder
-                            </a>
-                            <span class="text-gray-500">•</span>
-                            <a href="{{ route('report.template.sample', ['type' => 'UTS']) }}" 
-                               id="download-sample-link"
-                               class="text-sm text-blue-600 hover:underline">
-                               Download contoh template
-                            </a>
-                        </div>
                     </div>
                 </div>
 

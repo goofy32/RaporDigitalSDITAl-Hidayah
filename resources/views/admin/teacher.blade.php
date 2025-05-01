@@ -22,11 +22,12 @@
         </div>
 
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-            <form action="{{ route('teacher') }}" method="GET" class="w-full" data-turbo="false">
+            <!-- Form Pencarian: Ubah dari data-turbo="false" menjadi data-turbo-search -->
+            <form action="{{ route('teacher') }}" method="GET" class="w-full" data-turbo-search>
                 <div class="flex gap-2">
                     <input type="text" name="search" value="{{ request('search') }}"
                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2"
-                        placeholder="Cari pengajar berdasarkan NUPTK, Nama,	Username, Email">
+                        placeholder="Cari pengajar berdasarkan NUPTK, Nama, Username, Email">
                     <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
@@ -35,6 +36,16 @@
                 </div>
             </form>
         </div>
+
+        <!-- Debug Info (only for development) -->
+        @if(app()->environment('local', 'development'))
+        <div class="mb-4 p-2 bg-gray-100 text-xs rounded">
+            <p>Debugging:</p>
+            <p>Current Search Term: "{{ request('search') }}"</p>
+            <p>Total Results: {{ $teachers->total() }}</p>
+            <p>Current Page: {{ $teachers->currentPage() }}</p>
+        </div>
+        @endif
 
         <!-- Tabel Data Pengajar -->
         <div class="overflow-x-auto mt-4">
@@ -119,4 +130,44 @@
     </div>
 </div>
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhance search form with real-time feedback
+    const searchForm = document.querySelector('form[action="{{ route('teacher') }}"]');
+    const searchInput = searchForm.querySelector('input[name="search"]');
+    
+    // Submit formulir saat tekan Enter
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            searchForm.submit();
+        }
+    });
+    
+    searchForm.addEventListener('submit', function(e) {
+        // Show loading indicator
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalContent = submitButton.innerHTML;
+        
+        submitButton.innerHTML = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        `;
+        
+        // Setelah form terkirim, kembalikan tombol ke kondisi normal
+        setTimeout(function() {
+            submitButton.innerHTML = originalContent;
+        }, 2000);
+    });
+    
+    // Auto focus search field if it has a value
+    if (searchInput.value) {
+        searchInput.focus();
+        searchInput.select();
+    }
+});
+</script>
+@endpush
 @endsection

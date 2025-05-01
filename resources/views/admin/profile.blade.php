@@ -26,7 +26,14 @@
     @endif
     
     <div class="p-4 sm:ml-64">
-        <div class="p-4 bg-white mt-14">
+        <div class="p-4 bg-white mt-14 relative">
+            <!-- Tombol Submit di kanan atas -->
+            <div class="absolute top-4 right-4">
+                <button type="submit" form="profileForm"
+                    class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                    Simpan
+                </button>
+            </div>
             <form action="{{ route('profile.submit') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 
@@ -266,12 +273,6 @@
                         @enderror
                     </div>
                 </div>
-
-                <!-- Tombol Submit -->
-                <button type="submit"
-                    class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">
-                    Simpan
-                </button>
             </form>
         </div>
     </div>

@@ -434,7 +434,7 @@ document.addEventListener('alpine:init', () => {
                     html: confirmMessage,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
+                    confirmButtonColor: '#3F7858',
                     cancelButtonColor: '#d33',
                     confirmButtonText: 'Ya, Terapkan',
                     cancelButtonText: 'Batal'
@@ -499,7 +499,7 @@ document.addEventListener('alpine:init', () => {
                 html: confirmMessage,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3085d6',
+                confirmButtonColor: '#3F7858',
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'Ya, Simpan',
                 cancelButtonText: 'Batal'

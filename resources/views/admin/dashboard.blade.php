@@ -158,7 +158,6 @@
                         </template>
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -268,22 +267,21 @@
                             <div class="mb-4">
                                 <label class="block mb-2 text-sm font-medium text-gray-900">Isi</label>
                                 <textarea x-model="notificationForm.content"
+                                        x-on:input="if(notificationForm.content.length > 100) notificationForm.content = notificationForm.content.substring(0, 100)"
+                                        maxlength="100"
                                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" 
                                         rows="4" 
-                                        placeholder="Masukkan isi informasi" 
+                                        placeholder="Masukkan isi informasi (maksimal 100 karakter)" 
                                         required></textarea>
+                                <div class="flex justify-end mt-1">
+                                    <span class="text-xs text-gray-500" x-text="`${notificationForm.content ? notificationForm.content.length : 0}/100 karakter`"></span>
+                                </div>
                             </div>
 
                             <!-- Specific teachers container -->
                             <div x-show="notificationForm.target === 'specific'" class="mb-4">
                                 <label class="block mb-2 text-sm font-medium text-gray-900">Pilih Guru</label>
                                 <div class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                                    <div class="sticky top-0 bg-white pb-2 mb-2 border-b">
-                                        <input type="text" 
-                                            placeholder="Cari guru..." 
-                                            class="w-full px-3 py-2 border rounded-lg text-sm" 
-                                            x-model="guruSearchTerm">
-                                    </div>
                                     @foreach($guru as $g)
                                     <div class="flex items-center mb-2" x-show="guruSearchTerm === '' || '{{ strtolower($g->nama) }}'.includes(guruSearchTerm.toLowerCase())">
                                         <input type="checkbox" 

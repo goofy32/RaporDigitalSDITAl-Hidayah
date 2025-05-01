@@ -77,14 +77,8 @@
                         </svg>
                         @endif
                     </div>
-                    
-                    <!-- Tooltip -->
-                    <div class="absolute left-0 -bottom-24 hidden group-hover:block w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg z-50">
-                        <p class="font-medium mb-1">Ubah tampilan data tahun ajaran</p>
-                        <ul class="list-disc pl-4 space-y-1">
-                            <li>Perubahan di selector ini hanya mempengaruhi <strong>tampilan data</strong>, bukan aktif tahun ajaran</li>
-                        </ul>
-                    </div>
+                
+
                     
                     @if(Auth::guard('web')->check())
                     <!-- Dropdown menu - hanya untuk admin -->
