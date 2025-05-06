@@ -79,7 +79,7 @@
         @endphp
 
         <!-- Card: Total Mata Pelajaran -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 {{ $totalMapelBermasalah > 0 ? 'border-yellow-400' : 'border-green-400' }}">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 {{ $totalMapelBermasalah > 0 ? 'border-green-700' : 'border-green-700' }}">
             <div class="flex items-center">
                 <div class="p-3 rounded-full {{ $totalMapelBermasalah > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }} mr-5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,7 +97,7 @@
         </div>
 
         <!-- Card: Siswa Dibawah KKM -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 {{ $totalSiswaDibawahKKM > 0 ? 'border-red-400' : 'border-green-400' }}">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 {{ $totalSiswaDibawahKKM > 0 ? 'border-green-700' : 'border-green-700' }}">
             <div class="flex items-center">
                 <div class="p-3 rounded-full {{ $totalSiswaDibawahKKM > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }} mr-5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -115,7 +115,7 @@
         </div>
 
         <!-- Card: KKM Terendah -->
-        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-400">
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-green-700">
             <div class="flex items-center">
                 <div class="p-3 rounded-full bg-blue-100 text-blue-800 mr-5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,7 +125,7 @@
                 <div>
                     <p class="text-sm text-gray-500">Nilai KKM Default</p>
                     <p class="text-xl font-semibold">70</p>
-                    <p class="text-sm text-blue-600">
+                    <p class="text-sm text-green-600">
                         Diatur di pengaturan rapor
                     </p>
                 </div>

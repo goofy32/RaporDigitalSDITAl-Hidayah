@@ -102,52 +102,49 @@
                         data-search="{{ $template->filename }}">
                         <td class="px-6 py-4">{{ $index + 1 }}</td>
                         <td class="px-6 py-4">
-                            <span class="px-2 py-1 text-xs font-medium {{ $template->type === 'UTS' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
+                            <span class="text-xs font-medium">
                                 {{ $template->type }}
                             </span>
                         </td>
-                        <td class="px-6 py-4" id="filename-{{ $template->id }}">{{ $template->filename }}</td>
+                        <td class="px-6 py-4" id="filename-{{ $template->id }}">
+                            @php
+                                $filename = $template->filename;
+                                // Remove numeric prefixes (pattern like "1746151007_RTS")
+                                $cleanName = preg_replace('/^\d+_[A-Z]+_/', '', $filename);
+                                // Also handle pattern like "1744894347_Template_UTS"
+                                $cleanName = preg_replace('/^\d+_/', '', $cleanName);
+                                // Remove file extension
+                                $cleanName = preg_replace('/\.docx$/', '', $cleanName);
+                            @endphp
+                            {{ $cleanName }}
+                        </td>
                         <td class="px-6 py-4">
-                            @if($template->kelasList && $template->kelasList->count() > 0)
-                                @if($template->kelasList->count() <= 2)
-                                    {{ $template->kelasList->pluck('full_kelas')->join(', ') }}
-                                @else
-                                    <span class="group relative">
-                                        <span class="cursor-pointer text-blue-600 hover:text-blue-800">
-                                            {{ $template->kelasList->count() }} kelas
-                                        </span>
-                                        <div class="hidden group-hover:block absolute z-10 w-64 bg-white shadow-lg rounded-lg p-2 border border-gray-200 text-xs">
-                                            <div class="font-medium mb-1">Kelas yang menggunakan template ini:</div>
-                                            <ul class="list-disc ml-4">
-                                                @foreach($template->kelasList as $kelas)
-                                                    <li>{{ $kelas->full_kelas }}</li>
-                                                @endforeach
-                                            </ul>
-                                        </div>
+                        @if($template->kelasList && $template->kelasList->count() > 0)
+                            <div>
+                                @foreach($template->kelasList as $kelas)
+                                    <span class="inline-block mr-1 text-xs">
+                                        {{ 'Kelas ' . $kelas->nomor_kelas . ' ' . $kelas->nama_kelas }}{{ !$loop->last ? ',' : '' }}
                                     </span>
-                                @endif
-                            @elseif($template->kelas_id)
-                                {{ $template->kelas->full_kelas }}
-                            @else
-                                <span class="text-gray-500">Template Global</span>
-                            @endif
+                                @endforeach
+                            </div>
+                        @elseif($template->kelas_id)
+                            <span class="inline-block text-xs">
+                                {{ 'Kelas ' . $template->kelas->nomor_kelas . ' ' . $template->kelas->nama_kelas }}
+                            </span>
+                        @else
+                            <span class="text-gray-500">Template Global</span>
+                        @endif
                         </td>
                         <td class="px-6 py-4">{{ $template->tahun_ajaran ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $template->semester == 1 ? 'Ganjil' : 'Genap' }}</td>
                         <td class="px-6 py-4">{{ Carbon\Carbon::parse($template->created_at)->format('d M Y H:i') }}</td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 text-center">
                             @if($template->is_active)
-                                <span class="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center justify-center w-fit">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
+                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-full min-w-[80px]">
                                     Aktif
                                 </span>
                             @else
-                                <span class="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full flex items-center justify-center w-fit">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
+                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full min-w-[80px]">
                                     Tidak Aktif
                                 </span>
                             @endif
