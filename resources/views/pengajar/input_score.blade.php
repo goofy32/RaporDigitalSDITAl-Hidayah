@@ -229,7 +229,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize calculations
     document.querySelectorAll('#students-table tbody tr').forEach(row => {
-        calculateAverages(row);
+        // Don't recalculate existing final scores on page load
+        // Just highlight values below KKM
+        highlightBelowKkm(row);
+        
+        // Calculate intermediate values like NA_TP and NA_LM if they're empty
+        calculateIntermediateValues(row);
     });
     
     // Only add these event listeners once
@@ -243,13 +248,74 @@ function markFormChanged() {
 
 function updateCalculations(e) {
     if (e.target.matches('.tp-score, .lm-score, .nilai-semester')) {
-        calculateAverages(e.target.closest('tr'));
+        // Mark the row as having changed scores
+        const row = e.target.closest('tr');
+        row.dataset.scoresChanged = 'true';
+        
+        calculateAverages(row);
         markFormChanged();
     }
 }
 
+// New function to only calculate intermediate values without affecting final scores
+function calculateIntermediateValues(row) {
+    // 1. Calculate NA Sumatif TP if empty
+    let naTPInput = row.querySelector('.na-tp');
+    if (!naTPInput.value) {
+        let tpInputs = row.querySelectorAll('.tp-score');
+        let tpSum = 0;
+        let validTpCount = 0;
+
+        tpInputs.forEach(input => {
+            let value = parseFloat(input.value);
+            if (!isNaN(value) && value > 0) {
+                tpSum += value;
+                validTpCount++;
+            }
+        });
+
+        if (validTpCount > 0) {
+            let naTP = tpSum / validTpCount;
+            naTPInput.value = naTP.toFixed(2);
+        }
+    }
+
+    // 2. Calculate NA Sumatif LM if empty
+    let naLMInput = row.querySelector('.na-lm');
+    if (!naLMInput.value) {
+        let lmInputs = row.querySelectorAll('.lm-score');
+        let lmSum = 0;
+        let validLmCount = 0;
+
+        lmInputs.forEach(input => {
+            let value = parseFloat(input.value);
+            if (!isNaN(value) && value > 0) {
+                lmSum += value;
+                validLmCount++;
+            }
+        });
+
+        if (validLmCount > 0) {
+            let naLM = lmSum / validLmCount;
+            naLMInput.value = naLM.toFixed(2);
+        }
+    }
+
+    // 3. Calculate NA Sumatif Akhir Semester if empty
+    let nilaiAkhirInput = row.querySelector('input[name*="[nilai_akhir]"]');
+    if (!nilaiAkhirInput.value) {
+        let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
+        let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
+
+        if (nilaiTes > 0 || nilaiNonTes > 0) {
+            let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
+            nilaiAkhirInput.value = nilaiAkhirSemester.toFixed(2);
+        }
+    }
+}
+
 function calculateAverages(row) {
-    // 1. Calculate NA Sumatif TP (tidak perlu perubahan)
+    // 1. Calculate NA Sumatif TP
     let tpInputs = row.querySelectorAll('.tp-score');
     let tpSum = 0;
     let validTpCount = 0;
@@ -267,7 +333,7 @@ function calculateAverages(row) {
         row.querySelector('.na-tp').value = naTP.toFixed(2);
     }
 
-    // 2. Calculate NA Sumatif LM (tidak perlu perubahan)
+    // 2. Calculate NA Sumatif LM
     let lmInputs = row.querySelectorAll('.lm-score');
     let lmSum = 0;
     let validLmCount = 0;
@@ -294,28 +360,37 @@ function calculateAverages(row) {
         row.querySelector('input[name*="[nilai_akhir]"]').value = nilaiAkhirSemester.toFixed(2);
     }
 
-    // 4. Calculate Nilai Akhir Rapor dengan bobot dinamis
+    // 4. Calculate Nilai Akhir Rapor with dynamic weights ONLY if it's empty or scores have changed
     let naTP = parseFloat(row.querySelector('.na-tp').value) || 0;
     let naLM = parseFloat(row.querySelector('.na-lm').value) || 0;
     let nilaiAkhirSemester = parseFloat(row.querySelector('input[name*="[nilai_akhir]"]').value) || 0;
 
-    // Ambil bobot dari variabel global yang kita set
+    // Get weights from global variable
     let bobotTP = parseFloat(window.bobotNilai?.bobot_tp || 0.25);
     let bobotLM = parseFloat(window.bobotNilai?.bobot_lm || 0.25);
     let bobotAS = parseFloat(window.bobotNilai?.bobot_as || 0.50);
 
-    if (naTP > 0 || naLM > 0 || nilaiAkhirSemester > 0) {
-        let nilaiAkhirRapor = (naTP * bobotTP) + (naLM * bobotLM) + (nilaiAkhirSemester * bobotAS);
-        row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.round(nilaiAkhirRapor);
-        
-        // Highlight nilai yang di bawah KKM
-        const nilaiAkhirInput = row.querySelector('input[name*="[nilai_akhir_rapor]"]');
-        const kkmValue = parseFloat(window.kkmValue || 70);
-        
-        if (Math.round(nilaiAkhirRapor) < kkmValue) {
-            nilaiAkhirInput.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
-        } else {
-            nilaiAkhirInput.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+    // Check if we already have a final score
+    const nilaiAkhirRaporInput = row.querySelector('input[name*="[nilai_akhir_rapor]"]');
+    const existingValue = parseFloat(nilaiAkhirRaporInput.value) || 0;
+    
+    // Only recalculate if the field is empty or scores have changed
+    if (!existingValue || row.dataset.scoresChanged === 'true') {
+        if (naTP > 0 || naLM > 0 || nilaiAkhirSemester > 0) {
+            let nilaiAkhirRapor = (naTP * bobotTP) + (naLM * bobotLM) + (nilaiAkhirSemester * bobotAS);
+            nilaiAkhirRaporInput.value = Math.round(nilaiAkhirRapor);
+            
+            // Reset the changed flag after calculation
+            row.dataset.scoresChanged = 'false';
+            
+            // Highlight nilai yang di bawah KKM
+            const kkmValue = parseFloat(window.kkmValue || 70);
+            
+            if (Math.round(nilaiAkhirRapor) < kkmValue) {
+                nilaiAkhirRaporInput.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+            } else {
+                nilaiAkhirRaporInput.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+            }
         }
     }
     
@@ -348,7 +423,17 @@ function highlightBelowKkm(row) {
     });
     
     // Nilai Tes dan Non-Tes
-    ['nilai-tes', 'nilai-non-tes'].forEach(className => {
+    row.querySelectorAll('input[name*="[nilai_tes]"], input[name*="[nilai_non_tes]"]').forEach(input => {
+        const value = parseFloat(input.value);
+        if (!isNaN(value) && value > 0 && value < kkmValue) {
+            input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+        } else {
+            input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
+        }
+    });
+    
+    // NA TP, NA LM, dan Nilai Akhir Semester
+    ['na-tp', 'na-lm'].forEach(className => {
         const input = row.querySelector(`.${className}`);
         if (input) {
             const value = parseFloat(input.value);
@@ -360,18 +445,16 @@ function highlightBelowKkm(row) {
         }
     });
     
-    // NA TP, NA LM, dan Nilai Akhir Semester
-    ['na-tp', 'na-lm', 'nilai-akhir'].forEach(className => {
-        const input = row.querySelector(`.${className}`);
-        if (input) {
-            const value = parseFloat(input.value);
-            if (!isNaN(value) && value > 0 && value < kkmValue) {
-                input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
-            } else {
-                input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
-            }
+    // Nilai Akhir Semester
+    const nilaiAkhirInput = row.querySelector('input[name*="[nilai_akhir]"]');
+    if (nilaiAkhirInput) {
+        const value = parseFloat(nilaiAkhirInput.value);
+        if (!isNaN(value) && value > 0 && value < kkmValue) {
+            nilaiAkhirInput.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
+        } else {
+            nilaiAkhirInput.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
         }
-    });
+    }
 }
 
 function validateForm() {
@@ -441,9 +524,16 @@ function deleteNilai(siswaId, mapelId) {
             .then(data => {
                 if (data.success) {
                     let row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
+                    
+                    // Clear all values and mark the row as needing recalculation
                     row.querySelectorAll('input[type="number"]').forEach(input => {
                         input.value = '';
                     });
+                    
+                    // Mark row as having changed to ensure recalculation with current weights
+                    row.dataset.scoresChanged = 'true';
+                    
+                    // Calculate with current weights since all data is now fresh
                     calculateAverages(row);
                     markFormChanged();
                     
@@ -480,7 +570,7 @@ window.saveData = async function() {
 
         const formData = new FormData(document.getElementById('saveForm'));
         
-        const response = await fetch('{{ route("pengajar.score.save_scores", $subject["id"]) }}', {
+        const response = await fetch(document.getElementById('saveForm').action, {
             method: 'POST',
             body: formData,
             headers: {
@@ -494,6 +584,11 @@ window.saveData = async function() {
             // Reset the form changed flag after successful save
             formChanged = false;
             Alpine.store('formProtection').reset();
+            
+            // Reset all rows' changed state since they're now saved
+            document.querySelectorAll('#students-table tbody tr').forEach(row => {
+                row.dataset.scoresChanged = 'false';
+            });
             
             // Simpan data untuk ditampilkan nanti jika user klik detail
             const detailData = data;
@@ -512,7 +607,8 @@ window.saveData = async function() {
             
             if (result.isConfirmed) {
                 // User memilih "Lihat Preview"
-                window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+                const previewUrl = document.querySelector('a[href*="preview_score"]').href;
+                window.location.href = previewUrl;
             } else if (result.dismiss === Swal.DismissReason.cancel) {
                 // User memilih "Lihat Detail"
                 let detailMessage = '<ul class="text-left max-h-60 overflow-y-auto">';
@@ -547,7 +643,8 @@ window.saveData = async function() {
                 });
                 
                 if (detailResult.isConfirmed) {
-                    window.location.href = '{{ route("pengajar.score.preview_score", $subject["id"]) }}';
+                    const previewUrl = document.querySelector('a[href*="preview_score"]').href;
+                    window.location.href = previewUrl;
                 }
             }
         } else {
@@ -564,19 +661,24 @@ window.saveData = async function() {
     }
 };
 
-window.kkmValue = {{ $kkmValue }};
-window.bobotNilai = {
-    bobot_tp: {{ $bobotNilai->bobot_tp }},
-    bobot_lm: {{ $bobotNilai->bobot_lm }},
-    bobot_as: {{ $bobotNilai->bobot_as }}
-};
-
-// Tambahkan event listener untuk DOMContentLoaded
+// Initialize highlighting when DOM loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Inisialisasi highlight untuk semua baris tabel
+    // Add scoresChanged data attribute to all rows
     document.querySelectorAll('#students-table tbody tr').forEach(row => {
+        row.dataset.scoresChanged = 'false';
+        
+        // Highlight any values below KKM
         highlightBelowKkm(row);
     });
 });
+
+// Global variables for KKM value and bobot nilai
+// Note: These will be filled by the blade template with the actual values
+window.kkmValue = 70; // Default value, will be overridden by blade template
+window.bobotNilai = {
+    bobot_tp: 0.25, // Default value, will be overridden by blade template
+    bobot_lm: 0.25, // Default value, will be overridden by blade template
+    bobot_as: 0.50  // Default value, will be overridden by blade template
+};
 </script>
 @endsection

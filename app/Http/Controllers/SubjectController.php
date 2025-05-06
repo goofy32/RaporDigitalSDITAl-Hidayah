@@ -226,6 +226,103 @@ class SubjectController extends Controller
         }
     }
 
+    /**
+     * Get all subjects for a specific class taught by the current teacher
+     * 
+     * @param int $kelasId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getSubjectsByClass($kelasId)
+    {
+        try {
+            $guruId = auth()->guard('guru')->id();
+            $tahunAjaranId = session('tahun_ajaran_id');
+            
+            $mapel = MataPelajaran::where('kelas_id', $kelasId)
+                ->where('guru_id', $guruId)
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'mapel' => $mapel
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get progress for subjects in a specific class or for a specific subject
+     * 
+     * @param int $kelasId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getSubjectsProgress($kelasId)
+    {
+        try {
+            $guruId = auth()->guard('guru')->id();
+            $tahunAjaranId = session('tahun_ajaran_id');
+            $mapelId = request('mapel_id');
+            
+            $query = MataPelajaran::where('kelas_id', $kelasId)
+                ->where('guru_id', $guruId)
+                ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
+                    return $q->where('tahun_ajaran_id', $tahunAjaranId);
+                });
+            
+            if ($mapelId) {
+                $query->where('id', $mapelId);
+            }
+            
+            $mapelIds = $query->pluck('id')->toArray();
+            
+            if (empty($mapelIds)) {
+                return response()->json([
+                    'success' => true,
+                    'progress' => 0
+                ]);
+            }
+            
+            // Hitung total tujuan pembelajaran
+            $totalTP = DB::table('tujuan_pembelajarans')
+                ->join('lingkup_materis', 'tujuan_pembelajarans.lingkup_materi_id', '=', 'lingkup_materis.id')
+                ->whereIn('lingkup_materis.mata_pelajaran_id', $mapelIds)
+                ->count();
+            
+            // Hitung tujuan pembelajaran yang sudah memiliki nilai
+            $completedTP = DB::table('tujuan_pembelajarans')
+                ->join('lingkup_materis', 'tujuan_pembelajarans.lingkup_materi_id', '=', 'lingkup_materis.id')
+                ->join('nilais', function($join) use ($tahunAjaranId) {
+                    $join->on('tujuan_pembelajarans.id', '=', 'nilais.tujuan_pembelajaran_id')
+                        ->whereNotNull('nilais.nilai_tp');
+                    
+                    if ($tahunAjaranId) {
+                        $join->where('nilais.tahun_ajaran_id', $tahunAjaranId);
+                    }
+                })
+                ->whereIn('lingkup_materis.mata_pelajaran_id', $mapelIds)
+                ->count();
+            
+            $progress = $totalTP > 0 ? ($completedTP / $totalTP) * 100 : 0;
+            
+            return response()->json([
+                'success' => true,
+                'progress' => round($progress, 2)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function checkLingkupMateriDependencies($id)
     {
         try {

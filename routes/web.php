@@ -351,8 +351,16 @@ Route::middleware(['auth:guru', 'role:guru'])
     Route::get('/nilai/bobot', [BobotNilaiController::class, 'getBobot'])->name('nilai.bobot');
     
     Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
-    Route::get('/kelas-progress/{kelasId}', [DashboardController::class, 'getKelasProgressPengajar'])
-        ->name('kelas.progress');
+    Route::get('/kelas-progress/overall', [DashboardController::class, 'getOverallClassProgress'])
+        ->name('kelas.progress.overall');
+    
+    // Route baru untuk mata pelajaran
+    Route::get('/mata-pelajaran/kelas/{kelasId}', [SubjectController::class, 'getSubjectsByClass'])
+        ->name('mata_pelajaran.by_kelas');
+    
+    Route::get('/mata-pelajaran/progress/{kelasId}', [SubjectController::class, 'getSubjectsProgress'])
+        ->name('mata_pelajaran.progress');
+        
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
     
     // Score Management
