@@ -315,77 +315,7 @@ class DashboardController extends Controller
             return back()->with('error', 'Terjadi kesalahan saat memuat dashboard.');
         }
     }
-   
-    /**
-     * Get overall progress for all classes taught by the current teacher
-     * 
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getOverallClassProgress()
-    {
-        try {
-            $guru = Auth::guard('guru')->user();
-            $tahunAjaranId = session('tahun_ajaran_id');
-            
-            if (!$guru) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-            
-            // Ambil semua kelas yang diajar oleh guru
-            $kelasIds = MataPelajaran::where('guru_id', $guru->id)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->distinct('kelas_id')
-                ->pluck('kelas_id')
-                ->toArray();
-            
-            if (empty($kelasIds)) {
-                return response()->json(['progress' => 0]);
-            }
-            
-            // Hitung total tujuan pembelajaran dari semua kelas yang diajar
-            $totalTP = DB::table('tujuan_pembelajarans')
-                ->join('lingkup_materis', 'tujuan_pembelajarans.lingkup_materi_id', '=', 'lingkup_materis.id')
-                ->join('mata_pelajarans', 'lingkup_materis.mata_pelajaran_id', '=', 'mata_pelajarans.id')
-                ->where('mata_pelajarans.guru_id', $guru->id)
-                ->whereIn('mata_pelajarans.kelas_id', $kelasIds)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('mata_pelajarans.tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->count();
-            
-            if ($totalTP === 0) {
-                return response()->json(['progress' => 0]);
-            }
-            
-            // Hitung tujuan pembelajaran yang sudah memiliki nilai
-            $completedTP = DB::table('tujuan_pembelajarans')
-                ->join('lingkup_materis', 'tujuan_pembelajarans.lingkup_materi_id', '=', 'lingkup_materis.id')
-                ->join('mata_pelajarans', 'lingkup_materis.mata_pelajaran_id', '=', 'mata_pelajarans.id')
-                ->join('nilais', function($join) use ($tahunAjaranId) {
-                    $join->on('tujuan_pembelajarans.id', '=', 'nilais.tujuan_pembelajaran_id')
-                        ->whereNotNull('nilais.nilai_tp');
-                        
-                    if ($tahunAjaranId) {
-                        $join->where('nilais.tahun_ajaran_id', $tahunAjaranId);
-                    }
-                })
-                ->where('mata_pelajarans.guru_id', $guru->id)
-                ->whereIn('mata_pelajarans.kelas_id', $kelasIds)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('mata_pelajarans.tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->count();
-            
-            $progress = ($completedTP / $totalTP) * 100;
-            
-            return response()->json(['progress' => round($progress, 2)]);
-        } catch (\Exception $e) {
-            \Log::error('Error calculating overall class progress: ' . $e->getMessage());
-            return response()->json(['error' => 'Terjadi kesalahan'], 500);
-        }
-    }
+    
     // Method untuk mengambil progress keseluruhan kelas wali
     public function getOverallProgressWaliKelas()
     {

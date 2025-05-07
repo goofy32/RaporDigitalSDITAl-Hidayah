@@ -79,14 +79,6 @@
                             <p class="text-sm text-green-600">Ekstrakurikuler</p>
                         </div>
                     </div>
-                    
-                    <!-- Progres Rapor Card - Not clickable -->
-                    <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
-                        <div class="p-4">
-                            <p class="text-2xl font-bold text-green-600">{{ number_format($overallProgress, 2) }}%</p>
-                            <p class="text-sm text-green-600">Progres Rapor</p>
-                        </div>
-                    </div>
                 </div>
             </div>
 

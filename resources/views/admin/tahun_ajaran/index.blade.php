@@ -302,7 +302,7 @@
                 // Create a form element
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = `{{ route('tahun.ajaran.set-active', '') }}/${id}`;
+                form.action = "{{ url('admin/tahun-ajaran') }}/" + id + "/set-active";
                 
                 // Add CSRF token
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;

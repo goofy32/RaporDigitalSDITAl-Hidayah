@@ -201,7 +201,7 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::get('/{id}', [TahunAjaranController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [TahunAjaranController::class, 'edit'])->name('edit');
         Route::put('/{id}', [TahunAjaranController::class, 'update'])->name('update');
-        Route::post('/{id}/set-active', [TahunAjaranController::class, 'setActive'])->name('set-active');
+        Route::post('{id}/set-active', [TahunAjaranController::class, 'setActive'])->name('set-active');
         Route::get('/{id}/copy', [TahunAjaranController::class, 'copy'])->name('copy');
         Route::post('/{id}/copy', [TahunAjaranController::class, 'processCopy'])->name('process-copy');
         Route::delete('/{id}', [TahunAjaranController::class, 'destroy'])->name('destroy');
@@ -360,7 +360,7 @@ Route::middleware(['auth:guru', 'role:guru'])
     
     Route::get('/mata-pelajaran/progress/{kelasId}', [SubjectController::class, 'getSubjectsProgress'])
         ->name('mata_pelajaran.progress');
-        
+
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
     
     // Score Management
