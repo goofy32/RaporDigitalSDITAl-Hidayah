@@ -353,34 +353,48 @@
     </div>
 </div>
         
-
-
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const overallProgress = {{ number_format($overallProgress, 2) ?? 0 }};
+    window.overallProgress = {{ number_format($overallProgress ?? 0, 2) }};
 </script>
 <script>
+// Global variables for charts
 let overallChart, classChart;
 let kelasProgress = 0;
-const ADMIN_DASHBOARD_KEY = 'adminDashboardLoaded';
 
 function navigateTo(url) {
     window.location.href = url;
 }
 
 function destroyCharts() {
-    if (overallChart) {
-        overallChart.destroy();
-        overallChart = null;
+    try {
+        if (overallChart instanceof Chart) {
+            overallChart.destroy();
+        }
+        if (classChart instanceof Chart) {
+            classChart.destroy();
+        }
+    } catch (error) {
+        console.error('Error destroying charts:', error);
     }
-    if (classChart) {
-        classChart.destroy();
-        classChart = null;
-    }
+    
+    // Reset variables to prevent reference errors
+    overallChart = null;
+    classChart = null;
 }
 
+
 function initCharts() {
+    // Make sure we destroy any existing charts first
+    destroyCharts();
+    
+    // Get safe value for overall progress (prevent undefined errors)
+    // If PHP hasn't provided a value, default to 0
+    const safeOverallProgress = typeof overallProgress !== 'undefined' ? 
+        parseFloat(overallProgress) : 0;
+    
+    // Chart configuration options
     const defaultOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -398,94 +412,106 @@ function initCharts() {
         }
     };
 
-    // Overall Progress Chart
-    const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
-    if (overallCtx) {
-        overallChart = new Chart(overallCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Selesai', 'Belum'],
-                datasets: [{
-                    data: [
-                        Math.min(100, Math.max(0, overallProgress)), 
-                        Math.min(100, Math.max(0, 100 - overallProgress))
-                    ],
-                    backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                ...defaultOptions,
-                cutout: '60%',
-            },
-            plugins: [{
-                id: 'centerText',
-                afterDraw: function(chart) {
-                    const width = chart.width;
-                    const height = chart.height;
-                    const ctx = chart.ctx;
-                    
-                    ctx.restore();
-                    const fontSize = (height / 114).toFixed(2);
-                    ctx.font = fontSize + 'em sans-serif';
-                    ctx.textBaseline = 'middle';
-                    
-                    const text = Math.round(overallProgress) + '%';
-                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                    const textY = height / 2;
+    // Initialize Overall Progress Chart
+    const overallCtx = document.getElementById('overallPieChart');
+    if (overallCtx && overallCtx.getContext) {
+        try {
+            overallChart = new Chart(overallCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Selesai', 'Belum'],
+                    datasets: [{
+                        data: [
+                            Math.min(100, Math.max(0, safeOverallProgress)), 
+                            Math.min(100, Math.max(0, 100 - safeOverallProgress))
+                        ],
+                        backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    ...defaultOptions,
+                    cutout: '60%',
+                },
+                plugins: [{
+                    id: 'centerText',
+                    afterDraw: function(chart) {
+                        const width = chart.width;
+                        const height = chart.height;
+                        const ctx = chart.ctx;
+                        
+                        ctx.restore();
+                        const fontSize = (height / 114).toFixed(2);
+                        ctx.font = fontSize + 'em sans-serif';
+                        ctx.textBaseline = 'middle';
+                        
+                        const text = Math.round(safeOverallProgress) + '%';
+                        const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                        const textY = height / 2;
 
-                    ctx.fillStyle = '#1F2937';
-                    ctx.fillText(text, textX, textY);
-                    ctx.save();
-                }
-            }]
-        });
+                        ctx.fillStyle = '#1F2937';
+                        ctx.fillText(text, textX, textY);
+                        ctx.save();
+                    }
+                }]
+            });
+        } catch (e) {
+            console.error('Error creating overall chart:', e);
+        }
     }
 
-    // Class Progress Chart
-    const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
-    if (classCtx) {
-        classChart = new Chart(classCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Selesai', 'Belum'],
-                datasets: [{
-                    data: [0, 100],
-                    backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                ...defaultOptions,
-                cutout: '60%',
-            },
-            plugins: [{
-                id: 'centerText',
-                afterDraw: function(chart) {
-                    const width = chart.width;
-                    const height = chart.height;
-                    const ctx = chart.ctx;
-                    
-                    ctx.restore();
-                    const fontSize = (height / 114).toFixed(2);
-                    ctx.font = fontSize + 'em sans-serif';
-                    ctx.textBaseline = 'middle';
-                    
-                    const text = Math.round(kelasProgress) + '%';
-                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
-                    const textY = height / 2;
+    // Initialize Class Progress Chart
+    const classCtx = document.getElementById('classProgressChart');
+    if (classCtx && classCtx.getContext) {
+        try {
+            classChart = new Chart(classCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Selesai', 'Belum'],
+                    datasets: [{
+                        data: [0, 100], // Start with 0% progress
+                        backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    ...defaultOptions,
+                    cutout: '60%',
+                },
+                plugins: [{
+                    id: 'centerText',
+                    afterDraw: function(chart) {
+                        const width = chart.width;
+                        const height = chart.height;
+                        const ctx = chart.ctx;
+                        
+                        ctx.restore();
+                        const fontSize = (height / 114).toFixed(2);
+                        ctx.font = fontSize + 'em sans-serif';
+                        ctx.textBaseline = 'middle';
+                        
+                        const text = Math.round(kelasProgress) + '%';
+                        const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                        const textY = height / 2;
 
-                    ctx.fillStyle = '#1F2937';
-                    ctx.fillText(text, textX, textY);
-                    ctx.save();
-                }
-            }]
-        });
+                        ctx.fillStyle = '#1F2937';
+                        ctx.fillText(text, textX, textY);
+                        ctx.save();
+                    }
+                }]
+            });
+        } catch (e) {
+            console.error('Error creating class chart:', e);
+        }
     }
 }
 
 function updateClassChart(progress) {
-    kelasProgress = !isNaN(progress) ? Math.min(100, Math.max(0, progress)) : 0;
+    // Ensure progress is a valid number
+    kelasProgress = !isNaN(parseFloat(progress)) ? 
+        Math.min(100, Math.max(0, parseFloat(progress))) : 0;
+    
+    console.log('Updating class chart with progress:', kelasProgress);
     
     if (classChart) {
         classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
@@ -502,17 +528,20 @@ document.addEventListener('alpine:init', () => {
         
         init() {
             this.$nextTick(() => {
-                this.initCharts();
+                // Check if overallProgress is defined by PHP, if not, set a default
+                if (typeof overallProgress === 'undefined') {
+                    window.overallProgress = 0;
+                }
                 
-                // Wait for DOM to be ready
+                // Initialize charts after DOM is ready
                 setTimeout(() => {
+                    initCharts();
                     this.fetchKelasProgress();
-                }, 100);
+                }, 200);
             });
         },
         
         initCharts() {
-            destroyCharts();
             initCharts();
         },
         
@@ -531,12 +560,16 @@ document.addEventListener('alpine:init', () => {
             }
             
             try {
-                const response = await fetch(`/admin/kelas-progress/${this.selectedKelas}`);
+                // Add timestamp to prevent caching
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/admin/kelas-progress/${this.selectedKelas}?_=${timestamp}`);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log('Kelas progress data:', data);
                 
                 if (data.success && !isNaN(data.progress)) {
                     updateClassChart(data.progress);
@@ -552,11 +585,18 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing charts');
+    // Set default value for overallProgress if not already set
+    if (typeof overallProgress === 'undefined') {
+        window.overallProgress = 0;
+    }
+    
     setTimeout(() => {
         initCharts();
-    }, 200);
+    }, 300);
 });
 
 // Cleanup
@@ -567,19 +607,28 @@ document.addEventListener('turbo:before-cache', () => {
 // Handle Turbo navigation
 document.addEventListener('turbo:load', () => {
     if (window.location.pathname.includes('/admin/dashboard')) {
+        console.log('Dashboard loaded via Turbo, reinitializing charts');
+        
+        // Ensure overallProgress is defined
+        if (typeof overallProgress === 'undefined') {
+            window.overallProgress = 0;
+        }
+        
         setTimeout(() => {
             destroyCharts();
             initCharts();
-        }, 200);
+        }, 300);
     }
 });
 
+// Global function for event binding
 function fetchKelasProgress() {
     const selectedKelas = document.getElementById('kelas')?.value;
     if (!selectedKelas) {
         // Update the selected kelas name display
-        if (window.Alpine && Alpine.store('dashboard')) {
-            Alpine.store('dashboard').selectedKelasName = 'Per Kelas';
+        const dashboardEl = document.querySelector('[x-data="dashboard"]');
+        if (dashboardEl && dashboardEl.__x) {
+            dashboardEl.__x.$data.selectedKelasName = 'Per Kelas';
         }
         updateClassChart(0);
         return;
@@ -587,14 +636,19 @@ function fetchKelasProgress() {
     
     // Update selected kelas name
     const kelasSelect = document.getElementById('kelas');
-    if (kelasSelect && window.Alpine && Alpine.store('dashboard')) {
-        const selectedOption = kelasSelect.options[kelasSelect.selectedIndex];
-        Alpine.store('dashboard').selectedKelasName = selectedOption ? selectedOption.text : 'Per Kelas';
+    if (kelasSelect) {
+        const dashboardEl = document.querySelector('[x-data="dashboard"]');
+        if (dashboardEl && dashboardEl.__x) {
+            const selectedOption = kelasSelect.options[kelasSelect.selectedIndex];
+            dashboardEl.__x.$data.selectedKelasName = selectedOption ? selectedOption.text : 'Per Kelas';
+        }
     }
     
-    fetch(`/admin/kelas-progress/${selectedKelas}`, {
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    fetch(`/admin/kelas-progress/${selectedKelas}?_=${timestamp}`, {
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
         }
@@ -606,6 +660,7 @@ function fetchKelasProgress() {
         return response.json();
     })
     .then(data => {
+        console.log('Fetched kelas progress data:', data);
         if (data.success && !isNaN(data.progress)) {
             updateClassChart(data.progress);
         } else {
@@ -618,6 +673,7 @@ function fetchKelasProgress() {
         updateClassChart(0);
     });
 }
+
 function initModal() {
     const modal = document.getElementById('addInfoModal');
     const openButtons = document.querySelectorAll('[data-modal-target="addInfoModal"]');

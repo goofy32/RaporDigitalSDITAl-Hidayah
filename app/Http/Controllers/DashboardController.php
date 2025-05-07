@@ -68,15 +68,9 @@ class DashboardController extends Controller
     private function calculateOverallProgressForAdmin($tahunAjaranId = null)
     {
         try {
-            $query = DB::table('nilais')->whereNotNull('nilai_tp');
+            // Count total tujuan pembelajaran with proper eloquent relationships
+            $tpQuery = \App\Models\TujuanPembelajaran::query();
             
-            if ($tahunAjaranId) {
-                $query->where('tahun_ajaran_id', $tahunAjaranId);
-            }
-            
-            $totalNilai = $query->count();
-            
-            $tpQuery = DB::table('tujuan_pembelajarans');
             if ($tahunAjaranId) {
                 $tpQuery->whereHas('lingkupMateri.mataPelajaran', function($q) use ($tahunAjaranId) {
                     $q->where('tahun_ajaran_id', $tahunAjaranId);
@@ -87,13 +81,24 @@ class DashboardController extends Controller
             
             if ($totalTP === 0) return 0;
             
+            // Count total nilai entries with nilai_tp properly
+            $nilaiQuery = \App\Models\Nilai::whereNotNull('nilai_tp');
+            
+            if ($tahunAjaranId) {
+                $nilaiQuery->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+            
+            $totalNilai = $nilaiQuery->count();
+            
+            \Log::info("Calculating overall progress: {$totalNilai} / {$totalTP}");
+            
+            // Calculate percentage
             return ($totalNilai / $totalTP) * 100;
         } catch (\Exception $e) {
             \Log::error('Error calculating admin overall progress: ' . $e->getMessage());
             return 0;
         }
     }
-    
 
     public function pengajarDashboard()
     {
@@ -476,29 +481,70 @@ class DashboardController extends Controller
 
     public function getKelasProgressAdmin($kelasId)
     {
-        $totalTP = DB::table('mata_pelajarans')
-            ->join('lingkup_materis', 'mata_pelajarans.id', '=', 'lingkup_materis.mata_pelajaran_id')
-            ->join('tujuan_pembelajarans', 'lingkup_materis.id', '=', 'tujuan_pembelajarans.lingkup_materi_id')
-            ->where('mata_pelajarans.kelas_id', $kelasId)
-            ->count();
-
-        if ($totalTP === 0) {
-            return response()->json(['success' => true, 'progress' => 0]);
+        try {
+            // Get the current tahun ajaran ID from session
+            $tahunAjaranId = session('tahun_ajaran_id');
+            
+            // Get all students in this class
+            $studentsInClass = \App\Models\Siswa::where('kelas_id', $kelasId)->count();
+            
+            if ($studentsInClass === 0) {
+                return response()->json(['success' => true, 'progress' => 0]);
+            }
+            
+            // Get all mata pelajaran for this class
+            $mataPelajarans = \App\Models\MataPelajaran::where('kelas_id', $kelasId)
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->get();
+                
+            if ($mataPelajarans->isEmpty()) {
+                return response()->json(['success' => true, 'progress' => 0]);
+            }
+            
+            // For each mata pelajaran, check if all students have completed scores
+            $totalScoreNeeded = 0;
+            $totalScoreCompleted = 0;
+            
+            foreach ($mataPelajarans as $mapel) {
+                // Total required scores for this subject = number of students
+                $totalScoreNeeded += $studentsInClass;
+                
+                // Count students with completed nilai_akhir_rapor for this subject
+                $completedScores = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                        return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                    })
+                    ->count();
+                    
+                $totalScoreCompleted += $completedScores;
+            }
+            
+            // Log the calculation for debugging
+            \Log::info("Class {$kelasId} progress calculation:", [
+                'students' => $studentsInClass,
+                'subjects' => $mataPelajarans->count(),
+                'total_needed' => $totalScoreNeeded,
+                'total_completed' => $totalScoreCompleted
+            ]);
+            
+            // Calculate progress percentage
+            $progress = $totalScoreNeeded > 0 ? ($totalScoreCompleted / $totalScoreNeeded) * 100 : 0;
+            
+            return response()->json([
+                'success' => true, 
+                'progress' => $progress,
+                'details' => [
+                    'total_needed' => $totalScoreNeeded,
+                    'total_completed' => $totalScoreCompleted
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error calculating class progress: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
-
-        $completedTP = DB::table('mata_pelajarans')
-            ->join('lingkup_materis', 'mata_pelajarans.id', '=', 'lingkup_materis.mata_pelajaran_id')
-            ->join('tujuan_pembelajarans', 'lingkup_materis.id', '=', 'tujuan_pembelajarans.lingkup_materi_id')
-            ->join('nilais', function($join) {
-                $join->on('tujuan_pembelajarans.id', '=', 'nilais.tujuan_pembelajaran_id')
-                    ->whereNotNull('nilais.nilai_tp');
-            })
-            ->where('mata_pelajarans.kelas_id', $kelasId)
-            ->count();
-
-        $progress = ($completedTP / $totalTP) * 100;
-
-        return response()->json(['success' => true, 'progress' => $progress]);
     }
 
     private function getNotificationStatus($notification, $userId)
