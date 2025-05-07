@@ -526,16 +526,25 @@ class ReportController extends Controller
             $type = 'UTS';
         }
         
-        // Use dynamic sample template
+        // Use your pre-made templates
         $sampleFileName = $type === 'UTS' 
-            ? 'dynamic_template_uts.docx'
-            : 'dynamic_template_uas.docx';
+            ? 'Template_UTS_New.docx'
+            : 'Template_UAS_New.docx';
             
-        $filePath = storage_path('app/public/samples/' . $sampleFileName);
+        $filePath = storage_path('app/public/templates/' . $sampleFileName);
         
-        // If the file doesn't exist, create it
+        // If the file doesn't exist, fallback to the original dynamic method
         if (!file_exists($filePath)) {
-            $this->createDynamicSampleTemplate($filePath, $type);
+            $sampleFileName = $type === 'UTS' 
+                ? 'dynamic_template_uts.docx'
+                : 'dynamic_template_uas.docx';
+                
+            $filePath = storage_path('app/public/samples/' . $sampleFileName);
+            
+            // If the fallback file also doesn't exist, create it
+            if (!file_exists($filePath)) {
+                $this->createDynamicSampleTemplate($filePath, $type);
+            }
         }
         
         // Generate a filename for download
