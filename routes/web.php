@@ -111,6 +111,10 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         // Route baru untuk KKM massal
         Route::post('/global', [KkmController::class, 'applyGlobalKkm'])->name('global');
         Route::delete('/{id}', [KkmController::class, 'destroy'])->name('destroy');
+        Route::get('/notification-settings', [KkmController::class, 'getNotificationSettings'])
+        ->name('notification-settings.get');
+        Route::post('/notification-settings', [KkmController::class, 'saveNotificationSettings'])
+            ->name('notification-settings.save');
     });
 
     // Bobot Nilai Routes
@@ -355,10 +359,9 @@ Route::middleware(['auth:guru', 'role:guru'])
         ->name('kelas.progress.overall');
     
     // Route baru untuk mata pelajaran
-    Route::get('/mata-pelajaran/kelas/{kelasId}', [SubjectController::class, 'getSubjectsByClass'])
-        ->name('mata_pelajaran.by_kelas');
-    
-    Route::get('/mata-pelajaran/progress/{kelasId}', [SubjectController::class, 'getSubjectsProgress'])
+    Route::get('/kelas-progress/{id}', [DashboardController::class, 'getKelasProgress'])
+        ->name('kelas.progress');
+    Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgress'])
         ->name('mata_pelajaran.progress');
 
     Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');

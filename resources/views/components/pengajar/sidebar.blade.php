@@ -58,29 +58,45 @@
                     </div>
                     <span class="ml-3">Data Pembelajaran</span>
                     
-                    <!-- Warning Indicator -->
+                    <!-- Warning Indicator with Modified Logic -->
                     @php
                     $hasLowScores = false;
                     $countLowScores = 0;
                     $kkmValue = 70; // Default KKM value
                     
+                    // Get KKM notification setting using the Setting model
+                    $completeScoresOnly = \App\Models\Setting::getBool('kkm_notification_complete_scores_only', false);
+                    
                     // Cek apakah ada guru yang login
                     if (Auth::guard('guru')->check()) {
                         $guru = Auth::guard('guru')->user();
                         
-                        // Cari KKM untuk mata pelajaran yang diajar guru ini
-                        $tahunAjaranId = session('tahun_ajaran_id');
-                        $nilaiDibawahKKM = DB::table('nilais')
+                        // Base query
+                        $query = DB::table('nilais')
                             ->join('mata_pelajarans', 'nilais.mata_pelajaran_id', '=', 'mata_pelajarans.id')
                             ->join('kkms', 'mata_pelajarans.id', '=', 'kkms.mata_pelajaran_id')
                             ->where('mata_pelajarans.guru_id', $guru->id)
-                            ->where('nilais.nilai_akhir_rapor', '<', DB::raw('kkms.nilai'))
-                            ->where(function($query) use ($tahunAjaranId) {
-                                $query->where('nilais.tahun_ajaran_id', $tahunAjaranId)
+                            ->where('nilais.nilai_akhir_rapor', '<', DB::raw('kkms.nilai'));
+                            
+                        // Add tahun ajaran filter
+                        $tahunAjaranId = session('tahun_ajaran_id');
+                        if ($tahunAjaranId) {
+                            $query->where(function($q) use ($tahunAjaranId) {
+                                $q->where('nilais.tahun_ajaran_id', $tahunAjaranId)
                                     ->where('mata_pelajarans.tahun_ajaran_id', $tahunAjaranId)
                                     ->where('kkms.tahun_ajaran_id', $tahunAjaranId);
-                            })
-                            ->count();
+                            });
+                        }
+                        
+                        // If we require complete scores, add checks for all score components
+                        if ($completeScoresOnly) {
+                            $query->whereNotNull('nilais.nilai_tp')
+                                ->whereNotNull('nilais.nilai_lm')
+                                ->whereNotNull('nilais.nilai_tes')
+                                ->whereNotNull('nilais.nilai_non_tes');
+                        }
+                        
+                        $nilaiDibawahKKM = $query->count();
                             
                         if ($nilaiDibawahKKM > 0) {
                             $hasLowScores = true;
@@ -100,7 +116,7 @@
                     </div>
                     @endif
                 </a>
-            </li>
+                </li>
 
             <!-- Data Mata Pelajaran -->
             <li>

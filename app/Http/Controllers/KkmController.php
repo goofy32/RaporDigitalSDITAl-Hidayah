@@ -7,6 +7,7 @@ use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class KkmController extends Controller
 {
@@ -162,6 +163,96 @@ class KkmController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghapus KKM: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get KKM notification settings
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getNotificationSettings()
+    {
+        try {
+            // Retrieve setting from database
+            $completeScoresOnly = DB::table('settings')
+                ->where('key', 'kkm_notification_complete_scores_only')
+                ->first();
+            
+            $settings = [
+                'completeScoresOnly' => $completeScoresOnly ? (bool)$completeScoresOnly->value : false
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'settings' => $settings
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching KKM notification settings: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Save KKM notification settings
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function saveNotificationSettings(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'completeScoresOnly' => 'required|boolean',
+            ]);
+            
+            // Using database to store settings
+            DB::table('settings')->updateOrInsert(
+                ['key' => 'kkm_notification_complete_scores_only'],
+                [
+                    'value' => $validated['completeScoresOnly'] ? 1 : 0,
+                    'updated_at' => now()
+                ]
+            );
+            
+            // Log the change for audit
+            $user = auth()->user();
+            Log::info('KKM notification settings updated', [
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'settings' => $validated,
+                'timestamp' => now()->toDateTimeString()
+            ]);
+            
+            // Add to AuditLog if model is available
+            if (class_exists('App\Models\AuditLog')) {
+                \App\Models\AuditLog::create([
+                    'user_type' => get_class($user),
+                    'user_id' => $user->id,
+                    'action' => 'update',
+                    'model_type' => 'Settings',
+                    'model_id' => 0, // No specific model ID for settings
+                    'description' => 'Perubahan pengaturan notifikasi KKM',
+                    'old_values' => null, // We're not tracking old values here
+                    'new_values' => $validated,
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent()
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengaturan notifikasi KKM berhasil disimpan'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error saving KKM notification settings: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ], 500);
         }
     }

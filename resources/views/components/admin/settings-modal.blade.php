@@ -66,6 +66,32 @@
                             </div>
                         </div>
                     </div>
+                    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 class="text-lg font-medium text-green-800 mb-2">Pengaturan Notifikasi KKM</h4>
+                        <div class="mb-4">
+                            <div class="flex items-center">
+                                <input 
+                                    type="checkbox" 
+                                    id="notification_complete_scores_only" 
+                                    x-model="kkmNotificationSettings.completeScoresOnly" 
+                                    class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
+                                >
+                                <label for="notification_complete_scores_only" class="ml-2 text-sm font-medium text-gray-900">
+                                    Hanya tampilkan notifikasi KKM rendah untuk nilai yang sudah lengkap
+                                </label>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-600">
+                                Jika diaktifkan, notifikasi nilai dibawah KKM hanya akan muncul ketika semua komponen nilai (TP, LM, Tes, Non-Tes) sudah diisi lengkap.
+                            </p>
+                        </div>
+                        <button 
+                            @click="saveKkmNotificationSettings" 
+                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                            Simpan Pengaturan Notifikasi
+                        </button>
+                    </div>
+
                     
                     <!-- Pengaturan KKM Massal -->
                     <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -300,11 +326,16 @@ document.addEventListener('alpine:init', () => {
             bobot_lm: 0.25,
             bobot_as: 0.50
         },
+
+        kkmNotificationSettings: {
+            completeScoresOnly: false
+        },
         
         init() {
             this.fetchKelasData();
             this.fetchKkmList();
             this.fetchBobotData();
+            this.initKkmNotificationSettings(); // Add this line
         },
         
         // New method to filter KKM list based on selected mata pelajaran
@@ -346,6 +377,56 @@ document.addEventListener('alpine:init', () => {
             };
         },
         
+        async initKkmNotificationSettings() {
+            try {
+                const response = await fetch('/admin/kkm/notification-settings');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    this.kkmNotificationSettings = data.settings;
+                }
+            } catch (error) {
+                console.error('Error fetching KKM notification settings:', error);
+            }
+        },
+
+        // Add this new method for saving the notification settings
+        async saveKkmNotificationSettings() {
+            try {
+                // Show loading indicator
+                Swal.fire({
+                    title: 'Menyimpan pengaturan...',
+                    text: 'Mohon tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                const response = await fetch('/admin/kkm/notification-settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(this.kkmNotificationSettings)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.showAlert('success', 'Pengaturan notifikasi KKM berhasil disimpan');
+                } else {
+                    this.showAlert('error', data.message || 'Gagal menyimpan pengaturan notifikasi');
+                }
+            } catch (error) {
+                console.error('Error saving KKM notification settings:', error);
+                this.showAlert('error', 'Terjadi kesalahan saat menyimpan pengaturan notifikasi');
+            }
+        },
+
         async fetchKelasData() {
             try {
                 const response = await fetch('/admin/kelas/data');

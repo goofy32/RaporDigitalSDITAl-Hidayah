@@ -23,7 +23,10 @@
         $totalMataPelajaran = 0;
         $mapelDenganNilaiRendah = [];
         $siswaDibawahKKM = [];
-        
+
+        // Get KKM notification settings using the Setting model
+        $completeScoresOnly = \App\Models\Setting::getBool('kkm_notification_complete_scores_only', false);
+
         foreach($kelasData as $kelas) {
             foreach($kelas->mataPelajarans as $mapel) {
                 $totalMataPelajaran++;
@@ -35,11 +38,20 @@
                 
                 $kkmValue = $kkm ? $kkm->nilai : 70; // Default ke 70 jika tidak ada
                 
-                // Cek apakah ada siswa dengan nilai di bawah KKM
-                $lowScores = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
+                // Build query for students with scores below KKM
+                $query = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
                     ->whereNotNull('nilai_akhir_rapor')
-                    ->where('nilai_akhir_rapor', '<', $kkmValue)
-                    ->count();
+                    ->where('nilai_akhir_rapor', '<', $kkmValue);
+                    
+                // If we require complete scores, add conditions for all components
+                if ($completeScoresOnly) {
+                    $query->whereNotNull('nilai_tp')
+                        ->whereNotNull('nilai_lm')
+                        ->whereNotNull('nilai_tes')
+                        ->whereNotNull('nilai_non_tes');
+                }
+                
+                $lowScores = $query->count();
                     
                 if ($lowScores > 0) {
                     $mapelDenganNilaiRendah[] = [
@@ -49,12 +61,20 @@
                         'jumlah_siswa' => $lowScores
                     ];
                     
-                    // Ambil data siswa yang nilainya di bawah KKM
-                    $siswaLow = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
+                    // Get students with low scores
+                    $siswaLowQuery = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
                         ->whereNotNull('nilai_akhir_rapor')
-                        ->where('nilai_akhir_rapor', '<', $kkmValue)
-                        ->with('siswa')
-                        ->get();
+                        ->where('nilai_akhir_rapor', '<', $kkmValue);
+                        
+                    // If requiring complete scores, add the same conditions
+                    if ($completeScoresOnly) {
+                        $siswaLowQuery->whereNotNull('nilai_tp')
+                            ->whereNotNull('nilai_lm')
+                            ->whereNotNull('nilai_tes')
+                            ->whereNotNull('nilai_non_tes');
+                    }
+                    
+                    $siswaLow = $siswaLowQuery->with('siswa')->get();
                         
                     foreach($siswaLow as $nilai) {
                         if (!isset($siswaDibawahKKM[$nilai->siswa_id])) {
@@ -67,13 +87,17 @@
                         $siswaDibawahKKM[$nilai->siswa_id]['mapel'][] = [
                             'nama' => $mapel->nama_pelajaran,
                             'nilai' => $nilai->nilai_akhir_rapor,
-                            'kkm' => $kkmValue
+                            'kkm' => $kkmValue,
+                            'complete' => $nilai->nilai_tp !== null && 
+                                        $nilai->nilai_lm !== null && 
+                                        $nilai->nilai_tes !== null && 
+                                        $nilai->nilai_non_tes !== null
                         ];
                     }
                 }
             }
         }
-        
+
         $totalSiswaDibawahKKM = count($siswaDibawahKKM);
         $totalMapelBermasalah = count($mapelDenganNilaiRendah);
         @endphp

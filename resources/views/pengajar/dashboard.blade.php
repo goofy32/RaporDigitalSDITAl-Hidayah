@@ -52,20 +52,24 @@
                 </div>
             </div>
 
-            <!-- Information Items -->
             <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
                 <div class="h-[150px] overflow-y-auto">
-                    <div class="relative pl-6 border-l-2 border-gray-200 p-4">
+                    <div class="relative pl-14">
+                        <!-- Garis vertikal di tengah icon -->
+                        <div class="absolute left-5 top-0 bottom-0 w-[2px] bg-gray-200"></div>
+                        
+                        <!-- Daftar notifikasi -->
                         <template x-for="item in $store.notification.items" :key="item.id">
-                            <div class="mb-4 relative h-[60px]">
-                                <div class="absolute -left-8 w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <svg class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="mb-4 relative min-h-[80px]">
+                                <!-- Ikon amplop di tengah garis -->
+                                <div class="absolute -left-12 top-3 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center z-10">
+                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                     </svg>
                                 </div>
-                                <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
-                                    class="bg-white rounded-lg border shadow-sm p-3"
-                                    :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
+                                
+                                <!-- Konten notifikasi -->
+                                <div class="bg-white rounded-lg border shadow-sm p-3">
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <h3 class="text-sm font-medium" x-text="item.title"></h3>
@@ -76,6 +80,8 @@
                                 </div>
                             </div>
                         </template>
+                        
+                        <!-- Tampilan saat tidak ada notifikasi -->
                         <template x-if="$store.notification.items.length === 0">
                             <div class="flex items-center justify-center h-[150px]">
                                 <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
@@ -90,14 +96,18 @@
 
     <!-- Dropdown and Charts Section -->
     <div class="mt-8">
-        <label for="kelas" class="block text-sm font-medium text-gray-700">Pilih Kelas</label>
-        <select id="kelas" 
-            x-model="selectedKelas" 
-            @change="fetchKelasProgress()"
+        <label for="subject" class="block text-sm font-medium text-gray-700">Pilih Mata Pelajaran</label>
+        <select id="subject" 
+            x-model="selectedSubject" 
+            @change="fetchSubjectProgress()"
             class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
-            <option value="">Pilih kelas...</option>
+            <option value="">Pilih mata pelajaran...</option>
             @foreach($kelas as $k)
-                <option value="{{ $k->id }}">{{ $k->nama_kelas }}</option>
+                <optgroup label="Kelas {{ $k->nomor_kelas }} {{ $k->nama_kelas }}">
+                    @foreach($k->mataPelajarans->where('guru_id', auth()->guard('guru')->id()) as $mapel)
+                        <option value="{{ $mapel->id }}">{{ $mapel->nama_pelajaran }}</option>
+                    @endforeach
+                </optgroup>
             @endforeach
         </select>
 
@@ -112,9 +122,9 @@
                 </div>
             </div>
             
-            <!-- Chart Per Kelas -->
+            <!-- Chart Per Mata Pelajaran -->
             <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Per Kelas</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Per Mata Pelajaran</h3>
                 <div class="flex flex-col items-center">
                     <div class="w-64 h-64 relative">
                         <canvas id="classProgressChart"></canvas>
@@ -159,15 +169,15 @@ function initCharts() {
     // Overall Progress Chart
     const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
     if (overallCtx) {
+        // Get a safe progress value (0-100)
+        const safeProgress = Math.min(100, Math.max(0, {{ $overallProgress ?? 0 }}));
+        
         overallChart = new Chart(overallCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Selesai', 'Belum'],
                 datasets: [{
-                    data: [
-                        Math.min(100, Math.max(0, {{ $overallProgress }})), 
-                        Math.min(100, Math.max(0, 100 - {{ $overallProgress }}))
-                    ],
+                    data: [safeProgress, 100 - safeProgress],
                     backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
                     borderWidth: 0
                 }]
@@ -188,7 +198,7 @@ function initCharts() {
                     ctx.font = fontSize + 'em sans-serif';
                     ctx.textBaseline = 'middle';
                     
-                    const text = Math.round({{ $overallProgress }}) + '%';
+                    const text = Math.round(safeProgress) + '%';
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
 
@@ -200,7 +210,7 @@ function initCharts() {
         });
     }
 
-    // Class Progress Chart
+    // Class Progress Chart (Initially empty)
     const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
     if (classCtx) {
         classChart = new Chart(classCtx, {
@@ -250,10 +260,10 @@ function updateClassChart(progress) {
     }
 }
 
-function fetchKelasProgress() {
-    const selectedKelas = document.getElementById('kelas').value;
-    if (selectedKelas) {
-        fetch(`/pengajar/kelas-progress/${selectedKelas}`)
+function fetchSubjectProgress() {
+    const selectedSubject = document.getElementById('subject').value;
+    if (selectedSubject) {
+        fetch(`/pengajar/mata-pelajaran-progress/${selectedSubject}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -265,7 +275,7 @@ function fetchKelasProgress() {
                 updateClassChart(data.progress);
             })
             .catch(error => {
-                console.error('Error fetching kelas progress:', error);
+                console.error('Error fetching subject progress:', error);
                 updateClassChart(0);
             });
     } else {
@@ -273,26 +283,48 @@ function fetchKelasProgress() {
     }
 }
 
+
 // Event handlers untuk initialization
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboard', () => ({
-        selectedKelas: '',
+        selectedSubject: '',
         mapelProgress: [],
         
         init() {
             setTimeout(() => {
                 this.initCharts();
-                this.fetchKelasProgress();
             }, 100);
 
-            this.$watch('selectedKelas', value => {
+            this.$watch('selectedSubject', value => {
                 if (value) {
-                    fetchKelasProgress();
+                    this.fetchSubjectProgress();
                 }
             });
+        },
+        
+        fetchSubjectProgress() {
+            if (!this.selectedSubject) return;
+            
+            fetch(`/pengajar/score/mata-pelajaran-progress/${this.selectedSubject}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Ensure progress is between 0 and 100
+                    const progress = Math.min(100, Math.max(0, data.progress || 0));
+                    updateClassChart(progress);
+                })
+                .catch(error => {
+                    console.error('Error fetching subject progress:', error);
+                    updateClassChart(0);
+                });
         }
     }));
 });
+
 
 // Function untuk mengecek apakah di halaman dashboard
 function isDashboardPage() {
@@ -309,15 +341,16 @@ function handleDashboardInit() {
         } else {
             destroyCharts();
             initCharts();
-            fetchKelasProgress();
         }
     }
 }
 
 // Event Listeners untuk navigasi dan reload
-document.addEventListener('DOMContentLoaded', () => {
-    handleDashboardInit();
-});
+
+
+document.addEventListener('DOMContentLoaded', handleDashboardInit);
+document.addEventListener('turbo:load', handleDashboardInit);
+document.addEventListener('turbo:render', handleDashboardInit);
 
 document.addEventListener('turbo:load', () => {
     handleDashboardInit();
@@ -335,8 +368,8 @@ document.addEventListener('turbo:visit', () => {
 
 // Event listener untuk dropdown kelas
 document.addEventListener('change', function(event) {
-    if (event.target && event.target.id === 'kelas') {
-        fetchKelasProgress();
+    if (event.target && event.target.id === 'subject') {
+        fetchSubjectProgress();
     }
 });
 

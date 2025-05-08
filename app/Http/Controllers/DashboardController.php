@@ -148,8 +148,42 @@ class DashboardController extends Controller
             })->get();
             
             // Hitung progress keseluruhan
-            $overallProgress = $this->calculateOverallProgress($guru->id, $tahunAjaranId);
-            
+            $totalStudentSubjects = 0;  // Total siswa * mata pelajaran
+            $completedStudentSubjects = 0;  // Total nilai yang telah diinput
+                        
+            // Get all mata pelajaran taught by this teacher
+            $mataPelajarans = MataPelajaran::where('guru_id', $guru->id)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->get();
+
+            foreach ($mataPelajarans as $mataPelajaran) {
+            // Count students in this class
+            $studentsInClass = Siswa::where('kelas_id', $mataPelajaran->kelas_id)->count();
+
+            // Total yang harus dinilai: jumlah siswa di kelas ini
+            $totalStudentSubjects += $studentsInClass;
+
+            // Count students with completed scores
+            $completedCount = Nilai::where('mata_pelajaran_id', $mataPelajaran->id)
+                ->whereNotNull('nilai_akhir_rapor')
+                ->count();
+                
+            $completedStudentSubjects += $completedCount;
+            }
+
+            // Cek apakah totalStudentSubjects > 0 untuk menghindari division by zero
+            $overallProgress = ($totalStudentSubjects > 0) 
+            ? min(100, ($completedStudentSubjects / $totalStudentSubjects) * 100) 
+            : 0;
+
+            // Log untuk debug
+            \Log::info("Overall progress calculation:", [
+            'total_student_subjects' => $totalStudentSubjects,
+            'completed_student_subjects' => $completedStudentSubjects,
+            'progress_percentage' => $overallProgress
+            ]);
             // Ambil notifikasi dengan proper error handling
             try {
                 $notifications = Notification::where(function($query) use ($guru) {
@@ -379,7 +413,53 @@ class DashboardController extends Controller
             return response()->json(['error' => 'Terjadi kesalahan'], 500);
         }
     }
+    
+    /**
+     * Get progress for a specific mata pelajaran
+     * 
+     * @param int $mataPelajaranId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMataPelajaranProgress($mataPelajaranId)
+    {
+        try {
+            $guru = Auth::guard('guru')->user();
+            if (!$guru) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
 
+            $mataPelajaran = MataPelajaran::findOrFail($mataPelajaranId);
+            
+            // Check if guru teaches this subject
+            if ($mataPelajaran->guru_id !== $guru->id) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Get students in this class
+            $siswaCount = Siswa::where('kelas_id', $mataPelajaran->kelas_id)->count();
+            
+            if ($siswaCount === 0) {
+                return response()->json(['progress' => 0]);
+            }
+
+            // Count completed scores for this subject
+            $completedCount = Nilai::where('mata_pelajaran_id', $mataPelajaranId)
+                ->whereNotNull('nilai_akhir_rapor')
+                ->count();
+
+            // Calculate progress percentage (handle division by zero)
+            $progress = $siswaCount > 0 ? ($completedCount / $siswaCount) * 100 : 0;
+
+            return response()->json([
+                'progress' => round($progress, 2),
+                'completed' => $completedCount,
+                'total' => $siswaCount
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error calculating mata pelajaran progress: ' . $e->getMessage());
+            return response()->json(['error' => 'Terjadi kesalahan'], 500);
+        }
+    }
     // Method untuk mengambil progress per mata pelajaran untuk kelas wali
     public function getKelasProgressWaliKelas() 
     {
