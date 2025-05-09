@@ -54,38 +54,42 @@
             </div>
 
             <!-- Information Items -->
-            <div class="rounded-lg border border-gray-200 shadow-sm">
-                <div class="h-[150px] overflow-y-auto">
-                  <div class="relative pl-8 border-l-2 border-gray-200"> <!-- Ubah pl-6 menjadi pl-8 -->
+            <div class="h-[150px] overflow-y-auto">
+                <div class="relative pl-14">
+                    <!-- Garis vertikal di tengah icon -->
+                    <div class="absolute left-5 top-0 bottom-0 w-[2px] bg-gray-200"></div>
+                    
+                    <!-- Daftar notifikasi -->
                     <template x-for="item in $store.notification.items" :key="item.id">
-                        <div class="mb-4 relative h-[80px]">
-                            <!-- Ubah posisi dan ukuran bulatan -->
-                            <div class="absolute -left-[20px] top-3 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center"> <!-- Ubah ukuran dan posisi -->
-                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <!-- Sesuaikan ukuran ikon -->
+                        <div class="mb-4 relative min-h-[80px]">
+                            <!-- Ikon amplop di tengah garis -->
+                            <div class="absolute -left-12 top-3 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center z-10">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                 </svg>
                             </div>
-                            <!-- Content tetap sama -->
-                            <div class="bg-white rounded-lg border shadow-sm p-3">
-                                <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
-                                    class="bg-white rounded-lg border shadow-sm p-3"
-                                    :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <h3 class="text-sm font-medium" x-text="item.title"></h3>
-                                            <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
-                                        </div>
-                                        <span class="text-xs text-gray-500" x-text="item.created_at"></span>
+                            
+                            <!-- Konten notifikasi -->
+                            <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
+                                class="bg-white rounded-lg shadow-sm p-3"
+                                :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h3 class="text-sm font-medium" x-text="item.title"></h3>
+                                        <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
                                     </div>
+                                    <span class="text-xs text-gray-500" x-text="item.created_at"></span>
                                 </div>
                             </div>
-                        </template>
-                        <template x-if="$store.notification.items.length === 0">
-                            <div class="flex items-center justify-center h-[150px]">
-                                <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
-                            </div>
-                        </template>
-                    </div>
+                        </div>
+                    </template>
+                    
+                    <!-- Tampilan saat tidak ada notifikasi -->
+                    <template x-if="$store.notification.items.length === 0">
+                        <div class="flex items-center justify-center h-[150px]">
+                            <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -102,29 +106,6 @@
                 @else
                     <span class="text-yellow-600">Anda belum ditugaskan sebagai wali kelas</span>
                 @endif
-            </div>
-        </div>
-
-        <!-- Charts Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Chart Keseluruhan -->
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
-                <div class="flex flex-col items-center">
-                    <div class="w-64 h-64 relative">
-                        <canvas id="overallPieChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chart Per Kelas -->
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Per Mata Pelajaran</h3>
-                <div class="flex flex-col items-center">
-                    <div class="w-64 h-64 relative">
-                        <canvas id="classProgressChart"></canvas>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

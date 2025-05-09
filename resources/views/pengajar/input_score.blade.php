@@ -590,8 +590,10 @@ window.saveData = async function() {
                 row.dataset.scoresChanged = 'false';
             });
             
-            // Simpan data untuk ditampilkan nanti jika user klik detail
-            const detailData = data;
+            // Get the preview URL and score index URL
+            const currentUrl = window.location.href;
+            const previewUrl = currentUrl.replace('/input', '/preview');
+            const scoreIndexUrl = '/pengajar/score'; // URL to the score.blade.php
             
             const result = await Swal.fire({
                 icon: 'success',
@@ -600,52 +602,17 @@ window.saveData = async function() {
                 confirmButtonText: 'Lihat Preview',
                 confirmButtonColor: '#10b981', // Green color
                 showCancelButton: true,
-                cancelButtonText: 'Lihat Detail',
+                cancelButtonText: 'Ok',  // Changed "Lihat Detail" to "Ok"
                 cancelButtonColor: '#6b7280', // Gray color
                 reverseButtons: true
             });
             
             if (result.isConfirmed) {
                 // User memilih "Lihat Preview"
-                const previewUrl = document.querySelector('a[href*="preview_score"]').href;
                 window.location.href = previewUrl;
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                // User memilih "Lihat Detail"
-                let detailMessage = '<ul class="text-left max-h-60 overflow-y-auto">';
-                detailData.details.forEach(student => {
-                    detailMessage += `<li class="mb-2"><strong>${student.nama}</strong>:<br>`;
-                    student.nilai.forEach(nilai => {
-                        detailMessage += `- ${nilai.tipe}: ${nilai.nilai}<br>`;
-                    });
-                    detailMessage += '</li>';
-                });
-                detailMessage += '</ul>';
-
-                if (detailData.warnings && Object.keys(detailData.warnings).length > 0) {
-                    detailMessage += '<div class="mt-4 p-3 bg-yellow-100 text-yellow-700 rounded">';
-                    detailMessage += '<strong>Peringatan:</strong><br>';
-                    Object.entries(detailData.warnings).forEach(([siswa, warnings]) => {
-                        detailMessage += `<strong>${siswa}:</strong><br>`;
-                        warnings.forEach(warning => {
-                            detailMessage += `- ${warning}<br>`;
-                        });
-                    });
-                    detailMessage += '</div>';
-                }
-                
-                const detailResult = await Swal.fire({
-                    icon: 'info',
-                    title: 'Detail Nilai',
-                    html: detailMessage,
-                    width: '600px',
-                    confirmButtonText: 'Lihat Preview',
-                    confirmButtonColor: '#10b981' // Green color
-                });
-                
-                if (detailResult.isConfirmed) {
-                    const previewUrl = document.querySelector('a[href*="preview_score"]').href;
-                    window.location.href = previewUrl;
-                }
+                // User memilih "Ok" - redirect to score index page
+                window.location.href = scoreIndexUrl;
             }
         } else {
             throw new Error(data.message || 'Terjadi kesalahan saat menyimpan nilai');

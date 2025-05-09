@@ -6,6 +6,11 @@
 @push('styles')
 <style>
     [x-cloak] { display: none !important; }
+    .action-icon {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+    }
 </style>
 @endpush
 
@@ -25,7 +30,7 @@
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                     <button @click="setActiveTab('UTS')"
-                            :class="{'border-blue-500 text-blue-600': activeTab === 'UTS',
+                            :class="{'border-green-500 text-green-600': activeTab === 'UTS',
                                     'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UTS',
                                     'cursor-not-allowed opacity-70': !templateUTSActive}"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
@@ -34,7 +39,7 @@
                         <span x-show="!templateUTSActive" x-cloak class="ml-1 text-xs text-red-500">(Nonaktif)</span>
                     </button>
                     <button @click="setActiveTab('UAS')"
-                            :class="{'border-blue-500 text-blue-600': activeTab === 'UAS',
+                            :class="{'border-green-500 text-green-600': activeTab === 'UAS',
                                     'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'UAS',
                                     'cursor-not-allowed opacity-70': !templateUASActive}"
                             class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
@@ -72,7 +77,7 @@
             <input type="search" 
                    x-model="searchQuery"
                    @input="handleSearch($event)"
-                   class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500" 
+                   class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-green-500 focus:border-green-500" 
                    placeholder="Cari siswa...">
         </div>
     </div>
@@ -87,7 +92,7 @@
                             <input id="checkbox-all" 
                                   type="checkbox"
                                   @change="handleCheckAll($event)"
-                                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                  class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                         </div>
                     </th>
                     <th class="px-6 py-3">No</th>
@@ -106,7 +111,7 @@
                             <input type="checkbox" 
                                   value="{{ $s->id }}"
                                   @change="handleCheckSingle($event)"
-                                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                  class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                         </div>
                     </td>
                     
@@ -177,18 +182,15 @@
                     <!-- Aksi -->
                     <td class="px-6 py-4">
                         <div class="flex items-center space-x-3">
-                        <button @click="handlePreview({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
+                            <button @click="handlePreview({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
-                                class="text-blue-600 hover:text-blue-900 disabled:opacity-50">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
+                                class="text-green-600 hover:text-green-900 disabled:opacity-50">
+                                <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="action-icon">
                             </button>
                             
-                            <button @click="handleGenerate({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
+                            <button @click="handleGenerate({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }}, '{{ $s->nama }}')"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
-                                class="text-blue-600 hover:text-blue-900 disabled:opacity-50">
+                                class="text-green-600 hover:text-green-900 disabled:opacity-50">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
@@ -251,7 +253,7 @@
         <h3 class="mt-2 text-sm font-medium text-gray-900">Tidak Ada Template Aktif</h3>
         <p class="mt-1 text-sm text-gray-500">Admin belum mengaktifkan template rapor untuk kelas ini.</p>
         <div class="mt-6">
-            <button type="button" onclick="refreshPage()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button type="button" onclick="refreshPage()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                 <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -267,7 +269,7 @@ document.addEventListener('alpine:init', function() {
     Alpine.data('raporManager', () => ({
         activeTab: 'UTS',
         loading: false,
-        initialized: false, // tambahkan ini
+        initialized: false,
         selectedSiswa: [],
         searchQuery: '',
         showPreview: false,
@@ -430,7 +432,7 @@ document.addEventListener('alpine:init', function() {
             }
         },
 
-        async handleGenerate(siswaId, nilaiCount, hasAbsensi) {
+        async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
             if (!this.validateData(nilaiCount, hasAbsensi)) return;
             
             try {
@@ -491,7 +493,12 @@ document.addEventListener('alpine:init', function() {
                 } else {
                     // Jika respons adalah file blob, proses sebagai file download
                     const blob = await responseClone.blob();
-                    await this.downloadFile(blob, `rapor_${this.activeTab.toLowerCase()}_${siswaId}.docx`);
+                    
+                    // Buat nama file yang lebih deskriptif dengan nama siswa
+                    const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+                    const fileName = `rapor_${this.activeTab.toLowerCase()}_${cleanName}.docx`;
+                    
+                    await this.downloadFile(blob, fileName);
                     
                     // Tampilkan notifikasi sukses
                     Swal.fire({
@@ -554,7 +561,7 @@ document.addEventListener('alpine:init', function() {
             // Jika ada siswa yang datanya belum lengkap
             if (invalidSiswa.length > 0) {
                 // Gunakan SweetAlert untuk konfirmasi yang lebih baik
-                const result = await Swal.fire({
+const result = await Swal.fire({
                     icon: 'warning',
                     title: 'Data Tidak Lengkap',
                     html: `
@@ -596,7 +603,7 @@ document.addEventListener('alpine:init', function() {
                     body: JSON.stringify({
                         siswa_ids: this.selectedSiswa,
                         type: this.activeTab,
-                        tahun_ajaran_id: this.tahunAjaranId // Pastikan tahun ajaran disertakan
+                        tahun_ajaran_id: this.tahunAjaranId
                     })
                 });
 
@@ -616,6 +623,7 @@ document.addEventListener('alpine:init', function() {
                 }
 
                 const blob = await response.blob();
+                // Untuk batch, tetap menggunakan format nama file yang umum
                 await this.downloadFile(blob, `rapor_batch_${this.activeTab.toLowerCase()}_${new Date().getTime()}.zip`);
                 
                 // Notifikasi sukses
