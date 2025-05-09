@@ -115,12 +115,8 @@
                             <td class="border border-gray-300 p-2">{{ $profil->kepala_sekolah ?? '-' }}</td>
                         </tr>
                         <tr>
-                            <td class="border border-gray-300 p-2 font-semibold">NIP Kepala Sekolah</td>
+                            <td class="border border-gray-300 p-2 font-semibold">NUPTK Kepala Sekolah</td>
                             <td class="border border-gray-300 p-2">{{ $profil->nip_kepala_sekolah ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="border border-gray-300 p-2 font-semibold">NIP Wali Kelas (Default)</td>
-                            <td class="border border-gray-300 p-2">{{ $profil->nip_wali_kelas ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="border border-gray-300 p-2 font-semibold">Guru Kelas</td>

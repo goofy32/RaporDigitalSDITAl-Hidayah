@@ -96,57 +96,61 @@
                                     @endif
                                 </td>
                             </tr>
-                            <tr class="border-b">
+                           <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
                                 <td class="px-4 py-2">
                                     @php
-                                        // Get regular teaching classes
-                                        $kelasAjar = $teacher->kelas()->wherePivot('role', 'pengajar')->get();
-                                        
-                                        // Get class where teacher is a guardian (wali kelas)
-                                        $kelasWali = $teacher->kelas()
-                                            ->wherePivot('is_wali_kelas', true)
-                                            ->wherePivot('role', 'wali_kelas')
-                                            ->first();
+                                        // Create a collection to track unique classes
+                                        $uniqueClasses = collect();
+
+                                        // Process all classes to ensure uniqueness
+                                        foreach($teacher->kelas as $kelas) {
+                                            $classKey = $kelas->nomor_kelas . $kelas->nama_kelas;
+                                            $isWaliKelas = $kelas->pivot->is_wali_kelas && $kelas->pivot->role === 'wali_kelas';
                                             
-                                        // Create a collection of all classes
-                                        $allClasses = collect();
-                                        
-                                        // Add regular teaching classes
-                                        if($kelasAjar->count() > 0) {
-                                            $allClasses = $allClasses->merge($kelasAjar);
-                                        }
-                                        
-                                        // Add wali kelas if it exists
-                                        if($kelasWali) {
-                                            // Check if this class isn't already in the collection
-                                            if(!$allClasses->contains('id', $kelasWali->id)) {
-                                                $allClasses->push($kelasWali);
+                                            // Check if we've already processed this class
+                                            if (!$uniqueClasses->has($classKey)) {
+                                                $uniqueClasses->put($classKey, [
+                                                    'nomor' => $kelas->nomor_kelas,
+                                                    'nama' => $kelas->nama_kelas,
+                                                    'is_wali_kelas' => $isWaliKelas
+                                                ]);
+                                            } else {
+                                                // If this class is already in our collection and this instance is a wali kelas,
+                                                // update the existing entry to mark it as wali kelas
+                                                if ($isWaliKelas && !$uniqueClasses->get($classKey)['is_wali_kelas']) {
+                                                    $uniqueClasses->put($classKey, [
+                                                        'nomor' => $kelas->nomor_kelas,
+                                                        'nama' => $kelas->nama_kelas,
+                                                        'is_wali_kelas' => true
+                                                    ]);
+                                                }
                                             }
                                         }
-                                    @endphp
-                                    
-                                    @if($allClasses->count() > 0)
-                                        <ul class="list-disc list-inside">
-                                            @foreach($allClasses as $kelas)
-                                                <li>
-                                                    {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
-                                                    @if($kelasWali && $kelas->id == $kelasWali->id)
-                                                        <span class="text-green-600 ml-1">(Wali Kelas)</span>
-                                                    @endif
-                                                </li>
-                                            @endforeach
-                                        </ul>
-                                    @else
-                                        Belum ada kelas yang diampu
-                                    @endif
+                                        @endphp
+
+                                        @if($uniqueClasses->count() > 0)
+                                            <ul>
+                                                @foreach($uniqueClasses as $kelas)
+                                                    <li>
+                                                        {{ $kelas['nomor'] }} {{ $kelas['nama'] }}
+                                                        @if($kelas['is_wali_kelas'])
+                                                            <span class="text-green-600 ml-1">(Wali Kelas)</span>
+                                                        @endif
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <span>-</span>
+                                        @endif
                                 </td>
                             </tr>
+
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Wali Kelas</th>
                                 <td class="px-4 py-2">
-                                    @if($kelasWali)
-                                        {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
+                                    @if(isset($waliKelasInfo) && $waliKelasInfo)
+                                        {{ $waliKelasInfo['nomor_kelas'] }} {{ $waliKelasInfo['nama_kelas'] }}
                                     @else
                                         Bukan Wali Kelas
                                     @endif
@@ -163,7 +167,7 @@
                                         <span id="passwordText">••••••••</span>
                                         <button type="button"
                                                 onclick="togglePassword('{{ $teacher->id }}')"
-                                                class="text-blue-600 hover:text-blue-800 inline-flex items-center">
+                                                class="text-green-600 hover:text-green-800 inline-flex items-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
