@@ -117,6 +117,9 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
             ->name('notification-settings.save');
     });
 
+    Route::get('/tujuan-pembelajaran/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkDependencies'])
+    ->name('tujuan_pembelajaran.check_dependencies');
+    
     // Bobot Nilai Routes
     Route::prefix('bobot-nilai')->name('admin.bobot_nilai.')->group(function() {
         Route::get('/', [BobotNilaiController::class, 'index'])->name('index');

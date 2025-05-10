@@ -19,15 +19,15 @@
         </div>
         
         <!-- Informasi Alur Kerja -->
-        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
             <div class="flex">
                 <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm text-blue-800">
+                    <p class="text-sm text-green-800">
                         <strong>Petunjuk:</strong> Pilih lingkup materi, isi kode dan deskripsi TP, lalu klik tombol "Tambah ke Tabel" untuk menambahkan ke tabel. Klik "Simpan ke Database" untuk menyimpan semua data baru ke database.
                     </p>
                 </div>
@@ -268,17 +268,56 @@
     async function deleteExistingRow(index, id) {
         if (!id) return;
         
-        if (confirm('Apakah Anda yakin ingin menghapus data ini? Data akan langsung dihapus dari database.')) {
-            try {
-                const response = await fetch(`{{ url('/tujuan-pembelajaran') }}/${id}`, {
+        try {
+            // First, check if the TP has associated data
+            const checkResponse = await fetch(`{{ url('/admin/tujuan-pembelajaran') }}/${id}/check-dependencies`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
+            
+            if (!checkResponse.ok) {
+                throw new Error(`Error checking dependencies: Status ${checkResponse.status}`);
+            }
+            
+            const checkResult = await checkResponse.json();
+            
+            let confirmMessage = 'Apakah Anda yakin ingin menghapus tujuan pembelajaran ini?';
+            
+            // If there are associated assessments, add a warning
+            if (checkResult.hasDependents) {
+                confirmMessage = 'PERHATIAN: Tujuan pembelajaran ini memiliki data penilaian terkait. ' +
+                    'Menghapus tujuan pembelajaran akan menghapus SEMUA data penilaian yang terkait. ' +
+                    'Apakah Anda tetap ingin melanjutkan?';
+            }
+            
+            // Ask for confirmation
+            if (confirm(confirmMessage)) {
+                // Proceed with deletion
+                const deleteResponse = await fetch(`{{ route('tujuan_pembelajaran.destroy', '') }}/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
                     }
                 });
                 
-                const result = await response.json();
+                if (!deleteResponse.ok) {
+                    const responseText = await deleteResponse.text();
+                    console.error('Server response:', responseText);
+                    throw new Error(`Error deleting: Status ${deleteResponse.status}`);
+                }
+                
+                let result;
+                try {
+                    result = await deleteResponse.json();
+                } catch (e) {
+                    console.error('Error parsing JSON response:', e);
+                    throw new Error('Server returned invalid JSON response');
+                }
                 
                 if (result.success) {
                     existingData.splice(index, 1);
@@ -288,10 +327,10 @@
                 } else {
                     throw new Error(result.message || 'Gagal menghapus data');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Terjadi kesalahan saat menghapus data: ' + error.message);
             }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan saat menghapus data: ' + error.message);
         }
     }
 

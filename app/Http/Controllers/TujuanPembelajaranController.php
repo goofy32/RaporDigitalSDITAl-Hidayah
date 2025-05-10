@@ -101,26 +101,49 @@ class TujuanPembelajaranController extends Controller
         try {
             $tp = TujuanPembelajaran::findOrFail($id);
             
-            // Cek apakah tujuan pembelajaran ini sudah digunakan dalam nilai
-            $hasNilai = $tp->nilais()->exists();
+            // Start a transaction to ensure all related data is deleted properly
+            DB::beginTransaction();
             
-            if ($hasNilai) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tujuan pembelajaran ini sudah digunakan dalam penilaian dan tidak dapat dihapus.'
-                ], 400);
-            }
+            // Delete associated grades if they exist
+            $tp->nilais()->delete();
             
+            // Delete the TP itself
             $tp->delete();
+            
+            DB::commit();
             
             return response()->json([
                 'success' => true,
                 'message' => 'Tujuan pembelajaran berhasil dihapus!'
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Error deleting data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function checkDependencies($id)
+    {
+        try {
+            $tp = TujuanPembelajaran::findOrFail($id);
+            
+            // Check if there are associated grades
+            $hasDependents = $tp->nilais()->exists();
+            
+            return response()->json([
+                'success' => true,
+                'hasDependents' => $hasDependents
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking dependencies: ' . $e->getMessage(),
+                'hasDependents' => true // Assume there are dependents in case of error (safer)
             ], 500);
         }
     }
