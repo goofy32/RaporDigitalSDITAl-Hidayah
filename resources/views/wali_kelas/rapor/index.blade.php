@@ -459,15 +459,42 @@ document.addEventListener('alpine:init', function() {
                         
                         // Tampilkan pesan error yang spesifik
                         let errorMessage = error.message || 'Gagal generate rapor';
+                        let errorDetails = [];
                         
                         // Tambahkan instruksi berdasarkan error_type
                         if (error.error_type === 'template_missing' || error.error_type === 'template_invalid') {
-                            errorMessage += '. Hubungi admin untuk perbaiki template rapor.';
+                            errorDetails.push('Template rapor tidak ditemukan atau tidak valid');
+                            errorDetails.push('Hubungi admin untuk mengaktifkan template yang benar');
                         } else if (error.error_type === 'data_incomplete') {
-                            errorMessage += '. Pastikan semua data nilai dan kehadiran sudah dilengkapi.';
+                            // Cek detail data yang tidak lengkap
+                            if (error.message.includes('nilai')) {
+                                errorDetails.push('Data nilai belum lengkap atau tidak ada');
+                                errorDetails.push('Pastikan siswa memiliki nilai untuk semua mata pelajaran');
+                            }
+                            if (error.message.includes('kehadiran') || error.message.includes('absensi')) {
+                                errorDetails.push('Data kehadiran belum diinput');
+                                errorDetails.push('Silakan isi data absensi terlebih dahulu');
+                            }
                         }
                         
-                        throw new Error(errorMessage);
+                        // Tampilkan error yang lebih detail
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Generate Rapor',
+                            html: `
+                                <p>${errorMessage}</p>
+                                ${errorDetails.length > 0 ? 
+                                    `<div class="mt-3 text-left">
+                                        <p class="font-medium">Detail:</p>
+                                        <ul class="list-disc pl-5 mt-1">
+                                            ${errorDetails.map(detail => `<li class="text-sm">${detail}</li>`).join('')}
+                                        </ul>
+                                    </div>` : ''
+                                }
+                            `,
+                            confirmButtonText: 'Mengerti'
+                        });
+                        return;
                     } else {
                         throw new Error(`Gagal generate rapor (${response.status})`);
                     }
@@ -516,11 +543,12 @@ document.addEventListener('alpine:init', function() {
                     title: 'Gagal Generate Rapor',
                     html: `
                         <p>${error.message}</p>
-                        <p class="mt-2 text-sm text-red-600">Pastikan:</p>
+                        <p class="mt-2 text-sm font-medium">Detail masalah yang mungkin:</p>
                         <ul class="text-left mt-2 text-sm list-disc pl-5">
-                            <li>Data Nilai sudah lengkap untuk tahun ajaran yang dipilih</li>
-                            <li>Data Absensi sudah diinput</li>
-                            <li>Template rapor untuk tahun ajaran ini tersedia dan aktif</li>
+                            <li>Data Nilai siswa belum lengkap untuk ${this.activeTab}</li>
+                            <li>Data Absensi belum diinput untuk semester ${this.activeTab === 'UTS' ? '1 (Ganjil)' : '2 (Genap)'}</li>
+                            <li>Template rapor ${this.activeTab} tidak tersedia atau tidak aktif</li>
+                            <li>Template rapor mungkin diaktifkan tetapi tidak cocok dengan kelas siswa</li>
                         </ul>
                     `,
                     confirmButtonText: 'Mengerti'
@@ -561,7 +589,7 @@ document.addEventListener('alpine:init', function() {
             // Jika ada siswa yang datanya belum lengkap
             if (invalidSiswa.length > 0) {
                 // Gunakan SweetAlert untuk konfirmasi yang lebih baik
-const result = await Swal.fire({
+            const result = await Swal.fire({
                     icon: 'warning',
                     title: 'Data Tidak Lengkap',
                     html: `

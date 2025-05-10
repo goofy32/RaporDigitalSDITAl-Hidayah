@@ -629,21 +629,58 @@ class ReportController extends Controller
     {
         $type = $request->input('type', 'UTS');
         $action = $request->input('action', 'download');
-        $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id')); // Ambil dari request atau session
+        $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
         
         try {
+            // Log untuk debugging
+            \Log::info('Generate report request', [
+                'siswa_id' => $siswa->id,
+                'type' => $type,
+                'tahun_ajaran_id' => $tahunAjaranId
+            ]);
+            
             // Dapatkan template yang sesuai untuk kelas siswa dengan filter tahun ajaran
-            $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId); // Tambahkan parameter tahun ajaran
+            $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId);
             
             if (!$template) {
+                \Log::warning('No active template found', [
+                    'siswa_id' => $siswa->id,
+                    'kelas_id' => $siswa->kelas_id,
+                    'type' => $type,
+                    'tahun_ajaran_id' => $tahunAjaranId
+                ]);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak ada template aktif untuk jenis rapor ' . $type . ' pada kelas ini di tahun ajaran yang dipilih.'
+                    'message' => 'Tidak ada template aktif untuk jenis rapor ' . $type . ' pada kelas ini di tahun ajaran yang dipilih.',
+                    'error_type' => 'template_missing'
                 ], 404);
             }
             
+            // Log template yang ditemukan
+            \Log::info('Found template for report', [
+                'template_id' => $template->id,
+                'template_type' => $template->type,
+                'template_kelas_id' => $template->kelas_id,
+                'template_is_active' => $template->is_active
+            ]);
+            
+            // Pastikan template yang digunakan match dengan tipe yang diminta
+            if ($template->type !== $type) {
+                \Log::warning('Template type mismatch', [
+                    'requested_type' => $type,
+                    'template_type' => $template->type
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tipe template (' . $template->type . ') tidak sesuai dengan tipe yang diminta (' . $type . ')',
+                    'error_type' => 'template_invalid'
+                ], 400);
+            }
+            
             // Cek kelengkapan data
-            $hasData = $siswa->hasCompleteData($type, $tahunAjaranId); // Tambahkan parameter tahun ajaran
+            $hasData = $siswa->hasCompleteData($type, $tahunAjaranId);
             $bypassValidation = $request->input('bypass_validation', false);
             
             if (!$hasData && !$bypassValidation) {
@@ -655,7 +692,7 @@ class ReportController extends Controller
             }
             
             // Proses generate rapor
-            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId); // Sertakan tahun ajaran
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
             $result = $processor->generate($bypassValidation);
             
             if (!$result['success']) {
@@ -693,7 +730,6 @@ class ReportController extends Controller
                 'message' => $e->getMessage(),
                 'error_type' => $e->getErrorType()
             ], 422);
-            
         } catch (\Exception $e) {
             \Log::error('Error in generateReport: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
@@ -918,13 +954,70 @@ class ReportController extends Controller
                     'status' => 'inactive'
                 ]);
             }
-    
-            // Jika belum aktif, maka akan diaktifkan
-            // Nonaktifkan semua template dengan tipe yang sama
-            ReportTemplate::where('type', $template->type)
-                ->update(['is_active' => false]);
+
+            \Log::info('Activating template', [
+                'template_id' => $template->id,
+                'type' => $template->type,
+                'kelas_id' => $template->kelas_id
+            ]);
+
+            // Dapatkan semua kelas yang terkait dengan template ini
+            $targetKelasIds = [];
             
-            // Kemudian, aktifkan template yang dipilih
+            // Jika ini template untuk kelas tertentu (relasi lama)
+            if ($template->kelas_id) {
+                $targetKelasIds[] = $template->kelas_id;
+            }
+            
+            // Jika template memiliki relasi many-to-many ke kelas
+            if ($template->kelasList && $template->kelasList->count() > 0) {
+                $kelasListIds = $template->kelasList->pluck('id')->toArray();
+                $targetKelasIds = array_merge($targetKelasIds, $kelasListIds);
+            }
+            
+            \Log::info('Target kelas IDs', [
+                'ids' => $targetKelasIds,
+                'count' => count($targetKelasIds)
+            ]);
+
+            // Jika template ini untuk kelas spesifik
+            if (!empty($targetKelasIds)) {
+                // Cari template lain dengan tipe yang sama dan untuk kelas yang sama
+                $conflictingTemplates = ReportTemplate::where('type', $template->type)
+                    ->where('id', '!=', $template->id)
+                    ->where(function($query) use ($targetKelasIds) {
+                        // Template dengan kelas_id yang cocok
+                        $query->whereIn('kelas_id', $targetKelasIds);
+                        // Atau template dengan relasi many-to-many ke kelas yang sama
+                        $query->orWhereHas('kelasList', function($q) use ($targetKelasIds) {
+                            $q->whereIn('kelas_id', $targetKelasIds);
+                        });
+                    })
+                    ->where('is_active', true)
+                    ->get();
+                    
+                \Log::info('Found conflicting templates', [
+                    'count' => $conflictingTemplates->count(),
+                    'template_ids' => $conflictingTemplates->pluck('id')->toArray()
+                ]);
+                
+                // Nonaktifkan template yang konflik
+                foreach ($conflictingTemplates as $conflictingTemplate) {
+                    \Log::info('Deactivating conflicting template', [
+                        'template_id' => $conflictingTemplate->id
+                    ]);
+                    $conflictingTemplate->update(['is_active' => false]);
+                }
+            } else {
+                // Ini adalah template global, nonaktifkan semua template global dengan tipe yang sama
+                ReportTemplate::where('type', $template->type)
+                    ->whereNull('kelas_id')
+                    ->where('id', '!=', $template->id)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
+            }
+            
+            // Aktifkan template ini
             $template->update(['is_active' => true]);
             
             return response()->json([
@@ -1187,9 +1280,16 @@ class ReportController extends Controller
         }
     }
 
-    public function getTemplateForSiswa(Siswa $siswa, $type)
+    public function getTemplateForSiswa(Siswa $siswa, $type, $tahunAjaranId = null)
     {
-        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
+        
+        \Log::info('Looking for template', [
+            'siswa_id' => $siswa->id,
+            'siswa_kelas_id' => $siswa->kelas_id,
+            'type' => $type,
+            'tahun_ajaran_id' => $tahunAjaranId
+        ]);
         
         // First look for class-specific template using the many-to-many relationship
         $template = ReportTemplate::where('type', $type)
@@ -1202,60 +1302,51 @@ class ReportController extends Controller
             })
             ->first();
         
+        if ($template) {
+            \Log::info('Found template with many-to-many relation', [
+                'template_id' => $template->id,
+                'template_type' => $template->type
+            ]);
+            return $template;
+        }
+        
         // If not found, try the old relationship
-        if (!$template) {
-            $template = ReportTemplate::where('type', $type)
-                ->where('kelas_id', $siswa->kelas_id)
-                ->where('is_active', true)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->first();
+        $template = ReportTemplate::where('type', $type)
+            ->where('kelas_id', $siswa->kelas_id)
+            ->where('is_active', true)
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->first();
+        
+        if ($template) {
+            \Log::info('Found template with direct kelas relation', [
+                'template_id' => $template->id,
+                'template_type' => $template->type
+            ]);
+            return $template;
         }
 
         // If still not found, look for global template
-        if (!$template) {
-            $template = ReportTemplate::where('type', $type)
-                ->whereNull('kelas_id')
-                ->where('is_active', true)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->first();
-        }
-        
-        return $template;
-    }
-    
-    public static function getActiveTemplate($type, $kelasId)
-    {
-        // Cari template spesifik untuk kelas di tahun ajaran aktif
-        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
-        
-        // First try with the new many-to-many relationship
-        $query = ReportTemplate::where('type', $type)
+        $template = ReportTemplate::where('type', $type)
+            ->whereNull('kelas_id')
             ->where('is_active', true)
-            ->whereHas('kelasList', function($q) use ($kelasId) {
-                $q->where('kelas_id', $kelasId);
-            });
+            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })
+            ->first();
         
-        if ($tahunAjaranAktif) {
-            $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
-        }
-        
-        $template = $query->first();
-        
-        // If not found, try with old relationship for backward compatibility
-        if (!$template) {
-            $query = ReportTemplate::where('type', $type)
-                ->where('kelas_id', $kelasId)
-                ->where('is_active', true);
-            
-            if ($tahunAjaranAktif) {
-                $query->where('tahun_ajaran_id', $tahunAjaranAktif->id);
-            }
-            
-            $template = $query->first();
+        if ($template) {
+            \Log::info('Found global template', [
+                'template_id' => $template->id,
+                'template_type' => $template->type
+            ]);
+        } else {
+            \Log::warning('No template found for', [
+                'type' => $type,
+                'kelas_id' => $siswa->kelas_id,
+                'tahun_ajaran_id' => $tahunAjaranId
+            ]);
         }
         
         return $template;

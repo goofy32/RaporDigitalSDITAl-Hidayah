@@ -61,7 +61,6 @@
                     <option value="UTS">UTS</option>
                     <option value="UAS">UAS</option>
                 </select>
-            
             </div>
             
             <!-- Search Box -->
@@ -169,7 +168,6 @@
                                         class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
                                         id="active-{{ $template->id }}"
                                         {{ $template->is_active ? 'checked' : '' }}
-                                        {{ $template->is_active ? 'disabled' : '' }}
                                         onclick="handleActivateToggle(event)"
                                     >
                                 </div>
@@ -316,7 +314,6 @@
                 <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4">
                     <p>Tahun Ajaran: <strong>{{ $schoolProfile->tahun_pelajaran }}</strong></p>
                     <p>Semester: <strong>{{ $schoolProfile->semester == 1 ? 'Ganjil' : 'Genap' }}</strong></p>
-                    <p class="text-xs mt-2">Data diambil dari Profil Sekolah</p>
                 </div>
                 <!-- Add hidden fields to pass the values from school profile -->
                 <input type="hidden" name="tahun_ajaran" value="{{ $schoolProfile->tahun_pelajaran }}">
@@ -331,9 +328,6 @@
                            accept=".docx"
                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                     <p class="mt-1 text-sm text-gray-500">Format yang diterima: .docx</p>
-                    <div class="mt-2 flex flex-col gap-1">
-                        <p class="text-sm text-gray-500">Pastikan template memiliki placeholder yang sesuai:</p>
-                    </div>
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
@@ -455,23 +449,19 @@ async function handleActivateToggle(e) {
     // Prevent the default form submit or checkbox behavior
     e.preventDefault();
     
-    // Find the checkbox or get the checkbox directly if it was clicked
+    // Find the checkbox
     const checkbox = e.target.type === 'checkbox' ? e.target : e.target.querySelector('input[type="checkbox"]');
     
     // Find the form
     const form = checkbox.closest('form');
     
-    // Check if the checkbox is already active (checked & disabled)
-    if (checkbox.disabled) {
-        return false; // Already active, can't deactivate directly
-    }
-    
     // Determine the activation action based on current state
-    const actionWord = checkbox.checked ? 'menonaktifkan' : 'mengaktifkan';
+    const isActive = checkbox.checked;
+    const actionWord = isActive ? 'menonaktifkan' : 'mengaktifkan';
     
     // Show confirmation dialog
     if (!confirm(`Apakah Anda yakin ingin ${actionWord} template ini?`)) {
-        // Reset checkbox state if canceled
+        // Reset checkbox state if canceled - toggle back to original state
         checkbox.checked = !checkbox.checked;
         return false;
     }
@@ -516,31 +506,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterType = document.getElementById('filter-type');
     filterType.addEventListener('change', applyFilters);
     
-    // Filter berdasarkan kelas
-    const filterKelas = document.getElementById('filter-kelas');
-    filterKelas.addEventListener('change', applyFilters);
-    
     // Filter berdasarkan pencarian
     const searchInput = document.getElementById('search-input');
     searchInput.addEventListener('input', applyFilters);
     
     function applyFilters() {
         const typeFilter = filterType.value;
-        const kelasFilter = filterKelas.value;
         const searchFilter = searchInput.value.toLowerCase();
         
         document.querySelectorAll('tbody tr').forEach(row => {
             const rowType = row.getAttribute('data-type');
-            const rowKelas = row.getAttribute('data-kelas');
             const rowSearchText = row.getAttribute('data-search').toLowerCase();
             
             // Cek apakah baris memenuhi semua filter
             const matchesType = !typeFilter || rowType === typeFilter;
-            const matchesKelas = !kelasFilter || rowKelas === kelasFilter;
             const matchesSearch = !searchFilter || rowSearchText.includes(searchFilter);
             
             // Tampilkan/sembunyikan baris berdasarkan hasil filter
-            row.style.display = matchesType && matchesKelas && matchesSearch ? '' : 'none';
+            row.style.display = matchesType && matchesSearch ? '' : 'none';
         });
     }
 });
