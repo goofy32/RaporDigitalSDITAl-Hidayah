@@ -590,6 +590,43 @@ class ReportController extends Controller
         }
     }
 
+    public function diagnoseSiswaData(Request $request, Siswa $siswa)
+    {
+        $type = $request->input('type', 'UTS');
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        try {
+            // Get diagnostic data
+            $diagnosisResult = $siswa->diagnoseDataCompleteness($type);
+            
+            // Check template availability
+            $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'nilai_status' => $diagnosisResult['nilai_status'],
+                    'nilai_message' => $diagnosisResult['nilai_message'],
+                    'absensi_status' => $diagnosisResult['absensi_status'],
+                    'absensi_message' => $diagnosisResult['absensi_message'],
+                    'template_status' => !is_null($template),
+                    'template_message' => is_null($template) ? 
+                        'Template tidak ditemukan untuk kelas ini' : 
+                        'Template ditemukan dengan ID: ' . $template->id,
+                    'detail' => 'Tipe: ' . $type . ', ' .
+                            'Kelas: ' . ($siswa->kelas->nama_kelas ?? 'N/A') . ', ' .
+                            'Tahun Ajaran: ' . $tahunAjaranId,
+                    'tahun_ajaran_id' => $tahunAjaranId
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function preview(ReportTemplate $template)
     {
         try {
@@ -632,77 +669,44 @@ class ReportController extends Controller
         $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
         
         try {
-            // Log untuk debugging
+            // Log for debugging
             \Log::info('Generate report request', [
                 'siswa_id' => $siswa->id,
                 'type' => $type,
-                'tahun_ajaran_id' => $tahunAjaranId
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'action' => $action
             ]);
             
-            // Dapatkan template yang sesuai untuk kelas siswa dengan filter tahun ajaran
+            // Get an appropriate template
             $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId);
             
             if (!$template) {
-                \Log::warning('No active template found', [
-                    'siswa_id' => $siswa->id,
-                    'kelas_id' => $siswa->kelas_id,
-                    'type' => $type,
-                    'tahun_ajaran_id' => $tahunAjaranId
-                ]);
-                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tidak ada template aktif untuk jenis rapor ' . $type . ' pada kelas ini di tahun ajaran yang dipilih.',
+                    'message' => 'Tidak ditemukan template rapor ' . $type . ' yang aktif untuk kelas ini pada tahun ajaran yang dipilih.',
                     'error_type' => 'template_missing'
                 ], 404);
             }
             
-            // Log template yang ditemukan
-            \Log::info('Found template for report', [
-                'template_id' => $template->id,
-                'template_type' => $template->type,
-                'template_kelas_id' => $template->kelas_id,
-                'template_is_active' => $template->is_active
-            ]);
-            
-            // Pastikan template yang digunakan match dengan tipe yang diminta
-            if ($template->type !== $type) {
-                \Log::warning('Template type mismatch', [
-                    'requested_type' => $type,
-                    'template_type' => $template->type
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tipe template (' . $template->type . ') tidak sesuai dengan tipe yang diminta (' . $type . ')',
-                    'error_type' => 'template_invalid'
-                ], 400);
-            }
-            
-            // Cek kelengkapan data
+            // Check data completeness
             $hasData = $siswa->hasCompleteData($type, $tahunAjaranId);
-            $bypassValidation = $request->input('bypass_validation', false);
             
-            if (!$hasData && !$bypassValidation) {
+            if (!$hasData) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data siswa belum lengkap untuk menghasilkan rapor di tahun ajaran ini.',
+                    'message' => 'Data siswa belum lengkap untuk menghasilkan rapor. Pastikan nilai akhir telah dihitung dan data absensi sudah diisi pada tahun ajaran ini.',
                     'error_type' => 'data_incomplete'
                 ], 422);
             }
             
-            // Proses generate rapor
+            // Generate the report
             $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
-            $result = $processor->generate($bypassValidation);
+            $result = $processor->generate();
             
-            if (!$result['success']) {
-                throw new \Exception($result['message'] ?? 'Gagal generate rapor');
-            }
-            
-            // Simpan history generate dengan tahun ajaran dan path file
+            // Save history
             $this->saveGenerationHistory($siswa, $template, $type, $tahunAjaranId, $result['path']);
             
-            // Jika hanya preview, kembalikan URL
+            // Handle preview vs download
             if ($action == 'preview') {
                 return response()->json([
                     'success' => true,
@@ -714,6 +718,14 @@ class ReportController extends Controller
             // Download file
             $fullPath = storage_path('app/public/' . $result['path']);
             
+            if (!file_exists($fullPath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File rapor tidak ditemukan setelah diproses.',
+                    'error_type' => 'file_missing'
+                ], 404);
+            }
+            
             return response()->download($fullPath, $result['filename']);
         } 
         catch (\App\Exceptions\RaporException $e) {
@@ -721,8 +733,7 @@ class ReportController extends Controller
                 'siswa_id' => $siswa->id,
                 'type' => $type,
                 'tahun_ajaran_id' => $tahunAjaranId,
-                'error_type' => $e->getErrorType(),
-                'stack_trace' => $e->getTraceAsString()
+                'error_type' => $e->getErrorType()
             ]);
             
             return response()->json([
@@ -730,12 +741,12 @@ class ReportController extends Controller
                 'message' => $e->getMessage(),
                 'error_type' => $e->getErrorType()
             ], 422);
-        } catch (\Exception $e) {
+        } 
+        catch (\Exception $e) {
             \Log::error('Error in generateReport: ' . $e->getMessage(), [
                 'siswa_id' => $siswa->id,
                 'type' => $type,
-                'tahun_ajaran_id' => $tahunAjaranId,
-                'stack_trace' => $e->getTraceAsString()
+                'tahun_ajaran_id' => $tahunAjaranId
             ]);
             
             return response()->json([

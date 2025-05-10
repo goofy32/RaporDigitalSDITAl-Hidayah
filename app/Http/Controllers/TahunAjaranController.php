@@ -264,7 +264,21 @@ class TahunAjaranController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'tahun_ajaran' => 'required|string|regex:/^\d{4}\/\d{4}$/',
+            'tahun_ajaran' => [
+                'required',
+                'string',
+                'regex:/^\d{4}\/\d{4}$/',
+                function ($attribute, $value, $fail) {
+                    // Cek keunikan termasuk dengan yang diarsipkan
+                    $exists = TahunAjaran::withTrashed()
+                                ->where('tahun_ajaran', $value)
+                                ->exists();
+                    
+                    if ($exists) {
+                        $fail('Tahun ajaran ini sudah ada (termasuk yang diarsipkan). Gunakan nama yang berbeda atau pulihkan yang sudah diarsipkan.');
+                    }
+                }
+            ],
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
             'semester' => 'required|integer|in:1,2',
@@ -335,7 +349,22 @@ class TahunAjaranController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'tahun_ajaran' => 'required|string|regex:/^\d{4}\/\d{4}$/',
+            'tahun_ajaran' => [
+                'required',
+                'string',
+                'regex:/^\d{4}\/\d{4}$/',
+                function ($attribute, $value, $fail) use ($id) {
+                    // Cek keunikan termasuk dengan yang diarsipkan, kecuali dirinya sendiri
+                    $exists = TahunAjaran::withTrashed()
+                                ->where('tahun_ajaran', $value)
+                                ->where('id', '!=', $id)
+                                ->exists();
+                    
+                    if ($exists) {
+                        $fail('Tahun ajaran ini sudah ada (termasuk yang diarsipkan). Gunakan nama yang berbeda.');
+                    }
+                }
+            ],
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
             'semester' => 'required|integer|in:1,2',
@@ -530,6 +559,61 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('error', 'Gagal mengaktifkan tahun ajaran: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Menghapus secara permanen tahun ajaran yang sudah diarsipkan.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function forceDelete($id)
+    {
+        try {
+            // Cari tahun ajaran yang sudah diarsipkan
+            $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
+            
+            // Pastikan tahun ajaran sudah diarsipkan
+            if (!$tahunAjaran->trashed()) {
+                return redirect()->back()
+                    ->with('error', 'Hanya tahun ajaran yang sudah diarsipkan yang dapat dihapus permanen.');
+            }
+            
+            // Pastikan tidak sedang digunakan di session
+            if (session('tahun_ajaran_id') == $id) {
+                // Cari tahun ajaran aktif lain untuk diset ke session
+                $newTahunAjaran = TahunAjaran::where('is_active', true)->first();
+                
+                if (!$newTahunAjaran) {
+                    // Jika tidak ada yang aktif, ambil yang terbaru
+                    $newTahunAjaran = TahunAjaran::orderBy('tanggal_mulai', 'desc')->first();
+                }
+                
+                if ($newTahunAjaran) {
+                    session(['tahun_ajaran_id' => $newTahunAjaran->id]);
+                } else {
+                    session()->forget('tahun_ajaran_id');
+                }
+            }
+            
+            // Hapus data terkait (optional, tergantung setup relasi foreign key di database)
+            // Jika FK di database sudah setting ON DELETE CASCADE, maka ini tidak perlu
+            
+            // Hapus permanen
+            $tahunAjaran->forceDelete();
+            
+            return redirect()->route('tahun.ajaran.index', ['showArchived' => 'true'])
+                ->with('success', 'Tahun ajaran berhasil dihapus permanen.');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error saat menghapus permanen tahun ajaran: ' . $e->getMessage(), [
+                'tahun_ajaran_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan saat menghapus permanen tahun ajaran: ' . $e->getMessage());
+        }
+    }
     
     /**
      * Menghapus tahun ajaran yang spesifik.
@@ -553,6 +637,26 @@ class TahunAjaranController extends Controller
             if ($totalTahunAjaran <= 1) {
                 return redirect()->back()
                     ->with('error', 'Tidak dapat mengarsipkan tahun ajaran karena minimal harus ada satu tahun ajaran dalam sistem.');
+            }
+            
+            // Check if the currently deleted item is the one in session
+            if (session('tahun_ajaran_id') == $id) {
+                // Find a new tahun ajaran to set in session
+                $newTahunAjaran = TahunAjaran::where('id', '!=', $id)
+                                            ->where('is_active', true)
+                                            ->first();
+                
+                if (!$newTahunAjaran) {
+                    $newTahunAjaran = TahunAjaran::where('id', '!=', $id)
+                                                ->orderBy('tanggal_mulai', 'desc')
+                                                ->first();
+                }
+                
+                if ($newTahunAjaran) {
+                    session(['tahun_ajaran_id' => $newTahunAjaran->id]);
+                } else {
+                    session()->forget('tahun_ajaran_id');
+                }
             }
             
             // Soft delete tahun ajaran daripada menghapusnya permanen
@@ -946,11 +1050,21 @@ class TahunAjaranController extends Controller
                     ->with('error', 'Tahun ajaran ini tidak dalam status diarsipkan.');
             }
             
+            // Cek apakah ada tahun ajaran dengan nama yang sama yang sudah aktif
+            $existingActive = TahunAjaran::where('tahun_ajaran', $tahunAjaran->tahun_ajaran)
+                                        ->where('id', '!=', $id)
+                                        ->exists();
+            
+            if ($existingActive) {
+                return redirect()->back()
+                    ->with('error', 'Tidak dapat memulihkan tahun ajaran ini karena sudah ada tahun ajaran aktif dengan nama yang sama. Hapus permanen atau ubah nama salah satunya terlebih dahulu.');
+            }
+            
             $tahunAjaran->restore();
             
             return redirect()->route('tahun.ajaran.index', ['showArchived' => true])
                 ->with('success', 'Tahun ajaran ' . $tahunAjaran->tahun_ajaran . ' berhasil dipulihkan!');
-                
+                    
         } catch (\Exception $e) {
             \Log::error('Error saat memulihkan tahun ajaran: ' . $e->getMessage(), [
                 'tahun_ajaran_id' => $id,

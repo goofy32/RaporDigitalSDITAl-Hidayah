@@ -6,7 +6,7 @@
 <div class="p-4 bg-white mt-14">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-green-700">History Cetak Rapor</h2>
+        <h2 class="text-2xl font-bold text-green-700">Riwayat Cetak Rapor</h2>
     </div>
 
     <!-- Filter Controls -->

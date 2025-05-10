@@ -75,10 +75,10 @@
                 </svg>
             </div>
             <input type="search" 
-                   x-model="searchQuery"
-                   @input="handleSearch($event)"
-                   class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-green-500 focus:border-green-500" 
-                   placeholder="Cari siswa...">
+                x-model="searchQuery"
+                @input="handleSearch($event)"
+                class="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-green-500 focus:border-green-500" 
+                placeholder="Cari siswa...">
         </div>
     </div>
 
@@ -182,6 +182,15 @@
                     <!-- Aksi -->
                     <td class="px-6 py-4">
                         <div class="flex items-center space-x-3">
+                            <!-- Debug button - add this inside the loop -->
+                            <button @click="debugSiswaData({{ $s->id }})" 
+                                    class="text-blue-600 hover:text-blue-900">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
+
                             <button @click="handlePreview({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
                                 class="text-green-600 hover:text-green-900 disabled:opacity-50">
@@ -190,7 +199,7 @@
                             
                             <button @click="handleGenerate({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }}, '{{ $s->nama }}')"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
-                                class="text-green-600 hover:text-green-900 disabled:opacity-50">
+                                :class="{ 'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}, 'text-green-600 hover:text-green-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} }">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
@@ -432,131 +441,101 @@ document.addEventListener('alpine:init', function() {
             }
         },
 
-        async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
-            if (!this.validateData(nilaiCount, hasAbsensi)) return;
+    async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
+        if (!this.validateData(nilaiCount, hasAbsensi)) return;
+        
+        try {
+            this.loading = true;
             
-            try {
-                this.loading = true;
-                const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        type: this.activeTab,
-                        tahun_ajaran_id: this.tahunAjaranId
-                    })
-                });
+            // Add logging to help diagnose the issue
+            console.log('Generating report for:', {
+                siswaId, 
+                type: this.activeTab,
+                tahunAjaranId: this.tahunAjaranId
+            });
+            
+            const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    type: this.activeTab,
+                    tahun_ajaran_id: this.tahunAjaranId, // Make sure this is included!
+                    action: 'download'
+                })
+            });
 
-                // Cek status respons
+            // Better error handling - log response status
+            console.log('Response status:', response.status);
+            
+            // Check for JSON response first to handle error messages
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                
                 if (!response.ok) {
-                    // Jika response adalah JSON, ambil pesan error
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        const error = await response.json();
-                        
-                        // Tampilkan pesan error yang spesifik
-                        let errorMessage = error.message || 'Gagal generate rapor';
-                        let errorDetails = [];
-                        
-                        // Tambahkan instruksi berdasarkan error_type
-                        if (error.error_type === 'template_missing' || error.error_type === 'template_invalid') {
-                            errorDetails.push('Template rapor tidak ditemukan atau tidak valid');
-                            errorDetails.push('Hubungi admin untuk mengaktifkan template yang benar');
-                        } else if (error.error_type === 'data_incomplete') {
-                            // Cek detail data yang tidak lengkap
-                            if (error.message.includes('nilai')) {
-                                errorDetails.push('Data nilai belum lengkap atau tidak ada');
-                                errorDetails.push('Pastikan siswa memiliki nilai untuk semua mata pelajaran');
-                            }
-                            if (error.message.includes('kehadiran') || error.message.includes('absensi')) {
-                                errorDetails.push('Data kehadiran belum diinput');
-                                errorDetails.push('Silakan isi data absensi terlebih dahulu');
-                            }
-                        }
-                        
-                        // Tampilkan error yang lebih detail
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal Generate Rapor',
-                            html: `
-                                <p>${errorMessage}</p>
-                                ${errorDetails.length > 0 ? 
-                                    `<div class="mt-3 text-left">
-                                        <p class="font-medium">Detail:</p>
-                                        <ul class="list-disc pl-5 mt-1">
-                                            ${errorDetails.map(detail => `<li class="text-sm">${detail}</li>`).join('')}
-                                        </ul>
-                                    </div>` : ''
-                                }
-                            `,
-                            confirmButtonText: 'Mengerti'
-                        });
-                        return;
-                    } else {
-                        throw new Error(`Gagal generate rapor (${response.status})`);
-                    }
-                }
-
-                // PERBAIKAN: Clone response untuk digunakan dua kali
-                const responseClone = response.clone();
-                
-                // Cek tipe respons untuk mencegah error "body stream already read"
-                const contentType = response.headers.get("content-type");
-                
-                if (contentType && contentType.includes("application/json")) {
-                    // Jika respons adalah JSON, proses sebagai JSON
-                    const data = await response.json();
-                    // Proses data JSON jika perlu
-                    
-                    // Tampilkan notifikasi sukses
+                    // Detailed error message with SweetAlert
                     Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: 'Rapor berhasil diproses'
+                        icon: 'error',
+                        title: 'Gagal Generate Rapor',
+                        html: `
+                            <p>${data.message || 'Terjadi kesalahan saat memproses rapor'}</p>
+                            <p class="mt-2 text-sm font-semibold">Error detail:</p>
+                            <p class="text-red-600">${data.error_type || ''}</p>
+                        `,
+                        confirmButtonText: 'Mengerti'
                     });
-                } else {
-                    // Jika respons adalah file blob, proses sebagai file download
-                    const blob = await responseClone.blob();
-                    
-                    // Buat nama file yang lebih deskriptif dengan nama siswa
-                    const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
-                    const fileName = `rapor_${this.activeTab.toLowerCase()}_${cleanName}.docx`;
-                    
-                    await this.downloadFile(blob, fileName);
-                    
-                    // Tampilkan notifikasi sukses
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: 'Rapor berhasil digenerate dan diunduh'
-                    });
+                    return;
                 }
-            } catch (error) {
-                console.error('Error:', error);
                 
-                // Tampilkan alert yang lebih informatif dengan SweetAlert
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Generate Rapor',
-                    html: `
-                        <p>${error.message}</p>
-                        <p class="mt-2 text-sm font-medium">Detail masalah yang mungkin:</p>
-                        <ul class="text-left mt-2 text-sm list-disc pl-5">
-                            <li>Data Nilai siswa belum lengkap untuk ${this.activeTab}</li>
-                            <li>Data Absensi belum diinput untuk semester ${this.activeTab === 'UTS' ? '1 (Ganjil)' : '2 (Genap)'}</li>
-                            <li>Template rapor ${this.activeTab} tidak tersedia atau tidak aktif</li>
-                            <li>Template rapor mungkin diaktifkan tetapi tidak cocok dengan kelas siswa</li>
-                        </ul>
-                    `,
-                    confirmButtonText: 'Mengerti'
-                });
-            } finally {
-                this.loading = false;
+                // If JSON response is successful, might contain file URL
+                if (data.success && data.file_url) {
+                    window.location.href = data.file_url;
+                    return;
+                }
             }
-        },
+            
+            // Handle non-JSON response (file download)
+            if (response.ok) {
+                const blob = await response.blob();
+                const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+                const fileName = `rapor_${this.activeTab.toLowerCase()}_${cleanName}.docx`;
+                await this.downloadFile(blob, fileName);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Rapor berhasil digenerate dan diunduh'
+                });
+            } else {
+                throw new Error(`Gagal mengunduh rapor: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            
+            // More detailed error alert
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Generate Rapor',
+                html: `
+                    <p>${error.message}</p>
+                    <p class="mt-2 text-sm font-semibold">Kemungkinan penyebab:</p>
+                    <ul class="text-left mt-2 text-sm list-disc pl-5">
+                        <li>Template rapor tidak ditemukan untuk kelas ini (tipe: ${this.activeTab})</li>
+                        <li>Data nilai belum disimpan dengan "Simpan & Preview"</li>
+                        <li>Tahun ajaran yang dipilih: ${this.tahunAjaranId || 'tidak diketahui'}</li>
+                        <li>Ada error server (periksa console)</li>
+                    </ul>
+                `,
+                confirmButtonText: 'Mengerti'
+            });
+        } finally {
+            this.loading = false;
+        }
+    },
 
         async generateBatchReport() {
             if (this.loading || this.selectedSiswa.length === 0) {
@@ -686,12 +665,69 @@ document.addEventListener('alpine:init', function() {
             const messages = [];
             if (!nilaiCount || nilaiCount === 0) messages.push("- Data nilai belum lengkap");
             if (!hasAbsensi) messages.push("- Data kehadiran belum lengkap");
+            if (!this.tahunAjaranId) messages.push("- Tahun ajaran tidak ditemukan");
             
             if (messages.length > 0) {
-                alert("Tidak bisa melanjutkan karena:\n" + messages.join("\n"));
+                // Better error feedback with SweetAlert instead of plain alert
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Data Tidak Lengkap',
+                    html: `
+                        <p>Tidak bisa melanjutkan karena:</p>
+                        <ul class="text-left mt-2">
+                            ${messages.map(msg => `<li>${msg}</li>`).join('')}
+                        </ul>
+                    `,
+                    confirmButtonText: 'Mengerti'
+                });
                 return false;
             }
             return true;
+        },
+
+        async debugSiswaData(siswaId) {
+            try {
+                this.loading = true;
+                const response = await fetch(`/wali-kelas/rapor/diagnose/${siswaId}?type=${this.activeTab}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Diagnosis Data Siswa',
+                        html: `
+                            <div class="text-left">
+                                <h3 class="font-bold mb-2">Status Data:</h3>
+                                <p>Nilai: ${data.data.nilai_status ? '✅ Lengkap' : '❌ Tidak lengkap'}</p>
+                                <p>Absensi: ${data.data.absensi_status ? '✅ Lengkap' : '❌ Tidak lengkap'}</p>
+                                <p>Template ${this.activeTab}: ${data.data.template_status ? '✅ Tersedia' : '❌ Tidak tersedia'}</p>
+                                
+                                <h3 class="font-bold mt-4 mb-2">Detail:</h3>
+                                <p>${data.data.detail}</p>
+                                
+                                <h3 class="font-bold mt-4 mb-2">Sesi:</h3>
+                                <p>Tahun Ajaran ID: ${data.data.tahun_ajaran_id}</p>
+                            </div>
+                        `,
+                        icon: 'info',
+                        confirmButtonText: 'Tutup'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Gagal Mendapatkan Diagnosis',
+                        text: data.message,
+                        icon: 'error'
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Terjadi kesalahan saat mendiagnosa data',
+                    icon: 'error'
+                });
+            } finally {
+                this.loading = false;
+            }
         },
 
         async downloadFile(blob, filename) {

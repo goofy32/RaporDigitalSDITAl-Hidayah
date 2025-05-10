@@ -187,15 +187,25 @@
                                 @if(!$tahunAjaran->is_active)
                                     @if($tahunAjaran->trashed())
                                         <!-- Tombol Restore untuk tahun ajaran yang diarsipkan -->
-                                         <form action="{{ route('tahun.ajaran.restore', $tahunAjaran->id) }}" method="POST" class="inline">
+                                        <form action="{{ route('tahun.ajaran.restore', $tahunAjaran->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="border-0 bg-transparent p-0" title="Pulihkan" 
                                                     onclick="return confirm('Apakah Anda yakin ingin memulihkan tahun ajaran ini?')">
                                                 <img src="{{ asset('images/icons/preview.png') }}" alt="Pulihkan" class="w-5 h-5">
                                             </button>
                                         </form>
+                                        
+                                        <!-- Tombol Hapus Permanen untuk tahun ajaran yang diarsipkan -->
+                                        <form action="{{ route('tahun.ajaran.force-delete', $tahunAjaran->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="border-0 bg-transparent p-0" title="Hapus Permanen" 
+                                                    onclick="return confirm('PERHATIAN: Tindakan ini tidak dapat dibatalkan. Semua data terkait tahun ajaran ini akan dihapus permanen.\n\nApakah Anda benar-benar yakin?')">
+                                                <img src="{{ asset('images/icons/delete.png') }}" alt="Hapus Permanen" class="w-5 h-5">
+                                            </button>
+                                        </form>
                                     @else
-                                        <!-- Tombol Arsip untuk tahun ajaran aktif -->
+                                        <!-- Tombol Arsip untuk tahun ajaran yang tidak diarsipkan -->
                                         <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
                                             @csrf
                                             @method('DELETE')

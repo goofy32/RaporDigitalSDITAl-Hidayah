@@ -171,7 +171,7 @@
 
     <div class="p-4 sm:ml-64 min-h-screen bg-white">
         <div class="mt-14"> <!-- Padding top untuk navbar -->
-            @if(session('tahun_ajaran_id') && isset($activeTahunAjaran) && session('tahun_ajaran_id') != $activeTahunAjaran->id)
+            @if(session('tahun_ajaran_id') && isset($activeTahunAjaran) && $activeTahunAjaran && session('tahun_ajaran_id') != $activeTahunAjaran->id)
                 <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
                     <div class="flex">
                         <div class="flex-shrink-0">
@@ -181,7 +181,7 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm text-blue-700">
-                                <strong>Perhatian:</strong> Anda sedang melihat data untuk tahun ajaran <strong>{{ App\Models\TahunAjaran::find(session('tahun_ajaran_id'))->tahun_ajaran }}</strong>, sedangkan tahun ajaran aktif adalah <strong>{{ $activeTahunAjaran->tahun_ajaran }}</strong>.
+                                <strong>Perhatian:</strong> Anda sedang melihat data untuk tahun ajaran <strong>{{ (App\Models\TahunAjaran::find(session('tahun_ajaran_id')))->tahun_ajaran ?? 'Tidak diketahui' }}</strong>, sedangkan tahun ajaran aktif adalah <strong>{{ $activeTahunAjaran->tahun_ajaran }}</strong>.
                             </p>
                         </div>
                     </div>

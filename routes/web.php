@@ -214,6 +214,7 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
         Route::delete('/{id}', [TahunAjaranController::class, 'destroy'])->name('destroy');
         Route::post('/{id}/advance-semester', [TahunAjaranController::class, 'advanceToNextSemester'])
         ->name('advance-semester');
+        Route::delete('/{id}/force-delete', [TahunAjaranController::class, 'forceDelete'])->name('force-delete');
     });
     
     // Teacher Management
@@ -409,7 +410,7 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
     ->prefix('wali-kelas')
     ->name('wali_kelas.')
     ->group(function () {
-    
+
         // Notifications
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -417,6 +418,8 @@ Route::middleware(['auth:guru', 'role:wali_kelas'])
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     });
     
+
+    Route::get('/rapor/diagnose/{siswa}', [ReportController::class, 'diagnoseSiswaData'])->name('diagnose');
 
     Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])
     ->middleware('check.wali.kelas')  // Tambah middleware baru
