@@ -75,8 +75,8 @@
                                     Rapor Tersedia
                                 </span>
                             @else
-                                <span class="inline-flex items-center bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                    <span class="w-2 h-2 mr-1 bg-yellow-500 rounded-full"></span>
+                                <span class="inline-flex items-center bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                    <span class="w-2 h-2 mr-1 bg-gray-500 rounded-full"></span>
                                     Belum Ada Rapor
                                 </span>
                             @endif
@@ -147,11 +147,11 @@
                     @csrf
                     <div id="selectedTinggalIds"></div>
                     
-                    <h4 class="text-md font-semibold text-yellow-700 mb-3">Tinggal Kelas</h4>
+                    <h4 class="text-md font-semibold text-red-700 mb-3">Tinggal Kelas</h4>
                     
                     <div class="mb-4">
                         <label for="kelas_tinggal_id" class="block text-sm font-medium text-gray-700">Kelas Tujuan (Tingkat yang Sama)</label>
-                        <select name="kelas_tujuan_id" id="kelas_tinggal_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500">
+                        <select name="kelas_tujuan_id" id="kelas_tinggal_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-yellow-500">
                             <option value="">-- Pilih Kelas Tinggal --</option>
                             @foreach(\App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
                                     ->where('nomor_kelas', $kelas->nomor_kelas)
@@ -163,7 +163,7 @@
                     </div>
                     
                     <div class="flex justify-end">
-                        <button type="submit" class="check-rapor-btn px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500" data-action="tinggal kelas">
+                        <button type="submit" class="check-rapor-btn px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-yellow-500" data-action="tinggal kelas">
                             Proses Tinggal Kelas
                         </button>
                     </div>

@@ -109,14 +109,11 @@
                 <td class="px-6 py-4">{{ $report->created_at->format('d M Y H:i') }}</td>
                 <td class="px-6 py-4">
                     <div class="flex space-x-2">
-                        <!-- Tombol Preview -->
+                        <!-- Tombol Preview yang diperbarui -->
                         <button onclick="previewRapor({{ $report->id }})" 
-                                class="text-blue-600 hover:text-blue-900"
+                                class="text-blue-600 hover:text-blue-900 flex items-center justify-center"
                                 title="Preview Rapor">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
+                            <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="w-7 h-7 object-contain">
                         </button>
                         
                         <!-- Tombol Download - tampilkan dengan kondisi jika file ada -->
@@ -124,7 +121,7 @@
                             <a href="{{ route('admin.report.history.download', $report->id) }}" 
                                 class="text-green-600 hover:text-green-900"
                                 title="Download Rapor">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
                             </a>
@@ -132,7 +129,7 @@
                             <button onclick="showFileNotAvailableAlert()"
                                     class="text-gray-400 cursor-not-allowed"
                                     title="File Tidak Tersedia">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                 </svg>
                             </button>
