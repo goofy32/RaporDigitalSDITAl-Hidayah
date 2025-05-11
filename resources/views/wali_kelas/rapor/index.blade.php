@@ -157,11 +157,6 @@
                                 <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
                                     Lengkap
                                 </span>
-                                <span class="text-xs text-gray-500">
-                                    S:{{ $s->absensi->sakit }}, 
-                                    I:{{ $s->absensi->izin }}, 
-                                    A:{{ $s->absensi->tanpa_keterangan }}
-                                </span>
                             @else
                                 <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full relative group">
                                     Belum Lengkap

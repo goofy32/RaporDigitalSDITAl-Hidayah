@@ -95,9 +95,9 @@
         </div>
     </div>
 
-    <!-- Dropdown & Charts Section (Full Width) -->
+    <!-- Dropdown & Charts Section (Full Width)
     <div class="mt-8">
-        <!-- Dropdown Pilih Kelas -->
+        Dropdown Pilih Kelas
         <div class="mb-8">
             <h3 class="block text-sm font-medium text-gray-700">Kelas Yang Diwalikan</h3>
             <div class="p-3 mt-1 rounded-lg border border-gray-300 bg-gray-50">
@@ -109,6 +109,7 @@
             </div>
         </div>
     </div>
+     -->
 </div>
 @endsection
 
