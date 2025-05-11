@@ -18,7 +18,8 @@
     <link rel="preload" href="{{ asset('images/icons/teacher-icon.png') }}" as="image" fetchpriority="high">
     <link rel="preload" href="{{ asset('images/icons/student-icon.png') }}" as="image" fetchpriority="high">
     <link rel="preload" href="{{ asset('images/icons/report-icon.png') }}" as="image" fetchpriority="high">
-
+    <link rel="preload" href="{{ asset('images/icons/history-icon.png') }}" as="image" fetchpriority="high">
+    <link rel="preload" href="{{ asset('images/icons/kenaikan-kelas-icon.png') }}" as="image" fetchpriority="high">
     
     <title>@yield('title')</title>
     
@@ -69,11 +70,18 @@
             min-width: 1.25rem;
             height: 1.25rem;
             width: 1.25rem;
+            filter: brightness(0.2) contrast(1.2); /* Make icons more visible but not fully black */
             /* Prevent flash during loading */
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
-            will-change: auto;  /* Tambahkan ini */
-            transform: translateZ(0);  /* Tambahkan ini */
+            will-change: auto;
+            transform: translateZ(0);
+        }
+
+            /* Adjust disabled icon opacity */
+        #logo-sidebar a.cursor-not-allowed img {
+            opacity: 0.6 !important;
+            filter: grayscale(1) brightness(0.4);
         }
 
         /* Prevent sidebar duplication */

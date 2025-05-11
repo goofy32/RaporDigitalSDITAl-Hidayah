@@ -132,10 +132,7 @@
                         data-turbo-frame="main" 
                         data-path="report-history"
                         class="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 group">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
+                            <img src="{{ asset('images/icons/history-icon.png') }}" alt="History Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/history-icon.png') }}?v=' + Date.now();">
                             <span class="flex-1 ml-3 whitespace-nowrap">Riwayat Cetak Rapor</span>
                         </a>
                     </li>
@@ -144,9 +141,7 @@
                             data-turbo-frame="main"
                             data-path="kenaikan-kelas"
                             class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
+                            <img src="{{ asset('images/icons/kenaikan-kelas-icon.png') }}" alt="Promotion Icon" class="w-5 h-5" data-preloaded="true" onerror="this.onerror=null; this.src='{{ asset('images/icons/kenaikan-kelas-icon.png') }}?v=' + Date.now();">
                             <span class="ms-3">Kenaikan Kelas</span>
                         </a>
                     </li>
@@ -208,10 +203,7 @@
                     <li>
                         <a href="#" @click.prevent="showSetupWarning()" 
                             class="flex items-center p-2 text-gray-400 rounded-lg cursor-not-allowed group">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
+                            <img src="{{ asset('images/icons/history-icon.png') }}" class="w-5 h-5 opacity-50" alt="History Icon">
                             <span class="flex-1 ml-3 whitespace-nowrap">History Rapor</span>
                         </a>
                     </li>
