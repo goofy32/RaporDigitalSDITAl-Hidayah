@@ -66,7 +66,7 @@ class ScoreController extends Controller
                 if (isset($scoreData['tp']) && is_array($scoreData['tp'])) {
                     foreach($scoreData['tp'] as $lmId => $tpScores) {
                         foreach($tpScores as $tpId => $nilai) {
-                            if ($nilai !== null && $nilai !== '' && $nilai > 0) {
+                            if ($nilai !== null && $nilai !== '') {
                                 try {
                                     $tp = TujuanPembelajaran::find($tpId);
                                     $lm = LingkupMateri::find($lmId);
@@ -106,7 +106,7 @@ class ScoreController extends Controller
                 // Tambahkan kode untuk simpan nilai Lingkup Materi (LM)
                 if (isset($scoreData['lm']) && is_array($scoreData['lm'])) {
                     foreach($scoreData['lm'] as $lmId => $nilai) {
-                        if ($nilai !== null && $nilai !== '' && $nilai > 0) {
+                        if ($nilai !== null && $nilai !== '') {
                             try {
                                 $lm = LingkupMateri::find($lmId);
                                 

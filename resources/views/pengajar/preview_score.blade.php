@@ -3,6 +3,43 @@
 @section('title', 'Preview Nilai')
 
 @section('content')
+<style>
+    /* Mengatasi jarak berlebih pada card */
+    .card-container {
+        margin-bottom: 0 !important; /* Menghapus margin bawah */
+    }
+    
+    /* Memperbaiki analisis box */
+    .hasil-analisis {
+        margin-top: 2rem;
+        margin-bottom: 0;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    /* Container untuk alert remedial */
+    .remedial-box {
+        margin-bottom: 0 !important;
+        padding-bottom: 1px; /* Padding kecil untuk mencegah margin collapse */
+    }
+    
+    /* Menghilangkan margin bawah berlebih untuk alert */
+    .alert-remedial {
+        margin-bottom: 0 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Memperbaiki spasi tabel */
+    .table-container {
+        margin-bottom: 2rem;
+    }
+    
+    /* Fix spasi di bawah konten */
+    .content-wrapper {
+        padding-bottom: 0 !important;
+    }
+</style>
+
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
@@ -20,7 +57,8 @@
             </a>
         </div>
     </div>
-    <!-- Tambahkan ini di bagian atas konten, sebelum tabel -->
+    
+    <!-- Informasi Penilaian -->
     <div class="flex justify-between items-center mb-4">
         <div class="bg-white rounded-lg p-4 shadow border border-gray-200">
             <h3 class="text-lg font-semibold text-gray-700 mb-2">Informasi Penilaian</h3>
@@ -45,6 +83,7 @@
         </div>
     </div>
 
+    <!-- Tabel Nilai -->
     <div class="overflow-x-auto">
         <table class="min-w-full text-sm text-left text-gray-500 border-collapse">
             <!-- Header -->
@@ -90,7 +129,7 @@
                             @foreach($lm->tujuanPembelajarans as $tp)
                                 @php
                                     $nilaiTP = $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? null;
-                                    $belowKkm = $nilaiTP && $nilaiTP < $kkmValue;
+                                    $belowKkm = $nilaiTP !== null && $nilaiTP !== '' && $nilaiTP < $kkmValue;
                                 @endphp
                                 <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                                     {{ $nilaiTP ?? '-' }}
@@ -102,7 +141,7 @@
                         @foreach($mataPelajaran->lingkupMateris as $lm)
                             @php
                                 $nilaiLM = $existingScores[$student['id']]['lm'][$lm->id] ?? null;
-                                $belowKkm = $nilaiLM && $nilaiLM < $kkmValue;
+                                $belowKkm = $nilaiLM !== null && $nilaiLM !== '' && $nilaiLM < $kkmValue;
                             @endphp
                             <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                                 {{ $nilaiLM ?? '-' }}
@@ -112,7 +151,7 @@
                         <!-- NA TP -->
                         @php
                             $naTP = $existingScores[$student['id']]['na_tp'] ?? null;
-                            $belowKkm = $naTP && $naTP < $kkmValue;
+                            $belowKkm = $naTP !== null && $naTP !== '' && $naTP < $kkmValue;
                         @endphp
                         <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                             {{ $naTP ?? '-' }}
@@ -121,7 +160,7 @@
                         <!-- NA LM -->
                         @php
                             $naLM = $existingScores[$student['id']]['na_lm'] ?? null;
-                            $belowKkm = $naLM && $naLM < $kkmValue;
+                            $belowKkm = $naLM !== null && $naLM !== '' && $naLM < $kkmValue;
                         @endphp
                         <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                             {{ $naLM ?? '-' }}
@@ -130,7 +169,7 @@
                         <!-- Nilai Tes -->
                         @php
                             $nilaiTes = $existingScores[$student['id']]['nilai_tes'] ?? null;
-                            $belowKkm = $nilaiTes && $nilaiTes < $kkmValue;
+                            $belowKkm = $nilaiTes !== null && $nilaiTes !== '' && $nilaiTes < $kkmValue;
                         @endphp
                         <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                             {{ $nilaiTes ?? '-' }}
@@ -139,7 +178,7 @@
                         <!-- Nilai Non-Tes -->
                         @php
                             $nilaiNonTes = $existingScores[$student['id']]['nilai_non_tes'] ?? null;
-                            $belowKkm = $nilaiNonTes && $nilaiNonTes < $kkmValue;
+                            $belowKkm = $nilaiNonTes !== null && $nilaiNonTes !== '' && $nilaiNonTes < $kkmValue;
                         @endphp
                         <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                             {{ $nilaiNonTes ?? '-' }}
@@ -148,7 +187,7 @@
                         <!-- NA Sumatif Akhir Semester -->
                         @php
                             $nilaiAkhirSemester = $existingScores[$student['id']]['nilai_akhir_semester'] ?? null;
-                            $belowKkm = $nilaiAkhirSemester && $nilaiAkhirSemester < $kkmValue;
+                            $belowKkm = $nilaiAkhirSemester !== null && $nilaiAkhirSemester !== '' && $nilaiAkhirSemester < $kkmValue;
                         @endphp
                         <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                             {{ $nilaiAkhirSemester ?? '-' }}
@@ -157,7 +196,7 @@
                         <!-- Nilai Akhir Rapor -->
                         @php
                             $nilaiAkhirRapor = $existingScores[$student['id']]['nilai_akhir_rapor'] ?? null;
-                            $belowKkm = $nilaiAkhirRapor && $nilaiAkhirRapor < $kkmValue;
+                            $belowKkm = $nilaiAkhirRapor !== null && $nilaiAkhirRapor !== '' && $nilaiAkhirRapor < $kkmValue;
                         @endphp
                         <td class="px-4 py-2 border text-center {{ $belowKkm ? 'bg-red-100 text-red-800' : '' }}">
                             {{ $nilaiAkhirRapor ?? '-' }}
@@ -168,12 +207,11 @@
         </table>
     </div>
 
-    <!-- Tambahkan setelah tabel di preview_score.blade.php -->
-    <div class="mt-6 space-y-4">
-        <h3 class="text-lg font-medium text-gray-900">Hasil Analisis Nilai</h3>
+    <!-- Hasil Analisis Nilai -->
+    <div class="hasil-analisis card-container">
+        <h3 class="text-xl font-medium text-gray-900 mb-4">Hasil Analisis Nilai</h3>
         
-        <!-- Add x-data directive for Alpine.js to manage the collapsible state -->
-        <div x-data="{ expandedStudents: {} }">
+        <div x-data="{ expandedStudents: {} }" class="remedial-box">
             @php
                 $studentsNeedingRemedial = [];
                 
@@ -186,7 +224,7 @@
                     foreach($mataPelajaran->lingkupMateris as $lm) {
                         foreach($lm->tujuanPembelajarans as $tp) {
                             $nilaiTP = $existingScores[$student['id']]['tp'][$lm->id][$tp->id] ?? null;
-                            if ($nilaiTP && $nilaiTP < $kkmValue) {
+                            if ($nilaiTP !== null && $nilaiTP !== '' && $nilaiTP < $kkmValue) {
                                 $needRemedial = true;
                                 $belowKkmValues[] = "TP {$tp->kode_tp}: {$nilaiTP}";
                             }
@@ -196,33 +234,36 @@
                     // Cek Nilai LM
                     foreach($mataPelajaran->lingkupMateris as $lm) {
                         $nilaiLM = $existingScores[$student['id']]['lm'][$lm->id] ?? null;
-                        if ($nilaiLM && $nilaiLM < $kkmValue) {
+                        if ($nilaiLM !== null && $nilaiLM !== '' && $nilaiLM < $kkmValue) {
                             $needRemedial = true;
                             $belowKkmValues[] = "LM {$lm->judul_lingkup_materi}: {$nilaiLM}";
                         }
                     }
                     
-                    // Cek Nilai Tes, Non-Tes dan Nilai Akhir
+                    // Cek Nilai Tes
                     $nilaiTes = $existingScores[$student['id']]['nilai_tes'] ?? null;
-                    if ($nilaiTes && $nilaiTes < $kkmValue) {
+                    if ($nilaiTes !== null && $nilaiTes !== '' && $nilaiTes < $kkmValue) {
                         $needRemedial = true;
                         $belowKkmValues[] = "Nilai Tes: {$nilaiTes}";
                     }
                     
+                    // Cek Nilai Non-Tes
                     $nilaiNonTes = $existingScores[$student['id']]['nilai_non_tes'] ?? null;
-                    if ($nilaiNonTes && $nilaiNonTes < $kkmValue) {
+                    if ($nilaiNonTes !== null && $nilaiNonTes !== '' && $nilaiNonTes < $kkmValue) {
                         $needRemedial = true;
                         $belowKkmValues[] = "Nilai Non-Tes: {$nilaiNonTes}";
                     }
                     
+                    // Cek Nilai Akhir Semester (tetap diikutkan sesuai permintaan)
                     $nilaiAkhirSemester = $existingScores[$student['id']]['nilai_akhir_semester'] ?? null;
-                    if ($nilaiAkhirSemester && $nilaiAkhirSemester < $kkmValue) {
+                    if ($nilaiAkhirSemester !== null && $nilaiAkhirSemester !== '' && $nilaiAkhirSemester < $kkmValue) {
                         $needRemedial = true;
                         $belowKkmValues[] = "Nilai Akhir Semester: {$nilaiAkhirSemester}";
                     }
-                    
+
+                    // Cek Nilai Akhir Rapor (tetap diikutkan sesuai permintaan)
                     $nilaiAkhirRapor = $existingScores[$student['id']]['nilai_akhir_rapor'] ?? null;
-                    if ($nilaiAkhirRapor && $nilaiAkhirRapor < $kkmValue) {
+                    if ($nilaiAkhirRapor !== null && $nilaiAkhirRapor !== '' && $nilaiAkhirRapor < $kkmValue) {
                         $needRemedial = true;
                         $belowKkmValues[] = "Nilai Akhir Rapor: {$nilaiAkhirRapor}";
                     }
@@ -238,7 +279,7 @@
             
             <!-- Summary information about students needing remedial -->
             @if(count($studentsNeedingRemedial) > 0)
-                <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                <div class="alert-remedial bg-red-50 border-l-4 border-red-400 p-4 rounded-md" style="margin-bottom:0 !important;">
                     <div class="flex items-center justify-between">
                         <div class="flex">
                             <div class="flex-shrink-0">
@@ -255,7 +296,7 @@
                         <button 
                             type="button"
                             class="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 focus:outline-none"
-                            x-on:click="Object.keys(expandedStudents).length === {{ count($studentsNeedingRemedial) }} ? expandedStudents = {} : expandedStudents = { @foreach($studentsNeedingRemedial as $studentId => $studentData) '{{ $studentId }}': true, @endforeach }"
+                            @click="Object.keys(expandedStudents).length === {{ count($studentsNeedingRemedial) }} ? expandedStudents = {} : expandedStudents = { @foreach($studentsNeedingRemedial as $studentId => $studentData) '{{ $studentId }}': true, @endforeach }"
                             x-text="Object.keys(expandedStudents).length === {{ count($studentsNeedingRemedial) }} ? 'Sembunyikan Detail' : 'Lihat Detail'"
                         >
                             Lihat Detail
@@ -263,29 +304,39 @@
                     </div>
                 </div>
                 
-                <!-- Individual student remedial details (collapsible) -->
-                @foreach($studentsNeedingRemedial as $studentId => $studentData)
-                    <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-2 transition-all duration-300"
-                        :class="expandedStudents['{{ $studentId }}'] ? 'opacity-100' : 'h-0 overflow-hidden opacity-0 p-0 m-0 border-0'"
-                    >
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-red-700">
-                                    <span class="font-bold">{{ $studentData['name'] }}</span> memiliki nilai di bawah KKM {{ $kkmValue }}.
-                                    Siswa ini perlu melakukan remedial untuk nilai berikut: 
-                                    <span class="font-medium">{{ implode(', ', $studentData['belowKkmValues']) }}</span>
-                                </p>
+                <!-- Ganti Individual student remedial details dengan ini -->
+                <div class="collapsible-container" style="margin-bottom:0;padding-bottom:0;">
+                    @foreach($studentsNeedingRemedial as $studentId => $studentData)
+                    <div class="bg-red-50 border-l-4 border-red-400 rounded-r-md overflow-hidden"
+                        x-show="expandedStudents['{{ $studentId }}']" 
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 transform -translate-y-4"
+                        x-transition:enter-end="opacity-100 transform translate-y-0"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100 transform translate-y-0"
+                        x-transition:leave-end="opacity-0 transform -translate-y-4"
+                        style="margin-top: 4px; margin-bottom: 0;">
+                        <div class="p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-red-700">
+                                        <span class="font-bold">{{ $studentData['name'] }}</span> memiliki nilai di bawah KKM {{ $kkmValue }}.
+                                        Siswa ini perlu melakukan remedial untuk nilai berikut: 
+                                        <span class="font-medium">{{ implode(', ', $studentData['belowKkmValues']) }}</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                @endforeach
+                    @endforeach
+                </div>
             @else
-                <div class="bg-green-50 border-l-4 border-green-400 p-4">
+                <div class="alert-remedial bg-green-50 border-l-4 border-green-400 p-4 rounded-md">
                     <div class="flex">
                         <div class="flex-shrink-0">
                             <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -303,4 +354,15 @@
         </div>
     </div>
 </div>
+<div style="height:1px;margin:0;padding:0"></div>
+<script>
+document.addEventListener('alpine:init', () => {
+    // Optional: Tambahkan fungsionalitas tambahan untuk Alpine.js
+    Alpine.store('analisisNilai', {
+        toggleAllDetails(value) {
+            // Fungsi untuk toggle semua detail sekaligus
+        }
+    });
+});
+</script>
 @endsection

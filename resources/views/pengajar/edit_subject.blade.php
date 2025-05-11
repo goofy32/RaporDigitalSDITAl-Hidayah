@@ -12,7 +12,7 @@
                     Kembali
                 </button>
                 <button type="submit" form="editSubjectForm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Simpan
+                    Simpanb 
                 </button>
             </div>
         </div>
@@ -54,7 +54,7 @@
                             @if(auth()->guard('guru')->user()->getWaliKelasId() == $subject->kelas_id)
                             <!-- Jika kelas yang dipilih adalah kelas wali -->
                             <div class="wali-info">
-                                <div class="p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                <div class="p-2 bg-green-50 border border-green-200 rounded-md">
                                     <p class="text-sm text-blue-800">
                                         <span class="font-medium">Info:</span> 
                                         Sebagai wali kelas, Anda mengajar mata pelajaran wajib (non-muatan lokal) di kelas yang Anda walikan.

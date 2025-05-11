@@ -247,14 +247,12 @@ function markFormChanged() {
 }
 
 function updateCalculations(e) {
-    if (e.target.matches('.tp-score, .lm-score, .nilai-semester')) {
-        // Mark the row as having changed scores
-        const row = e.target.closest('tr');
-        row.dataset.scoresChanged = 'true';
-        
-        calculateAverages(row);
-        markFormChanged();
-    }
+    // Tandai baris sebagai telah berubah untuk semua jenis input
+    const row = e.target.closest('tr');
+    row.dataset.scoresChanged = 'true';
+    
+    calculateAverages(row);
+    markFormChanged();
 }
 
 // New function to only calculate intermediate values without affecting final scores
@@ -268,7 +266,7 @@ function calculateIntermediateValues(row) {
 
         tpInputs.forEach(input => {
             let value = parseFloat(input.value);
-            if (!isNaN(value) && value > 0) {
+            if (!isNaN(value)) { // Dihapus kondisi "value > 0"
                 tpSum += value;
                 validTpCount++;
             }
@@ -289,7 +287,7 @@ function calculateIntermediateValues(row) {
 
         lmInputs.forEach(input => {
             let value = parseFloat(input.value);
-            if (!isNaN(value) && value > 0) {
+            if (!isNaN(value)) { // Hapus kondisi && value > 0
                 lmSum += value;
                 validLmCount++;
             }
@@ -307,22 +305,21 @@ function calculateIntermediateValues(row) {
         let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
         let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
 
-        if (nilaiTes > 0 || nilaiNonTes > 0) {
-            let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
-            nilaiAkhirInput.value = nilaiAkhirSemester.toFixed(2);
-        }
+        let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
+        nilaiAkhirInput.value = nilaiAkhirSemester.toFixed(2);
     }
 }
 
 function calculateAverages(row) {
-    // 1. Calculate NA Sumatif TP
+    // 1. Hitung rata-rata Nilai TP
     let tpInputs = row.querySelectorAll('.tp-score');
     let tpSum = 0;
     let validTpCount = 0;
 
     tpInputs.forEach(input => {
         let value = parseFloat(input.value);
-        if (!isNaN(value) && value > 0) {
+        // Hapus kondisi '&& value > 0' agar nilai 0 dianggap valid
+        if (!isNaN(value)) {
             tpSum += value;
             validTpCount++;
         }
@@ -333,14 +330,14 @@ function calculateAverages(row) {
         row.querySelector('.na-tp').value = naTP.toFixed(2);
     }
 
-    // 2. Calculate NA Sumatif LM
+    // 2. Hitung rata-rata Nilai LM 
     let lmInputs = row.querySelectorAll('.lm-score');
     let lmSum = 0;
     let validLmCount = 0;
 
     lmInputs.forEach(input => {
         let value = parseFloat(input.value);
-        if (!isNaN(value) && value > 0) {
+        if (!isNaN(value)) { // Hapus kondisi && value > 0
             lmSum += value;
             validLmCount++;
         }
@@ -351,50 +348,33 @@ function calculateAverages(row) {
         row.querySelector('.na-lm').value = naLM.toFixed(2);
     }
 
-    // 3. Calculate NA Sumatif Akhir Semester
+    // 3. Hitung Nilai Akhir Semester
     let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
     let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
 
-    if (nilaiTes > 0 || nilaiNonTes > 0) {
-        let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
-        row.querySelector('input[name*="[nilai_akhir]"]').value = nilaiAkhirSemester.toFixed(2);
-    }
+    // Selalu hitung, meskipun nilainya 0
+    let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
+    row.querySelector('input[name*="[nilai_akhir]"]').value = nilaiAkhirSemester.toFixed(2);
 
-    // 4. Calculate Nilai Akhir Rapor with dynamic weights ONLY if it's empty or scores have changed
+    // 4. Hitung Nilai Akhir Rapor dengan bobot dinamis
     let naTP = parseFloat(row.querySelector('.na-tp').value) || 0;
     let naLM = parseFloat(row.querySelector('.na-lm').value) || 0;
-    let nilaiAkhirSemester = parseFloat(row.querySelector('input[name*="[nilai_akhir]"]').value) || 0;
 
-    // Get weights from global variable
+    // Ambil bobot dari variabel global
     let bobotTP = parseFloat(window.bobotNilai?.bobot_tp || 0.25);
     let bobotLM = parseFloat(window.bobotNilai?.bobot_lm || 0.25);
     let bobotAS = parseFloat(window.bobotNilai?.bobot_as || 0.50);
 
-    // Check if we already have a final score
-    const nilaiAkhirRaporInput = row.querySelector('input[name*="[nilai_akhir_rapor]"]');
-    const existingValue = parseFloat(nilaiAkhirRaporInput.value) || 0;
-    
-    // Only recalculate if the field is empty or scores have changed
-    if (!existingValue || row.dataset.scoresChanged === 'true') {
-        if (naTP > 0 || naLM > 0 || nilaiAkhirSemester > 0) {
-            let nilaiAkhirRapor = (naTP * bobotTP) + (naLM * bobotLM) + (nilaiAkhirSemester * bobotAS);
-            nilaiAkhirRaporInput.value = Math.round(nilaiAkhirRapor);
-            
-            // Reset the changed flag after calculation
-            row.dataset.scoresChanged = 'false';
-            
-            // Highlight nilai yang di bawah KKM
-            const kkmValue = parseFloat(window.kkmValue || 70);
-            
-            if (Math.round(nilaiAkhirRapor) < kkmValue) {
-                nilaiAkhirRaporInput.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
-            } else {
-                nilaiAkhirRaporInput.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
-            }
-        }
+    // Selalu hitung ulang jika nilai berubah
+    if (row.dataset.scoresChanged === 'true') {
+        let nilaiAkhirRapor = (naTP * bobotTP) + (naLM * bobotLM) + (nilaiAkhirSemester * bobotAS);
+        row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.round(nilaiAkhirRapor);
+        
+        // Reset flag perubahan setelah kalkulasi
+        row.dataset.scoresChanged = 'false';
     }
     
-    // 5. Highlight nilai individu yang dibawah KKM
+    // 5. Sorot nilai yang dibawah KKM
     highlightBelowKkm(row);
 }
 
@@ -405,7 +385,7 @@ function highlightBelowKkm(row) {
     // Nilai TP
     row.querySelectorAll('.tp-score').forEach(input => {
         const value = parseFloat(input.value);
-        if (!isNaN(value) && value > 0 && value < kkmValue) {
+        if (!isNaN(value) && value < kkmValue) { // Dihapus kondisi "value > 0"
             input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
         } else {
             input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
@@ -415,17 +395,18 @@ function highlightBelowKkm(row) {
     // Nilai LM
     row.querySelectorAll('.lm-score').forEach(input => {
         const value = parseFloat(input.value);
-        if (!isNaN(value) && value > 0 && value < kkmValue) {
+        if (!isNaN(value) && value < kkmValue) { // Hapus kondisi && value > 0
             input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
         } else {
             input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
         }
     });
+
     
     // Nilai Tes dan Non-Tes
     row.querySelectorAll('input[name*="[nilai_tes]"], input[name*="[nilai_non_tes]"]').forEach(input => {
         const value = parseFloat(input.value);
-        if (!isNaN(value) && value > 0 && value < kkmValue) {
+        if (!isNaN(value) && value < kkmValue) { // Hapus kondisi && value > 0
             input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
         } else {
             input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
@@ -437,7 +418,7 @@ function highlightBelowKkm(row) {
         const input = row.querySelector(`.${className}`);
         if (input) {
             const value = parseFloat(input.value);
-            if (!isNaN(value) && value > 0 && value < kkmValue) {
+            if (!isNaN(value) && value < kkmValue) { // Hapus `value > 0`
                 input.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
             } else {
                 input.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
@@ -449,7 +430,7 @@ function highlightBelowKkm(row) {
     const nilaiAkhirInput = row.querySelector('input[name*="[nilai_akhir]"]');
     if (nilaiAkhirInput) {
         const value = parseFloat(nilaiAkhirInput.value);
-        if (!isNaN(value) && value > 0 && value < kkmValue) {
+        if (!isNaN(value) && value < kkmValue) { // Hapus `value > 0`
             nilaiAkhirInput.classList.add('bg-red-50', 'border-red-300', 'text-red-800');
         } else {
             nilaiAkhirInput.classList.remove('bg-red-50', 'border-red-300', 'text-red-800');
@@ -570,6 +551,11 @@ window.saveData = async function() {
 
         const formData = new FormData(document.getElementById('saveForm'));
         
+        document.querySelectorAll('#students-table input[type="number"]').forEach(input => {
+            if (input.value === '') {
+                input.value = '0';
+            }
+        });
         const response = await fetch(document.getElementById('saveForm').action, {
             method: 'POST',
             body: formData,
