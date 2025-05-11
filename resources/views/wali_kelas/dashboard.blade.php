@@ -71,7 +71,7 @@
                             
                             <!-- Konten notifikasi -->
                             <div @click="!item.is_read && $store.notification.markAsRead(item.id)" 
-                                class="bg-white rounded-lg shadow-sm p-3"
+                                class="bg-white rounded-lg border shadow-sm p-3"
                                 :class="{ 'cursor-pointer hover:bg-gray-50': !item.is_read }">
                                 <div class="flex justify-between items-start">
                                     <div>

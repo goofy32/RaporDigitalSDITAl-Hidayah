@@ -3,7 +3,7 @@
 @section('title', 'Dashboard Pengajar')
 
 @section('content')
-<div x-data="{ selectedKelas: '', mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
+<div x-data="dashboard" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
     <!-- Statistics Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-14">
         <!-- Left Section - Stats (col-span-2) -->
@@ -69,7 +69,7 @@
                             </div>
                             
                             <!-- Konten notifikasi -->
-                            <div class="bg-white rounded-lg shadow-sm p-3">
+                            <div class="bg-white rounded-lg border shadow-sm p-3">
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h3 class="text-sm font-medium" x-text="item.title"></h3>
@@ -98,7 +98,7 @@
         <label for="subject" class="block text-sm font-medium text-gray-700">Pilih Mata Pelajaran</label>
         <select id="subject" 
             x-model="selectedSubject" 
-            @change="fetchSubjectProgress()"
+            @change="fetchSubjectProgress"
             class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
             <option value="">Pilih mata pelajaran...</option>
             @foreach($kelas as $k)
@@ -259,8 +259,8 @@ function updateClassChart(progress) {
     }
 }
 
-function fetchSubjectProgress() {
-    const selectedSubject = document.getElementById('subject').value;
+function fetchSubjectProgress(subjectId) {
+    const selectedSubject = subjectId || document.getElementById('subject').value;
     if (selectedSubject) {
         fetch(`/pengajar/mata-pelajaran-progress/${selectedSubject}`)
             .then(response => {
@@ -304,22 +304,8 @@ document.addEventListener('alpine:init', () => {
         fetchSubjectProgress() {
             if (!this.selectedSubject) return;
             
-            fetch(`/pengajar/score/mata-pelajaran-progress/${this.selectedSubject}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Ensure progress is between 0 and 100
-                    const progress = Math.min(100, Math.max(0, data.progress || 0));
-                    updateClassChart(progress);
-                })
-                .catch(error => {
-                    console.error('Error fetching subject progress:', error);
-                    updateClassChart(0);
-                });
+            // Panggil fungsi global untuk memastikan kompatibilitas
+            window.fetchSubjectProgress(this.selectedSubject);
         }
     }));
 });
@@ -362,13 +348,6 @@ document.addEventListener('turbo:render', () => {
 document.addEventListener('turbo:visit', () => {
     if (!isDashboardPage()) {
         sessionStorage.removeItem(PENGAJAR_DASHBOARD_KEY);
-    }
-});
-
-// Event listener untuk dropdown kelas
-document.addEventListener('change', function(event) {
-    if (event.target && event.target.id === 'subject') {
-        fetchSubjectProgress();
     }
 });
 
