@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Exceptions\RaporException;
 use Exception;
+use App\Helpers\FileNameHelper;
 
 class RaporTemplateProcessor 
 {
@@ -141,6 +142,7 @@ class RaporTemplateProcessor
         
         return $template;
     }
+    
     
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
@@ -891,31 +893,28 @@ class RaporTemplateProcessor
         }
     }
 
-
-    
-   /**
-     * Generate nama file rapor
+    /**
+     * Generate nama file rapor using the helper
      * 
      * @return string
      */
     protected function generateFilename()
     {
-        // Tambahkan tahun ajaran ke nama file untuk membedakan antar tahun ajaran
-        $tahunAjaranText = '';
+        // Get tahun ajaran info
+        $tahunAjaranText = null;
         if ($this->tahunAjaranId) {
             $tahunAjaran = \App\Models\TahunAjaran::find($this->tahunAjaranId);
             if ($tahunAjaran) {
-                $tahunAjaranText = '_' . str_replace('/', '_', $tahunAjaran->tahun_ajaran);
+                $tahunAjaranText = $tahunAjaran->tahun_ajaran;
             }
         }
         
-        return sprintf(
-            "rapor_%s_%s_%s%s_%s.docx",
+        // Call the helper to generate a consistent filename
+        return FileNameHelper::generateReportFilename(
             $this->type,
-            $this->siswa->nis ?: 'nonis',
-            str_replace(' ', '_', $this->siswa->kelas->nama_kelas),
-            $tahunAjaranText,
-            time()
+            $this->siswa->nama,
+            $this->siswa->kelas->nomor_kelas . $this->siswa->kelas->nama_kelas,
+            $tahunAjaranText
         );
     }
 
