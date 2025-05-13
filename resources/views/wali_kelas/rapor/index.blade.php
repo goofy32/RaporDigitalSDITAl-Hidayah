@@ -177,7 +177,7 @@
                     <!-- Aksi -->
                     <td class="px-6 py-4">
                         <div class="flex items-center space-x-3">
-                            <!-- Debug button - add this inside the loop -->
+                            <!-- Debug button - add this inside the loop 
                             <button @click="debugSiswaData({{ $s->id }})" 
                                     class="text-blue-600 hover:text-blue-900">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,6 +185,7 @@
                                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </button>
+                            -->
 
                             <button @click="handlePreview({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
