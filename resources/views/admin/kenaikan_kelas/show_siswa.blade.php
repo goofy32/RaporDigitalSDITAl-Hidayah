@@ -63,7 +63,7 @@
                     @foreach($siswaList as $siswa)
                     <tr data-siswa-id="{{ $siswa->id }}">
                         <td class="py-3 px-4 border-b">
-                            <input type="checkbox" name="siswa_ids[]" value="{{ $siswa->id }}" class="student-checkbox h-4 w-4 text-green-600 focus:ring-g-500">
+                            <input type="checkbox" name="siswa_ids[]" value="{{ $siswa->id }}" class="student-checkbox h-4 w-4 text-green-600 focus:ring-green-500">
                         </td>
                         <td class="py-3 px-4 border-b">{{ $siswa->nis }}</td>
                         <td class="py-3 px-4 border-b">{{ $siswa->nama }}</td>
@@ -127,7 +127,13 @@
                     
                     <div class="mb-4">
                         <label for="kelas_tujuan_id" class="block text-sm font-medium text-gray-700">Kelas Tujuan</label>
-                        <select name="kelas_tujuan_id" id="kelas_tujuan_id" required class="mt-1 block w-full rounded-md border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                        <!-- Force green styling with inline style as a backup -->
+                        <select 
+                            name="kelas_tujuan_id" 
+                            id="kelas_tujuan_id" 
+                            required 
+                            class="mt-1 block w-full rounded-md border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                            style="border-color: rgb(134, 239, 172); outline-color: rgb(34, 197, 94);">
                             <option value="">-- Pilih Kelas Tujuan --</option>
                             @foreach($kelasTujuan as $target)
                             <option value="{{ $target->id }}">Kelas {{ $target->nomor_kelas }} {{ $target->nama_kelas }}</option>
@@ -153,10 +159,17 @@
                         <label for="kelas_tinggal_id" class="block text-sm font-medium text-gray-700">Kelas Tujuan (Tingkat yang Sama)</label>
                         <select name="kelas_tujuan_id" id="kelas_tinggal_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-yellow-500">
                             <option value="">-- Pilih Kelas Tinggal --</option>
-                            @foreach(\App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
-                                    ->where('nomor_kelas', $kelas->nomor_kelas)
-                                    ->orderBy('nama_kelas')
-                                    ->get() as $target)
+                            @php
+                                // Get distinct classes for tinggal kelas option (same grade level in the new academic year)
+                                $kelasTinggal = \App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                                        ->where('nomor_kelas', $kelas->nomor_kelas)
+                                        ->orderBy('nama_kelas')
+                                        ->get()
+                                        ->unique(function($item) {
+                                            return $item->nomor_kelas . $item->nama_kelas;
+                                        });
+                            @endphp
+                            @foreach($kelasTinggal as $target)
                             <option value="{{ $target->id }}">Kelas {{ $target->nomor_kelas }} {{ $target->nama_kelas }}</option>
                             @endforeach
                         </select>
@@ -175,6 +188,26 @@
     @endif
     @endif
 </div>
+
+<!-- Add this CSS to enforce styles -->
+<style>
+    /* Force green and red styles for dropdowns */
+    #kelas_tujuan_id {
+        border-color: rgb(134, 239, 172) !important;
+    }
+    #kelas_tujuan_id:focus {
+        border-color: rgb(34, 197, 94) !important;
+        box-shadow: 0 0 0 1px rgb(34, 197, 94) !important;
+    }
+    
+    #kelas_tinggal_id {
+        border-color: rgb(252, 165, 165) !important;
+    }
+    #kelas_tinggal_id:focus {
+        border-color: rgb(239, 68, 68) !important;
+        box-shadow: 0 0 0 1px rgb(239, 68, 68) !important;
+    }
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -253,6 +286,41 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+    
+    // Force apply styles to dropdowns
+    function forceApplyStyles() {
+        // For the naik kelas dropdown
+        const naikKelasDropdown = document.getElementById('kelas_tujuan_id');
+        if (naikKelasDropdown) {
+            naikKelasDropdown.style.borderColor = 'rgb(134, 239, 172)';
+            naikKelasDropdown.addEventListener('focus', function() {
+                this.style.borderColor = 'rgb(34, 197, 94)';
+                this.style.boxShadow = '0 0 0 1px rgb(34, 197, 94)';
+            });
+            naikKelasDropdown.addEventListener('blur', function() {
+                this.style.borderColor = 'rgb(134, 239, 172)';
+                this.style.boxShadow = 'none';
+            });
+        }
+        
+        // For the tinggal kelas dropdown
+        const tinggalKelasDropdown = document.getElementById('kelas_tinggal_id');
+        if (tinggalKelasDropdown) {
+            tinggalKelasDropdown.style.borderColor = 'rgb(252, 165, 165)';
+            tinggalKelasDropdown.addEventListener('focus', function() {
+                this.style.borderColor = 'rgb(239, 68, 68)';
+                this.style.boxShadow = '0 0 0 1px rgb(239, 68, 68)';
+            });
+            tinggalKelasDropdown.addEventListener('blur', function() {
+                this.style.borderColor = 'rgb(252, 165, 165)';
+                this.style.boxShadow = 'none';
+            });
+        }
+    }
+    
+    // Apply the styles immediately and after any potential framework might override them
+    forceApplyStyles();
+    setTimeout(forceApplyStyles, 100);
     
     // Add report check functionality to all buttons
     const checkRaporButtons = document.querySelectorAll('.check-rapor-btn');
