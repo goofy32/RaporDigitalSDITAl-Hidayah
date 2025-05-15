@@ -24,7 +24,8 @@ class MataPelajaran extends Model
     
     protected $casts = [
         'is_muatan_lokal' => 'boolean',
-        'allow_non_wali' => 'boolean', 
+        'allow_non_wali' => 'boolean',
+        'guru_id' => 'integer'
     ];
 
     public function kelas()

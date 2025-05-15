@@ -343,11 +343,30 @@
             ];
         })->middleware(['auth:guru', 'role:guru']);
 
-    // Pengajar Routes - Guard: guru, Role: guru
-    Route::middleware(['auth:guru', 'role:guru'])
-        ->prefix('pengajar')
-        ->name('pengajar.')  // Tambahkan ini untuk name prefix
-        ->group(function () {
+        // Pengajar Routes - Guard: guru, Role: guru
+        Route::middleware(['auth:guru', 'role:guru'])
+            ->prefix('pengajar')
+            ->name('pengajar.')  // Tambahkan ini untuk name prefix
+            ->group(function () {
+
+                Route::get('/check-access/{mapelId}', function($mapelId) {
+        $guru = Auth::guard('guru')->user();
+        $mapel = \App\Models\MataPelajaran::find($mapelId);
+        
+        return [
+            'guru_id' => $guru->id,
+            'guru_name' => $guru->nama,
+            'guru_role' => $guru->jabatan,
+            'is_wali_kelas' => $guru->isWaliKelas(),
+            'mapel_id' => $mapel->id,
+            'mapel_name' => $mapel->nama_pelajaran,
+            'mapel_guru_id' => $mapel->guru_id,
+            'tahun_ajaran_match' => $mapel->tahun_ajaran_id == session('tahun_ajaran_id'),
+            'session_tahun_ajaran' => session('tahun_ajaran_id'),
+            'mapel_tahun_ajaran' => $mapel->tahun_ajaran_id,
+            'has_access' => $mapel->guru_id === $guru->id
+        ];
+    })->middleware(['auth:guru']);
 
             // Add this to your routes/web.php file inside the pengajar route group
         Route::get('/score/{id}/check-access', function($id) {
@@ -407,7 +426,7 @@
         Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
         
         // Score Management
-        Route::prefix('score')->name('score.')->middleware(['auto.sync.tahun.ajaran'])->group(function () {
+        Route::prefix('score')->name('score.')->group(function () {
             Route::get('/', [ScoreController::class, 'index'])->name('index');
             Route::get('/{id}/input', [ScoreController::class, 'inputScore'])->name('input_score');
             Route::post('/{id}/save', [ScoreController::class, 'saveScore'])->name('save_scores');
@@ -446,6 +465,35 @@
         ->prefix('wali-kelas')
         ->name('wali_kelas.')
         ->group(function () {
+
+        Route::get('/debug-mapel/{id}', function($id) {
+            $mapel = \App\Models\MataPelajaran::findOrFail($id);
+            $guru = Auth::guard('guru')->user();
+            
+            return response()->json([
+                'mata_pelajaran' => [
+                    'id' => $mapel->id,
+                    'nama' => $mapel->nama_pelajaran,
+                    'guru_id' => $mapel->guru_id,
+                    'kelas_id' => $mapel->kelas_id,
+                    'tahun_ajaran_id' => $mapel->tahun_ajaran_id
+                ],
+                'current_guru' => [
+                    'id' => $guru->id,
+                    'nama' => $guru->nama,
+                    'type_of_guru_id' => gettype($guru->id),
+                    'type_of_mapel_guru_id' => gettype($mapel->guru_id)
+                ],
+                'comparison' => [
+                    'normal_comparison' => $mapel->guru_id === $guru->id,
+                    'int_comparison' => (int)$mapel->guru_id === (int)$guru->id,
+                    'string_comparison' => (string)$mapel->guru_id === (string)$guru->id
+                ],
+                'session' => [
+                    'tahun_ajaran_id' => session('tahun_ajaran_id')
+                ]
+            ]);
+        })->name('pengajar.debug.mapel');
 
             // Notifications
         Route::prefix('notifications')->name('notifications.')->group(function () {

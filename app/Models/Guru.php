@@ -77,6 +77,7 @@ class Guru extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'tanggal_lahir' => 'date',
+        'id' => 'integer'
     ];
 
     /**

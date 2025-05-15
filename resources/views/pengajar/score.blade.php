@@ -3,6 +3,8 @@
 @section('title', 'Data Pembelajaran')
 
 @section('content')
+
+<!-- 
 <script>
 // Debug tools - embedded directly in the page
 function createDebugOverlay() {
@@ -213,6 +215,30 @@ function debugIconClick(mapelId, iconType, url) {
                 }
             }
         }
+    debugLog(`Checking direct guru_id match for mapel ${mapelId}`, 'info');
+    
+    // Add fetch to get real-time debug data before navigating
+    fetch(`/pengajar/debug-mapel/${mapelId}`)
+        .then(response => response.json())
+        .then(data => {
+            debugLog(`Debug data: ${JSON.stringify(data)}`, 'info');
+            
+            // If we have a match in our debug data, navigate directly
+            if (data.comparison.int_comparison) {
+                debugLog(`ID comparison successful using int casting, navigating...`, 'success');
+                window.location.href = url;
+            } else {
+                debugLog(`ID comparison failed. MapelGuruID=${data.mata_pelajaran.guru_id}, CurrentGuruID=${data.current_guru.id}`, 'error');
+            }
+        })
+        .catch(error => {
+            debugLog(`Error fetching debug data: ${error}`, 'error');
+            // Continue with XHR diagnostic
+            continueWithXhrCheck();
+        });
+    
+    // Prevent default navigation for our diagnostic
+    return false;
     };
     
     // Add error handling for the XHR
@@ -241,6 +267,8 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Debug tools initialized');
 });
 </script>
+-->
+
 
 <div class="p-4 bg-white mt-14 rounded-lg">
     <!-- Header -->

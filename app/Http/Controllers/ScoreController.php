@@ -217,13 +217,25 @@ class ScoreController extends Controller
             'lingkupMateris.tujuanPembelajarans',
         ])->findOrFail($id);
 
-        // Validasi akses guru
+        // Validasi akses guru - with improved type checking
         $guru = Auth::guard('guru')->user();
-        if ($mataPelajaran->guru_id !== $guru->id) {
+        
+        // Add debug logging
+        Log::info('Checking guru access for mata pelajaran:', [
+            'mata_pelajaran_id' => $id,
+            'mata_pelajaran_guru_id' => $mataPelajaran->guru_id,
+            'mata_pelajaran_guru_id_type' => gettype($mataPelajaran->guru_id),
+            'current_guru_id' => $guru->id,
+            'current_guru_id_type' => gettype($guru->id),
+            'tahun_ajaran_mapel' => $mataPelajaran->tahun_ajaran_id,
+            'tahun_ajaran_session' => session('tahun_ajaran_id')
+        ]);
+        
+        // Fix the comparison with type casting
+        if ((int)$mataPelajaran->guru_id !== (int)$guru->id) {
             return redirect()->route('pengajar.score')
                 ->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
         }
-
         // Periksa apakah ada TP untuk setiap Lingkup Materi
         $hasTp = $mataPelajaran->lingkupMateris->every(function($lm) {
             return $lm->tujuanPembelajarans->isNotEmpty();
@@ -409,6 +421,15 @@ class ScoreController extends Controller
     
             // Validasi akses guru
             $guru = Auth::guard('guru')->user();
+                        Log::info('Checking guru access for mata pelajaran preview:', [
+                'mata_pelajaran_id' => $id,
+                'mata_pelajaran_guru_id' => $mataPelajaran->guru_id, 
+                'mata_pelajaran_guru_id_type' => gettype($mataPelajaran->guru_id),
+                'current_guru_id' => $guru->id,
+                'current_guru_id_type' => gettype($guru->id),
+                'tahun_ajaran_mapel' => $mataPelajaran->tahun_ajaran_id,
+                'tahun_ajaran_session' => $tahunAjaranId
+            ]);
             if ($mataPelajaran->guru_id !== $guru->id) {
                 return redirect()->route('pengajar.score.index')
                     ->with('error', 'Anda tidak memiliki akses ke mata pelajaran ini');
