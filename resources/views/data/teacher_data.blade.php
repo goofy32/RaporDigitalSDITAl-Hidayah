@@ -96,63 +96,52 @@
                                     @endif
                                 </td>
                             </tr>
-                           <tr class="border-b">
+                            <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
                                 <td class="px-4 py-2">
                                     @php
-                                        // Create a collection to track unique classes
-                                        $uniqueClasses = collect();
-
-                                        // Process all classes to ensure uniqueness
+                                        // Get the classes where the teacher teaches (excluding wali kelas)
+                                        $teachingClasses = collect();
+                                        
                                         foreach($teacher->kelas as $kelas) {
                                             $classKey = $kelas->nomor_kelas . $kelas->nama_kelas;
                                             $isWaliKelas = $kelas->pivot->is_wali_kelas && $kelas->pivot->role === 'wali_kelas';
                                             
-                                            // Check if we've already processed this class
-                                            if (!$uniqueClasses->has($classKey)) {
-                                                $uniqueClasses->put($classKey, [
+                                            // Only include in teaching classes if not wali kelas role
+                                            if (!$isWaliKelas) {
+                                                $teachingClasses->put($classKey, [
                                                     'nomor' => $kelas->nomor_kelas,
-                                                    'nama' => $kelas->nama_kelas,
-                                                    'is_wali_kelas' => $isWaliKelas
+                                                    'nama' => $kelas->nama_kelas
                                                 ]);
-                                            } else {
-                                                // If this class is already in our collection and this instance is a wali kelas,
-                                                // update the existing entry to mark it as wali kelas
-                                                if ($isWaliKelas && !$uniqueClasses->get($classKey)['is_wali_kelas']) {
-                                                    $uniqueClasses->put($classKey, [
-                                                        'nomor' => $kelas->nomor_kelas,
-                                                        'nama' => $kelas->nama_kelas,
-                                                        'is_wali_kelas' => true
-                                                    ]);
-                                                }
                                             }
                                         }
-                                        @endphp
+                                    @endphp
 
-                                        @if($uniqueClasses->count() > 0)
-                                            <ul>
-                                                @foreach($uniqueClasses as $kelas)
-                                                    <li>
-                                                        {{ $kelas['nomor'] }} {{ $kelas['nama'] }}
-                                                        @if($kelas['is_wali_kelas'])
-                                                            <span class="text-green-600 ml-1">(Wali Kelas)</span>
-                                                        @endif
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        @else
-                                            <span>-</span>
-                                        @endif
+                                    @if($teachingClasses->count() > 0)
+                                        <ul>
+                                            @foreach($teachingClasses as $kelas)
+                                                <li>{{ $kelas['nomor'] }} {{ $kelas['nama'] }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @else
+                                        <span>-</span>
+                                    @endif
                                 </td>
                             </tr>
 
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Wali Kelas</th>
                                 <td class="px-4 py-2">
-                                    @if(isset($waliKelasInfo) && $waliKelasInfo)
-                                        {{ $waliKelasInfo['nomor_kelas'] }} {{ $waliKelasInfo['nama_kelas'] }}
+                                    @php
+                                        // Get explicitly the Wali Kelas relationship
+                                        // This is the most reliable method as it uses the dedicated relationship
+                                        $kelasWali = $teacher->kelasWali()->first();
+                                    @endphp
+                                    
+                                    @if($kelasWali)
+                                        Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}
                                     @else
-                                        Bukan Wali Kelas
+                                        <span>Bukan Wali Kelas</span>
                                     @endif
                                 </td>
                             </tr>

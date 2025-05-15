@@ -93,7 +93,7 @@
                 </td>
                 <td class="px-6 py-4">{{ $report->kelas->full_kelas }}</td>
                 <td class="px-6 py-4">
-                    <span class="px-2 py-1 text-xs font-medium {{ $report->type === 'UTS' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
+                    <span class="px-2 py-1 text-xs font-medium {{ $report->type === 'UTS' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800' }} rounded-full">
                         {{ $report->type }}
                     </span>
                 </td>
@@ -113,7 +113,7 @@
                         <button onclick="previewRapor({{ $report->id }})" 
                                 class="text-blue-600 hover:text-blue-900 flex items-center justify-center"
                                 title="Preview Rapor">
-                            <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="w-7 h-7 object-contain">
+                            <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="w-6 h-6 object-contain">
                         </button>
                         
                         <!-- Tombol Download - tampilkan dengan kondisi jika file ada -->
@@ -121,9 +121,7 @@
                             <a href="{{ route('admin.report.history.download', $report->id) }}" 
                                 class="text-green-600 hover:text-green-900"
                                 title="Download Rapor">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                </svg>
+                                <img src="{{ asset('images/icons/download.png') }}" alt="Preview" class="w-6 h-6 object-contain">
                             </a>
                         @else
                             <button onclick="showFileNotAvailableAlert()"

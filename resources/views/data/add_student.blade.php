@@ -9,12 +9,12 @@
             <h2 class="text-2xl font-bold text-green-700">Form Tambah Data Siswa</h2>
             <!-- Pindahkan tombol ke sini -->
             <div class="flex space-x-2">
-                <button type="submit" form="studentForm" class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
-                    Simpan Data
-                </button>
                 <a href="{{ route('student') }}" class="px-6 py-2.5 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 focus:ring-4 focus:ring-gray-300">
                     Batal
                 </a>
+                <button type="submit" form="studentForm" class="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
+                    Simpan Data
+                </button>
             </div>
         </div>
 

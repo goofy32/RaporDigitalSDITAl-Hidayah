@@ -44,7 +44,7 @@
     
     <div class="mb-6">
         <div class="flex items-center mb-4">
-            <input id="select-all" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+            <input id="select-all" type="checkbox" class="h-4 w-4 text-green-600 focus:ring-green-500">
             <label for="select-all" class="ml-2 block text-sm text-gray-900">Pilih Semua Siswa</label>
         </div>
         
@@ -63,7 +63,7 @@
                     @foreach($siswaList as $siswa)
                     <tr data-siswa-id="{{ $siswa->id }}">
                         <td class="py-3 px-4 border-b">
-                            <input type="checkbox" name="siswa_ids[]" value="{{ $siswa->id }}" class="student-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500">
+                            <input type="checkbox" name="siswa_ids[]" value="{{ $siswa->id }}" class="student-checkbox h-4 w-4 text-green-600 focus:ring-g-500">
                         </td>
                         <td class="py-3 px-4 border-b">{{ $siswa->nis }}</td>
                         <td class="py-3 px-4 border-b">{{ $siswa->nama }}</td>
@@ -127,7 +127,7 @@
                     
                     <div class="mb-4">
                         <label for="kelas_tujuan_id" class="block text-sm font-medium text-gray-700">Kelas Tujuan</label>
-                        <select name="kelas_tujuan_id" id="kelas_tujuan_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select name="kelas_tujuan_id" id="kelas_tujuan_id" required class="mt-1 block w-full rounded-md border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                             <option value="">-- Pilih Kelas Tujuan --</option>
                             @foreach($kelasTujuan as $target)
                             <option value="{{ $target->id }}">Kelas {{ $target->nomor_kelas }} {{ $target->nama_kelas }}</option>

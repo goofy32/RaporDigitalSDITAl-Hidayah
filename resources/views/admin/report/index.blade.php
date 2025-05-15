@@ -139,12 +139,12 @@
                         <td class="px-6 py-4">{{ Carbon\Carbon::parse($template->created_at)->format('d M Y H:i') }}</td>
                         <td class="px-6 py-4 text-center">
                             @if($template->is_active)
-                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-full min-w-[80px]">
+                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-5 min-w-[80px]">
                                     Aktif
                                 </span>
                             @else
-                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full min-w-[80px]">
-                                    Tidak Aktif
+                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-5 min-w-[80px]">
+                                    Tidak
                                 </span>
                             @endif
                         </td>
@@ -457,7 +457,7 @@ async function handleActivateToggle(e) {
     
     // Determine the activation action based on current state
     const isActive = checkbox.checked;
-    const actionWord = isActive ? 'menonaktifkan' : 'mengaktifkan';
+    const actionWord = isActive ? 'mengaktifkah' : 'menonaktifkan';
     
     // Show confirmation dialog
     if (!confirm(`Apakah Anda yakin ingin ${actionWord} template ini?`)) {

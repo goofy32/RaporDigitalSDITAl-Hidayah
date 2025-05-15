@@ -71,6 +71,7 @@
                     placeholder="Berikan deskripsi singkat tentang tahun ajaran ini (opsional)">{{ old('deskripsi') }}</textarea>
             </div>
 
+            <!-- 
             <div class="md:col-span-2">
                 <div class="flex items-center">
                     <input type="checkbox" name="is_active" id="is_active" value="1" {{ old('is_active') ? 'checked' : '' }}
@@ -81,6 +82,7 @@
                 </div>
                 <p class="mt-1 text-sm text-gray-500">Jika diaktifkan, tahun ajaran lain akan dinonaktifkan secara otomatis.</p>
             </div>
+            -->
         </div>
     </form>
 </div>
