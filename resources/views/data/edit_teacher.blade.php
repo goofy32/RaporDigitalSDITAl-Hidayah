@@ -182,14 +182,14 @@
                                         Guru tidak dapat ditambahkan sampai ada kelas yang tersedia.
                                     </p>
                                     <p class="text-sm text-yellow-800 mt-2">
-                                        <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                        <a href="{{ route('kelas.create') }}" class="text-yellow-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
                                     </p>
                                 </div>
                             @endif
                             
                             @if($kelasWali)
-                                <div class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                                    <p class="text-sm text-blue-800">
+                                <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                                    <p class="text-sm text-yellow-800">
                                         <span class="font-medium">Catatan:</span> Guru ini menjadi wali kelas untuk Kelas {{ $kelasWali->nomor_kelas }} {{ $kelasWali->nama_kelas }}. 
                                         Kelas wali tidak perlu dipilih di daftar kelas mengajar, karena akan otomatis ditambahkan.
                                     </p>
@@ -225,7 +225,7 @@
                                         Semua kelas sudah memiliki wali kelas atau belum ada kelas yang dibuat.
                                     </p>
                                     <p class="text-sm text-yellow-800 mt-2">
-                                        <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                        <a href="{{ route('kelas.create') }}" class="text-yellow-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
                                     </p>
                                 </div>
                                 <input type="hidden" name="wali_kelas_id" value="{{ $kelasWali ? $kelasWali->id : '' }}">

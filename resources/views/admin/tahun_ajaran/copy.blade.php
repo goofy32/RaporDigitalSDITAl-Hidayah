@@ -4,9 +4,16 @@
 
 @section('content')
 <div class="p-4">
-    <div class="mb-4">
-        <h2 class="text-2xl font-bold">Salin Tahun Ajaran</h2>
-        <p class="text-gray-600">Buat tahun ajaran baru dengan menyalin data dari tahun ajaran yang sudah ada</p>
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-green-700">Salin Tahun Ajaran</h2>
+        <div class="flex space-x-3">
+            <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-md">
+                Batal
+            </a>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                Salin Tahun Ajaran
+            </button>
+        </div>
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
@@ -107,16 +114,18 @@
                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50">{{ old('deskripsi', 'Tahun Ajaran ' . $newTahunAjaran) }}</textarea>
                         </div>
 
-                        <!-- Aktif -->
+                        <!--
                         <div>
                             <div class="flex items-center">
                                 <input type="checkbox" name="is_active" id="is_active" value="1" x-model="isActive"
-                                       class="rounded border-gray-300 text-green-600 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50"
+                                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-green-200 focus:ring-opacity-50"
                                        {{ old('is_active') ? 'checked' : '' }}>
                                 <label for="is_active" class="ml-2 block text-sm font-medium text-gray-700">Aktifkan Tahun Ajaran Ini</label>
                             </div>
                             <p class="text-gray-500 text-sm mt-1">Mengaktifkan tahun ajaran ini akan menonaktifkan tahun ajaran lain</p>
                         </div>
+                         -->
+
                     </div>
                 </div>
             </div>
@@ -229,16 +238,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Tombol -->
-            <div class="mt-6 flex items-center justify-end gap-4">
-                <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300">
-                    Kembali
-                </a>
-                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    Salin Tahun Ajaran
-                </button>
             </div>
         </form>
     </div>

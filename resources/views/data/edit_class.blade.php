@@ -113,7 +113,7 @@
                 
                 @if($waliKelas)
                     <!-- Kelas sudah memiliki wali kelas -->
-                    <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p class="text-sm text-gray-800">
                             <span class="font-medium">Wali Kelas Saat Ini:</span> {{ $waliKelas->nama }}
                         </p>

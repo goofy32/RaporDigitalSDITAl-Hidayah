@@ -6,9 +6,16 @@
 <div class="p-4 bg-white rounded-lg shadow-md">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">Tambah Tahun Ajaran Baru</h2>
-        <a href="{{ route('tahun.ajaran.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            <i class="fas fa-arrow-left mr-2"></i> Kembali
-        </a>
+        <div class="flex space-x-3">
+            <a href="{{ route('tahun.ajaran.index') }}"
+                class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-white bg-gray-600">
+                Batal
+            </a>
+            <button type="submit"
+                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                Simpan Tahun Ajaran
+            </button>
+        </div>
     </div>
 
     @if ($errors->any())
@@ -74,17 +81,6 @@
                 </div>
                 <p class="mt-1 text-sm text-gray-500">Jika diaktifkan, tahun ajaran lain akan dinonaktifkan secara otomatis.</p>
             </div>
-        </div>
-
-        <div class="flex justify-end space-x-3 mt-8">
-            <a href="{{ route('tahun.ajaran.index') }}"
-                class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Batal
-            </a>
-            <button type="submit"
-                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Simpan Tahun Ajaran
-            </button>
         </div>
     </form>
 </div>

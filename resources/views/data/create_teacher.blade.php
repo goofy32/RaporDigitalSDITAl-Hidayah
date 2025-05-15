@@ -142,13 +142,13 @@
                             </select>
                             <p class="mt-1 text-sm text-gray-500">Tekan CTRL untuk memilih beberapa kelas yang akan diajar</p>
                         @else
-                            <div class="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <p class="text-sm text-yellow-800">
+                            <div class="mt-1 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p class="text-sm text-green-800">
                                     <span class="font-medium">Perhatian:</span> Belum ada kelas yang tersedia untuk diampu.
                                     Guru tidak dapat ditambahkan sampai ada kelas yang tersedia.
                                 </p>
-                                <p class="text-sm text-yellow-800 mt-2">
-                                    <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                <p class="text-sm text-green-800 mt-2">
+                                    <a href="{{ route('kelas.create') }}" class="text-green-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
                                 </p>
                             </div>
                         @endif
@@ -167,13 +167,13 @@
                             </select>
                             <p class="mt-1 text-sm text-gray-500">Pilih kelas yang akan diwalikan</p>
                         @else
-                            <div class="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <p class="text-sm text-yellow-800">
+                            <div class="mt-1 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p class="text-sm text-green-800">
                                     <span class="font-medium">Perhatian:</span> Tidak ada kelas yang tersedia untuk ditugaskan sebagai wali kelas.
                                     Semua kelas sudah memiliki wali kelas atau belum ada kelas yang dibuat.
                                 </p>
-                                <p class="text-sm text-yellow-800 mt-2">
-                                    <a href="{{ route('kelas.create') }}" class="text-blue-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
+                                <p class="text-sm text-green-800 mt-2">
+                                    <a href="{{ route('kelas.create') }}" class="text-green-600 hover:underline">Klik di sini</a> untuk membuat kelas baru.
                                 </p>
                             </div>
                             <input type="hidden" name="wali_kelas_id" value="">
@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if(!infoText) {
                 infoText = document.createElement('p');
                 infoText.id = 'kelas_mengajar_info';
-                infoText.className = 'mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800';
+                infoText.className = 'mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-sm text-green-800';
                 kelasMengajarSelect.parentElement.appendChild(infoText);
             }
             infoText.innerHTML = '<span class="font-medium">Info:</span> Karena Anda terpilih sebagai wali kelas, Anda hanya dapat mengajar di kelas wali yang dipilih.';
