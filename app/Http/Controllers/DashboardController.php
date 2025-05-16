@@ -33,8 +33,18 @@ class DashboardController extends Controller
             return $query->where('tahun_ajaran_id', $tahunAjaranId);
         })->count();
         
+       $semester = null;
+        if ($tahunAjaranId) {
+            $currentTahunAjaran = TahunAjaran::find($tahunAjaranId);
+            if ($currentTahunAjaran) {
+                $semester = $currentTahunAjaran->semester;
+            }
+        }
+
         $totalSubjects = MataPelajaran::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
             return $query->where('tahun_ajaran_id', $tahunAjaranId);
+        })->when($semester, function($query) use ($semester) {
+            return $query->where('semester', $semester);
         })->count();
         
         $totalTeachers = Guru::count(); // Guru tetap dihitung semua
@@ -43,11 +53,19 @@ class DashboardController extends Controller
             return $query->where('tahun_ajaran_id', $tahunAjaranId);
         })->count();
         
-        $overallProgress = $this->calculateOverallProgressForAdmin($tahunAjaranId);
+        $overallProgress = $this->calculateOverallProgressForAdmin($tahunAjaranId) ?? 0;
         
         $kelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
             return $query->where('tahun_ajaran_id', $tahunAjaranId);
-        })->get();
+        })
+        ->select('id', 'nomor_kelas', 'nama_kelas')
+        ->orderBy('nomor_kelas')
+        ->orderBy('nama_kelas')
+        ->get()
+        ->unique(function($item) {
+            // Create a unique key combining class number and name
+            return $item->nomor_kelas . '-' . $item->nama_kelas;
+        });
         
         $guru = Guru::with(['kelasPengajar', 'mataPelajarans'])->get();
         $informationItems = Notification::latest()->get();
