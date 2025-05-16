@@ -35,22 +35,31 @@
                         <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                     </svg>
                 </button>
-                <div class="flex ms-2 md:me-24">
-                    @if(isset($schoolProfile->logo))
-                        <img src="{{ asset('storage/' . $schoolProfile->logo) }}" class="h-11 me-3" alt="Logo Sekolah" />
-                    @else
-                        <div x-data class="h-8">
-                            <img src="https://flowbite.com/docs/images/logo.svg" 
-                                 class="h-full me-3 transition-opacity duration-300"
-                                 :class="Alpine.store('navigation').isImageLoaded('default-logo') ? 'opacity-100' : 'opacity-0'"
-                                 id="default-logo">
-                        </div>
-                    @endif
-                    <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap dark:text-white">
-                    {{ $schoolProfile->nama_sekolah ?? 'SDIT AL Hidayah' }}
+                
+                <!-- Logo section with large logo but standard topbar height -->
+                <div class="flex items-center ms-2 md:me-24 relative">
+                    <!-- Large logo that extends below the topbar -->
+                    <div class="relative h-12 w-32 mr-3"> <!-- Wider container for the large logo -->
+                        @if(isset($schoolProfile->logo))
+                            <img src="{{ asset('storage/' . $schoolProfile->logo) }}" 
+                                 class="absolute h-20 w-auto max-w-none -bottom-3"
+                                 style="left: 40%; transform: translateX(-50%);"
+                                 alt="Logo Sekolah" />
+                        @else
+                            <img src="{{ asset('images/logo/sdit-logo.png') }}" 
+                                 class="absolute h-20 w-auto max-w-none -bottom-3"
+                                 style="left: 50%; transform: translateX(-50%);"
+                                 alt="SDIT Al-Hidayah Logo">
+                        @endif
+                    </div>
+                    
+                    <!-- School name -->
+                    <span class="text-2xl font-semibold text-gray-700">
+                        {{ $schoolProfile->nama_sekolah ?? 'SD IT Al-Hidayah Logam' }}
                     </span>
                 </div>
             </div>
+
 
             <!-- User Menu dan Tahun Ajaran Selector -->
             <div class="flex items-center relative space-x-4">

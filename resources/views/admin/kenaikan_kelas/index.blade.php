@@ -14,9 +14,20 @@
     </div>
     @endif
 
-    @if(session('error'))
-    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-        <p>{{ session('error') }}</p>
+    @if(session('error') || isset($error))
+    <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+        <p>{{ session('error') ?? $error }}</p>
+        
+        @if(isset($error) && str_contains($error, 'Tidak ada tahun ajaran yang aktif'))
+        <div class="mt-4">
+            <a href="{{ route('tahun.ajaran.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-blue active:bg-green-700 transition duration-150 ease-in-out">
+                <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Kelola Tahun Ajaran
+            </a>
+        </div>
+        @endif
     </div>
     @endif
 
@@ -48,6 +59,7 @@
     </div>
     @endif
 
+    @if(isset($tahunAjaranAktif))
     <div class="mb-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">Informasi Tahun Ajaran</h3>
         <div class="flex flex-col md:flex-row gap-4">
@@ -65,10 +77,13 @@
             </div>
             @else
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex-1">
+                <h4 class="font-medium text-yellow-800">Tahun Ajaran Tujuan</h4>
+                <p class="text-gray-600">Belum ada tahun ajaran berikutnya. Silakan buat tahun ajaran baru dengan tahun yang lebih tinggi.</p>
             </div>
             @endif
         </div>
     </div>
+    @endif
 
     @if(isset($tahunAjaranBaru) && isset($kelasBaru) && !$kelasBaru->isEmpty())
     <div class="mt-6 bg-green-50 p-4 rounded-lg border border-green-200">
