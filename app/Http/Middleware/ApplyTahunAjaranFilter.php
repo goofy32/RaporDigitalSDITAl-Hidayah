@@ -17,18 +17,23 @@ class ApplyTahunAjaranFilter
      */
     public function handle(Request $request, Closure $next)
     {
-        // Ambil tahun ajaran dari session
+        // Get tahun ajaran from session
         $tahunAjaranId = session('tahun_ajaran_id');
+        $selectedSemester = session('selected_semester');
         
         if ($tahunAjaranId) {
-            // Simpan tahun ajaran ID sebagai variabel global dalam request
-            $request->merge(['tahun_ajaran_id' => $tahunAjaranId]);
+            // Save tahun ajaran ID as global variable in request
+            $request->merge([
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'selected_semester' => $selectedSemester
+            ]);
             
-            // Share tahun ajaran ID ke semua view
+            // Share tahun ajaran ID to all views
             view()->share('selectedTahunAjaranId', $tahunAjaranId);
+            view()->share('selectedSemester', $selectedSemester);
         }
 
-        // Proses request
+        // Process request
         $response = $next($request);
 
         return $response;

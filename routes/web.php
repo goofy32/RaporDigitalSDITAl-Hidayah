@@ -120,6 +120,8 @@
         Route::get('/tujuan-pembelajaran/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkDependencies'])
         ->name('tujuan_pembelajaran.check_dependencies');
         
+        Route::get('/set-semester/{tahunAjaranId}/{semester}', [TahunAjaranController::class, 'setSessionSemester'])
+        ->name('tahun.ajaran.set-semester');
         // Bobot Nilai Routes
         Route::prefix('bobot-nilai')->name('admin.bobot_nilai.')->group(function() {
             Route::get('/', [BobotNilaiController::class, 'index'])->name('index');

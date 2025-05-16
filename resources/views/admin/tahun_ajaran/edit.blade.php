@@ -94,7 +94,7 @@
                 <div class="md:col-span-2">
                     <div class="flex items-center">
                         <input type="checkbox" name="is_active" id="is_active" value="1" x-model="isActive"
-                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                               class="rounded border-gray-300 text-green-600 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50"
                                {{ old('is_active', $tahunAjaran->is_active) ? 'checked' : '' }}>
                         <label for="is_active" class="ml-2 block text-sm font-medium text-gray-700">Aktif</label>
                     </div>

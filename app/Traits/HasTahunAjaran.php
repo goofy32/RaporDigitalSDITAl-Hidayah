@@ -116,14 +116,16 @@ trait HasTahunAjaran
     /**
      * Scope untuk filter berdasarkan semester
      */
-    public function scopeSemester($query, $semester)
+    public function scopeSemester($query, $semester = null)
     {
-        if (array_key_exists('semester', $this->getAttributes())) {
+        $semester = $semester ?: session('selected_semester');
+        
+        if ($semester && schema_has_column($this->getTable(), 'semester')) {
             return $query->where('semester', $semester);
         }
         
         return $query;
-    }
+    }   
     
     /**
      * Relasi dengan model TahunAjaran

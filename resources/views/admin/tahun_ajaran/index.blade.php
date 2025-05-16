@@ -120,9 +120,6 @@
                         <td class="py-4 px-4 border-b">
                             <div class="font-medium text-gray-900">
                                 {{ $tahunAjaran->tahun_ajaran }}
-                                @if($tahunAjaran->trashed())
-                                    <span class="ml-2 px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Diarsipkan</span>
-                                @endif
                             </div>
                             @if($tahunAjaran->deskripsi)
                             <div class="text-sm text-gray-500">{{ Str::limit($tahunAjaran->deskripsi, 50) }}</div>
@@ -140,7 +137,7 @@
                         <td class="py-4 px-4 border-b">
                             <div class="flex flex-col gap-1">
                             @if($tahunAjaran->trashed())
-                                <span class="px-2 py-1 text-xs font-semibold text-black-800 bg-black-100 rounded-full">Diarsipkan</span>
+                                <span class="px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Diarsipkan</span>
                             @elseif($tahunAjaran->is_active)
                                 <span class="px-2 py-1 text-xs font-semibold text-black-800 bg-green-100 rounded-full">Aktif</span>
                             @else

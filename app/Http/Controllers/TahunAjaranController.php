@@ -26,9 +26,9 @@ class TahunAjaranController extends Controller
         $tampilkanArsip = $request->has('showArchived');
         
         // Query utama untuk tampilan
-        $query = TahunAjaran::orderBy('is_active', 'desc')
-                          ->orderBy('tanggal_mulai', 'desc');
-                          
+        $query = TahunAjaran::orderBy('tahun_ajaran', 'desc')
+                        ->orderBy('semester', 'asc');
+                        
         if ($tampilkanArsip) {
             $query->withTrashed();
         }
@@ -37,11 +37,6 @@ class TahunAjaranController extends Controller
         
         // Hitung jumlah arsip secara terpisah
         $archivedCount = TahunAjaran::onlyTrashed()->count();
-        
-        // Debug logging
-        \Log::info("Tampilkan Arsip: " . ($tampilkanArsip ? 'Ya' : 'Tidak'));
-        \Log::info("Jumlah Arsip: " . $archivedCount);
-        \Log::info("Total Data: " . $tahunAjarans->count());
         
         return view('admin.tahun_ajaran.index', compact('tahunAjarans', 'tampilkanArsip', 'archivedCount'));
     }
@@ -509,6 +504,29 @@ class TahunAjaranController extends Controller
         }
     }
 
+    public function setSessionSemester($tahunAjaranId, $semester)
+    {
+        try {
+            $tahunAjaran = TahunAjaran::withTrashed()->findOrFail($tahunAjaranId);
+            
+            // Validasi semester
+            if (!in_array($semester, [1, 2])) {
+                return redirect()->back()->with('error', 'Semester tidak valid');
+            }
+            
+            // Set both tahun_ajaran_id and selected_semester in session
+            session(['tahun_ajaran_id' => $tahunAjaranId]);
+            session(['selected_semester' => $semester]);
+            
+            // Add semester info to flash message
+            $semesterLabel = $semester == 1 ? 'Ganjil' : 'Genap';
+            
+            return redirect()->back()->with('success', 'Tampilan data diubah ke tahun ajaran ' . 
+                $tahunAjaran->tahun_ajaran . ' semester ' . $semesterLabel);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
     /**
      * Set a tahun ajaran as active.
      */

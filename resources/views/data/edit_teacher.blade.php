@@ -660,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if(!infoText) {
                 infoText = document.createElement('p');
                 infoText.id = 'kelas_mengajar_info';
-                infoText.className = 'mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800';
+                infoText.className = 'mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800';
                 kelasMengajarSelect.parentElement.appendChild(infoText);
             }
             infoText.innerHTML = '<span class="font-medium">Info:</span> Karena Anda terpilih sebagai wali kelas, Anda hanya dapat mengajar di kelas wali yang dipilih.';
