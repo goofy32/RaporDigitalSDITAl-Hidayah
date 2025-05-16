@@ -9,6 +9,11 @@
     <meta name="turbo-visit-control" content="reload">
     <!-- Add this new meta tag -->
     <meta name="turbo-root" content="true">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+
     
     <!-- Preload critical images -->
     <link rel="preload" href="{{ asset('images/icons/dashboard-icon.png') }}" as="image" fetchpriority="high">
@@ -156,7 +161,7 @@
         }
     </style>
 
-    
+    <img src="{{ asset('images/logo/sdit-logo.png') }}" alt="SDIT Logo">
 </head>
 <body>
     <!-- Add loading overlay component -->
