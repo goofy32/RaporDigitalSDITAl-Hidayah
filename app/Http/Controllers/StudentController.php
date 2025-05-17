@@ -19,13 +19,23 @@ class StudentController extends Controller
         // Ambil tahun ajaran dari session
         $tahunAjaranId = session('tahun_ajaran_id');
         
-        // Buat query dasar dengan join ke tabel kelas untuk sorting
-        $query = Siswa::join('kelas', 'siswas.kelas_id', '=', 'kelas.id')
-            ->select('siswas.*'); // Make sure to select only from siswas table
+        // Ambil semester dari session atau default ke 1 (ganjil)
+        $selectedSemester = session('selected_semester', 1);
         
-        // Filter berdasarkan tahun ajaran jika ada
-        if ($tahunAjaranId) {
-            $query->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+        $query = Siswa::query();
+        
+        // Cek apakah tabel siswa_kelas_semester sudah tersedia
+        if (Schema::hasTable('siswa_kelas_semester')) {
+            // Gunakan relasi baru jika tabel sudah tersedia
+            $query->whereHas('kelasSemester', function($q) use ($tahunAjaranId, $selectedSemester) {
+                $q->where('siswa_kelas_semester.tahun_ajaran_id', $tahunAjaranId)
+                ->where('siswa_kelas_semester.semester', $selectedSemester);
+            });
+        } else {
+            // Fallback ke relasi lama
+            $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
+                $q->where('kelas.tahun_ajaran_id', $tahunAjaranId);
+            });
         }
         
         // Handle pencarian
@@ -38,31 +48,32 @@ class StudentController extends Controller
                 if (count($terms) > 0 && $terms[0] === 'kelas') {
                     // Jika ada nomor kelas yang dispecifikkan (kelas 1, kelas 2, dst)
                     if (count($terms) > 1 && is_numeric($terms[1])) {
-                        $q->where('kelas.nomor_kelas', $terms[1]);
+                        $q->whereHas('kelas', function($subQ) use ($terms) {
+                            $subQ->where('nomor_kelas', $terms[1]);
+                        });
                     }
-                    // Else clause tidak perlu karena kita selalu order by nomor_kelas & nama_kelas
                 } else {
                     // Pencarian normal untuk term lainnya menggunakan $search
                     $q->where(function($subQ) use ($search) {
                         $subQ->where('siswas.nama', 'LIKE', "%{$search}%")
                             ->orWhere('siswas.nis', 'LIKE', "%{$search}%")
                             ->orWhere('siswas.nisn', 'LIKE', "%{$search}%")
-                            ->orWhere('kelas.nama_kelas', 'LIKE', "%{$search}%")
-                            ->orWhere('kelas.nomor_kelas', 'LIKE', "%{$search}%");
+                            ->orWhereHas('kelas', function($kelasQ) use ($search) {
+                                $kelasQ->where('nama_kelas', 'LIKE', "%{$search}%")
+                                    ->orWhere('nomor_kelas', 'LIKE', "%{$search}%");
+                            });
                     });
                 }
             });
         }
         
-        // Always apply this sorting regardless of search
-        $query->orderBy('kelas.nomor_kelas', 'asc')
-            ->orderBy('kelas.nama_kelas', 'asc')
-            ->orderBy('siswas.nama', 'asc');
+        // Apply sorting
+        $query->orderBy('nama', 'asc');
+        
+        // Eager load the kelas relationship
+        $query->with('kelas');
         
         $students = $query->paginate(10);
-        
-        // Eager load the kelas relationship for the paginated results
-        $students->load('kelas');
         
         // Pass data tahun ajaran ke view untuk menampilkan informasi
         $activeTahunAjaran = null;
@@ -70,8 +81,9 @@ class StudentController extends Controller
             $activeTahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
         }
         
-        return view('admin.student', compact('students', 'activeTahunAjaran'));
+        return view('admin.student', compact('students', 'activeTahunAjaran', 'selectedSemester'));
     }
+    
     public function create()
     {
         $tahunAjaranId = session('tahun_ajaran_id');

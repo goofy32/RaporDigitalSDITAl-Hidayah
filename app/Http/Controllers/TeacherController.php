@@ -388,15 +388,18 @@ class TeacherController extends Controller
         $availableKelas = Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
             })
-            ->whereDoesntHave('guru', function($query) use ($id) {
-                $query->where('guru_kelas.is_wali_kelas', true)
-                      ->where('guru_kelas.role', 'wali_kelas')
-                      ->where('guru_id', '!=', $id);
-            })
-            ->orWhereHas('guru', function($query) use ($id) {
-                $query->where('guru_id', $id)
-                      ->where('guru_kelas.is_wali_kelas', true)
-                      ->where('guru_kelas.role', 'wali_kelas');
+            ->where(function($query) use ($id) {
+                // Classes that don't have any wali kelas yet
+                $query->whereDoesntHave('guru', function($q) {
+                    $q->where('guru_kelas.is_wali_kelas', true)
+                    ->where('guru_kelas.role', 'wali_kelas');
+                })
+                // OR classes where this teacher is already the wali kelas
+                ->orWhereHas('guru', function($q) use ($id) {
+                    $q->where('guru_id', $id)
+                    ->where('guru_kelas.is_wali_kelas', true)
+                    ->where('guru_kelas.role', 'wali_kelas');
+                });
             })
             ->orderBy('nomor_kelas')
             ->orderBy('nama_kelas')

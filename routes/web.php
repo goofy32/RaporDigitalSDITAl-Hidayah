@@ -104,6 +104,7 @@
     // Admin Routes - Guard: web, Role: admin only
     Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
 
+        
         Route::prefix('kkm')->name('admin.kkm.')->group(function() {
             Route::get('/', [KkmController::class, 'index'])->name('index');
             Route::post('/', [KkmController::class, 'store'])->name('store');
@@ -120,6 +121,67 @@
         Route::get('/tujuan-pembelajaran/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkDependencies'])
         ->name('tujuan_pembelajaran.check_dependencies');
         
+        Route::get('/migrate-siswa-semester', function() {
+        DB::beginTransaction();
+        try {
+            // Get all tahun ajaran records
+            $tahunAjarans = \App\Models\TahunAjaran::withTrashed()->get();
+            
+            $totalProcessed = 0;
+            $totalAdded = 0;
+            
+            foreach ($tahunAjarans as $tahunAjaran) {
+                // Get all classes for this tahun ajaran
+                $kelas = \App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaran->id)->get();
+                
+                foreach ($kelas as $k) {
+                    // Get all students for this class
+                    $siswa = \App\Models\Siswa::where('kelas_id', $k->id)->get();
+                    
+                    foreach ($siswa as $s) {
+                        $totalProcessed++;
+                        
+                        // Check if relation already exists
+                        $existingRelation = DB::table('siswa_kelas_semester')
+                            ->where('siswa_id', $s->id)
+                            ->where('kelas_id', $k->id)
+                            ->where('tahun_ajaran_id', $tahunAjaran->id)
+                            ->where('semester', $tahunAjaran->semester)
+                            ->first();
+                        
+                        if (!$existingRelation) {
+                            DB::table('siswa_kelas_semester')->insert([
+                                'siswa_id' => $s->id,
+                                'kelas_id' => $k->id,
+                                'tahun_ajaran_id' => $tahunAjaran->id,
+                                'semester' => $tahunAjaran->semester,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                            
+                            $totalAdded++;
+                        }
+                    }
+                }
+            }
+            
+            DB::commit();
+            
+            return [
+                'success' => true, 
+                'total_processed' => $totalProcessed,
+                'total_added' => $totalAdded
+            ];
+        } catch (\Exception $e) {
+            DB::rollback();
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ];
+        }
+    })->name('admin.migrate-siswa-semester');
+    
         Route::get('/set-semester/{tahunAjaranId}/{semester}', [TahunAjaranController::class, 'setSessionSemester'])
         ->name('tahun.ajaran.set-semester');
         // Bobot Nilai Routes

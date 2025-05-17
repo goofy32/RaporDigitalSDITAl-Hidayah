@@ -41,6 +41,34 @@ class Siswa extends Model
         return $this->kelas->tahun_ajaran_id ?? session('tahun_ajaran_id');
     }
 
+    public function kelasSemester()
+    {
+        return $this->belongsToMany(Kelas::class, 'siswa_kelas_semester')
+                    ->withPivot('semester', 'tahun_ajaran_id')
+                    ->withTimestamps();
+    }
+
+    public function getKelasBySemester($semester, $tahunAjaranId = null)
+    {
+        $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
+        
+        return $this->kelasSemester()
+                    ->wherePivot('semester', $semester)
+                    ->wherePivot('tahun_ajaran_id', $tahunAjaranId)
+                    ->first();
+    }
+
+    public function scopeSemester($query, $semester, $tahunAjaranId = null)
+    {
+        $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
+        $selectedSemester = $semester ?: session('selected_semester', 1);
+        
+        return $query->whereHas('kelasSemester', function($q) use ($selectedSemester, $tahunAjaranId) {
+            $q->wherePivot('semester', $selectedSemester)
+              ->wherePivot('tahun_ajaran_id', $tahunAjaranId);
+        });
+    }
+
     public function tahunAjaran()
     {
         if ($this->kelas) {
