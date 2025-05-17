@@ -485,52 +485,44 @@ function deleteNilai(siswaId, mapelId) {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        cancelButtonColor: '#6c757d',
         confirmButtonText: 'Ya, Hapus!',
         cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('/pengajar/score/nilai/delete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    siswa_id: siswaId,
-                    mata_pelajaran_id: mapelId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    let row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
-                    
-                    // Clear all values and mark the row as needing recalculation
-                    row.querySelectorAll('input[type="number"]').forEach(input => {
-                        input.value = '';
-                    });
-                    
-                    // Mark row as having changed to ensure recalculation with current weights
-                    row.dataset.scoresChanged = 'true';
-                    
-                    // Calculate with current weights since all data is now fresh
-                    calculateAverages(row);
-                    markFormChanged();
-                    
-                    Swal.fire(
-                        'Terhapus!',
-                        'Nilai berhasil dihapus.',
-                        'success'
-                    );
-                } else {
-                    Swal.fire(
-                        'Gagal!',
-                        data.message || 'Gagal menghapus nilai',
-                        'error'
-                    );
-                }
-            });
+            // Cari baris tabel yang sesuai dengan siswa
+            const row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
+            
+            if (row) {
+                // Reset semua input nilai menjadi kosong
+                row.querySelectorAll('input[type="number"]').forEach(input => {
+                    input.value = '0';
+                });
+                
+                // Tandai bahwa ada perubahan pada form
+                markFormChanged();
+                
+                // Set atribut dataset untuk memaksa kalkulasi ulang
+                row.dataset.scoresChanged = 'true';
+                
+                // Hitung ulang nilai
+                calculateAverages(row);
+                
+                // Tampilkan pesan sukses
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: 'Nilai berhasil dihapus dari form. Klik "Simpan & Preview" untuk menyimpan perubahan.',
+                    confirmButtonColor: '#10b981'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: 'Tidak dapat menemukan data siswa yang dipilih.',
+                    confirmButtonColor: '#d33'
+                });
+            }
         }
     });
 }

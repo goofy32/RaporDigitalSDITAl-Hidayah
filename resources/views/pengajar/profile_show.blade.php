@@ -71,10 +71,17 @@
                     <tr class="border-b">
                         <th class="px-4 py-2 font-medium text-gray-900">Kelas Mengajar</th>
                         <td class="px-4 py-2">
-                            @if(Auth::guard('guru')->user()->kelasAjar->count() > 0)
+                            @php
+                                $tahunAjaranId = session('tahun_ajaran_id');
+                                $filteredKelas = Auth::guard('guru')->user()->kelasAjar->filter(function($kelas) use ($tahunAjaranId) {
+                                    return $kelas->tahun_ajaran_id == $tahunAjaranId;
+                                });
+                            @endphp
+                            
+                            @if($filteredKelas->count() > 0)
                                 <ul class="list-disc list-inside">
-                                    @foreach(Auth::guard('guru')->user()->kelasAjar as $kelas)
-                                        <li>{{ $kelas->full_kelas }}</li>
+                                    @foreach($filteredKelas as $kelas)
+                                        <li>Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}</li>
                                     @endforeach
                                 </ul>
                             @elseif(Auth::guard('guru')->user()->isWaliKelas())
