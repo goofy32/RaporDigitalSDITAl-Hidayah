@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         @foreach($kelas->mataPelajarans as $mapel)
                             <tr class="bg-white border-b hover:bg-gray-50">
                                 <td class="px-6 py-4">{{ $nomor++ }}</td> <!-- Increment counter di sini -->
-                                <td class="px-6 py-4">{{ $kelas->nama_kelas }}</td>
+                                <td class="px-6 py-4">Kelas {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}</td>
                                 <td class="px-6 py-4">{{ $mapel->nama_pelajaran }}</td>
                                 <td class="px-6 py-4">
                                     <div class="flex gap-2">
