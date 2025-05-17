@@ -33,16 +33,6 @@
                 <span class="ml-3 px-2 py-1 text-xs font-semibold text-orange-800 bg-orange-100 rounded-full">Diarsipkan</span>
             @elseif($tahunAjaran->is_active)
                 <span class="ml-3 px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Aktif</span>
-            @else
-                <span class="ml-3 px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 rounded-full">Tidak Aktif</span>
-                
-                <form action="{{ route('tahun.ajaran.set-active', $tahunAjaran->id) }}" method="POST" class="inline ml-2">
-                    @csrf
-                    <button type="submit" class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full hover:bg-blue-200" 
-                        onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                        Aktifkan Sekarang
-                    </button>
-                </form>
             @endif
         </div>
         

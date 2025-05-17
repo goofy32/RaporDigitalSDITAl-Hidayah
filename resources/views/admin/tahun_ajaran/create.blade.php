@@ -11,7 +11,7 @@
                 class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-white bg-gray-600">
                 Batal
             </a>
-            <button type="submit"
+            <button type="submit" form="createTahunAjaranForm"
                 class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                 Simpan Tahun Ajaran
             </button>
@@ -29,7 +29,7 @@
     </div>
     @endif
 
-    <form action="{{ route('tahun.ajaran.store') }}" method="POST" class="space-y-6" data-needs-protection>
+    <form id="createTahunAjaranForm" action="{{ route('tahun.ajaran.store') }}" method="POST" class="space-y-6" data-needs-protection>
         @csrf
         
         <!-- Hidden semester field - always 1 (Ganjil) for new academic years -->

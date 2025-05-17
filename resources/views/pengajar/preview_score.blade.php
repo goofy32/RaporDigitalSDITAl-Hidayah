@@ -47,13 +47,13 @@
             Kelas {{ $mataPelajaran->kelas->nomor_kelas }} {{ $mataPelajaran->kelas->nama_kelas }} - {{ $mataPelajaran->nama_pelajaran }}
         </h2>
         <div class="flex gap-4">
-            <a href="{{ route('pengajar.score.input_score', $mataPelajaran->id) }}"
-            class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
-                Edit Nilai
-            </a>
             <a href="{{ route('pengajar.score.index') }}" 
             class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
                 Kembali
+            </a>
+            <a href="{{ route('pengajar.score.input_score', $mataPelajaran->id) }}"
+            class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
+                Edit Nilai
             </a>
         </div>
     </div>
@@ -207,7 +207,7 @@
         </table>
     </div>
 
-    <!-- Hasil Analisis Nilai -->
+    <!--     
     <div class="hasil-analisis card-container">
         <h3 class="text-xl font-medium text-gray-900 mb-4">Hasil Analisis Nilai</h3>
         
@@ -277,7 +277,7 @@
                 }
             @endphp
             
-            <!-- Summary information about students needing remedial -->
+            
             @if(count($studentsNeedingRemedial) > 0)
                 <div class="alert-remedial bg-red-50 border-l-4 border-red-400 p-4 rounded-md" style="margin-bottom:0 !important;">
                     <div class="flex items-center justify-between">
@@ -304,7 +304,7 @@
                     </div>
                 </div>
                 
-                <!-- Ganti Individual student remedial details dengan ini -->
+             
                 <div class="collapsible-container" style="margin-bottom:0;padding-bottom:0;">
                     @foreach($studentsNeedingRemedial as $studentId => $studentData)
                     <div class="bg-red-50 border-l-4 border-red-400 rounded-r-md overflow-hidden"
@@ -352,7 +352,7 @@
                 </div>
             @endif
         </div>
-    </div>
+    </div> -->
 </div>
 <div style="height:1px;margin:0;padding:0"></div>
 <script>

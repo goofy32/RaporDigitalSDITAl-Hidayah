@@ -31,34 +31,6 @@
     </div>
     @endif
 
-    @if(session('warning') || isset($warning))
-    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
-        <p>{{ session('warning') ?? $warning }}</p>
-        
-        @if(isset($tahunAjaranAktif) && !isset($tahunAjaranBaru))
-        <div class="mt-4">
-            <a href="{{ route('tahun.ajaran.copy', $tahunAjaranAktif->id) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-green active:bg-green-700 transition duration-150 ease-in-out">
-                <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Buat Tahun Ajaran Baru dari {{ $tahunAjaranAktif->tahun_ajaran }}
-            </a>
-        </div>
-        @endif
-        
-        @if(isset($tahunAjaranBaru) && isset($kelasBaru) && $kelasBaru->isEmpty())
-        <div class="mt-4">
-            <p class="mb-2">Untuk membuat kelas di tahun ajaran baru ({{ $tahunAjaranBaru->tahun_ajaran }}), silakan:</p>
-            <ol class="list-decimal ml-5 space-y-1">
-                <li>Klik pada <a href="{{ route('tahun.ajaran.set-session', $tahunAjaranBaru->id) }}" class="text-blue-600 hover:underline">tahun ajaran {{ $tahunAjaranBaru->tahun_ajaran }}</a> di menu dropdown tahun ajaran</li>
-                <li>Setelah itu, buat kelas baru di menu <a href="{{ route('kelas.index') }}" class="text-blue-600 hover:underline">Manajemen Kelas</a></li>
-                <li>Kemudian kembali ke halaman ini untuk melanjutkan proses kenaikan kelas</li>
-            </ol>
-        </div>
-        @endif
-    </div>
-    @endif
-
     @if(isset($tahunAjaranAktif))
     <div class="mb-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-3">Informasi Tahun Ajaran</h3>
@@ -76,9 +48,15 @@
                 <p>Semester {{ $tahunAjaranBaru->semester }} ({{ $tahunAjaranBaru->semester == 1 ? 'Ganjil' : 'Genap' }})</p>
             </div>
             @else
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex-1">
-                <h4 class="font-medium text-yellow-800">Tahun Ajaran Tujuan</h4>
-                <p class="text-gray-600">Belum ada tahun ajaran berikutnya. Silakan buat tahun ajaran baru dengan tahun yang lebih tinggi.</p>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 flex-1">
+                <h4 class="font-medium text-green-800">Tahun Ajaran Tujuan</h4>
+                <p class="text-gray-600 mb-2">Silakan buat tahun ajaran baru terlebih dahulu</p>
+                <a href="{{ route('tahun.ajaran.copy', $tahunAjaranAktif->id) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-green active:bg-green-700 transition duration-150 ease-in-out">
+                    <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Buat Tahun Ajaran Baru dari {{ $tahunAjaranAktif->tahun_ajaran }}
+                </a>
             </div>
             @endif
         </div>

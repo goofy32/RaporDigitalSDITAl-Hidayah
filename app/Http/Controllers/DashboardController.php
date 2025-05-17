@@ -86,32 +86,56 @@ class DashboardController extends Controller
     private function calculateOverallProgressForAdmin($tahunAjaranId = null)
     {
         try {
-            // Count total tujuan pembelajaran with proper eloquent relationships
-            $tpQuery = \App\Models\TujuanPembelajaran::query();
+            $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
             
-            if ($tahunAjaranId) {
-                $tpQuery->whereHas('lingkupMateri.mataPelajaran', function($q) use ($tahunAjaranId) {
-                    $q->where('tahun_ajaran_id', $tahunAjaranId);
-                });
+            // Get all active classes for the current tahun ajaran
+            $kelasIds = \App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaranId)
+                ->pluck('id');
+                
+            if ($kelasIds->isEmpty()) {
+                \Log::info("No classes found for tahun ajaran: {$tahunAjaranId}");
+                return 0;
             }
             
-            $totalTP = $tpQuery->count();
+            // Get all students in these classes
+            $totalStudents = \App\Models\Siswa::whereIn('kelas_id', $kelasIds)->count();
             
-            if ($totalTP === 0) return 0;
-            
-            // Count total nilai entries with nilai_tp properly
-            $nilaiQuery = \App\Models\Nilai::whereNotNull('nilai_tp');
-            
-            if ($tahunAjaranId) {
-                $nilaiQuery->where('tahun_ajaran_id', $tahunAjaranId);
+            // Get all mata pelajaran for these classes
+            $mataPelajarans = \App\Models\MataPelajaran::whereIn('kelas_id', $kelasIds)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->get();
+                
+            if ($mataPelajarans->isEmpty() || $totalStudents === 0) {
+                \Log::info("No subjects or students found");
+                return 0;
             }
             
-            $totalNilai = $nilaiQuery->count();
+            // Calculate the total number of scores needed
+            $totalScoresNeeded = 0;
+            $totalScoresCompleted = 0;
             
-            \Log::info("Calculating overall progress: {$totalNilai} / {$totalTP}");
+            foreach ($mataPelajarans as $mapel) {
+                // Each student needs a final score for each subject
+                $totalScoresNeeded += $totalStudents;
+                
+                // Count how many students have completed scores for this subject
+                $completedScores = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->count();
+                    
+                $totalScoresCompleted += $completedScores;
+            }
+            
+            \Log::info("Total scores needed: {$totalScoresNeeded}, completed: {$totalScoresCompleted}");
             
             // Calculate percentage
-            return ($totalNilai / $totalTP) * 100;
+            $progress = $totalScoresNeeded > 0 ? 
+                min(100, ($totalScoresCompleted / $totalScoresNeeded) * 100) : 0;
+                
+            \Log::info("Calculated overall progress: {$progress}%");
+            
+            return $progress;
         } catch (\Exception $e) {
             \Log::error('Error calculating admin overall progress: ' . $e->getMessage());
             return 0;
