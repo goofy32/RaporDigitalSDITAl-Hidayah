@@ -361,8 +361,9 @@ class KenaikanKelasController extends Controller
             'siswa_ids' => 'required|array',
             'siswa_ids.*' => 'exists:siswas,id',
             'status' => 'required|in:lulus,pindah,dropout',
+            'kelas_tinggal_id' => 'required_if:status,pindah|exists:kelas,id',
         ]);
-    
+
         DB::beginTransaction();
         try {
             $siswaDetails = [];
@@ -372,22 +373,44 @@ class KenaikanKelasController extends Controller
                 $kelasAsal = $siswa->kelas;
                 
                 $siswa->status = $request->status;
-                $siswa->save();
                 
-                // Simpan detail untuk feedback
-                $siswaDetails[] = [
-                    'id' => $siswa->id,
-                    'nama' => $siswa->nama,
-                    'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
-                    'status' => ucfirst($request->status)
-                ];
+                // Jika status "pindah" (tidak lulus), siswa ditempatkan di kelas yang dipilih
+                if ($request->status === 'pindah' && $request->has('kelas_tinggal_id')) {
+                    $siswa->kelas_id = $request->kelas_tinggal_id;
+                    $siswa->is_naik_kelas = false; // Tandai sebagai tidak naik kelas
+                    
+                    // Ambil informasi kelas tujuan
+                    $kelasTujuan = Kelas::findOrFail($request->kelas_tinggal_id);
+                    
+                    // Simpan detail untuk feedback
+                    $siswaDetails[] = [
+                        'id' => $siswa->id,
+                        'nama' => $siswa->nama,
+                        'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
+                        'status' => 'Tidak Lulus',
+                        'kelas_tujuan' => "Kelas {$kelasTujuan->nomor_kelas} {$kelasTujuan->nama_kelas}"
+                    ];
+                } else {
+                    // Untuk status lulus atau lainnya, info normal
+                    $siswaDetails[] = [
+                        'id' => $siswa->id,
+                        'nama' => $siswa->nama,
+                        'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
+                        'status' => $request->status === 'lulus' ? 'Lulus' : ucfirst($request->status)
+                    ];
+                }
+                
+                $siswa->save();
             }
             
             DB::commit();
             
+            // Ubah pesan sukses berdasarkan status
+            $statusLabel = $request->status === 'lulus' ? 'Lulus' : 'Tidak Lulus';
+            
             // Kirim data detail untuk SweetAlert
             return redirect()->back()->with([
-                'success' => 'Berhasil memproses ' . count($request->siswa_ids) . ' siswa dengan status ' . $request->status,
+                'success' => "Berhasil memproses {$statusLabel} untuk " . count($request->siswa_ids) . " siswa",
                 'siswa_details' => $siswaDetails,
                 'action_type' => 'kelulusan',
                 'status' => $request->status

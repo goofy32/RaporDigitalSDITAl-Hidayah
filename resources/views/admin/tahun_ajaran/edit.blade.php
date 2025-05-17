@@ -11,7 +11,7 @@
             class="px-4 py-2 bg-gray-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-gray-300">
                 Batal
             </a>
-            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500" 
+            <button form="formEditTahunAjaran" type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     @click="showSemesterWarning ? confirmSemesterChange($event) : null"
                     x-data="{
                         confirmSemesterChange(e) {

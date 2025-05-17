@@ -100,17 +100,46 @@
             
             <div>
                 <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-                <select name="status" id="status" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <select name="status" id="status" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedStatus" @change="checkStatus()">
                     <option value="">-- Pilih Status --</option>
                     <option value="lulus">Lulus</option>
-                    <option value="pindah">Pindah</option>
-                    <option value="dropout">Dropout</option>
+                    <option value="pindah">Tidak Lulus</option>
                 </select>
             </div>
             
+            <!-- Panel informasi yang muncul ketika "Tidak Lulus" dipilih -->
+            <div x-show="selectedStatus === 'pindah'" x-cloak class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-3 mb-3">
+                <h4 class="text-md font-medium text-yellow-800 mb-2">Informasi Siswa Tidak Lulus</h4>
+                <p class="text-yellow-700 mb-2">Siswa yang tidak lulus akan:</p>
+                <ul class="list-disc pl-5 text-sm space-y-1 text-yellow-700 mb-3">
+                    <li>Tetap berada di kelas yang sama pada tahun ajaran berikutnya</li>
+                    <li>Perlu mengulang seluruh mata pelajaran</li>
+                    <li>Mendapatkan bimbingan khusus dari wali kelas</li>
+                </ul>
+                
+                <div class="bg-white p-3 rounded-md border border-gray-200">
+                    <h5 class="font-medium text-gray-800 mb-2">Pilih Kelas Tujuan</h5>
+                    <p class="text-sm text-gray-600 mb-3">Pilih kelas tempat siswa akan mengulang:</p>
+                    
+                    <select name="kelas_tinggal_id" x-bind:required="selectedStatus === 'pindah'" class="w-full rounded-md border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500">
+                        <option value="">-- Pilih Kelas --</option>
+                        @php
+                            // Get kelas options for the same grade level in the new academic year
+                            $kelasTinggal = \App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                                    ->where('nomor_kelas', $kelas->nomor_kelas)
+                                    ->orderBy('nama_kelas')
+                                    ->get();
+                        @endphp
+                        @foreach($kelasTinggal as $kelasOption)
+                        <option value="{{ $kelasOption->id }}">Kelas {{ $kelasOption->nomor_kelas }} {{ $kelasOption->nama_kelas }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            
             <div class="flex justify-end">
-                <button type="submit" class="check-rapor-btn px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500" data-action="proses kelulusan">
-                    Proses Kelulusan
+                <button type="submit" class="check-rapor-btn px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500" data-action="proses kelulusan" x-bind:class="{'bg-yellow-600 hover:bg-yellow-700': selectedStatus === 'pindah'}">
+                    <span x-text="selectedStatus === 'pindah' ? 'Proses Siswa Tidak Lulus' : 'Proses Kelulusan'">Proses Kelulusan</span>
                 </button>
             </div>
         </form>
@@ -220,6 +249,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Select all checkbox functionality
     const selectAllCheckbox = document.getElementById('select-all');
     const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+
+    if (typeof Alpine !== 'undefined') {
+        // Inisialisasi Alpine data untuk form kelulusan
+        document.querySelector('#kelulusanForm')?.setAttribute('x-data', `{
+            selectedStatus: '',
+            checkStatus() {
+                // Logic untuk mengecek status yang dipilih
+                if (this.selectedStatus === 'pindah') {
+                    this.$nextTick(() => {
+                        // Focus ke dropdown kelas tujuan saat "Tidak Lulus" dipilih
+                        this.$el.querySelector('select[name="kelas_tinggal_id"]').focus();
+                    });
+                }
+            }
+        }`);
+    }
     
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
@@ -360,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html: warningHtml,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
+                    confirmButtonColor: '#3F7858',
                     cancelButtonColor: '#d33',
                     confirmButtonText: 'Ya, Lanjutkan',
                     cancelButtonText: 'Batal'

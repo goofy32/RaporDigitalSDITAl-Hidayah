@@ -290,7 +290,8 @@ document.addEventListener('alpine:init', () => {
                     icon: 'info',
                     showCancelButton: true,
                     confirmButtonText: 'Lanjutkan',
-                    cancelButtonText: 'Batal'
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#3F7858'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         window.location.href = `/admin/set-tahun-ajaran/${id}`;

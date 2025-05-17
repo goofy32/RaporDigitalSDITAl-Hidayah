@@ -10,6 +10,8 @@
 @endphp
 
 @if(!$profilSekolah || !$tahunAjaran)
+<div class="hidden debug-info">PHP overallProgress: {{ $overallProgress ?? 'undefined' }}</div>
+
     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
         <div class="flex">
             <div class="flex-shrink-0">
@@ -170,14 +172,14 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             <!-- Chart Keseluruhan -->
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
-                <div class="flex flex-col items-center">
-                    <div class="w-64 h-64 relative">
-                        <canvas id="overallPieChart"></canvas>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
+                    <div class="flex flex-col items-center">
+                        <div class="w-64 h-64 relative">
+                            <canvas id="overallPieChart" data-progress="{{ number_format($overallProgress ?? 0, 2) }}"></canvas>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             <!-- Chart Per Kelas -->
             <div class="bg-white p-4 rounded-lg shadow">
@@ -295,21 +297,9 @@
                                                     </span>
                                                 @else
                                                     <span class="text-xs text-gray-500">
-                                                        (Guru 
-                                                        @if(count($g->mataPelajarans) > 0)
-                                                            @php
-                                                                $firstMapel = $g->mataPelajarans->first();
-                                                                $kelas = \App\Models\Kelas::find($firstMapel->kelas_id);
-                                                            @endphp
-                                                            @if($kelas)
-                                                                {{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}
-                                                            @else
-                                                                -
-                                                            @endif
-                                                        @else
-                                                            -
-                                                        @endif
-                                                        )
+                                                        (<a href="{{ route('teacher.show', $g->id) }}" class="text-green-500 hover:underline" title="Lihat detail guru">
+                                                            Lihat detail kelas mengajar
+                                                        </a>)
                                                     </span>
                                                 @endif
                                             </label>
@@ -356,7 +346,12 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    window.overallProgress = {{ number_format($overallProgress ?? 0, 2) }};
+// Explicitly output the PHP value
+console.log("PHP overallProgress direct output: {{ $overallProgress ?? 0 }}");
+
+// Set the global variable
+window.overallProgress = {{ number_format($overallProgress ?? 0, 2) }};
+console.log("Set window.overallProgress to:", window.overallProgress);
 </script>
 <script>
 // Global variables for charts
@@ -386,13 +381,18 @@ function destroyCharts() {
 
 
 function initCharts() {
-    // Make sure we destroy any existing charts first
     destroyCharts();
     
-    // Get safe value for overall progress (prevent undefined errors)
-    // If PHP hasn't provided a value, default to 0
-    const safeOverallProgress = typeof overallProgress !== 'undefined' ? 
-        parseFloat(overallProgress) : 0;
+    // Get the progress value, using the DOM attribute as backup
+    const chartContainer = document.getElementById('overallPieChart');
+    const domProgress = chartContainer ? chartContainer.dataset.progress : null;
+    
+    // Try window value first, then DOM attribute, then default to 0
+    const safeOverallProgress = typeof window.overallProgress !== 'undefined' ? 
+        parseFloat(window.overallProgress) : (domProgress ? parseFloat(domProgress) : 0);
+    
+    console.log('Using overall progress value in initCharts:', safeOverallProgress);
+    
     
     // Chart configuration options
     const defaultOptions = {
@@ -416,6 +416,7 @@ function initCharts() {
     const overallCtx = document.getElementById('overallPieChart');
     if (overallCtx && overallCtx.getContext) {
         try {
+            console.log('Creating overall chart with progress:', safeOverallProgress);
             overallChart = new Chart(overallCtx.getContext('2d'), {
                 type: 'doughnut',
                 data: {
@@ -455,9 +456,12 @@ function initCharts() {
                     }
                 }]
             });
+            console.log('Overall chart created successfully');
         } catch (e) {
             console.error('Error creating overall chart:', e);
         }
+    } else {
+        console.error('Could not get chart context from overallPieChart element');
     }
 
     // Initialize Class Progress Chart
@@ -588,16 +592,20 @@ document.addEventListener('alpine:init', () => {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing charts');
-    // Set default value for overallProgress if not already set
-    if (typeof overallProgress === 'undefined') {
-        window.overallProgress = 0;
+    console.log('DOM loaded, overall progress from window:', window.overallProgress);
+    
+    // Backup the value to a data attribute for Turbo navigation
+    const chartContainer = document.getElementById('overallPieChart');
+    if (chartContainer && window.overallProgress !== undefined) {
+        chartContainer.dataset.progress = window.overallProgress;
+        console.log('Stored progress in data attribute:', chartContainer.dataset.progress);
     }
     
     setTimeout(() => {
         initCharts();
     }, 300);
 });
+
 
 // Cleanup
 document.addEventListener('turbo:before-cache', () => {
@@ -607,11 +615,13 @@ document.addEventListener('turbo:before-cache', () => {
 // Handle Turbo navigation
 document.addEventListener('turbo:load', () => {
     if (window.location.pathname.includes('/admin/dashboard')) {
-        console.log('Dashboard loaded via Turbo, reinitializing charts');
+        console.log('Dashboard loaded via Turbo');
         
-        // Ensure overallProgress is defined
-        if (typeof overallProgress === 'undefined') {
-            window.overallProgress = 0;
+        // Try to recover the progress value from the DOM
+        const chartContainer = document.getElementById('overallPieChart');
+        if (chartContainer && chartContainer.dataset.progress) {
+            window.overallProgress = parseFloat(chartContainer.dataset.progress);
+            console.log('Recovered progress from DOM:', window.overallProgress);
         }
         
         setTimeout(() => {
