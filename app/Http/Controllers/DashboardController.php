@@ -160,11 +160,12 @@ class DashboardController extends Controller
                 ->distinct('kelas_id')
                 ->count('kelas_id');
                 
-            // Hitung jumlah mata pelajaran yang diajar
+            // Hitung jumlah mata pelajaran yang diajar - dengan penghapusan duplikat
             $mapelCount = MataPelajaran::where('guru_id', $guru->id)
                 ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                     return $query->where('tahun_ajaran_id', $tahunAjaranId);
                 })
+                ->distinct('nama_pelajaran', 'kelas_id') // Pastikan unik berdasarkan nama dan kelas
                 ->count();
                 
             // Hitung jumlah siswa yang diajar (unique)
@@ -178,7 +179,7 @@ class DashboardController extends Controller
                     ->distinct();
             })->count();
             
-            // Ambil daftar kelas
+            // Ambil daftar kelas dengan mata pelajaran yang sudah difilter untuk menghindari duplikasi
             $kelas = Kelas::whereIn('id', function($query) use ($guru, $tahunAjaranId) {
                 $query->select('kelas_id')
                     ->from('mata_pelajarans')
@@ -188,6 +189,19 @@ class DashboardController extends Controller
                     })
                     ->distinct();
             })->get();
+            
+            // Praproseskan mata pelajaran untuk menghindari duplikasi dalam dropdown
+            foreach($kelas as $kelasItem) {
+                // Dapatkan mata pelajaran unik berdasarkan nama untuk kelas ini
+                $uniqueSubjects = $kelasItem->mataPelajarans
+                    ->where('guru_id', $guru->id)
+                    ->unique(function ($item) {
+                        return $item->nama_pelajaran;
+                    });
+                    
+                // Ganti koleksi mata pelajaran dengan yang unik
+                $kelasItem->setRelation('mataPelajarans', $uniqueSubjects);
+            }
             
             // Hitung progress keseluruhan
             $totalStudentSubjects = 0;  // Total siswa * mata pelajaran
