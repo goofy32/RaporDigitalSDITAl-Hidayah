@@ -103,8 +103,23 @@
             <option value="">Pilih mata pelajaran...</option>
             @foreach($kelas as $k)
                 <optgroup label="Kelas {{ $k->nomor_kelas }} {{ $k->nama_kelas }}">
+                    @php
+                        // Gunakan array untuk melacak mata pelajaran yang sudah ditambahkan
+                        $addedSubjects = [];
+                    @endphp
+                    
                     @foreach($k->mataPelajarans->where('guru_id', auth()->guard('guru')->id()) as $mapel)
-                        <option value="{{ $mapel->id }}">{{ $mapel->nama_pelajaran }}</option>
+                        @php
+                            // Buat kunci unik untuk setiap mata pelajaran
+                            $mapelKey = $mapel->nama_pelajaran . '_' . $mapel->id;
+                        @endphp
+                        
+                        @if(!in_array($mapelKey, $addedSubjects))
+                            <option value="{{ $mapel->id }}">{{ $mapel->nama_pelajaran }}</option>
+                            @php
+                                $addedSubjects[] = $mapelKey;
+                            @endphp
+                        @endif
                     @endforeach
                 </optgroup>
             @endforeach
