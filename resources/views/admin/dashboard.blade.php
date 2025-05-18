@@ -110,44 +110,46 @@
                         <!-- Garis vertikal di tengah icon -->
                         <div class="absolute left-5 top-0 bottom-0 w-[2px] bg-gray-200"></div>
                         
-                        <!-- Daftar notifikasi -->
+                        <!-- Tampilan saat tidak ada notifikasi -->
                         <template x-for="item in $store.notification.items" :key="item.id">
-                            <div class="mb-4 relative min-h-[80px]">
-                                <!-- Ikon amplop di tengah garis -->
+                            <div class="mb-4 relative min-h-[80px] notification-item">
+                                <!-- Icon on the timeline -->
                                 <div class="absolute -left-12 top-3 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center z-10">
                                     <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                     </svg>
                                 </div>
                                 
-                                <!-- Konten notifikasi -->
-                                <div class="bg-white rounded-lg border shadow-sm p-3">
+                                <!-- Notification content with improved styling and visible timestamp -->
+                                <div class="bg-white rounded-lg border shadow-sm p-3 notification-content">
                                     <div class="flex justify-between items-start">
-                                        <div>
-                                            <!-- Informasi penerima notifikasi -->
-                                            <p class="text-xs text-gray-500 mb-1">
+                                        <div class="flex-1 min-w-0 pr-2">
+                                            <!-- Target info -->
+                                            <p class="text-xs text-gray-500 mb-1 truncate">
                                                 <span class="font-medium">Untuk: </span>
                                                 <span x-text="getTargetText(item)"></span>
                                             </p>
-                                            <h3 class="text-sm font-medium" x-text="item.title"></h3>
-                                            <p class="text-xs text-gray-600 line-clamp-2" x-text="item.content"></p>
+                                            
+                                            <!-- Title with timestamp -->
+                                            <div class="flex justify-between items-center mb-1">
+                                                <h3 class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></h3>
+                                                <span class="text-xs text-gray-500 ml-2 whitespace-nowrap" x-text="formatTimeStamp(item.created_at)"></span>
+                                            </div>
+                                            
+                                            <!-- Content with no truncation - full text display -->
+                                            <p class="text-xs text-gray-600 break-words whitespace-normal" x-text="item.content"></p>
                                         </div>
+                                        
+                                        <!-- Delete button -->
                                         <button type="button" 
                                                 @click="$store.notification.deleteNotification(item.id)"
-                                                class="text-red-500 hover:text-red-700">
+                                                class="text-red-500 hover:text-red-700 flex-shrink-0 ml-2">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        </template>
-                        
-                        <!-- Tampilan saat tidak ada notifikasi -->
-                        <template x-if="$store.notification.items.length === 0">
-                            <div class="flex items-center justify-center h-[150px]">
-                                <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
                             </div>
                         </template>
                     </div>
@@ -342,7 +344,110 @@
         </div>
     </div>
 </div>
+
+<style>
+/* Base notification item styles */
+.notification-item {
+  position: relative;
+  margin-bottom: 1rem;
+  min-height: 80px;
+}
+
+/* Container for notifications with dynamic height */
+.notifications-container {
+  max-height: 400px; /* Increased max height to show more content */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 4px;
+}
+
+/* Word breaking for long text */
+.break-words {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word; /* Less aggressive than break-all */
+  hyphens: auto;
+}
+
+/* Keep truncation for titles and headers */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Notification content should expand as needed */
+.notification-content {
+  width: 100%;
+}
+
+/* Force min-width zero on content element */
+.flex-1 {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+/* Add some minimal bottom spacing to the text */
+.notification-content p.text-gray-600 {
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+/* Make timestamp more visible */
+.timestamp {
+  font-size: 0.7rem;
+  color: #6B7280;
+  white-space: nowrap;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  background-color: #F3F4F6;
+  border-radius: 0.25rem;
+}
+
+/* Timestamp container - ensure proper alignment */
+.title-timestamp-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+/* Title with truncation when needed */
+.title-timestamp-container h3 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Additional container styles */
+.notifications-container {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 4px;
+}
+
+/* Notification item styling */
+.notification-item {
+  position: relative;
+  margin-bottom: 1rem;
+  min-height: 80px;
+}
+
+/* Content text */
+.notification-content p.text-gray-600 {
+  margin-top: 0.25rem;
+  line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+</style>
         
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -670,7 +775,7 @@ function fetchKelasProgress() {
         return response.json();
     })
     .then(data => {
-        //console.log('Fetched kelas progress data:', data);
+        // console.log('Fetched kelas progress data:', data);
         if (data.success && !isNaN(data.progress)) {
             updateClassChart(data.progress);
         } else {

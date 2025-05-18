@@ -1231,7 +1231,8 @@ Alpine.data('sessionTimeout', () => ({
 
 
 // Add this to your JavaScript section
-Alpine.data('notificationHandler', () => ({
+document.addEventListener('alpine:init', () => {
+  Alpine.data('notificationHandler', () => ({
     showModal: false,
     isOpen: false,
     errorMessage: '',
@@ -1239,47 +1240,106 @@ Alpine.data('notificationHandler', () => ({
     isSubmitting: false,
     guruSearchTerm: '',
     notificationForm: {
-        title: '',
-        content: '',
-        target: '',
-        specific_users: [],
+      title: '',
+      content: '',
+      target: '',
+      specific_users: [],
     },
 
     init() {
-        this.$store.notification.fetchNotifications();
-        this.$store.notification.fetchUnreadCount();
-        this.$store.notification.startAutoRefresh();
+      this.$store.notification.fetchNotifications();
+      this.$store.notification.fetchUnreadCount();
+      this.$store.notification.startAutoRefresh();
     },
 
-    // Get target text based on notification data
-    getTargetText(item) {
-        if (!item.target) return 'Semua';
-
-        switch(item.target) {
-            case 'all':
-                return 'Semua';
-            case 'guru':
-                return 'Semua Guru';
-            case 'wali_kelas':
-                return 'Semua Wali Kelas';
-            case 'specific':
-                // If specific user(s) data is present
-                if (item.specific_users && item.specific_users.length > 0) {
-                    // If target_display is provided by the server
-                    if (item.target_display) {
-                        return item.target_display;
-                    }
-                    
-                    // Otherwise, show generic count
-                    if (item.specific_users.length === 1) {
-                        return 'Guru Tertentu (1)';
-                    }
-                    return item.specific_users.length + ' Guru Tertentu';
-                }
-                return 'Guru Tertentu';
-            default:
-                return 'Semua';
+    // Enhanced timestamp formatting function
+    formatTimeStamp(dateString) {
+    if (!dateString) return '';
+    
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Check if the date is today
+        const isToday = date.toDateString() === now.toDateString();
+        
+        // Check if the date is yesterday
+        const isYesterday = date.toDateString() === yesterday.toDateString();
+        
+        // Check if the date is within the current year
+        const isCurrentYear = date.getFullYear() === now.getFullYear();
+        
+        // Format based on recency
+        if (isToday) {
+        // Today - show time only "14:30"
+        return date.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        } else if (isYesterday) {
+        // Yesterday - show "Kemarin 14:30"
+        return `Kemarin ${date.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        })}`;
+        } else if (isCurrentYear) {
+        // This year - show "5 Jun 14:30"
+        return `${date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short'
+        })} ${date.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        })}`;
+        } else {
+        // Different year - show "5 Jun 2023"
+        return date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
         }
+    } catch (e) {
+        console.error('Error formatting date:', e);
+        return dateString; // Return original string if there's an error
+    }
+    },
+
+    // Get target text for notification display
+    getTargetText(item) {
+      if (!item.target) return 'Semua';
+
+      switch(item.target) {
+        case 'all':
+          return 'Semua';
+        case 'guru':
+          return 'Semua Guru';
+        case 'wali_kelas':
+          return 'Semua Wali Kelas';
+        case 'specific':
+          if (item.specific_users && item.specific_users.length > 0) {
+            if (item.target_display) {
+              return item.target_display;
+            }
+            return item.specific_users.length === 1 
+              ? 'Guru Tertentu (1)' 
+              : `${item.specific_users.length} Guru Tertentu`;
+          }
+          return 'Guru Tertentu';
+        default:
+          return 'Semua';
+      }
+    },
+
+    // Helper method to ensure text always truncates properly
+    ensureTruncated(text, maxLength = 50) {
+      if (!text) return '';
+      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
     },
 
     async submitNotification() {
@@ -1366,9 +1426,10 @@ Alpine.data('notificationHandler', () => ({
     },
 
     destroy() {
-        this.$store.notification.stopAutoRefresh();
+      this.$store.notification.stopAutoRefresh();
     }
-}));
+  }));
+});
 
 Alpine.store('pageLoading', {
     isLoading: false,

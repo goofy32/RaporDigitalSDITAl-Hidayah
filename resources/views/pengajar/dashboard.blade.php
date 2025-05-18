@@ -60,7 +60,7 @@
                     
                     <!-- Notification list -->
                     <template x-for="item in $store.notification.items" :key="item.id">
-                        <div class="mb-4 relative min-h-[80px]">
+                        <div class="mb-4 relative min-h-[80px] notification-item">
                             <!-- Envelope icon on the vertical line -->
                             <div class="absolute -left-12 top-3 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center z-10">
                                 <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,23 +68,21 @@
                                 </svg>
                             </div>
                             
-                            <!-- Notification content -->
-                            <div class="bg-white rounded-lg border shadow-sm p-3">
+                            <!-- Notification content with visible timestamp -->
+                            <div class="bg-white rounded-lg border shadow-sm p-3 notification-content">
                                 <div class="flex justify-between items-start">
-                                    <div class="flex-1 min-w-0 mr-2">
-                                        <h3 class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></h3>
-                                        <p class="text-xs text-gray-600 mt-1 line-clamp-2" x-text="item.content"></p>
+                                    <div class="flex-1 min-w-0 pr-2">
+                                        <!-- Title row with timestamp -->
+                                        <div class="flex justify-between items-center mb-1">
+                                            <h3 class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></h3>
+                                            <span class="text-xs text-gray-500 ml-2 whitespace-nowrap" x-text="formatTimeStamp(item.created_at)"></span>
+                                        </div>
+                                        
+                                        <!-- Content with no truncation -->
+                                        <p class="text-xs text-gray-600 break-words whitespace-normal" x-text="item.content"></p>
                                     </div>
-                                    <div class="flex-shrink-0 text-xs text-gray-500 whitespace-nowrap" x-text="formatDate(item.created_at)"></div>
                                 </div>
                             </div>
-                        </div>
-                    </template>
-                    
-                    <!-- Empty state -->
-                    <template x-if="$store.notification.items.length === 0">
-                        <div class="flex items-center justify-center h-[150px]">
-                            <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
                         </div>
                     </template>
                 </div>
@@ -148,6 +146,72 @@
         </div>
     </div>
 </div>
+
+<style>
+/* Container for notifications with dynamic height */
+.notifications-container {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 4px;
+}
+
+/* Notification item styling */
+.notification-item {
+  position: relative;
+  margin-bottom: 1rem;
+  min-height: 80px;
+}
+
+/* Word breaking for long text */
+.break-words {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Keep truncation for titles */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Notification content */
+.notification-content {
+  width: 100%;
+}
+
+/* Flex child */
+.flex-1 {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+/* Content paragraph */
+.notification-content p.text-gray-600 {
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+/* Custom scrollbar styling */
+.notifications-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.notifications-container::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+/* Make sure timestamps are properly displayed */
+.text-gray-500.ml-2 {
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+</style>
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -314,39 +378,6 @@ document.addEventListener('alpine:init', () => {
                     this.fetchSubjectProgress();
                 }
             });
-        },
-        
-                formatDate(dateString) {
-            if (!dateString) return '';
-            
-            try {
-                const date = new Date(dateString);
-                
-                // Check if it's today
-                const today = new Date();
-                const isToday = date.getDate() === today.getDate() && 
-                                date.getMonth() === today.getMonth() && 
-                                date.getFullYear() === today.getFullYear();
-                
-                if (isToday) {
-                    // Format as time only for today
-                    return date.toLocaleTimeString('id-ID', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                } else {
-                    // Format as date and time for other days
-                    return date.toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                }
-            } catch (e) {
-                console.error('Error formatting date:', e);
-                return dateString; // Return original string if there's an error
-            }
         },
         
         fetchSubjectProgress() {

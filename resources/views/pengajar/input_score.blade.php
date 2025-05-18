@@ -24,7 +24,7 @@
                     @click="window.saveData()"
                     x-bind:disabled="$store.formProtection.isSubmitting || {{ count($students) == 0 ? 'true' : 'false' }}"
                     class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed">
-                <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpan & Preview'"></span>
+                <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpan'"></span>
             </button>
         </div>
     </div>

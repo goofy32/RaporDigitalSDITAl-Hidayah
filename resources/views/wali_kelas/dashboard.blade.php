@@ -61,7 +61,7 @@
                     
                     <!-- Notification list -->
                     <template x-for="item in $store.notification.items" :key="item.id">
-                        <div class="mb-4 relative min-h-[80px]">
+                        <div class="mb-4 relative min-h-[80px] notification-item">
                             <!-- Envelope icon on the vertical line -->
                             <div class="absolute -left-12 top-3 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center z-10">
                                 <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,23 +69,21 @@
                                 </svg>
                             </div>
                             
-                            <!-- Notification content -->
-                            <div class="bg-white rounded-lg border shadow-sm p-3">
+                            <!-- Notification content with visible timestamp -->
+                            <div class="bg-white rounded-lg border shadow-sm p-3 notification-content">
                                 <div class="flex justify-between items-start">
-                                    <div class="flex-1 min-w-0 mr-2">
-                                        <h3 class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></h3>
-                                        <p class="text-xs text-gray-600 mt-1 line-clamp-2" x-text="item.content"></p>
+                                    <div class="flex-1 min-w-0 pr-2">
+                                        <!-- Title row with timestamp -->
+                                        <div class="flex justify-between items-center mb-1">
+                                            <h3 class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></h3>
+                                            <span class="text-xs text-gray-500 ml-2 whitespace-nowrap" x-text="formatTimeStamp(item.created_at)"></span>
+                                        </div>
+                                        
+                                        <!-- Content with no truncation -->
+                                        <p class="text-xs text-gray-600 break-words whitespace-normal" x-text="item.content"></p>
                                     </div>
-                                    <div class="flex-shrink-0 text-xs text-gray-500 whitespace-nowrap" x-text="formatDate(item.created_at)"></div>
                                 </div>
                             </div>
-                        </div>
-                    </template>
-                    
-                    <!-- Empty state -->
-                    <template x-if="$store.notification.items.length === 0">
-                        <div class="flex items-center justify-center h-[150px]">
-                            <p class="text-gray-500 text-sm">Belum ada notifikasi</p>
                         </div>
                     </template>
                 </div>
