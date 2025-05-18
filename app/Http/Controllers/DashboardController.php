@@ -741,6 +741,11 @@ class DashboardController extends Controller
             
         } catch (\Exception $e) {
             \Log::error('Error calculating overall progress: ' . $e->getMessage());
+            \Log::info("Overall progress calculation:", [
+                'total_student_subjects' => $totalStudentSubjects,
+                'completed_student_subjects' => $completedStudentSubjects,
+                'progress_percentage' => $overallProgress
+            ]);
             return 0;
         }
     }

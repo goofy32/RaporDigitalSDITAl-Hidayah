@@ -670,7 +670,7 @@ function fetchKelasProgress() {
         return response.json();
     })
     .then(data => {
-        // console.log('Fetched kelas progress data:', data);
+        //console.log('Fetched kelas progress data:', data);
         if (data.success && !isNaN(data.progress)) {
             updateClassChart(data.progress);
         } else {

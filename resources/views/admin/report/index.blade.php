@@ -89,8 +89,8 @@
                         <th class="px-6 py-3">Tahun Ajaran</th>
                         <th class="px-6 py-3">Semester</th>
                         <th class="px-6 py-3">Tanggal Upload</th>
-                        <th class="px-6 py-3">Status</th>
-                        <th class="px-6 py-3">Aksi</th>
+                        <th class="px-6 py-3 text-center" style="width: 100px;">Status</th>
+                        <th class="px-6 py-3 text-center" style="width: 120px;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -119,69 +119,81 @@
                         </td>
                         <td class="px-6 py-4">
                         @if($template->kelasList && $template->kelasList->count() > 0)
-                            <div>
-                                @foreach($template->kelasList as $kelas)
-                                    <span class="inline-block mr-1 text-xs">
-                                        {{ 'Kelas ' . $kelas->nomor_kelas . ' ' . $kelas->nama_kelas }}{{ !$loop->last ? ',' : '' }}
-                                    </span>
-                                @endforeach
-                            </div>
+                            @php
+                                $kelasCount = $template->kelasList->count();
+                                
+                                // Tampilan ringkas: kelas pertama +N
+                                $firstKelas = $template->kelasList->first();
+                                $firstKelasText = $firstKelas->nomor_kelas . $firstKelas->nama_kelas;
+                                
+                                if ($kelasCount == 1) {
+                                    $kelasText = $firstKelasText;
+                                } else {
+                                    $kelasText = $firstKelasText . " +" . ($kelasCount - 1);
+                                }
+                                
+                                // Daftar lengkap kelas untuk tooltip
+                                $allKelasText = $template->kelasList->map(function($kelas) {
+                                    return $kelas->nomor_kelas . $kelas->nama_kelas;
+                                })->implode(', ');
+                            @endphp
+                            
+                            <span class="text-xs text-blue-600" title="{{ $allKelasText }}">
+                                {{ $kelasText }}
+                            </span>
                         @elseif($template->kelas_id)
-                            <span class="inline-block text-xs">
-                                {{ 'Kelas ' . $template->kelas->nomor_kelas . ' ' . $template->kelas->nama_kelas }}
+                            <span class="text-xs">
+                                {{ $template->kelas->nomor_kelas }}{{ $template->kelas->nama_kelas }}
                             </span>
                         @else
-                            <span class="text-gray-500">Template Global</span>
+                            <span class="text-gray-500">Global</span>
                         @endif
+                        </td>
                         </td>
                         <td class="px-6 py-4">{{ $template->tahun_ajaran ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $template->semester == 1 ? 'Ganjil' : 'Genap' }}</td>
                         <td class="px-6 py-4">{{ Carbon\Carbon::parse($template->created_at)->format('d M Y H:i') }}</td>
                         <td class="px-6 py-4 text-center">
                             @if($template->is_active)
-                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-5 min-w-[80px]">
+                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-green-100 text-green-800 rounded-lg min-w-[80px]">
                                     Aktif
                                 </span>
                             @else
-                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-5 min-w-[80px]">
+                                <span class="inline-block px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg min-w-[80px]">
                                     Tidak
                                 </span>
                             @endif
                         </td>
-                        <td class="px-1 py-4 text-center flex space-x-2">
-                            <!-- Preview Button using detail.png image -->
-                            <button
-                                onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}')"
-                                class="text-blue-600 hover:text-blue-800">
-                                <img src="{{ asset('images/icons/detail.png') }}" alt="Detail Icon" class="w-5 h-5">
-                            </button>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
+                            <!-- Preview Button -->
+                            <a href="#" onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}'); return false;" class="inline-block align-middle mr-2">
+                                <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-5 h-5">
+                            </a>
                             
-                            <!-- Activate/Deactivate Button using checkbox style -->
+                            <!-- Aktivasi Checkbox dengan margin kanan kecil -->
                             <form action="{{ route('report.template.activate', $template->id) }}" 
                                 method="POST" 
-                                onsubmit="return handleActivateToggle(event)"
-                                class="inline">
+                                class="inline-block align-middle mr-2"
+                                onsubmit="return handleActivateToggle(event)">
                                 @csrf
-                                <div class="relative">
-                                    <input 
-                                        type="checkbox" 
-                                        class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                                        id="active-{{ $template->id }}"
-                                        {{ $template->is_active ? 'checked' : '' }}
-                                        onclick="handleActivateToggle(event)"
-                                    >
-                                </div>
+                                <input 
+                                    type="checkbox" 
+                                    class="w-5 h-5 align-middle rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                    id="active-{{ $template->id }}"
+                                    {{ $template->is_active ? 'checked' : '' }}
+                                    onclick="handleActivateToggle(event)"
+                                >
                             </form>
-
-                            <!-- Delete Button using delete.png image -->
+                            
+                            <!-- Delete Button tanpa margin kanan karena elemen terakhir -->
                             <form action="{{ route('report.template.destroy', $template->id) }}" 
                                 method="POST" 
-                                class="inline"
+                                class="inline-block align-middle"
                                 onsubmit="return handleDelete(event)">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-800">
-                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
+                                <button type="submit" class="inline-block">
+                                    <img src="{{ asset('images/icons/delete.png') }}" alt="Delete" class="w-5 h-5">
                                 </button>
                             </form>
                         </td>
