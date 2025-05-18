@@ -212,44 +212,64 @@ class StudentController extends Controller
 
     public function waliKelasIndex(Request $request)
     {
-        $waliKelas = auth()->guard('guru')->user();
-        $kelasWaliId = $waliKelas->getWaliKelasId();
+        $guru = auth()->guard('guru')->user();
         $tahunAjaranId = session('tahun_ajaran_id');
         
-        if (!$kelasWaliId) {
-            return back()->with('error', 'Anda belum ditugaskan sebagai wali kelas.');
+        \Log::info("Wali Kelas Index", [
+            'guru_id' => $guru->id,
+            'tahun_ajaran_id' => $tahunAjaranId
+        ]);
+        
+        if (!$guru) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu');
         }
         
-        // Pastikan relasi kelas selalu di-load
-        $query = Siswa::with(['kelas' => function($query) {
-            $query->select('id', 'nomor_kelas', 'nama_kelas');
-        }])->where('kelas_id', $kelasWaliId);
+        // Ambil kelas wali untuk guru ini
+        $kelasWali = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $guru->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.id as kelas_id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
+            ->first();
         
-        // Filter berdasarkan tahun ajaran
-        if ($tahunAjaranId) {
-            $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
-                $q->where('tahun_ajaran_id', $tahunAjaranId);
-            });
+        \Log::info("Kelas wali result:", ['kelas_wali' => $kelasWali]);
+        
+        if (!$kelasWali) {
+            // Log all guru-kelas relations for this guru
+            $relations = DB::table('guru_kelas')
+                ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+                ->where('guru_kelas.guru_id', $guru->id)
+                ->select('guru_kelas.*', 'kelas.tahun_ajaran_id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
+                ->get();
+                
+            \Log::info("All guru-kelas relations:", ['relations' => $relations]);
+            
+            return redirect()->route('wali_kelas.dashboard')
+                ->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk tahun ajaran yang dipilih.');
         }
         
-        if($request->has('search')) {
+        $query = \App\Models\Siswa::with('kelas')
+            ->where('kelas_id', $kelasWali->kelas_id);
+        
+        \Log::info("Query students for kelas_id: " . $kelasWali->kelas_id);
+        
+        if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('nama', 'LIKE', "%{$search}%")
                 ->orWhere('nis', 'LIKE', "%{$search}%")
-                ->orWhere('nisn', 'LIKE', "%{$search}%")
-                ->orWhere('jenis_kelamin', 'LIKE', "%{$search}%");
+                ->orWhere('nisn', 'LIKE', "%{$search}%");
             });
         }
         
-        // Default sorting
-        $query->orderBy('nama', 'asc');
-        
         $students = $query->paginate(10);
+        
+        \Log::info("Students found:", ['count' => $students->count()]);
         
         return view('wali_kelas.student', compact('students'));
     }
-
 
     public function waliKelasShow($id)
     {

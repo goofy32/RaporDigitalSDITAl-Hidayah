@@ -311,7 +311,7 @@
             ->name('pengajar.')  // Tambahkan ini untuk name prefix
             ->group(function () {
 
-                Route::get('/check-access/{mapelId}', function($mapelId) {
+            Route::get('/check-access/{mapelId}', function($mapelId) {
         $guru = Auth::guard('guru')->user();
         $mapel = \App\Models\MataPelajaran::find($mapelId);
         
@@ -427,6 +427,73 @@
         ->prefix('wali-kelas')
         ->name('wali_kelas.')
         ->group(function () {
+
+
+Route::get('/debug/guru-kelas', function() {
+    if (!Auth::guard('guru')->check()) {
+        return "Silakan login sebagai guru terlebih dahulu";
+    }
+    
+    $guru = Auth::guard('guru')->user();
+    $tahunAjaranId = session('tahun_ajaran_id');
+    $selectedSemester = session('selected_semester', 1);
+    
+    // Ambil semua relasi guru-kelas untuk guru ini
+    $guruKelas = DB::table('guru_kelas')
+        ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+        ->join('tahun_ajarans', 'kelas.tahun_ajaran_id', '=', 'tahun_ajarans.id')
+        ->where('guru_kelas.guru_id', $guru->id)
+        ->select(
+            'guru_kelas.id',
+            'guru_kelas.guru_id',
+            'guru_kelas.kelas_id',
+            'guru_kelas.is_wali_kelas',
+            'guru_kelas.role',
+            'kelas.nomor_kelas',
+            'kelas.nama_kelas',
+            'kelas.tahun_ajaran_id',
+            'tahun_ajarans.tahun_ajaran',
+            'tahun_ajarans.semester'
+        )
+        ->get();
+    
+    // Periksa apakah guru ini adalah wali kelas untuk tahun ajaran dan semester terpilih
+    $isWaliKelas = DB::table('guru_kelas')
+        ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+        ->join('tahun_ajarans', 'kelas.tahun_ajaran_id', '=', 'tahun_ajarans.id')
+        ->where('guru_kelas.guru_id', $guru->id)
+        ->where('guru_kelas.is_wali_kelas', true)
+        ->where('guru_kelas.role', 'wali_kelas')
+        ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+        ->exists();
+    
+    // Ambil kelas untuk tahun ajaran dan semester terpilih
+    $currentKelas = DB::table('kelas')
+        ->join('tahun_ajarans', 'kelas.tahun_ajaran_id', '=', 'tahun_ajarans.id')
+        ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+        ->where('tahun_ajarans.semester', $selectedSemester)
+        ->select('kelas.*', 'tahun_ajarans.tahun_ajaran', 'tahun_ajarans.semester')
+        ->get();
+    
+    return response()->json([
+        'guru' => [
+            'id' => $guru->id,
+            'nama' => $guru->nama,
+            'is_wali_kelas' => $isWaliKelas
+        ],
+        'session' => [
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'selected_semester' => $selectedSemester
+        ],
+        'guru_kelas_relations' => $guruKelas,
+        'current_kelas' => $currentKelas
+    ]);
+});
+
+Route::get('/test-log', function() {
+    \Log::info('Test log entry');
+    return 'Log test completed. Check storage/logs directory.';
+});
 
             // Notifications
         Route::prefix('notifications')->name('notifications.')->group(function () {

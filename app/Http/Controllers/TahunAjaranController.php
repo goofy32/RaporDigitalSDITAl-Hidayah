@@ -50,6 +50,8 @@ class TahunAjaranController extends Controller
      */
     private function copyRelatedDataToNewSemester($sourceTahunAjaran, $newTahunAjaran)
     {
+        DB::beginTransaction();
+        
         try {
             // Log for debugging
             \Log::info("Copying related data from semester 1 to semester 2", [
@@ -69,6 +71,12 @@ class TahunAjaranController extends Controller
                 $newKelas->tahun_ajaran_id = $newTahunAjaran->id;
                 $newKelas->save();
                 
+                \Log::info("Created new kelas for semester 2", [
+                    'original_kelas_id' => $kelas->id,
+                    'new_kelas_id' => $newKelas->id,
+                    'kelas_name' => $kelas->nomor_kelas . ' ' . $kelas->nama_kelas
+                ]);
+                
                 // Store mapping from old kelas ID to new kelas ID
                 $kelasMapping[$kelas->id] = $newKelas->id;
                 
@@ -86,16 +94,47 @@ class TahunAjaranController extends Controller
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
+                    
+                    \Log::info("Copied guru relationship", [
+                        'guru_id' => $relation->guru_id,
+                        'kelas_id' => $newKelas->id,
+                        'is_wali_kelas' => $relation->is_wali_kelas,
+                        'role' => $relation->role
+                    ]);
                 }
                 
-                // Copy student relationships - maintaining the same students in each class
+                // Copy student records with modified NIS/NISN to avoid unique constraint violations
                 $students = Siswa::where('kelas_id', $kelas->id)->get();
+                
                 foreach ($students as $student) {
-                    // Instead of creating duplicates, just update the students to reference the new kelas
-                    // This is a soft relationship change rather than a duplicate
-                    // We could alternatively copy, but that would create duplicate student records
-                    $student->kelas_id = $newKelas->id;
-                    $student->save();
+                    // Create new student record with semester 2 prefix on NIS/NISN
+                    $newStudent = new Siswa();
+                    $newStudent->nis = 'S2-' . $student->nis; // Prefix with S2 to make it unique
+                    $newStudent->nisn = 'S2-' . $student->nisn; // Prefix with S2 to make it unique
+                    $newStudent->nama = $student->nama;
+                    $newStudent->tanggal_lahir = $student->tanggal_lahir;
+                    $newStudent->jenis_kelamin = $student->jenis_kelamin;
+                    $newStudent->agama = $student->agama;
+                    $newStudent->alamat = $student->alamat;
+                    $newStudent->kelas_id = $newKelas->id; // Use the new kelas ID
+                    $newStudent->nama_ayah = $student->nama_ayah;
+                    $newStudent->nama_ibu = $student->nama_ibu;
+                    $newStudent->pekerjaan_ayah = $student->pekerjaan_ayah;
+                    $newStudent->pekerjaan_ibu = $student->pekerjaan_ibu;
+                    $newStudent->alamat_orangtua = $student->alamat_orangtua;
+                    $newStudent->photo = $student->photo; // Reuse the same photo
+                    $newStudent->wali_siswa = $student->wali_siswa;
+                    $newStudent->pekerjaan_wali = $student->pekerjaan_wali;
+                    $newStudent->tahun_ajaran_id = $newTahunAjaran->id; // Set to the new tahun ajaran
+                    $newStudent->save();
+                    
+                    \Log::info("Created new student for semester 2", [
+                        'original_student_id' => $student->id,
+                        'new_student_id' => $newStudent->id,
+                        'student_name' => $student->nama,
+                        'original_nis' => $student->nis,
+                        'new_nis' => $newStudent->nis
+                    ]);
                 }
             }
             
@@ -113,6 +152,12 @@ class TahunAjaranController extends Controller
                 }
                 
                 $newMapel->save();
+                
+                \Log::info("Created new mata pelajaran for semester 2", [
+                    'original_mapel_id' => $mapel->id,
+                    'new_mapel_id' => $newMapel->id,
+                    'mapel_name' => $mapel->nama_pelajaran
+                ]);
                 
                 // Copy lingkup materi and tujuan pembelajaran
                 foreach ($mapel->lingkupMateris as $lm) {
@@ -192,10 +237,26 @@ class TahunAjaranController extends Controller
                 }
             }
             
+            // Create absensi records for all students in semester 2
+            $semester2Students = Siswa::whereIn('kelas_id', array_values($kelasMapping))->get();
+            foreach ($semester2Students as $student) {
+                $absensi = new \App\Models\Absensi();
+                $absensi->siswa_id = $student->id;
+                $absensi->sakit = 0;
+                $absensi->izin = 0;
+                $absensi->tanpa_keterangan = 0;
+                $absensi->semester = 2;
+                $absensi->tahun_ajaran_id = $newTahunAjaran->id;
+                $absensi->save();
+            }
+            
+            DB::commit();
+            
             \Log::info("Successfully copied all related data to semester 2", [
                 'target_id' => $newTahunAjaran->id,
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             \Log::error("Error copying related data to new semester", [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -203,7 +264,6 @@ class TahunAjaranController extends Controller
             throw $e; // Re-throw the exception for handling in the calling method
         }
     }
-
 
     public function advanceToNextSemester($id)
     {
@@ -234,6 +294,10 @@ class TahunAjaranController extends Controller
             
             // Update school profile to use the new semester
             $this->updateProfilSekolah($newTahunAjaran);
+            
+            // Set both tahun_ajaran_id and selected_semester in session
+            session(['tahun_ajaran_id' => $newTahunAjaran->id]);
+            session(['selected_semester' => 2]); // Set semester to 2 (genap)
             
             DB::commit();
             
@@ -516,14 +580,26 @@ class TahunAjaranController extends Controller
             
             // Set both tahun_ajaran_id and selected_semester in session
             session(['tahun_ajaran_id' => $tahunAjaranId]);
-            session(['selected_semester' => $semester]);
+            session(['selected_semester' => (int)$semester]); // Cast to integer untuk konsistensi
             
             // Add semester info to flash message
             $semesterLabel = $semester == 1 ? 'Ganjil' : 'Genap';
             
+            \Log::info("Session semester diatur", [
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'semester' => $semester,
+                'user_id' => auth()->id() ?? auth()->guard('guru')->id() ?? 'guest'
+            ]);
+            
             return redirect()->back()->with('success', 'Tampilan data diubah ke tahun ajaran ' . 
                 $tahunAjaran->tahun_ajaran . ' semester ' . $semesterLabel);
         } catch (\Exception $e) {
+            \Log::error("Error setting session semester", [
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'semester' => $semester,
+                'error' => $e->getMessage()
+            ]);
+            
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }

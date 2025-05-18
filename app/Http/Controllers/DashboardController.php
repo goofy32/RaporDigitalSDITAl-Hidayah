@@ -297,78 +297,98 @@ class DashboardController extends Controller
     public function waliKelasDashboard() 
     {
         try {
-            $waliKelas = auth()->guard('guru')->user();
+            $guru = auth()->guard('guru')->user();
             $tahunAjaranId = session('tahun_ajaran_id');
+            $selectedSemester = session('selected_semester', 1); // Default ke semester 1
             
-            // Hanya wali kelas yang boleh akses
-            if (!$waliKelas || session('selected_role') !== 'wali_kelas') {
-                return redirect()->route('login');
-            }
+            \Log::info("Wali Kelas Dashboard", [
+                'guru_id' => $guru->id,
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'selected_semester' => $selectedSemester
+            ]);
             
-            // Ambil kelas yang diwalikan oleh guru
-            $kelas = $waliKelas->kelasWali;
+            // Get kelas yang diwalikan oleh guru ini untuk tahun ajaran yang dipilih
+            $kelasWali = DB::table('guru_kelas')
+                ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+                ->where('guru_kelas.guru_id', $guru->id)
+                ->where('guru_kelas.is_wali_kelas', true)
+                ->where('guru_kelas.role', 'wali_kelas')
+                ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+                ->select('kelas.id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
+                ->first();
+                
+            \Log::info("Kelas wali yang ditemukan", [
+                'kelas_wali' => $kelasWali ?? 'Tidak ditemukan'
+            ]);
             
-            if (!$kelas) {
+            if (!$kelasWali) {
+                // Jika kelasWali tidak ditemukan, coba tampilkan semua relasi guru-kelas untuk debugging
+                $guruKelasRelations = DB::table('guru_kelas')
+                    ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+                    ->where('guru_kelas.guru_id', $guru->id)
+                    ->select('guru_kelas.*', 'kelas.tahun_ajaran_id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
+                    ->get();
+                    
+                \Log::info("Semua relasi guru-kelas", [
+                    'relations' => $guruKelasRelations
+                ]);
+                
                 return view('wali_kelas.dashboard', [
                     'totalSiswa' => 0,
-                    'totalAbsensi' => 0,
+                    'totalMapel' => 0,
                     'totalEkskul' => 0,
+                    'totalAbsensi' => 0,
                     'kelas' => null,
                     'notifications' => collect(),
                     'recentActivities' => collect(),
-                    'schoolProfile' => ProfilSekolah::first()
+                    'schoolProfile' => \App\Models\ProfilSekolah::first()
                 ]);
             }
             
             // Get stats data
-            $totalSiswa = Siswa::where('kelas_id', $kelas->id)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
-                        $q->where('tahun_ajaran_id', $tahunAjaranId);
-                    });
-                })
+            $totalSiswa = \App\Models\Siswa::where('kelas_id', $kelasWali->id)->count();
+            
+            \Log::info("Total siswa di kelas", [
+                'kelas_id' => $kelasWali->id,
+                'total_siswa' => $totalSiswa
+            ]);
+            
+            // Get mata pelajaran count
+            $totalMapel = \App\Models\MataPelajaran::where('kelas_id', $kelasWali->id)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
                 ->count();
             
-            // Perbaikan cara menghitung absensi
+            // Get absensi count
             $totalAbsensi = DB::table('absensis')
                 ->join('siswas', 'absensis.siswa_id', '=', 'siswas.id')
-                ->where('siswas.kelas_id', $kelas->id)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('absensis.tahun_ajaran_id', $tahunAjaranId);
-                })
+                ->where('siswas.kelas_id', $kelasWali->id)
+                ->where('absensis.tahun_ajaran_id', $tahunAjaranId)
                 ->count();
                 
-            $totalMapel = MataPelajaran::where('kelas_id', $kelas->id)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->count();
-            
+            // Get ekstrakurikuler count
             try {
                 $totalEkskul = DB::table('nilai_ekstrakurikuler')
                     ->join('siswas', 'nilai_ekstrakurikuler.siswa_id', '=', 'siswas.id')
-                    ->where('siswas.kelas_id', $kelas->id)
-                    ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                        return $query->where('nilai_ekstrakurikuler.tahun_ajaran_id', $tahunAjaranId);
-                    })
+                    ->where('siswas.kelas_id', $kelasWali->id)
+                    ->where('nilai_ekstrakurikuler.tahun_ajaran_id', $tahunAjaranId)
                     ->distinct('ekstrakurikuler_id')
                     ->count('ekstrakurikuler_id');
             } catch (\Exception $e) {
-                \Log::warning('Tabel nilai_ekstrakurikuler belum tersedia: ' . $e->getMessage());
+                \Log::warning('Tabel nilai_ekstrakurikuler error: ' . $e->getMessage());
                 $totalEkskul = 0;
             }
             
             // Get kelas info
-            $kelas = Kelas::where('id', $kelas->id)->first();
+            $kelas = \App\Models\Kelas::find($kelasWali->id);
             
             // Get notifications
-            $notifications = Notification::where(function($query) use ($waliKelas) {
+            $notifications = \App\Models\Notification::where(function($query) use ($guru) {
                 $query->where('target', 'all')
-                      ->orWhere('target', 'wali_kelas')
-                      ->orWhere(function($q) use ($waliKelas) {
-                          $q->where('target', 'specific')
-                            ->whereRaw('JSON_CONTAINS(specific_users, ?)', [json_encode($waliKelas->id)]);
-                      });
+                    ->orWhere('target', 'wali_kelas')
+                    ->orWhere(function($q) use ($guru) {
+                        $q->where('target', 'specific')
+                            ->whereRaw('JSON_CONTAINS(specific_users, ?)', [json_encode($guru->id)]);
+                    });
             })
             ->latest()
             ->get();
@@ -377,10 +397,8 @@ class DashboardController extends Controller
             $recentActivities = DB::table('nilais')
                 ->join('siswas', 'nilais.siswa_id', '=', 'siswas.id')
                 ->join('mata_pelajarans', 'nilais.mata_pelajaran_id', '=', 'mata_pelajarans.id')
-                ->where('siswas.kelas_id', $kelas->id)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('nilais.tahun_ajaran_id', $tahunAjaranId);
-                })
+                ->where('siswas.kelas_id', $kelasWali->id)
+                ->where('nilais.tahun_ajaran_id', $tahunAjaranId)
                 ->whereNotNull('nilais.nilai_tp')
                 ->select(
                     'siswas.nama',
@@ -392,8 +410,16 @@ class DashboardController extends Controller
                 ->get();
                 
             // Get school profile  
-            $schoolProfile = ProfilSekolah::first();
-    
+            $schoolProfile = \App\Models\ProfilSekolah::first();
+            
+            // Tambahkan data debugging untuk troubleshooting
+            $debugData = [
+                'tahunAjaranId' => $tahunAjaranId,
+                'selectedSemester' => $selectedSemester,
+                'kelasWaliId' => $kelasWali->id,
+                'guruId' => $guru->id
+            ];
+
             return view('wali_kelas.dashboard', compact(
                 'totalSiswa',
                 'totalMapel', 
@@ -402,12 +428,13 @@ class DashboardController extends Controller
                 'kelas',
                 'notifications',
                 'recentActivities',
-                'schoolProfile'
+                'schoolProfile',
+                'debugData' // Tambahkan data debugging ke view
             ));
-    
+
         } catch (\Exception $e) {
-            \Log::error('Error in waliKelasDashboard: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat memuat dashboard.');
+            \Log::error('Error in waliKelasDashboard: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return back()->with('error', 'Terjadi kesalahan saat memuat dashboard: ' . $e->getMessage());
         }
     }
     
