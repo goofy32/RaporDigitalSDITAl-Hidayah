@@ -347,11 +347,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Explicitly output the PHP value
-console.log("PHP overallProgress direct output: {{ $overallProgress ?? 0 }}");
+// console.log("PHP overallProgress direct output: {{ $overallProgress ?? 0 }}");
 
 // Set the global variable
 window.overallProgress = {{ number_format($overallProgress ?? 0, 2) }};
-console.log("Set window.overallProgress to:", window.overallProgress);
+// console.log("Set window.overallProgress to:", window.overallProgress);
 </script>
 <script>
 // Global variables for charts
@@ -391,7 +391,7 @@ function initCharts() {
     const safeOverallProgress = typeof window.overallProgress !== 'undefined' ? 
         parseFloat(window.overallProgress) : (domProgress ? parseFloat(domProgress) : 0);
     
-    console.log('Using overall progress value in initCharts:', safeOverallProgress);
+    // console.log('Using overall progress value in initCharts:', safeOverallProgress);
     
     
     // Chart configuration options
@@ -416,7 +416,7 @@ function initCharts() {
     const overallCtx = document.getElementById('overallPieChart');
     if (overallCtx && overallCtx.getContext) {
         try {
-            console.log('Creating overall chart with progress:', safeOverallProgress);
+            // console.log('Creating overall chart with progress:', safeOverallProgress);
             overallChart = new Chart(overallCtx.getContext('2d'), {
                 type: 'doughnut',
                 data: {
@@ -456,12 +456,12 @@ function initCharts() {
                     }
                 }]
             });
-            console.log('Overall chart created successfully');
+            // console.log('Overall chart created successfully');
         } catch (e) {
-            console.error('Error creating overall chart:', e);
+            // console.error('Error creating overall chart:', e);
         }
     } else {
-        console.error('Could not get chart context from overallPieChart element');
+        // console.error('Could not get chart context from overallPieChart element');
     }
 
     // Initialize Class Progress Chart
@@ -515,7 +515,7 @@ function updateClassChart(progress) {
     kelasProgress = !isNaN(parseFloat(progress)) ? 
         Math.min(100, Math.max(0, parseFloat(progress))) : 0;
     
-    console.log('Updating class chart with progress:', kelasProgress);
+    // console.log('Updating class chart with progress:', kelasProgress);
     
     if (classChart) {
         classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
@@ -573,7 +573,7 @@ document.addEventListener('alpine:init', () => {
                 }
                 
                 const data = await response.json();
-                console.log('Kelas progress data:', data);
+                // console.log('Kelas progress data:', data);
                 
                 if (data.success && !isNaN(data.progress)) {
                     updateClassChart(data.progress);
@@ -592,7 +592,7 @@ document.addEventListener('alpine:init', () => {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, overall progress from window:', window.overallProgress);
+    // console.log('DOM loaded, overall progress from window:', window.overallProgress);
     
     // Backup the value to a data attribute for Turbo navigation
     const chartContainer = document.getElementById('overallPieChart');
@@ -615,13 +615,13 @@ document.addEventListener('turbo:before-cache', () => {
 // Handle Turbo navigation
 document.addEventListener('turbo:load', () => {
     if (window.location.pathname.includes('/admin/dashboard')) {
-        console.log('Dashboard loaded via Turbo');
+        // console.log('Dashboard loaded via Turbo');
         
         // Try to recover the progress value from the DOM
         const chartContainer = document.getElementById('overallPieChart');
         if (chartContainer && chartContainer.dataset.progress) {
             window.overallProgress = parseFloat(chartContainer.dataset.progress);
-            console.log('Recovered progress from DOM:', window.overallProgress);
+            // console.log('Recovered progress from DOM:', window.overallProgress);
         }
         
         setTimeout(() => {
@@ -670,7 +670,7 @@ function fetchKelasProgress() {
         return response.json();
     })
     .then(data => {
-        console.log('Fetched kelas progress data:', data);
+        // console.log('Fetched kelas progress data:', data);
         if (data.success && !isNaN(data.progress)) {
             updateClassChart(data.progress);
         } else {
