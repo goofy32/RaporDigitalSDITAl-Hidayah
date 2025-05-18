@@ -305,46 +305,6 @@
         });
     });
 
-    // Get students for a given class
-    Route::get('/debug/check-students/{kelasId}', function($kelasId) {
-            $kelas = \App\Models\Kelas::findOrFail($kelasId);
-            $tahunAjaranId = session('tahun_ajaran_id');
-            
-            // Log basic info
-            \Log::info("Debug check for kelas ID: {$kelasId}");
-            \Log::info("Current tahun_ajaran_id: {$tahunAjaranId}");
-            \Log::info("Kelas tahun_ajaran_id: {$kelas->tahun_ajaran_id}");
-            
-            $directStudents = $kelas->siswas;
-            // Get students directly from the class
-            \Log::info("Direct kelas->siswas count: " . $directStudents->count());
-            
-            // Get students with the query builder approach
-            $queryStudents = \App\Models\Siswa::where('kelas_id', $kelasId)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->whereHas('kelas', function($q) use ($tahunAjaranId) {
-                        $q->where('tahun_ajaran_id', $tahunAjaranId);
-                    });
-                })
-                ->get();
-            \Log::info("Query builder students count: " . $queryStudents->count());
-            
-            // Return the debug info
-            return [
-                'kelas_id' => $kelasId,
-                'tahun_ajaran_id' => $tahunAjaranId,
-                'kelas_tahun_ajaran_id' => $kelas->tahun_ajaran_id,
-                'direct_students_count' => $directStudents->count(),
-                'direct_students' => $directStudents->map(function($s) {
-                    return ['id' => $s->id, 'nama' => $s->nama];
-                }),
-                'query_students_count' => $queryStudents->count(),
-                'query_students' => $queryStudents->map(function($s) {
-                    return ['id' => $s->id, 'nama' => $s->nama];
-                })
-            ];
-        })->middleware(['auth:guru', 'role:guru']);
-
         // Pengajar Routes - Guard: guru, Role: guru
         Route::middleware(['auth:guru', 'role:guru'])
             ->prefix('pengajar')
@@ -467,35 +427,6 @@
         ->prefix('wali-kelas')
         ->name('wali_kelas.')
         ->group(function () {
-
-        Route::get('/debug-mapel/{id}', function($id) {
-            $mapel = \App\Models\MataPelajaran::findOrFail($id);
-            $guru = Auth::guard('guru')->user();
-            
-            return response()->json([
-                'mata_pelajaran' => [
-                    'id' => $mapel->id,
-                    'nama' => $mapel->nama_pelajaran,
-                    'guru_id' => $mapel->guru_id,
-                    'kelas_id' => $mapel->kelas_id,
-                    'tahun_ajaran_id' => $mapel->tahun_ajaran_id
-                ],
-                'current_guru' => [
-                    'id' => $guru->id,
-                    'nama' => $guru->nama,
-                    'type_of_guru_id' => gettype($guru->id),
-                    'type_of_mapel_guru_id' => gettype($mapel->guru_id)
-                ],
-                'comparison' => [
-                    'normal_comparison' => $mapel->guru_id === $guru->id,
-                    'int_comparison' => (int)$mapel->guru_id === (int)$guru->id,
-                    'string_comparison' => (string)$mapel->guru_id === (string)$guru->id
-                ],
-                'session' => [
-                    'tahun_ajaran_id' => session('tahun_ajaran_id')
-                ]
-            ]);
-        })->name('pengajar.debug.mapel');
 
             // Notifications
         Route::prefix('notifications')->name('notifications.')->group(function () {
