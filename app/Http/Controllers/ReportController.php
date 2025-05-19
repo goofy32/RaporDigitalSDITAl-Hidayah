@@ -1172,7 +1172,24 @@ class ReportController extends Controller
             $errorSiswa = [];
             $files = [];
             
-            // Lakukan proses generate secara batched untuk menghindari timeout
+            // Nama file ZIP yang akan dibuat
+            $timestamp = date('Ymd_His');
+            $zipName = "Rapor_Batch_{$type}_{$kelas->nama_kelas}_{$timestamp}.zip";
+            $zipPath = storage_path("app/public/generated/{$zipName}");
+            
+            // Pastikan direktori ada
+            $zipDirectory = dirname($zipPath);
+            if (!file_exists($zipDirectory)) {
+                mkdir($zipDirectory, 0755, true);
+            }
+            
+            // Buat temporary directory untuk file-file yang akan di-zip
+            $tempDir = storage_path("app/public/generated/temp_{$timestamp}");
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            
+            // Lakukan proses generate untuk setiap siswa
             foreach ($siswaList as $index => $siswa) {
                 try {
                     // Validasi data siswa lengkap
@@ -1205,31 +1222,40 @@ class ReportController extends Controller
                     $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
                     $result = $processor->generate();
                     
-                    $files[] = [
-                        'path' => storage_path('app/public/' . $result['path']),
-                        'name' => $result['filename']
-                    ];
+                    // Salin file ke temporary directory
+                    $sourcePath = storage_path('app/public/' . $result['path']);
+                    $sanitizedName = preg_replace('/[^\w\.-]/', '_', $siswa->nama); // Bersihkan nama file
+                    $destPath = $tempDir . '/' . "Rapor_{$type}_{$sanitizedName}.docx";
                     
-                    // Simpan history generate
-                    \App\Models\ReportGeneration::create([
-                        'siswa_id' => $siswa->id,
-                        'kelas_id' => $siswa->kelas_id,
-                        'report_template_id' => $template->id,
-                        'generated_file' => $result['path'],
-                        'type' => $type,
-                        'tahun_ajaran' => $template->tahun_ajaran,
-                        'semester' => $template->semester,
-                        'tahun_ajaran_id' => $tahunAjaranId,
-                        'generated_at' => now(),
-                        'generated_by' => $guru->id
-                    ]);
-                    
-                    // Update tracking
-                    $successSiswa[] = [
-                        'id' => $siswa->id,
-                        'name' => $siswa->nama,
-                        'filename' => $result['filename']
-                    ];
+                    if (copy($sourcePath, $destPath)) {
+                        $files[] = [
+                            'path' => $destPath,
+                            'name' => "Rapor_{$type}_{$sanitizedName}.docx"
+                        ];
+                        
+                        // Simpan history generate
+                        \App\Models\ReportGeneration::create([
+                            'siswa_id' => $siswa->id,
+                            'kelas_id' => $siswa->kelas_id,
+                            'report_template_id' => $template->id,
+                            'generated_file' => $result['path'],
+                            'type' => $type,
+                            'tahun_ajaran' => $template->tahun_ajaran,
+                            'semester' => $template->semester,
+                            'tahun_ajaran_id' => $tahunAjaranId,
+                            'generated_at' => now(),
+                            'generated_by' => $guru->id
+                        ]);
+                        
+                        // Update tracking
+                        $successSiswa[] = [
+                            'id' => $siswa->id,
+                            'name' => $siswa->nama,
+                            'filename' => $result['filename']
+                        ];
+                    } else {
+                        throw new \Exception("Gagal menyalin file rapor");
+                    }
                     
                 } catch (\Exception $e) {
                     // Log error
@@ -1249,52 +1275,44 @@ class ReportController extends Controller
                 throw new \Exception('Tidak ada rapor yang dapat digenerate. ' . implode("\n", array_column($errorSiswa, 'error')));
             }
             
-            // Buat zip file
-            $zipName = "rapor_batch_{$kelas->nama_kelas}_{$type}_" . time() . ".zip";
-            $zipPath = storage_path("app/public/generated/{$zipName}");
+            // Buat file summary
+            $summaryContent = "# Laporan Generate Batch Rapor\n\n";
+            $summaryContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
+            $summaryContent .= "Kelas: {$kelas->nama_kelas}\n";
+            $summaryContent .= "Tipe Rapor: $type\n";
+            $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n\n";
             
-            // Pastikan direktori ada
-            if (!file_exists(dirname($zipPath))) {
-                mkdir(dirname($zipPath), 0755, true);
+            $summaryContent .= "## Ringkasan\n";
+            $summaryContent .= "Total Siswa: " . count($siswaIds) . "\n";
+            $summaryContent .= "Berhasil: " . count($successSiswa) . "\n";
+            $summaryContent .= "Gagal: " . count($errorSiswa) . "\n\n";
+            
+            if (!empty($successSiswa)) {
+                $summaryContent .= "## Siswa Berhasil\n";
+                foreach ($successSiswa as $index => $siswa) {
+                    $summaryContent .= ($index + 1) . ". {$siswa['name']} - {$siswa['filename']}\n";
+                }
+                $summaryContent .= "\n";
             }
             
+            if (!empty($errorSiswa)) {
+                $summaryContent .= "## Siswa Gagal\n";
+                foreach ($errorSiswa as $index => $siswa) {
+                    $summaryContent .= ($index + 1) . ". {$siswa['name']} - {$siswa['error']}\n";
+                }
+            }
+            
+            // Tulis file summary
+            $summaryPath = $tempDir . "/RINGKASAN_RAPOR.md";
+            file_put_contents($summaryPath, $summaryContent);
+            
+            // Create ZIP file using ZipArchive
             $zip = new \ZipArchive();
-            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
-                // Tambahkan report summary
-                $summaryContent = "# Laporan Generate Batch Rapor\n\n";
-                $summaryContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
-                $summaryContent .= "Kelas: {$kelas->nama_kelas}\n";
-                $summaryContent .= "Tipe Rapor: $type\n";
-                $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n\n";
-                
-                $summaryContent .= "## Ringkasan\n";
-                $summaryContent .= "Total Siswa: " . count($siswaIds) . "\n";
-                $summaryContent .= "Berhasil: " . count($successSiswa) . "\n";
-                $summaryContent .= "Gagal: " . count($errorSiswa) . "\n\n";
-                
-                if (!empty($successSiswa)) {
-                    $summaryContent .= "## Siswa Berhasil\n";
-                    foreach ($successSiswa as $index => $siswa) {
-                        $summaryContent .= ($index + 1) . ". {$siswa['name']} - {$siswa['filename']}\n";
-                    }
-                    $summaryContent .= "\n";
-                }
-                
-                if (!empty($errorSiswa)) {
-                    $summaryContent .= "## Siswa Gagal\n";
-                    foreach ($errorSiswa as $index => $siswa) {
-                        $summaryContent .= ($index + 1) . ". {$siswa['name']} - {$siswa['error']}\n";
-                    }
-                }
-                
-                // Tulis file summary
-                $summaryPath = storage_path("app/public/generated/summary_{$kelas->nama_kelas}_{$type}_" . time() . ".md");
-                file_put_contents($summaryPath, $summaryContent);
-                
-                // Tambahkan file summary ke zip
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                // Add summary file
                 $zip->addFile($summaryPath, "RINGKASAN_RAPOR.md");
                 
-                // Tambahkan semua file ke zip
+                // Add all report files
                 foreach ($files as $file) {
                     if (file_exists($file['path'])) {
                         $zip->addFile($file['path'], $file['name']);
@@ -1303,18 +1321,11 @@ class ReportController extends Controller
                     }
                 }
                 
+                // Close ZIP file
                 $zip->close();
                 
-                // Hapus file individual dan summary setelah di-zip
-                foreach ($files as $file) {
-                    if (file_exists($file['path'])) {
-                        @unlink($file['path']);
-                    }
-                }
-                @unlink($summaryPath);
-                
                 // Buat notifikasi sukses untuk wali kelas
-                $notification = new Notification();
+                $notification = new \App\Models\Notification();
                 $notification->title = "Batch Rapor {$type} Kelas {$kelas->nama_kelas} Siap Diunduh";
                 $notification->content = "Generate batch rapor {$type} untuk kelas {$kelas->nama_kelas} telah selesai. " . 
                                 "Berhasil: " . count($successSiswa) . " siswa, " . 
@@ -1324,23 +1335,38 @@ class ReportController extends Controller
                 $notification->specific_users = [$guru->id];
                 $notification->save();
                 
-                // Return download response
+                // Cleanup temporary files after successful ZIP creation
+                foreach ($files as $file) {
+                    if (file_exists($file['path'])) {
+                        @unlink($file['path']);
+                    }
+                }
+                @unlink($summaryPath);
+                @rmdir($tempDir);
+                
+                // Return ZIP file
                 return response()->download($zipPath)->deleteFileAfterSend(true);
+            } else {
+                throw new \Exception("Gagal membuat file ZIP");
             }
-            
-            throw new \Exception('Gagal membuat file zip');
             
         } catch (\Exception $e) {
             \Log::error("Batch generate report error: " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
             
+            // Cleanup any temporary files and directories
+            if (isset($tempDir) && file_exists($tempDir)) {
+                array_map('unlink', glob("$tempDir/*"));
+                @rmdir($tempDir);
+            }
+            
             // Buat notifikasi error khusus untuk wali kelas
             if (isset($guru) && $guru) {
-                $notification = new Notification();
+                $notification = new \App\Models\Notification();
                 $notification->title = "Gagal Generate Batch Rapor {$type}";
                 $notification->content = "Terjadi kesalahan saat membuat batch rapor {$type}: " . $e->getMessage() . 
-                                        ". Silahkan coba lagi atau hubungi admin jika masalah berlanjut.";
+                                    ". Silahkan coba lagi atau hubungi admin jika masalah berlanjut.";
                 $notification->target = 'specific';
                 $notification->specific_users = [$guru->id];
                 $notification->save();
