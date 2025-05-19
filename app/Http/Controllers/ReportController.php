@@ -564,9 +564,19 @@ class ReportController extends Controller
             // Cari siswa dengan relasi yang dibutuhkan
             $siswa = Siswa::with([
                 'kelas',
+                'nilais' => function($query) {
+                    $tahunAjaranId = session('tahun_ajaran_id');
+                    // Pastikan filter tahun ajaran diterapkan
+                    $query->where('tahun_ajaran_id', $tahunAjaranId);
+                    
+                    // Jika perlu filter semester
+                    $semester = request('type', 'UTS') === 'UTS' ? 1 : 2; 
+                    $query->whereHas('mataPelajaran', function($q) use ($semester) {
+                        $q->where('semester', $semester);
+                    });
+                },
                 'nilais.mataPelajaran',
-                'nilaiEkstrakurikuler.ekstrakurikuler',
-                'absensi'
+                // relasi lainnya
             ])->findOrFail($siswa_id);
             
             // Render view ke HTML

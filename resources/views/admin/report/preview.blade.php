@@ -76,22 +76,57 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($nilaiRapor as $nilai)
+                        @foreach($siswa->nilais->where('tahun_ajaran_id', session('tahun_ajaran_id'))->groupBy('mataPelajaran.nama_pelajaran') as $mapel => $nilaiGroup)
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                {{ $nilai->mataPelajaran->nama_pelajaran }}
+                                {{ $mapel }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                {{ $nilai->nilai_akhir_rapor }}
+                                @php
+                                    // Ambil nilai akhir rapor dari kelompok nilai (pilih yang tidak null)
+                                    $nilaiAkhir = $nilaiGroup->where('nilai_akhir_rapor', '!=', null)->first();
+                                    $nilai = $nilaiAkhir ? $nilaiAkhir->nilai_akhir_rapor : '-';
+                                @endphp
+                                {{ $nilai }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                {{ $nilai->getPredikat() }}
+                                @php
+                                    $predikat = '';
+                                    if ($nilaiAkhir) {
+                                        if (method_exists($nilaiAkhir, 'getPredikat')) {
+                                            $predikat = $nilaiAkhir->getPredikat();
+                                        } else {
+                                            // Buat predikat manual jika method tidak ada
+                                            if ($nilai >= 90) $predikat = 'A';
+                                            elseif ($nilai >= 80) $predikat = 'B';
+                                            elseif ($nilai >= 70) $predikat = 'C';
+                                            elseif ($nilai >= 60) $predikat = 'D';
+                                            else $predikat = 'E';
+                                        }
+                                    }
+                                @endphp
+                                {{ $predikat }}
                             </td>
                         </tr>
                         @endforeach
-                    </tbody>
                 </table>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-lg font-medium mb-4">Debug Info</h2>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Tahun Ajaran ID</span>
+                    <span class="font-medium">{{ session('tahun_ajaran_id') }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total Nilai</span>
+                    <span class="font-medium">{{ $siswa->nilais->count() }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Nilai Tahun Ajaran Aktif</span>
+                    <span class="font-medium">{{ $siswa->nilais->where('tahun_ajaran_id', session('tahun_ajaran_id'))->count() }}</span>
+                </div>
             </div>
         </div>
     </div>

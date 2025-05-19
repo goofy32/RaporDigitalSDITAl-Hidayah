@@ -180,10 +180,11 @@ class RaporTemplateProcessor
         // Data Nilai - Filter berdasarkan tahun ajaran yang dipilih
         $nilaiQuery = $this->siswa->nilais()
             ->with(['mataPelajaran'])
-            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                return $query->where('tahun_ajaran_id', $tahunAjaranId);
-            });
-        
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('tahun_ajaran_id', $tahunAjaranId); // Tambahkan filter ini
+            
         $nilaiCollection = $nilaiQuery->get();
         
         // Grouping by mata pelajaran

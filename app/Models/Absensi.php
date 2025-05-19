@@ -43,6 +43,17 @@ class Absensi extends Model
         return session('tahun_ajaran_id');
     }
 
+    public function setTahunAjaranIdAttribute($value)
+    {
+        // Jika nilai yang diberikan kosong, gunakan session
+        if (empty($value)) {
+            $this->attributes['tahun_ajaran_id'] = session('tahun_ajaran_id');
+        } else {
+            $this->attributes['tahun_ajaran_id'] = $value;
+        }
+    }
+
+
     /**
      * Mendapatkan semester dari tahun ajaran yang aktif
      * jika tidak ada semester yang diberikan

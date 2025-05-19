@@ -50,14 +50,17 @@ class AbsensiController extends Controller
     {
         $waliKelas = auth()->guard('guru')->user();
         $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         if (!$kelasWaliId) {
             return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
         }
         
+        // Perbaikan query siswa untuk filter berdasarkan tahun ajaran
         $siswa = Siswa::where('kelas_id', $kelasWaliId)
-                 ->orderBy('nama')
-                 ->get();
+                ->where('tahun_ajaran_id', $tahunAjaranId) // Tambahkan filter tahun ajaran
+                ->orderBy('nama')
+                ->get();
         
         return view('wali_kelas.add_absence', compact('siswa'));
     }

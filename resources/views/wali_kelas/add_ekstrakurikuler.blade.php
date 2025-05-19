@@ -17,6 +17,14 @@
         </div>
     </div>
 
+    <div class="mt-4 p-4 bg-gray-100 rounded-md">
+        <h3 class="text-sm font-semibold mb-2">Debug Info</h3>
+        <div class="text-xs text-gray-600">
+            <p>Tahun Ajaran ID: {{ session('tahun_ajaran_id') }}</p>
+            <p>Jumlah Siswa: {{ count($siswa) }}</p>
+        </div>
+    </div>
+
     <!-- Form -->
     <form id="createEkskulForm" action="{{ route('wali_kelas.ekstrakurikuler.store') }}" x-data="formProtection" @submit="handleSubmit" method="POST" class="space-y-6" data-turbo="false">
         @csrf

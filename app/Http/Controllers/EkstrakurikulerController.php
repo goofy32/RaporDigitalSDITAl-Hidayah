@@ -149,13 +149,19 @@ class EkstrakurikulerController extends Controller
     {
         $waliKelas = auth()->guard('guru')->user();
         $kelasWaliId = $waliKelas->getWaliKelasId();
+        $tahunAjaranId = session('tahun_ajaran_id');
         
         if (!$kelasWaliId) {
             return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
         }
         
-        $ekstrakurikuler = Ekstrakurikuler::all();
+        $ekstrakurikuler = Ekstrakurikuler::where('tahun_ajaran_id', $tahunAjaranId)
+                        ->orderBy('nama_ekstrakurikuler')
+                        ->get();
+        
+        // Perbaikan query siswa untuk filter berdasarkan tahun ajaran
         $siswa = Siswa::where('kelas_id', $kelasWaliId)
+                    ->where('tahun_ajaran_id', $tahunAjaranId) // Tambahkan filter tahun ajaran
                     ->orderBy('nama')
                     ->get();
         
