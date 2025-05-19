@@ -8,6 +8,7 @@ use App\Models\Siswa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class EkstrakurikulerController extends Controller
 {
@@ -147,27 +148,48 @@ class EkstrakurikulerController extends Controller
     
     public function waliKelasCreate()
     {
-        $waliKelas = auth()->guard('guru')->user();
-        $kelasWaliId = $waliKelas->getWaliKelasId();
+        $guru = auth()->guard('guru')->user();
         $tahunAjaranId = session('tahun_ajaran_id');
         
+        // Get wali kelas ID directly from the relation table
+        $kelasWali = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $guru->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.id as kelas_id')
+            ->first();
+        
+        $kelasWaliId = $kelasWali ? $kelasWali->kelas_id : null;
+        
+        \Log::info("EkstrakurikulerController::waliKelasCreate", [
+            'guru_id' => $guru->id,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'kelas_wali_id' => $kelasWaliId
+        ]);
+        
         if (!$kelasWaliId) {
-            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun pada tahun ajaran ini.');
         }
         
-        $ekstrakurikuler = Ekstrakurikuler::where('tahun_ajaran_id', $tahunAjaranId)
+        // IMPORTANT: Only filter by kelas_id, not tahun_ajaran_id
+        // This is the key fix based on the debug output
+        $siswa = \App\Models\Siswa::where('kelas_id', $kelasWaliId)
+                ->orderBy('nama')
+                ->get();
+        
+        $ekstrakurikuler = \App\Models\Ekstrakurikuler::where('tahun_ajaran_id', $tahunAjaranId)
                         ->orderBy('nama_ekstrakurikuler')
                         ->get();
         
-        // Perbaikan query siswa untuk filter berdasarkan tahun ajaran
-        $siswa = Siswa::where('kelas_id', $kelasWaliId)
-                    ->where('tahun_ajaran_id', $tahunAjaranId) // Tambahkan filter tahun ajaran
-                    ->orderBy('nama')
-                    ->get();
+        \Log::info("EkstrakurikulerController found:", [
+            'siswa_count' => $siswa->count(),
+            'ekstrakurikuler_count' => $ekstrakurikuler->count()
+        ]);
         
-        return view('wali_kelas.add_ekstrakurikuler', compact('ekstrakurikuler', 'siswa'));
+        return view('wali_kelas.add_ekstrakurikuler', compact('ekstrakurikuler', 'siswa', 'kelasWaliId'));
     }
-
     public function waliKelasStore(Request $request)
     {
         $waliKelas = auth()->guard('guru')->user();

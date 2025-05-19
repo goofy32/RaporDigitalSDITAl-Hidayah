@@ -732,96 +732,170 @@
             if (!$template) {
         return response()->json(['error' => 'Template tidak ditemukan']);
     }
-    
-    // Hasil simulasi data untuk rapor
-    $result = [
-        'siswa' => [
-            'id' => $siswa->id,
-            'nama' => $siswa->nama,
-            'kelas' => [
-                'id' => $siswa->kelas->id,
-                'nomor_kelas' => $siswa->kelas->nomor_kelas,
-                'nama_kelas' => $siswa->kelas->nama_kelas
+        
+        // Hasil simulasi data untuk rapor
+        $result = [
+            'siswa' => [
+                'id' => $siswa->id,
+                'nama' => $siswa->nama,
+                'kelas' => [
+                    'id' => $siswa->kelas->id,
+                    'nomor_kelas' => $siswa->kelas->nomor_kelas,
+                    'nama_kelas' => $siswa->kelas->nama_kelas
+                ]
+            ],
+            'template' => [
+                'id' => $template->id,
+                'type' => $template->type,
+                'tahun_ajaran_id' => $template->tahun_ajaran_id
+            ],
+            'session' => [
+                'tahun_ajaran_id' => $tahunAjaranId
             ]
-        ],
-        'template' => [
-            'id' => $template->id,
-            'type' => $template->type,
-            'tahun_ajaran_id' => $template->tahun_ajaran_id
-        ],
-        'session' => [
-            'tahun_ajaran_id' => $tahunAjaranId
-        ]
-    ];
-    
-    // Simulasi pengambilan data nilai seperti di RaporTemplateProcessor
-    $semester = $type === 'UTS' ? 1 : 2;
-    
-    // 1. Nilai tanpa filter tahun ajaran
-    $nilai1 = $siswa->nilais()
-        ->with(['mataPelajaran'])
-        ->whereHas('mataPelajaran', function($q) use ($semester) {
-            $q->where('semester', $semester);
-        })
-        ->get();
-    
-    $result['data_simulation']['no_filter'] = [
-        'count' => $nilai1->count(),
-        'nilai' => $nilai1->map(function($n) {
-            return [
-                'id' => $n->id,
-                'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                'tahun_ajaran_id' => $n->tahun_ajaran_id
-            ];
-        })
-    ];
-    
-    // 2. Nilai dengan filter tahun ajaran
-    $nilai2 = $siswa->nilais()
-        ->with(['mataPelajaran'])
-        ->whereHas('mataPelajaran', function($q) use ($semester) {
-            $q->where('semester', $semester);
-        })
-        ->where('tahun_ajaran_id', $tahunAjaranId)
-        ->get();
-    
-    $result['data_simulation']['with_filter'] = [
-        'count' => $nilai2->count(),
-        'nilai' => $nilai2->map(function($n) {
-            return [
-                'id' => $n->id,
-                'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                'tahun_ajaran_id' => $n->tahun_ajaran_id
-            ];
-        })
-    ];
-    
-    // Cek juga nilai pada tahun ajaran lama
-    $tahunAjaranLama = 1; // ID tahun ajaran lama
-    $nilai3 = $siswa->nilais()
-        ->with(['mataPelajaran'])
-        ->whereHas('mataPelajaran', function($q) use ($semester) {
-            $q->where('semester', $semester);
-        })
-        ->where('tahun_ajaran_id', $tahunAjaranLama)
-        ->get();
-    
-    $result['data_simulation']['old_year'] = [
-        'count' => $nilai3->count(),
-        'nilai' => $nilai3->map(function($n) {
-            return [
-                'id' => $n->id,
-                'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                'tahun_ajaran_id' => $n->tahun_ajaran_id
-            ];
-        })
-    ];
-    
-    return response()->json($result);
-})->middleware(['auth:guru']);
+        ];
+        
+        // Simulasi pengambilan data nilai seperti di RaporTemplateProcessor
+        $semester = $type === 'UTS' ? 1 : 2;
+        
+        // 1. Nilai tanpa filter tahun ajaran
+        $nilai1 = $siswa->nilais()
+            ->with(['mataPelajaran'])
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->get();
+        
+        $result['data_simulation']['no_filter'] = [
+            'count' => $nilai1->count(),
+            'nilai' => $nilai1->map(function($n) {
+                return [
+                    'id' => $n->id,
+                    'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
+                    'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
+                    'tahun_ajaran_id' => $n->tahun_ajaran_id
+                ];
+            })
+        ];
+        
+        // 2. Nilai dengan filter tahun ajaran
+        $nilai2 = $siswa->nilais()
+            ->with(['mataPelajaran'])
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->get();
+        
+        $result['data_simulation']['with_filter'] = [
+            'count' => $nilai2->count(),
+            'nilai' => $nilai2->map(function($n) {
+                return [
+                    'id' => $n->id,
+                    'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
+                    'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
+                    'tahun_ajaran_id' => $n->tahun_ajaran_id
+                ];
+            })
+        ];
+        
+        // Cek juga nilai pada tahun ajaran lama
+        $tahunAjaranLama = 1; // ID tahun ajaran lama
+        $nilai3 = $siswa->nilais()
+            ->with(['mataPelajaran'])
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('tahun_ajaran_id', $tahunAjaranLama)
+            ->get();
+        
+        $result['data_simulation']['old_year'] = [
+            'count' => $nilai3->count(),
+            'nilai' => $nilai3->map(function($n) {
+                return [
+                    'id' => $n->id,
+                    'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
+                    'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
+                    'tahun_ajaran_id' => $n->tahun_ajaran_id
+                ];
+            })
+        ];
+        
+        return response()->json($result);
+    })->middleware(['auth:guru']);
+
+    // Add this to your routes/web.php file
+    Route::get('/debug/siswa-wali-kelas', function() {
+        $guru = auth()->guard('guru')->user();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        if (!$guru) {
+            return "You need to be logged in as a teacher";
+        }
+        
+        // First approach - using Helper method
+        $kelasWaliId = $guru->getWaliKelasId();
+        
+        // Second approach - direct query (more reliable for debugging)
+        $kelasWali = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $guru->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.id as kelas_id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
+            ->first();
+        
+        // Let's try different approaches to query students
+        
+        // Approach 1: Using kelas_id directly
+        $students1 = \App\Models\Siswa::where('kelas_id', $kelasWaliId)
+            ->get();
+        
+        // Approach 2: Using kelas_id + tahun_ajaran_id filter
+        $students2 = \App\Models\Siswa::where('kelas_id', $kelasWaliId)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->get();
+        
+        // Approach 3: Using direct DB query for maximum control
+        $students3 = DB::table('siswas')
+            ->where('kelas_id', $kelasWaliId)
+            ->get();
+        
+        // Let's also check what columns exist in the siswas table
+        $columns = Schema::getColumnListing('siswas');
+        
+        return response()->json([
+            'guru_info' => [
+                'id' => $guru->id,
+                'nama' => $guru->nama
+            ],
+            'session' => [
+                'tahun_ajaran_id' => $tahunAjaranId
+            ],
+            'kelas_wali_helper' => [
+                'kelas_id' => $kelasWaliId
+            ],
+            'kelas_wali_direct' => $kelasWali,
+            'student_counts' => [
+                'approach1' => $students1->count(),
+                'approach2' => $students2->count(),
+                'approach3' => count($students3)
+            ],
+            'sample_students' => [
+                'approach1' => $students1->take(3)->map(function($s) {
+                    return ['id' => $s->id, 'nama' => $s->nama, 'kelas_id' => $s->kelas_id, 'tahun_ajaran_id' => $s->tahun_ajaran_id];
+                }),
+                'approach2' => $students2->take(3)->map(function($s) {
+                    return ['id' => $s->id, 'nama' => $s->nama, 'kelas_id' => $s->kelas_id, 'tahun_ajaran_id' => $s->tahun_ajaran_id];
+                }),
+                'approach3' => collect(array_slice($students3->toArray(), 0, 3))
+            ],
+            'table_structure' => [
+                'columns' => $columns,
+                'has_tahun_ajaran_id' => in_array('tahun_ajaran_id', $columns)
+            ]
+        ]);
+    })->middleware(['auth:guru']);
 
         Route::get('/lingkup-materi/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkLingkupMateriDependencies'])
         ->name('lingkup_materi.check_dependencies');

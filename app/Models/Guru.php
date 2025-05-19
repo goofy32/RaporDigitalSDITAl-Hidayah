@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
 
 class Guru extends Authenticatable
 {
@@ -268,7 +269,23 @@ class Guru extends Authenticatable
      */
     public function getWaliKelasId()
     {
-        $kelasWali = $this->kelasWali()->first();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        $kelasWali = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $this->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.id')
+            ->first();
+        
+        \Log::info("Guru::getWaliKelasId called", [
+            'guru_id' => $this->id,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'found_kelas_id' => $kelasWali ? $kelasWali->id : null
+        ]);
+        
         return $kelasWali ? $kelasWali->id : null;
     }
 

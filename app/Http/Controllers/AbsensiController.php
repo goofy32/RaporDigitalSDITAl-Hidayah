@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Absensi;
 use App\Models\Siswa;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AbsensiController extends Controller
 {
@@ -45,56 +46,83 @@ class AbsensiController extends Controller
         return view('wali_kelas.absence', compact('absensis'));
     }
     
-
     public function create()
     {
-        $waliKelas = auth()->guard('guru')->user();
-        $kelasWaliId = $waliKelas->getWaliKelasId();
+        $guru = auth()->guard('guru')->user();
         $tahunAjaranId = session('tahun_ajaran_id');
         
+        // Get wali kelas ID directly from the relation table
+        $kelasWali = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $guru->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.id as kelas_id')
+            ->first();
+        
+        $kelasWaliId = $kelasWali ? $kelasWali->kelas_id : null;
+        
+        // Get the active semester from the tahun ajaran
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $currentSemester = $tahunAjaran ? $tahunAjaran->semester : 1; // Default to 1 if not found
+        
+        \Log::info("AbsensiController::create", [
+            'guru_id' => $guru->id,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'kelas_wali_id' => $kelasWaliId,
+            'current_semester' => $currentSemester
+        ]);
+        
         if (!$kelasWaliId) {
-            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun.');
+            return redirect()->back()->with('error', 'Anda belum ditugaskan sebagai wali kelas untuk kelas manapun pada tahun ajaran ini.');
         }
         
-        // Perbaikan query siswa untuk filter berdasarkan tahun ajaran
-        $siswa = Siswa::where('kelas_id', $kelasWaliId)
-                ->where('tahun_ajaran_id', $tahunAjaranId) // Tambahkan filter tahun ajaran
+        // Only filter by kelas_id, not tahun_ajaran_id
+        $siswa = \App\Models\Siswa::where('kelas_id', $kelasWaliId)
                 ->orderBy('nama')
                 ->get();
         
-        return view('wali_kelas.add_absence', compact('siswa'));
+        \Log::info("AbsensiController found:", [
+            'siswa_count' => $siswa->count(),
+            'siswa_ids' => $siswa->pluck('id')->toArray()
+        ]);
+        
+        return view('wali_kelas.add_absence', compact('siswa', 'kelasWaliId', 'currentSemester', 'tahunAjaran'));
     }
 
     public function store(Request $request)
     {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $currentSemester = $tahunAjaran ? $tahunAjaran->semester : $request->semester;
+        
         $request->validate([
             'siswa_id' => 'required|exists:siswas,id',
             'sakit' => 'required|integer|min:0',
             'izin' => 'required|integer|min:0',
             'tanpa_keterangan' => 'required|integer|min:0',
-            'semester' => 'required|in:1,2'
         ]);
-    
-        $tahunAjaranId = session('tahun_ajaran_id');
-    
+
         // Cek apakah sudah ada data absensi untuk siswa dan semester ini pada tahun ajaran yang sama
         $existingAbsensi = Absensi::where('siswa_id', $request->siswa_id)
-                                 ->where('semester', $request->semester)
-                                 ->where('tahun_ajaran_id', $tahunAjaranId)
-                                 ->first();
-    
+                                ->where('semester', $currentSemester)
+                                ->where('tahun_ajaran_id', $tahunAjaranId)
+                                ->first();
+
         if ($existingAbsensi) {
             return redirect()->back()
-                           ->withInput()
-                           ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
+                        ->withInput()
+                        ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
         }
-    
-        // Tambahkan tahun ajaran ke data yang akan disimpan
+
+        // Create data with the current semester
         $data = $request->all();
+        $data['semester'] = $currentSemester;
         $data['tahun_ajaran_id'] = $tahunAjaranId;
-    
+
         Absensi::create($data);
-    
+
         return redirect()->route('wali_kelas.absence.index')
                         ->with('success', 'Data absensi berhasil ditambahkan');
     }
@@ -105,6 +133,7 @@ class AbsensiController extends Controller
         try {
             $waliKelas = auth()->guard('guru')->user();
             $kelasWaliId = $waliKelas->getWaliKelasId();
+            $tahunAjaranId = session('tahun_ajaran_id');
             
             \Log::info('Editing absensi', [
                 'id' => $id,
@@ -117,7 +146,10 @@ class AbsensiController extends Controller
                 })
                 ->findOrFail($id);
             
-            return view('wali_kelas.edit_absence', compact('absensi'));
+            // Get the active tahun ajaran for context
+            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+            
+            return view('wali_kelas.edit_absence', compact('absensi', 'tahunAjaran'));
         } catch (\Exception $e) {
             \Log::error('Error editing absensi: ' . $e->getMessage());
             return redirect()->route('wali_kelas.absence.index')
@@ -131,30 +163,18 @@ class AbsensiController extends Controller
             'sakit' => 'required|integer|min:0',
             'izin' => 'required|integer|min:0',
             'tanpa_keterangan' => 'required|integer|min:0',
-            'semester' => 'required|in:1,2'
         ]);
-    
+
         $absensi = Absensi::findOrFail($id);
         $tahunAjaranId = session('tahun_ajaran_id');
         
-        // Cek duplikasi kecuali untuk record yang sedang diedit
-        $existingAbsensi = Absensi::where('siswa_id', $absensi->siswa_id)
-                                 ->where('semester', $request->semester)
-                                 ->where('tahun_ajaran_id', $tahunAjaranId)
-                                 ->where('id', '!=', $id)
-                                 ->first();
-    
-        if ($existingAbsensi) {
-            return redirect()->back()
-                           ->withInput()
-                           ->with('error', 'Data absensi untuk siswa ini di semester yang sama sudah ada');
-        }
-    
-        // Update data
+        // Keep the original semester
         $data = $request->all();
+        $data['semester'] = $absensi->semester; // Maintain the original semester
         $data['tahun_ajaran_id'] = $tahunAjaranId;
+        
         $absensi->update($data);
-    
+
         return redirect()->route('wali_kelas.absence.index')
                         ->with('success', 'Data absensi berhasil diperbarui');
     }
