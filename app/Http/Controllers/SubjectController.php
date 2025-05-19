@@ -692,7 +692,12 @@ class SubjectController extends Controller
         // Ambil ID guru yang sedang login
         $guruId = Auth::guard('guru')->id();
         $guru = Auth::guard('guru')->user();
-        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        // Gunakan tahun ajaran dari mata pelajaran
+        $tahunAjaranId = $subject->tahun_ajaran_id;
+        
+        // Default value - set terlebih dahulu
+        $disableKelasDropdown = false;
         
         // Verifikasi guru adalah pemilik mata pelajaran
         if ($subject->guru_id != $guruId) {
@@ -702,32 +707,27 @@ class SubjectController extends Controller
         // Query untuk mendapatkan kelas
         $classesQuery = Kelas::query();
         
-        // Filter kelas berdasarkan tahun ajaran
-        $classesQuery->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-            return $query->where('tahun_ajaran_id', $tahunAjaranId);
-        });
+        // Filter kelas berdasarkan tahun ajaran mata pelajaran
+        $classesQuery->where('tahun_ajaran_id', $tahunAjaranId);
         
-        // Jika guru ini adalah wali kelas, tambahkan kelas walinya ke dalam daftar
+        // Jika guru ini adalah wali kelas
         if ($guru->isWaliKelas()) {
-            $kelasWali = $guru->kelasWali()->first();
+            $kelasWaliId = $guru->getWaliKelasId();
+            
+            // Jika mata pelajaran ini di kelas wali, kita akan menonaktifkan dropdown
+            $isWaliKelasMatajar = ($subject->kelas_id == $kelasWaliId);
+            
+            // Beri tahu view bahwa ini mata pelajaran di kelas wali
+            $disableKelasDropdown = $isWaliKelasMatajar;
             
             // Ambil kelas yang diajar oleh guru (sebagai pengajar) atau kelas wali
-            $classesQuery->where(function($query) use ($guruId, $kelasWali) {
-                $query->whereHas('guru', function($q) use ($guruId) {
-                    $q->where('guru_id', $guruId)
-                      ->where('role', 'pengajar');
-                });
-                
-                // Jika punya kelas wali, tambahkan sebagai OR condition
-                if ($kelasWali) {
-                    $query->orWhere('id', $kelasWali->id);
-                }
+            $classesQuery->whereHas('guru', function($query) use ($guruId) {
+                $query->where('guru_id', $guruId);
             });
         } else {
             // Jika bukan wali kelas, hanya ambil kelas yang diajar sebagai pengajar biasa
             $classesQuery->whereHas('guru', function($query) use ($guruId) {
-                $query->where('guru_id', $guruId)
-                      ->where('role', 'pengajar');
+                $query->where('guru_id', $guruId);
             });
         }
         
@@ -736,7 +736,7 @@ class SubjectController extends Controller
             ->orderBy('nama_kelas')
             ->get();
         
-        return view('pengajar.edit_subject', compact('subject', 'classes'));
+        return view('pengajar.edit_subject', compact('subject', 'classes', 'disableKelasDropdown'));
     }
 
     public function teacherUpdate(Request $request, $id)

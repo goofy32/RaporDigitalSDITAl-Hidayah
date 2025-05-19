@@ -312,26 +312,64 @@
             ->name('pengajar.')  // Tambahkan ini untuk name prefix
             ->group(function () {
 
-            Route::get('/check-access/{mapelId}', function($mapelId) {
-        $guru = Auth::guard('guru')->user();
-        $mapel = \App\Models\MataPelajaran::find($mapelId);
-        
-        return [
-            'guru_id' => $guru->id,
-            'guru_name' => $guru->nama,
-            'guru_role' => $guru->jabatan,
-            'is_wali_kelas' => $guru->isWaliKelas(),
-            'mapel_id' => $mapel->id,
-            'mapel_name' => $mapel->nama_pelajaran,
-            'mapel_guru_id' => $mapel->guru_id,
-            'tahun_ajaran_match' => $mapel->tahun_ajaran_id == session('tahun_ajaran_id'),
-            'session_tahun_ajaran' => session('tahun_ajaran_id'),
-            'mapel_tahun_ajaran' => $mapel->tahun_ajaran_id,
-            'has_access' => $mapel->guru_id === $guru->id
-        ];
-    })->middleware(['auth:guru']);
+        Route::get('/check-access/{mapelId}', function($mapelId) {
+            $guru = Auth::guard('guru')->user();
+            $mapel = \App\Models\MataPelajaran::find($mapelId);
+            
+            return [
+                'guru_id' => $guru->id,
+                'guru_name' => $guru->nama,
+                'guru_role' => $guru->jabatan,
+                'is_wali_kelas' => $guru->isWaliKelas(),
+                'mapel_id' => $mapel->id,
+                'mapel_name' => $mapel->nama_pelajaran,
+                'mapel_guru_id' => $mapel->guru_id,
+                'tahun_ajaran_match' => $mapel->tahun_ajaran_id == session('tahun_ajaran_id'),
+                'session_tahun_ajaran' => session('tahun_ajaran_id'),
+                'mapel_tahun_ajaran' => $mapel->tahun_ajaran_id,
+                'has_access' => $mapel->guru_id === $guru->id
+            ];
+        })->middleware(['auth:guru']);
 
-            // Add this to your routes/web.php file inside the pengajar route group
+        Route::get('/debug/subject-edit/{id}', function($id) {
+            $subject = \App\Models\MataPelajaran::with(['kelas', 'guru', 'lingkupMateris'])->find($id);
+            $guru = auth()->guard('guru')->user();
+            $tahunAjaranId = session('tahun_ajaran_id');
+            
+            $classes = \App\Models\Kelas::when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->orderBy('nomor_kelas')
+                ->orderBy('nama_kelas')
+                ->get();
+            
+            // Check if the user is wali kelas and get their class
+            $isWaliKelas = $guru->isWaliKelas();
+            $kelasWaliId = $isWaliKelas ? $guru->getWaliKelasId() : null;
+            
+            return response()->json([
+                'subject' => $subject,
+                'guru' => [
+                    'id' => $guru->id,
+                    'nama' => $guru->nama,
+                    'is_wali_kelas' => $isWaliKelas,
+                    'kelas_wali_id' => $kelasWaliId
+                ],
+                'classes' => $classes->map(function($class) use ($kelasWaliId) {
+                    return [
+                        'id' => $class->id,
+                        'nama' => "Kelas {$class->nomor_kelas} {$class->nama_kelas}",
+                        'is_wali_kelas' => $class->id == $kelasWaliId
+                    ];
+                }),
+                'session' => [
+                    'tahun_ajaran_id' => $tahunAjaranId,
+                    'selected_semester' => session('selected_semester')
+                ]
+            ]);
+        })->middleware(['auth:guru']);
+
+        // Add this to your routes/web.php file inside the pengajar route group
         Route::get('/score/{id}/check-access', function($id) {
             $mapel = \App\Models\MataPelajaran::find($id);
             $guru = Auth::guard('guru')->user();

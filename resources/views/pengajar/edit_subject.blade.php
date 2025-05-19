@@ -17,6 +17,19 @@
             </div>
         </div>
 
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+            <p class="text-sm text-blue-700">
+                <strong>Info:</strong> Anda sedang mengedit mata pelajaran dari tahun ajaran 
+                <strong>{{ $subject->tahunAjaran->tahun_ajaran }}</strong> 
+                ({{ $subject->tahunAjaran->semester == 1 ? 'Ganjil' : 'Genap' }}).
+            </p>
+            @if($subject->tahun_ajaran_id != session('tahun_ajaran_id'))
+            <p class="text-sm text-red-700 mt-1">
+                <strong>Perhatian:</strong> Tahun ajaran ini berbeda dengan tahun ajaran aktif saat ini.
+            </p>
+            @endif
+        </div>
+
         <!-- Form -->
         <form id="editSubjectForm" 
             action="{{ route('pengajar.subject.update', $subject->id) }}" 
@@ -26,7 +39,7 @@
             @csrf
             @method('PUT')
 
-            <input type="hidden" name="tahun_ajaran_id" value="{{ session('tahun_ajaran_id') }}">
+            <input type="hidden" name="tahun_ajaran_id" value="{{ $subject->tahun_ajaran_id }}">
 
             <!-- Layout dengan satu kolom (tanpa grid) -->
             <div class="space-y-6">
@@ -138,26 +151,35 @@
                 <!-- Kelas Dropdown -->
                 <div>
                     <label for="kelas" class="block mb-2 text-sm font-medium text-gray-900">Kelas</label>
-                    <select id="kelas" name="kelas" required
-                        class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('kelas') border-red-500 @enderror">
-                        <option value="">Pilih Kelas</option>
-                        @if($classes->isEmpty())
-                            <option value="" disabled>Tidak ada kelas yang ditugaskan</option>
-                        @else
-                            @foreach($classes as $class)
-                                <option value="{{ $class->id }}" 
-                                    {{ old('kelas', $subject->kelas_id) == $class->id ? 'selected' : '' }}
-                                    {{ auth()->guard('guru')->user()->isWaliKelas() && 
-                                       auth()->guard('guru')->user()->getWaliKelasId() == $class->id ? 
-                                       'data-is-wali-kelas="true"' : '' }}>
-                                    Kelas {{ $class->nomor_kelas }} {{ $class->nama_kelas }}
-                                    {{ auth()->guard('guru')->user()->isWaliKelas() && 
-                                       auth()->guard('guru')->user()->getWaliKelasId() == $class->id ? 
-                                       '(Wali Kelas)' : '' }}
-                                </option>
-                            @endforeach
-                        @endif
-                    </select>
+                    
+                    @if(isset($disableKelasDropdown) && $disableKelasDropdown)
+                        <!-- Jika wali kelas dan mengajar di kelas wali, tampilkan sebagai readonly -->
+                        <div class="relative">
+                            <input type="text" 
+                                value="Kelas {{ $subject->kelas->nomor_kelas }} {{ $subject->kelas->nama_kelas }} (Kelas Wali)"
+                                class="block w-full p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed"
+                                readonly>
+                            <input type="hidden" name="kelas" value="{{ $subject->kelas_id }}">
+                            <p class="mt-1 text-xs text-gray-500">Kelas tidak dapat diubah untuk mata pelajaran wali kelas</p>
+                        </div>
+                    @else
+                        <!-- Dropdown kelas yang bisa diedit -->
+                        <div class="relative">
+                            <select id="kelas" name="kelas" required
+                                class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('kelas') border-red-500 @enderror">
+                                <option value="">Pilih Kelas</option>
+                                @foreach($classes as $class)
+                                    <option value="{{ $class->id }}" 
+                                        {{ old('kelas', $subject->kelas_id) == $class->id ? 'selected' : '' }}
+                                        data-is-wali-kelas="{{ auth()->guard('guru')->user()->getWaliKelasId() == $class->id ? 'true' : 'false' }}">
+                                        Kelas {{ $class->nomor_kelas }} {{ $class->nama_kelas }}
+                                        {{ auth()->guard('guru')->user()->getWaliKelasId() == $class->id ? '(Wali Kelas)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+                    
                     @error('kelas')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
@@ -166,15 +188,14 @@
                 <!-- Semester Dropdown -->
                 <div>
                     <label for="semester" class="block mb-2 text-sm font-medium text-gray-900">Semester</label>
-                    <select id="semester" name="semester" required
-                        class="block w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500 @error('semester') border-red-500 @enderror">
-                        <option value="">Pilih Semester</option>
-                        <option value="1" {{ old('semester', $subject->semester) == 1 ? 'selected' : '' }}>Semester 1</option>
-                        <option value="2" {{ old('semester', $subject->semester) == 2 ? 'selected' : '' }}>Semester 2</option>
-                    </select>
-                    @error('semester')
-                        <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                    @enderror
+                    <div class="flex">
+                        <input type="text" id="semester_display" 
+                            value="{{ $subject->semester == 1 ? 'Semester 1 (Ganjil)' : 'Semester 2 (Genap)' }}" 
+                            class="block w-full p-2.5 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 cursor-not-allowed" 
+                            readonly>
+                        <input type="hidden" name="semester" value="{{ $subject->semester }}">
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Semester tidak dapat diubah untuk mata pelajaran yang sudah ada</p>
                 </div>
 
                 <!-- Hidden input untuk guru_id -->
@@ -234,7 +255,49 @@
             content.style.marginLeft = '16rem';
             console.log('Fixed content margin');
         }
+        
+        // TAMBAHKAN KODE BARU DI SINI
+        // Force set selected value pada dropdown kelas
+        const kelasDropdown = document.getElementById('kelas');
+        const selectedKelasId = {{ $subject->kelas_id }};
+        
+        if (kelasDropdown) {
+            const selectedKelasId = {{ $subject->kelas_id }};
+            console.log('Setting kelas dropdown value to:', selectedKelasId);
+            kelasDropdown.value = selectedKelasId;
+            
+            // Trigger change event
+            const event = new Event('change');
+            kelasDropdown.dispatchEvent(event);
+            
+            // Log untuk debug
+            console.log('After setting value:', kelasDropdown.value);
+            console.log('Selected index:', kelasDropdown.selectedIndex);
+            console.log('Selected option text:', kelasDropdown.options[kelasDropdown.selectedIndex]?.text || 'None');
+        }
+        
+        // Inisialisasi Flowbite setelah mengatur nilai dropdown
+        setTimeout(() => {
+            if (typeof initFlowbite === 'function') {
+                console.log('Initializing Flowbite...');
+                initFlowbite();
+            } else {
+                console.warn('Flowbite initialization function not found');
+            }
+        }, 100);
     });
+
+
+    setTimeout(() => {
+        const selects = document.querySelectorAll('select');
+        selects.forEach(select => {
+            if (typeof window.Flowbite !== 'undefined' && typeof window.Flowbite.initSelects !== 'undefined') {
+                window.Flowbite.initSelects();
+            } else if (typeof initFlowbite === 'function') {
+                initFlowbite();
+            }
+        });
+    }, 100);
 </script>
 
 @push('scripts')
@@ -506,7 +569,7 @@
         function checkDuplication() {
             const mataPelajaran = mataPelajaranInput.value.trim();
             const kelasId = parseInt(kelasSelect.value);
-            const semester = parseInt(semesterSelect.value);
+            const semester = parseInt(document.querySelector('input[name="semester"]').value);
             
             // Jika salah satu field kosong, lewati validasi
             if (!mataPelajaran || !kelasId || isNaN(semester)) return true;
@@ -553,13 +616,6 @@
         // Add event listeners
         if (mataPelajaranInput) {
             mataPelajaranInput.addEventListener('input', function() {
-                validateMataPelajaran();
-                window.formChanged = true;
-            });
-        }
-        
-        if (semesterSelect) {
-            semesterSelect.addEventListener('change', function() {
                 validateMataPelajaran();
                 window.formChanged = true;
             });

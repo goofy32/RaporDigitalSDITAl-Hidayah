@@ -87,7 +87,6 @@
                     max="99"
                     required
                     class="w-full mt-1 p-2 border @error('nomor_kelas') border-red-500 @enderror border-gray-300 rounded-lg">
-                <small class="text-gray-500">Masukkan angka antara 1-99</small>
                 @error('nomor_kelas')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
