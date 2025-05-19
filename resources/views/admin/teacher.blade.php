@@ -40,16 +40,6 @@
             </form>
         </div>
 
-        <!-- Tampilkan info debug saat mode debug -->
-        @if(request('debug') || (app()->environment('local') || app()->environment('development')))
-        <div class="p-2 bg-yellow-100 text-yellow-800 mb-4 rounded">
-            <p><strong>Debug Info:</strong></p>
-            <p>Search term: "{{ request('search') }}"</p>
-            <p>Current page: {{ $teachers->currentPage() }}</p>
-            <p>Results: showing {{ $teachers->count() }} of {{ $teachers->total() }}</p>
-        </div>
-        @endif
-
         <!-- Tampilkan hasil pencarian jika ada 
         @if(request('search'))
         <div class="p-2 bg-blue-100 text-blue-800 mb-4 rounded">

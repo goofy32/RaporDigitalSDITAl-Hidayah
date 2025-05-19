@@ -17,27 +17,6 @@
         </div>
     </div>
 
-    <div class="mt-4 p-4 bg-gray-100 rounded-md">
-        <h3 class="text-sm font-semibold mb-2">Debug Info</h3>
-        <div class="text-xs text-gray-600">
-            <p>Tahun Ajaran ID: {{ session('tahun_ajaran_id') }}</p>
-            <p>Kelas ID: {{ $kelasWaliId ?? 'Not set' }}</p>
-            <p>Jumlah Siswa: {{ $siswa->count() }}</p>
-            <p>Jumlah Ekstrakurikuler: {{ $ekstrakurikuler->count() }}</p>
-            
-            @if($siswa->count() > 0)
-            <details>
-                <summary>Data Siswa</summary>
-                <ul>
-                    @foreach($siswa as $s)
-                    <li>{{ $s->nis }} - {{ $s->nama }} (Tahun ajaran: {{ $s->tahun_ajaran_id }})</li>
-                    @endforeach
-                </ul>
-            </details>
-            @endif
-        </div>
-    </div>
-
     <!-- Form -->
     <form id="createEkskulForm" action="{{ route('wali_kelas.ekstrakurikuler.store') }}" x-data="formProtection" @submit="handleSubmit" method="POST" class="space-y-6" data-turbo="false">
         @csrf
