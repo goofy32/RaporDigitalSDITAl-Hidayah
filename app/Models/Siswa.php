@@ -255,12 +255,15 @@ class Siswa extends Model
         return $result;
     }
 
-    public function hasCompleteData($type = 'UTS')
+    public function hasCompleteData($type = 'UTS', $tahunAjaranId = null)
     {
-        $semester = $type === 'UTS' ? 1 : 2;
-        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
         
-        // Cek nilai berdasarkan semester dan tahun ajaran
+        // Get the current semester from the tahun ajaran
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $semester = $tahunAjaran ? $tahunAjaran->semester : ($type === 'UTS' ? 1 : 2);
+        
+        // Check nilai based on current semester
         $hasNilai = $this->nilais()
             ->whereHas('mataPelajaran', function($q) use ($semester) {
                 $q->where('semester', $semester);
@@ -268,10 +271,10 @@ class Siswa extends Model
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
             })
-            ->where('nilai_akhir_rapor', '!=', null)
+            ->whereNotNull('nilai_akhir_rapor')
             ->exists();
         
-        // Cek kehadiran semester yang sesuai dan tahun ajaran
+        // Check absensi for current semester
         $hasAbsensi = $this->absensi()
             ->where('semester', $semester)
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {

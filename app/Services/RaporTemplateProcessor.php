@@ -875,7 +875,9 @@ class RaporTemplateProcessor
      */
     protected function getReportDataSemester()
     {
-        // Always use the current semester from the tahun ajaran
+        // Currently, the method is tightly linking UTS->Semester 1 and UAS->Semester 2
+        // Instead, use the current semester from the tahun ajaran
+
         if ($this->tahunAjaranId) {
             $tahunAjaran = \App\Models\TahunAjaran::find($this->tahunAjaranId);
             if ($tahunAjaran) {
@@ -883,7 +885,7 @@ class RaporTemplateProcessor
             }
         }
         
-        // Fallback to the old logic if tahun ajaran not found
+        // Fallback to the traditional mapping only if tahun ajaran not found
         return $this->type === 'UTS' ? 1 : 2;
     }
 

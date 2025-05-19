@@ -683,134 +683,504 @@
             'update' => 'absence.update',
             'destroy' => 'absence.destroy',
         ]);
-
-    // Add this to your routes/web.php file inside the wali-kelas route group
-    Route::get('/debug/report-data/{siswaId}/{type}', function($siswaId, $type) {
+// Tambahkan rute ini ke bagian bawah file web.php
+Route::get('/debug/batch-report', function() {
+    try {
+        // Dapatkan informasi sesi tahun ajaran
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $currentSemester = $tahunAjaran ? $tahunAjaran->semester : null;
+        
+        // Cek user dan permission
+        $user = auth()->guard('guru')->user();
+        $serverUser = function_exists('exec') ? exec('whoami') : 'unknown';
+        $phpUser = function_exists('get_current_user') ? get_current_user() : 'unknown';
+        
+        // Cek direktori penyimpanan
+        $storagePublicPath = storage_path('app/public');
+        $downloadsPath = storage_path('app/public/downloads');
+        $testBatchPath = storage_path('app/public/downloads/test_batch_' . time());
+        
+        // Coba buat direktori test
+        if (!file_exists($downloadsPath)) {
+            mkdir($downloadsPath, 0755, true);
+        }
+        
+        $mkdirResult = false;
+        $mkdirError = null;
+        
         try {
-            $siswa = \App\Models\Siswa::find($siswaId);
-            if (!$siswa) {
-                return response()->json(['error' => 'Siswa not found'], 404);
+            $mkdirResult = mkdir($testBatchPath, 0755, true);
+        } catch (\Exception $e) {
+            $mkdirError = $e->getMessage();
+        }
+        
+        // Coba buat file ZIP test
+        $zipTest = false;
+        $zipError = null;
+        $zipPath = $testBatchPath . '/test.zip';
+        
+        try {
+            if ($mkdirResult) {
+                $zip = new \ZipArchive();
+                $zipResult = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+                
+                if ($zipResult === true) {
+                    // Buat file test
+                    $testFilePath = $testBatchPath . '/test.txt';
+                    file_put_contents($testFilePath, 'Test content ' . date('Y-m-d H:i:s'));
+                    
+                    // Tambahkan ke ZIP
+                    $zip->addFile($testFilePath, 'test.txt');
+                    $zip->addFromString('info.txt', 'Generated at ' . date('Y-m-d H:i:s'));
+                    $zip->close();
+                    
+                    $zipTest = file_exists($zipPath);
+                } else {
+                    $zipError = "ZipArchive open failed with code: " . $zipResult;
+                }
+            } else {
+                $zipError = "Cannot create test directory";
+            }
+        } catch (\Exception $e) {
+            $zipError = $e->getMessage();
+        }
+        
+        // Cek disk space
+        $diskTotal = function_exists('disk_total_space') ? disk_total_space('/') : 'unknown';
+        $diskFree = function_exists('disk_free_space') ? disk_free_space('/') : 'unknown';
+        
+        // Cek template rapor
+        $templatesUTS = \App\Models\ReportTemplate::where('type', 'UTS')
+            ->where('is_active', true)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->get();
+            
+        $templatesUAS = \App\Models\ReportTemplate::where('type', 'UAS')
+            ->where('is_active', true)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->get();
+        
+        // Cek data rapor semester 1 vs semester 2
+        $semesterStats = [];
+        
+        if ($user) {
+            $kelas = $user->kelasWali;
+            
+            if ($kelas) {
+                $siswa = \App\Models\Siswa::where('kelas_id', $kelas->id)->first();
+                
+                if ($siswa) {
+                    for ($sem = 1; $sem <= 2; $sem++) {
+                        $nilai = $siswa->nilais()
+                            ->whereHas('mataPelajaran', function($q) use ($sem) {
+                                $q->where('semester', $sem);
+                            })
+                            ->where('tahun_ajaran_id', $tahunAjaranId)
+                            ->whereNotNull('nilai_akhir_rapor')
+                            ->count();
+                            
+                        $absensi = $siswa->absensi()
+                            ->where('semester', $sem)
+                            ->where('tahun_ajaran_id', $tahunAjaranId)
+                            ->exists();
+                            
+                        $semesterStats[$sem] = [
+                            'nilai_count' => $nilai,
+                            'has_absensi' => $absensi
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // Kumpulkan semua informasi
+        $result = [
+            'server_info' => [
+                'php_version' => phpversion(),
+                'server_user' => $serverUser,
+                'php_user' => $phpUser,
+                'disk_total' => is_numeric($diskTotal) ? formatBytes($diskTotal) : $diskTotal,
+                'disk_free' => is_numeric($diskFree) ? formatBytes($diskFree) : $diskFree,
+                'memory_limit' => ini_get('memory_limit'),
+                'time' => date('Y-m-d H:i:s'),
+                'extensions' => [
+                    'zip' => extension_loaded('zip'),
+                    'fileinfo' => extension_loaded('fileinfo'),
+                    'openssl' => extension_loaded('openssl')
+                ]
+            ],
+            'session_info' => [
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'tahun_ajaran' => $tahunAjaran ? $tahunAjaran->tahun_ajaran : 'tidak ditemukan',
+                'semester' => $currentSemester,
+            ],
+            'directory_permissions' => [
+                'storage_public' => [
+                    'path' => $storagePublicPath,
+                    'exists' => file_exists($storagePublicPath),
+                    'writable' => is_writable($storagePublicPath),
+                    'permissions' => file_exists($storagePublicPath) ? substr(sprintf('%o', fileperms($storagePublicPath)), -4) : 'N/A',
+                    'owner' => function_exists('posix_getpwuid') && file_exists($storagePublicPath) ? 
+                        posix_getpwuid(fileowner($storagePublicPath))['name'] : 'unknown'
+                ],
+                'downloads' => [
+                    'path' => $downloadsPath,
+                    'exists' => file_exists($downloadsPath),
+                    'writable' => file_exists($downloadsPath) ? is_writable($downloadsPath) : false,
+                    'permissions' => file_exists($downloadsPath) ? substr(sprintf('%o', fileperms($downloadsPath)), -4) : 'N/A',
+                    'owner' => function_exists('posix_getpwuid') && file_exists($downloadsPath) ? 
+                        posix_getpwuid(fileowner($downloadsPath))['name'] : 'unknown'
+                ],
+                'test_batch' => [
+                    'path' => $testBatchPath,
+                    'mkdir_result' => $mkdirResult,
+                    'mkdir_error' => $mkdirError,
+                    'exists' => file_exists($testBatchPath),
+                    'writable' => file_exists($testBatchPath) ? is_writable($testBatchPath) : false,
+                    'permissions' => file_exists($testBatchPath) ? substr(sprintf('%o', fileperms($testBatchPath)), -4) : 'N/A'
+                ],
+            ],
+            'zip_test' => [
+                'success' => $zipTest,
+                'error' => $zipError,
+                'zip_path' => $zipPath,
+                'zip_exists' => file_exists($zipPath),
+                'zip_size' => file_exists($zipPath) ? filesize($zipPath) : 0
+            ],
+            'templates' => [
+                'uts' => $templatesUTS->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'filename' => $t->filename,
+                        'semester' => $t->semester,
+                        'is_active' => $t->is_active
+                    ];
+                }),
+                'uas' => $templatesUAS->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'filename' => $t->filename,
+                        'semester' => $t->semester,
+                        'is_active' => $t->is_active
+                    ];
+                })
+            ],
+            'semester_data' => $semesterStats
+        ];
+        
+        return response()->json($result);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => array_slice($e->getTrace(), 0, 5)
+        ], 500);
+    }
+});
+
+/**
+ * Format bytes to human readable format
+ */
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    
+    $bytes /= pow(1024, $pow);
+    
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+// Debugging route khusus untuk ZipArchive di semester Genap
+Route::get('/debug/zip-semester-genap', function() {
+    try {
+        // Set timezone
+        date_default_timezone_set('Asia/Jakarta');
+        
+        // Dapatkan info tahun ajaran
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $currentSemester = $tahunAjaran ? $tahunAjaran->semester : null;
+        
+        // Informasi dasar
+        $info = [
+            'time' => date('Y-m-d H:i:s'),
+            'tahun_ajaran' => $tahunAjaran ? [
+                'id' => $tahunAjaran->id,
+                'tahun_ajaran' => $tahunAjaran->tahun_ajaran,
+                'semester' => $tahunAjaran->semester,
+                'is_active' => $tahunAjaran->is_active,
+            ] : null
+        ];
+        
+        // Cek apakah ini semester genap
+        if (!$tahunAjaran || $tahunAjaran->semester != 2) {
+            return response()->json([
+                'info' => $info,
+                'message' => 'Ini bukan semester genap. Silakan ubah ke tahun ajaran dengan semester genap untuk melakukan test.'
+            ]);
+        }
+        
+        // Buat test directory untuk ZIP
+        $timestamp = time();
+        $testDirStorage = storage_path('app/public/zip_test_' . $timestamp);
+        $testDirPublic = public_path('zip_test_' . $timestamp);
+        
+        // Test kedua lokasi: storage dan public
+        $locations = [
+            'storage' => $testDirStorage,
+            'public' => $testDirPublic
+        ];
+        
+        $results = [];
+        
+        foreach ($locations as $name => $dir) {
+            // Buat direktori
+            $mkdirResult = false;
+            $mkdirError = null;
+            
+            try {
+                if (!file_exists($dir)) {
+                    $mkdirResult = mkdir($dir, 0755, true);
+                } else {
+                    $mkdirResult = true;
+                }
+            } catch (\Exception $e) {
+                $mkdirError = $e->getMessage();
             }
             
-            $tahunAjaranId = session('tahun_ajaran_id');
-            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+            // Buat test file untuk ZIP
+            $testFile = $dir . '/test.txt';
+            $fileWriteResult = false;
+            $fileError = null;
             
-            // Get the semester based on report type and current tahun ajaran
-            $currentSemester = $tahunAjaran ? $tahunAjaran->semester : null;
-            $reportSemester = $type === 'UTS' ? 1 : 2;
+            try {
+                if ($mkdirResult) {
+                    $fileWriteResult = file_put_contents($testFile, 'Test content ' . date('Y-m-d H:i:s'));
+                }
+            } catch (\Exception $e) {
+                $fileError = $e->getMessage();
+            }
             
-            // Find the appropriate template
-            $template = \App\Models\ReportTemplate::where('type', $type)
-                ->where('is_active', true)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })
-                ->first();
+            // Coba buat ZIP file
+            $zipPath = $dir . '/test.zip';
+            $zipResult = null;
+            $zipSuccess = false;
+            $zipError = null;
+            $zipCloseSuccess = false;
             
-            // Get nilai for both semesters
-            $nilaiSemester1 = $siswa->nilais()
-                ->with(['mataPelajaran'])
-                ->whereHas('mataPelajaran', function($query) {
-                    $query->where('semester', 1);
-                })
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->where('nilai_akhir_rapor', '!=', null)
-                ->get();
-                
-            $nilaiSemester2 = $siswa->nilais()
-                ->with(['mataPelajaran'])
-                ->whereHas('mataPelajaran', function($query) {
-                    $query->where('semester', 2);
-                })
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->where('nilai_akhir_rapor', '!=', null)
-                ->get();
+            try {
+                if ($mkdirResult && $fileWriteResult) {
+                    $zip = new \ZipArchive();
+                    $zipResult = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+                    
+                    if ($zipResult === true) {
+                        // Tambahkan file ke ZIP
+                        $zip->addFile($testFile, 'test.txt');
+                        $zip->addFromString('info.txt', "Dibuat pada: " . date('Y-m-d H:i:s') . "\nLokasi: " . $name);
+                        
+                        // Coba tutup ZIP
+                        try {
+                            $zipCloseSuccess = $zip->close();
+                        } catch (\Exception $e) {
+                            $zipError = "ZIP close failed: " . $e->getMessage();
+                        }
+                        
+                        $zipSuccess = $zipCloseSuccess && file_exists($zipPath);
+                    } else {
+                        $zipError = "ZipArchive open failed with code: " . $zipResult;
+                    }
+                }
+            } catch (\Exception $e) {
+                $zipError = "ZIP processing failed: " . $e->getMessage();
+            }
             
-            // Get absensi for both semesters
-            $absensiSemester1 = $siswa->absensi()
-                ->where('semester', 1)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->first();
-                
-            $absensiSemester2 = $siswa->absensi()
-                ->where('semester', 2)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->first();
-            
-            return response()->json([
-                'siswa' => [
-                    'id' => $siswa->id,
-                    'nama' => $siswa->nama,
-                    'kelas_id' => $siswa->kelas_id
+            // Cek hasil
+            $results[$name] = [
+                'directory' => [
+                    'path' => $dir,
+                    'created' => $mkdirResult,
+                    'error' => $mkdirError,
+                    'exists' => file_exists($dir),
+                    'writable' => file_exists($dir) ? is_writable($dir) : false,
+                    'permissions' => file_exists($dir) ? substr(sprintf('%o', fileperms($dir)), -4) : 'N/A'
                 ],
-                'tahunAjaran' => [
-                    'id' => $tahunAjaranId,
-                    'tahun_ajaran' => $tahunAjaran ? $tahunAjaran->tahun_ajaran : null,
-                    'semester' => $currentSemester,
+                'file' => [
+                    'path' => $testFile,
+                    'created' => $fileWriteResult !== false,
+                    'size' => file_exists($testFile) ? filesize($testFile) : 0,
+                    'error' => $fileError
                 ],
-                'report' => [
-                    'type' => $type,
-                    'reportSemester' => $reportSemester
-                ],
-                'template' => $template ? [
-                    'id' => $template->id,
-                    'type' => $template->type,
-                    'is_active' => $template->is_active,
-                    'semester' => $template->semester,
-                    'tahun_ajaran_id' => $template->tahun_ajaran_id
-                ] : null,
-                'nilai' => [
-                    'semester1' => [
-                        'count' => $nilaiSemester1->count(),
-                        'nilai' => $nilaiSemester1->map(function($n) {
-                            return [
-                                'id' => $n->id,
-                                'mata_pelajaran' => $n->mataPelajaran ? $n->mataPelajaran->nama_pelajaran : null,
-                                'nilai_akhir_rapor' => $n->nilai_akhir_rapor
-                            ];
-                        })
-                    ],
-                    'semester2' => [
-                        'count' => $nilaiSemester2->count(),
-                        'nilai' => $nilaiSemester2->map(function($n) {
-                            return [
-                                'id' => $n->id,
-                                'mata_pelajaran' => $n->mataPelajaran ? $n->mataPelajaran->nama_pelajaran : null,
-                                'nilai_akhir_rapor' => $n->nilai_akhir_rapor
-                            ];
-                        })
-                    ]
-                ],
-                'absensi' => [
-                    'semester1' => $absensiSemester1 ? [
-                        'id' => $absensiSemester1->id,
-                        'sakit' => $absensiSemester1->sakit,
-                        'izin' => $absensiSemester1->izin,
-                        'tanpa_keterangan' => $absensiSemester1->tanpa_keterangan
-                    ] : null,
-                    'semester2' => $absensiSemester2 ? [
-                        'id' => $absensiSemester2->id,
-                        'sakit' => $absensiSemester2->sakit,
-                        'izin' => $absensiSemester2->izin,
-                        'tanpa_keterangan' => $absensiSemester2->tanpa_keterangan
-                    ] : null
-                ],
-                'diagnosisResult' => [
-                    'hasNilaiForReportType' => $type === 'UTS' ? $nilaiSemester1->count() > 0 : $nilaiSemester2->count() > 0,
-                    'hasAbsensiForReportType' => $type === 'UTS' ? ($absensiSemester1 !== null) : ($absensiSemester2 !== null),
-                    'hasTemplateForReportType' => $template !== null,
-                    'expectedDataSemester' => $type === 'UTS' ? 1 : 2,
-                    'actualTahunAjaranSemester' => $currentSemester
+                'zip' => [
+                    'path' => $zipPath,
+                    'open_result' => $zipResult,
+                    'close_success' => $zipCloseSuccess,
+                    'success' => $zipSuccess,
+                    'size' => file_exists($zipPath) ? filesize($zipPath) : 0,
+                    'error' => $zipError
                 ]
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ], 500);
+            ];
         }
-    })->name('debug.report-data');
+        
+        // Perbandingan dengan eksekusi langsung dari controller
+        $controllerTest = testZipArchiveDirectly($tahunAjaranId);
+        
+        return response()->json([
+            'info' => $info,
+            'locations_test' => $results,
+            'controller_test' => $controllerTest
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => array_slice($e->getTrace(), 0, 5)
+        ], 500);
+    }
+});
+
+/**
+ * Test ZipArchive directly from a controller-like function
+ */
+function testZipArchiveDirectly($tahunAjaranId) {
+    try {
+        // Dapatkan info guru dan kelas
+        $guru = auth()->guard('guru')->user();
+        if (!$guru) {
+            return ['error' => 'User not authenticated as guru'];
+        }
+        
+        $kelas = $guru->kelasWali;
+        if (!$kelas) {
+            return ['error' => 'Guru doesn\'t have a wali kelas'];
+        }
+        
+        // Buat direktori di storage/app/public (mirip dengan generateBatchReport)
+        $timestamp = date('Ymd_His');
+        $publicDir = storage_path('app/public/direct_test_' . $timestamp);
+        
+        if (!file_exists($publicDir)) {
+            mkdir($publicDir, 0755, true);
+        }
+        
+        // Buat beberapa file dummy
+        $files = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $filename = "dummy_file_{$i}.txt";
+            $path = $publicDir . '/' . $filename;
+            file_put_contents($path, "Ini adalah file dummy {$i} dibuat pada " . date('Y-m-d H:i:s'));
+            
+            $files[] = [
+                'path' => $path,
+                'name' => $filename
+            ];
+        }
+        
+        // Buat file summary
+        $summaryPath = $publicDir . "/RINGKASAN.md";
+        file_put_contents($summaryPath, "# Test Summary\n\nCreated at: " . date('Y-m-d H:i:s'));
+        
+        // Buat ZIP
+        $zipName = "Test_Zip_{$timestamp}.zip";
+        $zipPath = $publicDir . '/' . $zipName;
+        
+        $zip = new \ZipArchive();
+        $zipResult = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        
+        $addFileResults = [];
+        $zipCloseSuccess = false;
+        
+        if ($zipResult === true) {
+            // Tambahkan file summary
+            $addSummaryResult = $zip->addFile($summaryPath, "RINGKASAN.md");
+            $addFileResults[] = ['file' => 'RINGKASAN.md', 'result' => $addSummaryResult];
+            
+            // Tambahkan dummy files
+            foreach ($files as $file) {
+                $addResult = $zip->addFile($file['path'], $file['name']);
+                $addFileResults[] = ['file' => $file['name'], 'result' => $addResult];
+            }
+            
+            // Close ZIP
+            try {
+                $zipCloseSuccess = $zip->close();
+            } catch (\Exception $e) {
+                return [
+                    'zipResult' => $zipResult,
+                    'addFileResults' => $addFileResults,
+                    'zipCloseError' => $e->getMessage(),
+                    'zipCloseSuccess' => false
+                ];
+            }
+        }
+        
+        return [
+            'directory' => [
+                'path' => $publicDir,
+                'exists' => file_exists($publicDir),
+                'writable' => is_writable($publicDir),
+                'permissions' => substr(sprintf('%o', fileperms($publicDir)), -4)
+            ],
+            'zipResult' => $zipResult,
+            'zipPath' => $zipPath,
+            'zipExists' => file_exists($zipPath),
+            'zipSize' => file_exists($zipPath) ? filesize($zipPath) : 0,
+            'addFileResults' => $addFileResults,
+            'zipCloseSuccess' => $zipCloseSuccess
+        ];
+        
+    } catch (\Exception $e) {
+        return [
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ];
+    }
+}
+    // Add this to your routes/web.php file inside the wali-kelas route group
+    Route::get('/wali-kelas/debug/rapor-status', function() {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $currentSemester = $tahunAjaran ? $tahunAjaran->semester : null;
+        
+        $guru = auth()->guard('guru')->user();
+        $kelasWaliId = $guru->getWaliKelasId();
+        
+        $templatesUTS = \App\Models\ReportTemplate::where('type', 'UTS')
+            ->where('is_active', true)
+            ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
+                return $q->where('tahun_ajaran_id', $tahunAjaranId);
+            })->get();
+            
+        $templatesUAS = \App\Models\ReportTemplate::where('type', 'UAS')
+            ->where('is_active', true)
+            ->when($tahunAjaranId, function($q) use ($tahunAjaranId) {
+                return $q->where('tahun_ajaran_id', $tahunAjaranId);
+            })->get();
+        
+        return [
+            'current_semester' => $currentSemester,
+            'tahun_ajaran' => $tahunAjaran,
+            'kelas_wali_id' => $kelasWaliId,
+            'templates_uts' => $templatesUTS->map(fn($t) => [
+                'id' => $t->id,
+                'semester_setting' => $t->semester,
+                'is_active' => $t->is_active
+            ]),
+            'templates_uas' => $templatesUAS->map(fn($t) => [
+                'id' => $t->id,
+                'semester_setting' => $t->semester,
+                'is_active' => $t->is_active
+            ])
+        ];
+    })->name('debug.rapor.status');
     
 
 // Tambahkan di web.php dalam grup route wali_kelas
