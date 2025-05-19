@@ -1504,6 +1504,9 @@ Route::get('/debug/siswa/487', function() {
             ->name('tujuan_pembelajaran.view');
             
         Route::prefix('rapor')->name('rapor.')->group(function () {
+            Route::get('/batch-download', [ReportController::class, 'downloadBatchZip'])
+                ->name('batch.download');
+            
             Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
             
             // Gunakan model binding dan middleware

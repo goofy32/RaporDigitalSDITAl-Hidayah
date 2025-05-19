@@ -270,423 +270,405 @@
 <script>
 document.addEventListener('alpine:init', function() {
     Alpine.data('raporManager', () => ({
-        activeTab: '{{ $type }}', // Gunakan tipe dari controller
+        activeTab: 'UTS',
         loading: false,
         initialized: false,
         selectedSiswa: [],
         searchQuery: '',
         showPreview: false,
         previewContent: '',
-        templateUTSActive: false,
         templateUASActive: false,
+        templateUTSActive: false,
         tahunAjaranId: "{{ session('tahun_ajaran_id') }}",
-        semester: {{ $semester }}, // Tambahkan semester dari controller
-            
-            init() {
-                console.log('Initializing raporManager');
-                // Cek template yang aktif terlebih dahulu
-                this.checkActiveTemplates().then((data) => {
-                    this.initialized = true;
-                    this.templateUTSActive = data.UTS_active;
-                    this.templateUASActive = data.UAS_active;
-                    
-                    // Tentukan tab default berdasarkan template yang aktif
-                    if (this.templateUASActive && this.activeTab === 'UAS') {
-                        this.activeTab = 'UAS';
-                    } else if (this.templateUTSActive && this.activeTab === 'UTS') {
-                        this.activeTab = 'UTS';
-                    } else if (this.templateUASActive) {
-                        this.activeTab = 'UAS';
-                    } else if (this.templateUTSActive) {
-                        this.activeTab = 'UTS';
-                    } else {
-                        // Jika keduanya tidak aktif, tetap di tab yang diminta
-                        this.activeTab = '{{ $type }}';
-                    }
-                    
-                    // Baru kemudian cek localStorage
-                    const savedTab = localStorage.getItem('activeRaporTab');
-                    if (savedTab && ((savedTab === 'UAS' && this.templateUASActive) || 
-                                    (savedTab === 'UTS' && this.templateUTSActive))) {
-                        this.activeTab = savedTab;
-                    }
-                    
-                    // Simpan tab yang aktif ke localStorage
-                    localStorage.setItem('activeRaporTab', this.activeTab);
-                });
-            },
-            
-            async checkActiveTemplates() {
-                try {
-                    const response = await fetch('/wali-kelas/rapor/check-templates');
-                    const data = await response.json();
-                    
-                    this.templateUTSActive = data.UTS_active;
-                    this.templateUASActive = data.UAS_active;
-                    return data;
-                } catch (error) {
-                    console.error('Error checking templates:', error);
-                    this.templateUTSActive = true; // Default nilai jika terjadi error
-                    this.templateUASActive = false;
-                    return { UTS_active: true, UAS_active: false };
-                }
-            },
-            setActiveTab(tab) {
-                // Validasi akses UAS
-                if (tab === 'UAS' && !this.templateUASActive) {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Rapor UAS Belum Aktif',
-                        text: 'Admin belum mengaktifkan template rapor UAS. Silakan hubungi admin untuk mengaktifkan template UAS terlebih dahulu.',
-                        confirmButtonColor: '#3085d6',
-                    });
-                    return;
-                }
+        
+        init() {
+            console.log('Initializing raporManager');
+            // Cek template yang aktif terlebih dahulu
+            this.checkActiveTemplates().then((data) => {
+                this.initialized = true;
+
+                // Kita perlu tahu mana template yang aktif
+                const utsActive = data.UTS_active;
+                const uasActive = data.UAS_active;
                 
-                // Validasi akses UTS
-                if (tab === 'UTS' && !this.templateUTSActive) {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Rapor UTS Belum Aktif',
-                        text: 'Admin belum mengaktifkan template rapor UTS. Silakan hubungi admin untuk mengaktifkan template UTS terlebih dahulu.',
-                        confirmButtonColor: '#3085d6',
-                    });
-                    return;
-                }
-                
-                this.activeTab = tab;
-                localStorage.setItem('activeRaporTab', tab);
-            },
-
-            handleCheckAll(event) {
-                const isChecked = event.target.checked;
-                document.querySelectorAll('tbody input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.checked = isChecked;
-                    this.updateSelectedSiswa(checkbox);
-                });
-            },
-
-            handleCheckSingle(event) {
-                this.updateSelectedSiswa(event.target);
-            },
-
-            updateSelectedSiswa(checkbox) {
-                if (checkbox.checked) {
-                    if (!this.selectedSiswa.includes(checkbox.value)) {
-                        this.selectedSiswa.push(checkbox.value);
-                    }
+                // Tentukan tab default berdasarkan template yang aktif
+                if (uasActive) {
+                    this.activeTab = 'UAS'; // Jika UAS aktif, tampilkan tab UAS secara default
+                } else if (utsActive) {
+                    this.activeTab = 'UTS'; // Jika hanya UTS yang aktif
                 } else {
-                    this.selectedSiswa = this.selectedSiswa.filter(id => id !== checkbox.value);
-                }
-            },
-
-            handleSearch(event) {
-                const searchValue = event.target.value.toLowerCase();
-                document.querySelectorAll('tbody tr').forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    row.style.display = text.includes(searchValue) ? '' : 'none';
-                });
-            },
-
-            async handlePreview(siswaId, nilaiCount, hasAbsensi) {
-                if (!this.validateData(nilaiCount, hasAbsensi)) return;
-                
-                try {
-                    this.loading = true;
-                    console.log('Fetching preview for siswa ID:', siswaId);
-                    
-                    // Gunakan activeTab, bukan hardcoded
-                    const type = this.activeTab; 
-                    
-                    // Tambahkan query parameter tahun_ajaran_id dan type
-                    const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}?tahun_ajaran_id=${this.tahunAjaranId}&type=${type}`);
-                    console.log('Preview response status:', response.status);
-                    
-                    // Jika tidak sukses, tampilkan detail error
-                    if (!response.ok) {
-                        // Coba ambil teks error
-                        const errorText = await response.text();
-                        console.error('Error response text:', errorText);
-                        throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}...`);
-                    }
-                    
-                    // Parse response JSON
-                    const data = await response.json();
-                    console.log('Preview data received:', data);
-                    
-                    if (data.success) {
-                        this.previewContent = data.html;
-                        this.showPreview = true;
-                    } else {
-                        throw new Error(data.message || 'Preview tidak berhasil');
-                    }
-                } catch (error) {
-                    console.error('Error in handlePreview:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal Memuat Preview',
-                        text: error.message
-                    });
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
-                if (!this.validateData(nilaiCount, hasAbsensi)) return;
-                
-                try {
-                    this.loading = true;
-                    
-                    // Gunakan tipe yang benar, bukan hardcoded
-                    const type = this.activeTab;
-                    
-                    const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
-                            type: type,
-                            tahun_ajaran_id: this.tahunAjaranId,
-                            action: 'download'
-                        })
-                    });
-
-                // Better error handling - log response status
-                console.log('Response status:', response.status);
-                
-                // Check for JSON response first to handle error messages
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
-                        // Detailed error message with SweetAlert
+                    // Jika keduanya tidak aktif, tetap di UTS tapi munculkan pesan
+                    this.activeTab = 'UTS';
+                    setTimeout(() => {
                         Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal Generate Rapor',
-                            html: `
-                                <p>${data.message || 'Terjadi kesalahan saat memproses rapor'}</p>
-                                <p class="mt-2 text-sm font-semibold">Error detail:</p>
-                                <p class="text-red-600">${data.error_type || ''}</p>
-                            `,
-                            confirmButtonText: 'Mengerti'
+                            icon: 'warning',
+                            title: 'Tidak Ada Template Aktif',
+                            text: 'Tidak ada template rapor yang aktif. Silakan hubungi admin untuk mengaktifkan template.',
+                            confirmButtonColor: '#3085d6',
                         });
-                        return;
-                    }
-                    
-                    // If JSON response is successful, might contain file URL
-                    if (data.success && data.file_url) {
-                        window.location.href = data.file_url;
-                        return;
-                    }
+                    }, 500);
                 }
                 
-                // Handle non-JSON response (file download)
-                if (response.ok) {
-                    const blob = await response.blob();
-                    
-                    // Create clean filename using proper formatting
-                    // Remove special characters and clean up student name
-                    const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
-                    const kelasSiswa = document.querySelector(`tr input[value="${siswaId}"]`)?.closest('tr')?.querySelector('td:nth-child(4)')?.textContent || '';
-                    
-                    // Format: Rapor_UTS_NamaSiswa_Kelas.docx
-                    const fileName = `Rapor_${this.activeTab}_${cleanName}.docx`;
-                    
-                    await this.downloadFile(blob, fileName);
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: 'Rapor berhasil digenerate dan diunduh'
-                    });
-                } else {
-                    throw new Error(`Gagal mengunduh rapor: ${response.status}`);
+                // Baru kemudian cek localStorage, tapi prioritaskan template yang aktif
+                const savedTab = localStorage.getItem('activeRaporTab');
+                if (savedTab) {
+                    // Validasi apakah template untuk tab tersebut aktif
+                    if (savedTab === 'UAS' && uasActive) {
+                        this.activeTab = 'UAS';
+                    } else if (savedTab === 'UTS' && utsActive) {
+                        this.activeTab = 'UTS';
+                    }
+                    // Jika tidak aktif, tetap gunakan default yang sudah diatur di atas
                 }
+                
+                // Simpan tab yang aktif ke localStorage
+                localStorage.setItem('activeRaporTab', this.activeTab);
+            });
+        },
+        
+        async checkActiveTemplates() {
+            try {
+                const response = await fetch('/wali-kelas/rapor/check-templates');
+                const data = await response.json();
+                
+                this.templateUTSActive = data.UTS_active;
+                this.templateUASActive = data.UAS_active;
+                return data;
             } catch (error) {
-                console.error('Error:', error);
-                
-                // More detailed error alert
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Generate Rapor',
-                    html: `
-                        <p>${error.message}</p>
-                        <p class="mt-2 text-sm font-semibold">Kemungkinan penyebab:</p>
-                        <ul class="text-left mt-2 text-sm list-disc pl-5">
-                            <li>Template rapor tidak ditemukan untuk kelas ini (tipe: ${this.activeTab})</li>
-                            <li>Data nilai belum disimpan dengan "Simpan & Preview"</li>
-                            <li>Tahun ajaran yang dipilih: ${this.tahunAjaranId || 'tidak diketahui'}</li>
-                            <li>Ada error server (periksa console)</li>
-                        </ul>
-                    `,
-                    confirmButtonText: 'Mengerti'
-                });
-            } finally {
-                this.loading = false;
+                console.error('Error checking templates:', error);
+                this.templateUTSActive = true; // Default nilai jika terjadi error
+                this.templateUASActive = false;
+                return { UTS_active: true, UAS_active: false };
             }
         },
-
-        async generateBatchReport() {
-            if (this.loading || this.selectedSiswa.length === 0) {
+        setActiveTab(tab) {
+            // Validasi akses UAS
+            if (tab === 'UAS' && !this.templateUASActive) {
                 Swal.fire({
-                    icon: 'warning',
-                    title: 'Perhatian',
-                    text: 'Pilih siswa terlebih dahulu'
+                    icon: 'info',
+                    title: 'Rapor UAS Belum Aktif',
+                    text: 'Admin belum mengaktifkan template rapor UAS. Silakan hubungi admin untuk mengaktifkan template UAS terlebih dahulu.',
+                    confirmButtonColor: '#3085d6',
                 });
                 return;
             }
-
-            // Validasi sebelum mengirim request
-            const invalidSiswa = [];
-            document.querySelectorAll('tbody tr').forEach(row => {
-                // Ambil checkbox yang dicek
-                const checkbox = row.querySelector('input[type="checkbox"]');
-                if (checkbox && checkbox.checked) {
-                    // Ambil status nilai dan kehadiran
-                    const hasNilai = row.querySelector('.bg-green-100.text-green-800') !== null;
-                    const hasAbsensi = row.querySelector('td:nth-child(6) .bg-green-100') !== null;
-                    
-                    if (!hasNilai || !hasAbsensi) {
-                        // Ambil nama siswa
-                        const namaSiswa = row.querySelector('td:nth-child(4)').textContent.trim();
-                        invalidSiswa.push(namaSiswa);
-                    }
-                }
-            });
-
-            // Jika ada siswa yang datanya belum lengkap
-            if (invalidSiswa.length > 0) {
-                // Gunakan SweetAlert untuk konfirmasi yang lebih baik
-                const result = await Swal.fire({
-                    icon: 'warning',
-                    title: 'Data Tidak Lengkap',
-                    html: `
-                        <p>Beberapa siswa belum memiliki data lengkap:</p>
-                        <ul class="text-left mt-2 text-sm">
-                            ${invalidSiswa.map(nama => `<li>- ${nama}</li>`).join('')}
-                        </ul>
-                        <p class="mt-2">Lanjutkan cetak hanya untuk siswa dengan data lengkap?</p>
-                    `,
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya, Lanjutkan',
-                    cancelButtonText: 'Batal'
+            
+            // Validasi akses UTS
+            if (tab === 'UTS' && !this.templateUTSActive) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Rapor UTS Belum Aktif',
+                    text: 'Admin belum mengaktifkan template rapor UTS. Silakan hubungi admin untuk mengaktifkan template UTS terlebih dahulu.',
+                    confirmButtonColor: '#3085d6',
                 });
-                
-                if (!result.isConfirmed) {
-                    return;
-                }
+                return;
             }
+            
+            this.activeTab = tab;
+            localStorage.setItem('activeRaporTab', tab);
+        },
 
+        handleCheckAll(event) {
+            const isChecked = event.target.checked;
+            document.querySelectorAll('tbody input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = isChecked;
+                this.updateSelectedSiswa(checkbox);
+            });
+        },
+
+        handleCheckSingle(event) {
+            this.updateSelectedSiswa(event.target);
+        },
+
+        updateSelectedSiswa(checkbox) {
+            if (checkbox.checked) {
+                if (!this.selectedSiswa.includes(checkbox.value)) {
+                    this.selectedSiswa.push(checkbox.value);
+                }
+            } else {
+                this.selectedSiswa = this.selectedSiswa.filter(id => id !== checkbox.value);
+            }
+        },
+
+        handleSearch(event) {
+            const searchValue = event.target.value.toLowerCase();
+            document.querySelectorAll('tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchValue) ? '' : 'none';
+            });
+        },
+
+        async handlePreview(siswaId, nilaiCount, hasAbsensi) {
+            if (!this.validateData(nilaiCount, hasAbsensi)) return;
+            
             try {
                 this.loading = true;
+                console.log('Fetching preview for siswa ID:', siswaId);
                 
-                // Tampilkan loading indicator
-                const loadingAlert = Swal.fire({
-                    title: 'Memproses Rapor',
-                    html: 'Mohon tunggu sebentar...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
+                // Tambahkan query parameter tahun_ajaran_id
+                const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}?tahun_ajaran_id=${this.tahunAjaranId}`);
+                console.log('Preview response status:', response.status);
                 
-                // Create a request object that we can clone if needed
-                const request = new Request('/wali-kelas/rapor/batch-generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        siswa_ids: this.selectedSiswa,
-                        type: this.activeTab,
-                        tahun_ajaran_id: this.tahunAjaranId
-                    })
-                });
-                
-                // Fetch with the request object
-                const response = await fetch(request);
-
-                // Tutup loading alert
-                loadingAlert.close();
-
-                // Clone the response before reading it
-                const responseClone = response.clone();
-
+                // Jika tidak sukses, tampilkan detail error
                 if (!response.ok) {
-                    // Try to parse as JSON first
-                    try {
-                        const error = await response.json();
-                        throw new Error(error.message || 'Gagal generate batch rapor');
-                    } catch (jsonError) {
-                        // If JSON parsing fails, try to get text from the cloned response
-                        try {
-                            const errorText = await responseClone.text();
-                            throw new Error(`Gagal generate batch rapor (${response.status}): ${errorText.substring(0, 100)}...`);
-                        } catch (textError) {
-                            // If both fail, throw a generic error
-                            throw new Error(`Gagal generate batch rapor (HTTP ${response.status})`);
-                        }
-                    }
+                    // Coba ambil teks error
+                    const errorText = await response.text();
+                    console.error('Error response text:', errorText);
+                    throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}...`);
                 }
-
-                // Try to parse response as JSON using the cloned response
-                try {
-                    const data = await responseClone.json();
-                    
-                    if (data.success && data.download_url) {
-                        // Tampilkan Swal dengan link download
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil Generate Batch Rapor',
-                            html: `
-                                <p>${data.message}</p>
-                                <p class="mt-4">Klik tombol di bawah untuk mengunduh:</p>
-                            `,
-                            confirmButtonText: 'Download ZIP',
-                            showCancelButton: true,
-                            cancelButtonText: 'Tutup'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                // Buka URL download di tab baru
-                                window.open(data.download_url, '_blank');
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: data.message || 'Terjadi kesalahan saat memproses batch rapor'
-                        });
-                    }
-                } catch (jsonError) {
-                    console.error('Error parsing JSON response:', jsonError);
-                    
-                    // If we can't parse the JSON, try to get the raw response text
-                    try {
-                        const textResponse = await response.text();
-                        throw new Error(`Invalid response format: ${textResponse.substring(0, 100)}...`);
-                    } catch (textError) {
-                        throw new Error('Failed to process response');
-                    }
+                
+                // Parse response JSON
+                const data = await response.json();
+                console.log('Preview data received:', data);
+                
+                if (data.success) {
+                    this.previewContent = data.html;
+                    this.showPreview = true;
+                } else {
+                    throw new Error(data.message || 'Preview tidak berhasil');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Mencetak Rapor',
-                    text: error.message || 'Terjadi kesalahan tak terduga'
-                });
+                console.error('Error in handlePreview:', error);
+                alert('Terjadi kesalahan saat memuat preview rapor: ' + error.message);
             } finally {
                 this.loading = false;
             }
         },
+
+    async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
+        if (!this.validateData(nilaiCount, hasAbsensi)) return;
+        
+        try {
+            this.loading = true;
+            
+            // Add logging to help diagnose the issue
+            console.log('Generating report for:', {
+                siswaId, 
+                type: this.activeTab,
+                tahunAjaranId: this.tahunAjaranId
+            });
+            
+            const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    type: this.activeTab,
+                    tahun_ajaran_id: this.tahunAjaranId,
+                    action: 'download'
+                })
+            });
+
+            // Better error handling - log response status
+            console.log('Response status:', response.status);
+            
+            // Check for JSON response first to handle error messages
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    // Detailed error message with SweetAlert
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Generate Rapor',
+                        html: `
+                            <p>${data.message || 'Terjadi kesalahan saat memproses rapor'}</p>
+                            <p class="mt-2 text-sm font-semibold">Error detail:</p>
+                            <p class="text-red-600">${data.error_type || ''}</p>
+                        `,
+                        confirmButtonText: 'Mengerti'
+                    });
+                    return;
+                }
+                
+                // If JSON response is successful, might contain file URL
+                if (data.success && data.file_url) {
+                    window.location.href = data.file_url;
+                    return;
+                }
+            }
+            
+            // Handle non-JSON response (file download)
+            if (response.ok) {
+                const blob = await response.blob();
+                
+                // Create clean filename using proper formatting
+                // Remove special characters and clean up student name
+                const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+                const kelasSiswa = document.querySelector(`tr input[value="${siswaId}"]`)?.closest('tr')?.querySelector('td:nth-child(4)')?.textContent || '';
+                
+                // Format: Rapor_UTS_NamaSiswa_Kelas.docx
+                const fileName = `Rapor_${this.activeTab}_${cleanName}.docx`;
+                
+                await this.downloadFile(blob, fileName);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Rapor berhasil digenerate dan diunduh'
+                });
+            } else {
+                throw new Error(`Gagal mengunduh rapor: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            
+            // More detailed error alert
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Generate Rapor',
+                html: `
+                    <p>${error.message}</p>
+                    <p class="mt-2 text-sm font-semibold">Kemungkinan penyebab:</p>
+                    <ul class="text-left mt-2 text-sm list-disc pl-5">
+                        <li>Template rapor tidak ditemukan untuk kelas ini (tipe: ${this.activeTab})</li>
+                        <li>Data nilai belum disimpan dengan "Simpan & Preview"</li>
+                        <li>Tahun ajaran yang dipilih: ${this.tahunAjaranId || 'tidak diketahui'}</li>
+                        <li>Ada error server (periksa console)</li>
+                    </ul>
+                `,
+                confirmButtonText: 'Mengerti'
+            });
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async generateBatchReport() {
+        if (this.loading || this.selectedSiswa.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Pilih siswa terlebih dahulu'
+            });
+            return;
+        }
+
+        // Validasi sebelum mengirim request
+        const invalidSiswa = [];
+        document.querySelectorAll('tbody tr').forEach(row => {
+            // Ambil checkbox yang dicek
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (checkbox && checkbox.checked) {
+                // Ambil status nilai dan kehadiran
+                const hasNilai = row.querySelector('.bg-green-100.text-green-800') !== null;
+                const hasAbsensi = row.querySelector('td:nth-child(6) .bg-green-100') !== null;
+                
+                if (!hasNilai || !hasAbsensi) {
+                    // Ambil nama siswa
+                    const namaSiswa = row.querySelector('td:nth-child(4)').textContent.trim();
+                    invalidSiswa.push(namaSiswa);
+                }
+            }
+        });
+
+        // Jika ada siswa yang datanya belum lengkap
+        if (invalidSiswa.length > 0) {
+            // Gunakan SweetAlert untuk konfirmasi yang lebih baik
+        const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Data Tidak Lengkap',
+                html: `
+                    <p>Beberapa siswa belum memiliki data lengkap:</p>
+                    <ul class="text-left mt-2 text-sm">
+                        ${invalidSiswa.map(nama => `<li>- ${nama}</li>`).join('')}
+                    </ul>
+                    <p class="mt-2">Lanjutkan cetak hanya untuk siswa dengan data lengkap?</p>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Lanjutkan',
+                cancelButtonText: 'Batal'
+            });
+            
+            if (!result.isConfirmed) {
+                return;
+            }
+        }
+
+        try {
+            this.loading = true;
+            
+            // Tampilkan loading indicator
+            const loadingAlert = Swal.fire({
+                title: 'Memproses Rapor',
+                html: 'Mohon tunggu sebentar...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            const response = await fetch('/wali-kelas/rapor/batch-generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    siswa_ids: this.selectedSiswa,
+                    type: this.activeTab,
+                    tahun_ajaran_id: this.tahunAjaranId
+                })
+            });
+
+            // Tutup loading alert
+            loadingAlert.close();
+
+            if (!response.ok) {
+                // Coba ambil pesan error dalam format JSON
+                try {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Gagal generate batch rapor');
+                } catch (jsonError) {
+                    // Jika bukan JSON, ambil teks error
+                    const errorText = await response.text();
+                    throw new Error(`Gagal generate batch rapor (${response.status}): ${errorText.substring(0, 100)}...`);
+                }
+            }
+
+            const data = await response.json();
+            
+            if (data.success && data.download_url) {
+                // Tampilkan Swal dengan link download
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Generate Batch Rapor',
+                    html: `
+                        <p>${data.message}</p>
+                        <p class="mt-4">Klik tombol di bawah untuk mengunduh:</p>
+                    `,
+                    confirmButtonText: 'Download ZIP',
+                    showCancelButton: true,
+                    cancelButtonText: 'Tutup'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Buka URL download di tab baru
+                        window.open(data.download_url, '_blank');
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Terjadi kesalahan saat memproses batch rapor'
+                });
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Mencetak Rapor',
+                text: error.message || 'Terjadi kesalahan tak terduga'
+            });
+        } finally {
+            this.loading = false;
+        }
+    },
 
         validateData(nilaiCount, hasAbsensi) {
             const messages = [];
@@ -695,7 +677,7 @@ document.addEventListener('alpine:init', function() {
             if (!this.tahunAjaranId) messages.push("- Tahun ajaran tidak ditemukan");
             
             if (messages.length > 0) {
-                // Better error feedback with SweetAlert
+                // Better error feedback with SweetAlert instead of plain alert
                 Swal.fire({
                     icon: 'warning',
                     title: 'Data Tidak Lengkap',
@@ -704,7 +686,6 @@ document.addEventListener('alpine:init', function() {
                         <ul class="text-left mt-2">
                             ${messages.map(msg => `<li>${msg}</li>`).join('')}
                         </ul>
-                        <p class="mt-2">Semester aktif saat ini: ${this.semester}</p>
                     `,
                     confirmButtonText: 'Mengerti'
                 });

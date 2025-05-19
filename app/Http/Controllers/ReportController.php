@@ -1146,33 +1146,16 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    
-    /**
+
+        /**
      * Generate batch report for multiple students
-     * 
-     * @param Request $request
-     * @return \Illuminate\Http\Response
      */
     public function generateBatchReport(Request $request)
     {
         try {
             $siswaIds = $request->input('siswa_ids', []);
             $type = $request->input('type', 'UTS');
-            $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
-            
-            // Get current semester from tahun ajaran
-            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
-            $currentSemester = $tahunAjaran ? $tahunAjaran->semester : 1;
-            
-            // Log for debugging - more detailed to capture the error
-            \Log::info('Batch report generation requested', [
-                'siswa_count' => count($siswaIds),
-                'type' => $type,
-                'tahun_ajaran_id' => $tahunAjaranId,
-                'current_semester' => $currentSemester,
-                'php_user' => get_current_user(), // Log the PHP user
-                'server_user' => exec('whoami'), // Log the server user if available
-            ]);
+            $tahunAjaranId = session('tahun_ajaran_id');
             
             // Validasi siswa
             $guru = auth()->guard('guru')->user();
@@ -1197,10 +1180,27 @@ class ReportController extends Controller
             }
             
             // Cek template
-            $template = $this->getTemplateForSiswa($siswaList->first(), $type, $tahunAjaranId);
+            $template = ReportTemplate::where([
+                'type' => $type,
+                'is_active' => true,
+                'kelas_id' => $kelas->id,
+            ])->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                return $query->where('tahun_ajaran_id', $tahunAjaranId);
+            })->first();
             
             if (!$template) {
-                throw new \Exception("Tidak ada template {$type} aktif untuk kelas ini di tahun ajaran yang dipilih");
+                // Cek template global
+                $template = ReportTemplate::where([
+                    'type' => $type,
+                    'is_active' => true,
+                ])->whereNull('kelas_id')
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })->first();
+                
+                if (!$template) {
+                    throw new \Exception("Tidak ada template {$type} aktif untuk kelas ini di tahun ajaran yang dipilih");
+                }
             }
             
             // Persiapkan tracking dan files
@@ -1210,89 +1210,48 @@ class ReportController extends Controller
             
             // Buat direktori di public yang bisa diakses langsung
             $timestamp = date('Ymd_His');
-            $publicDir = storage_path('app/public/downloads/rapor_batch_' . $timestamp);
-            
-            // Check if the parent directory exists first and create it if not
-            $parentDir = storage_path('app/public/downloads');
-            if (!file_exists($parentDir)) {
-                if (!mkdir($parentDir, 0755, true)) {
-                    throw new \Exception("Gagal membuat direktori downloads: " . error_get_last()['message']);
-                }
-            }
-            
-            // Now try to create the batch directory
+            $publicDir = public_path('downloads/rapor_batch_' . $timestamp);
             if (!file_exists($publicDir)) {
-                if (!mkdir($publicDir, 0755, true)) {
-                    throw new \Exception("Gagal membuat direktori batch: " . error_get_last()['message']);
-                }
-                // Explicitly set permissions again
-                chmod($publicDir, 0755);
+                mkdir($publicDir, 0755, true);
             }
-            
-            // Log the directory permissions for debugging
-            \Log::info('Directory permissions', [
-                'parent_dir' => $parentDir,
-                'parent_exists' => file_exists($parentDir),
-                'parent_permissions' => substr(sprintf('%o', fileperms($parentDir)), -4),
-                'batch_dir' => $publicDir,
-                'batch_exists' => file_exists($publicDir),
-                'batch_permissions' => file_exists($publicDir) ? substr(sprintf('%o', fileperms($publicDir)), -4) : 'N/A',
-                'is_writable' => is_writable($publicDir)
-            ]);
             
             // Nama file ZIP yang akan dibuat di direktori public
             $zipName = "Rapor_Batch_{$type}_{$kelas->nama_kelas}_{$timestamp}.zip";
             $zipPath = $publicDir . '/' . $zipName;
             $webPath = 'downloads/rapor_batch_' . $timestamp . '/' . $zipName;
             
-            // Memproses setiap siswa - reduced to 1 at a time for testing
-            $processCount = 0;
+            // Memproses setiap siswa
             foreach ($siswaList as $index => $siswa) {
                 try {
-                    // If we're only debugging, limit to processing a few students
-                    if ($processCount >= 3 && env('APP_DEBUG', false)) {
-                        $errorSiswa[] = [
-                            'id' => $siswa->id,
-                            'name' => $siswa->nama,
-                            'error' => "Skipped for testing (only processing first 3)"
-                        ];
-                        continue;
-                    }
-                    $processCount++;
+                    // Validasi data siswa
+                    $semester = $type === 'UTS' ? 1 : 2;
                     
-                    // Validasi data siswa berdasarkan semester SAAT INI
+                    // Cek nilai
                     $hasNilai = $siswa->nilais()
-                        ->whereHas('mataPelajaran', function($q) use ($currentSemester) {
-                            $q->where('semester', $currentSemester);
+                        ->whereHas('mataPelajaran', function($q) use ($semester) {
+                            $q->where('semester', $semester);
                         })
                         ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                             return $query->where('tahun_ajaran_id', $tahunAjaranId);
                         })
-                        ->whereNotNull('nilai_akhir_rapor')
+                        ->where('nilai_akhir_rapor', '!=', null)
                         ->exists();
                         
+                    // Cek kehadiran
                     $hasAbsensi = $siswa->absensi()
-                        ->where('semester', $currentSemester)
+                        ->where('semester', $semester)
                         ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                             return $query->where('tahun_ajaran_id', $tahunAjaranId);
                         })
                         ->exists();
                         
                     if (!$hasNilai || !$hasAbsensi) {
-                        throw new \Exception("Data nilai atau kehadiran belum lengkap untuk semester {$currentSemester}");
+                        throw new \Exception("Data nilai atau kehadiran belum lengkap");
                     }
                     
-                    // Generate rapor with better error logging
-                    try {
-                        $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
-                        $result = $processor->generate();
-                    } catch (\Exception $procEx) {
-                        \Log::error("Error in RaporTemplateProcessor: " . $procEx->getMessage(), [
-                            'siswa_id' => $siswa->id,
-                            'trace' => $procEx->getTraceAsString()
-                        ]);
-                        throw $procEx;
-                    }
+                    // Generate rapor
+                    $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
+                    $result = $processor->generate();
                     
                     // Salin file ke direktori public
                     $sourcePath = storage_path('app/public/' . $result['path']);
@@ -1300,67 +1259,41 @@ class ReportController extends Controller
                     $destFileName = "Rapor_{$type}_{$sanitizedName}.docx";
                     $destPath = $publicDir . '/' . $destFileName;
                     
-                    // Verify source file exists
-                    if (!file_exists($sourcePath)) {
-                        throw new \Exception("File rapor tidak ditemukan: {$result['path']}");
+                    // Gunakan file_get_contents/file_put_contents yang lebih handal untuk menyalin
+                    $fileContent = file_get_contents($sourcePath);
+                    if ($fileContent !== false && file_put_contents($destPath, $fileContent) !== false) {
+                        $files[] = [
+                            'path' => $destPath,
+                            'name' => $destFileName
+                        ];
+                        
+                        // Simpan history generate
+                        \App\Models\ReportGeneration::create([
+                            'siswa_id' => $siswa->id,
+                            'kelas_id' => $siswa->kelas_id,
+                            'report_template_id' => $template->id,
+                            'generated_file' => $result['path'],
+                            'type' => $type,
+                            'tahun_ajaran' => $template->tahun_ajaran,
+                            'semester' => $template->semester,
+                            'tahun_ajaran_id' => $tahunAjaranId,
+                            'generated_at' => now(),
+                            'generated_by' => $guru->id
+                        ]);
+                        
+                        // Tracking siswa berhasil
+                        $successSiswa[] = [
+                            'id' => $siswa->id,
+                            'name' => $siswa->nama,
+                            'filename' => $destFileName
+                        ];
+                    } else {
+                        throw new \Exception("Gagal menyalin file rapor");
                     }
-                    
-                    // Log file operations
-                    \Log::info('File operations', [
-                        'source' => $sourcePath,
-                        'source_exists' => file_exists($sourcePath),
-                        'dest' => $destPath,
-                        'dest_dir_exists' => file_exists(dirname($destPath)),
-                        'dest_dir_writable' => is_writable(dirname($destPath)),
-                    ]);
-                    
-                    // Use file_get_contents/file_put_contents with error checking
-                    $fileContent = @file_get_contents($sourcePath);
-                    if ($fileContent === false) {
-                        throw new \Exception("Gagal membaca file sumber: " . error_get_last()['message']);
-                    }
-                    
-                    $writeResult = @file_put_contents($destPath, $fileContent);
-                    if ($writeResult === false) {
-                        throw new \Exception("Gagal menulis file tujuan: " . error_get_last()['message']);
-                    }
-                    
-                    // Check that the file was correctly written
-                    if (!file_exists($destPath)) {
-                        throw new \Exception("File tujuan tidak ditemukan setelah ditulis");
-                    }
-                    
-                    $files[] = [
-                        'path' => $destPath,
-                        'name' => $destFileName
-                    ];
-                    
-                    // Simpan history generate
-                    \App\Models\ReportGeneration::create([
-                        'siswa_id' => $siswa->id,
-                        'kelas_id' => $siswa->kelas_id,
-                        'report_template_id' => $template->id,
-                        'generated_file' => $result['path'],
-                        'type' => $type,
-                        'tahun_ajaran' => $template->tahun_ajaran,
-                        'semester' => $currentSemester,
-                        'tahun_ajaran_id' => $tahunAjaranId,
-                        'generated_at' => now(),
-                        'generated_by' => $guru->id
-                    ]);
-                    
-                    // Tracking siswa berhasil
-                    $successSiswa[] = [
-                        'id' => $siswa->id,
-                        'name' => $siswa->nama,
-                        'filename' => $destFileName
-                    ];
                     
                 } catch (\Exception $e) {
                     // Log error
-                    \Log::error("Error generating report for siswa {$siswa->id} ({$siswa->nama}): " . $e->getMessage(), [
-                        'trace' => $e->getTraceAsString()
-                    ]);
+                    \Log::error("Error generating report for siswa {$siswa->id} ({$siswa->nama}): " . $e->getMessage());
                     
                     // Tracking siswa gagal
                     $errorSiswa[] = [
@@ -1381,8 +1314,7 @@ class ReportController extends Controller
             $summaryContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
             $summaryContent .= "Kelas: {$kelas->nama_kelas}\n";
             $summaryContent .= "Tipe Rapor: $type\n";
-            $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n";
-            $summaryContent .= "Semester: {$currentSemester}\n\n";
+            $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n\n";
             
             $summaryContent .= "## Ringkasan\n";
             $summaryContent .= "Total Siswa: " . count($siswaIds) . "\n";
@@ -1404,70 +1336,31 @@ class ReportController extends Controller
                 }
             }
             
-            // Tulis file summary dengan error checking
+            // Tulis file summary
             $summaryPath = $publicDir . "/RINGKASAN_RAPOR.md";
-            $summaryResult = @file_put_contents($summaryPath, $summaryContent);
-            if ($summaryResult === false) {
-                throw new \Exception("Gagal menulis file ringkasan: " . error_get_last()['message']);
+            file_put_contents($summaryPath, $summaryContent);
+            
+            // Buat ZIP file
+            $zip = new \ZipArchive();
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \Exception("Gagal membuat file ZIP");
             }
             
-            // Buat ZIP file dengan error handling
-            try {
-                $zip = new \ZipArchive();
-                $zipResult = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-                
-                if ($zipResult !== true) {
-                    throw new \Exception("Gagal membuat file ZIP. Code: " . $zipResult);
-                }
-                
-                // Log ZIP info before adding files
-                \Log::info('ZIP creation', [
-                    'zip_path' => $zipPath,
-                    'zip_dir_exists' => file_exists(dirname($zipPath)),
-                    'zip_dir_writable' => is_writable(dirname($zipPath)),
-                    'result_code' => $zipResult
-                ]);
-                
-                // Tambahkan file summary
-                if (file_exists($summaryPath)) {
-                    $zip->addFile($summaryPath, "RINGKASAN_RAPOR.md");
+            // Tambahkan file summary
+            $zip->addFile($summaryPath, "RINGKASAN_RAPOR.md");
+            
+            // Tambahkan semua file rapor
+            foreach ($files as $file) {
+                if (file_exists($file['path'])) {
+                    $zip->addFile($file['path'], $file['name']);
                 } else {
-                    \Log::warning("Summary file not found: {$summaryPath}");
+                    \Log::warning("File not found: {$file['path']}");
                 }
-                
-                // Tambahkan semua file rapor
-                foreach ($files as $file) {
-                    if (file_exists($file['path'])) {
-                        $zip->addFile($file['path'], $file['name']);
-                    } else {
-                        \Log::warning("File not found: {$file['path']}");
-                    }
-                }
-                
-                // Tutup ZIP with error handling
-                $closeResult = $zip->close();
-                if ($closeResult !== true) {
-                    throw new \Exception("Gagal menutup file ZIP: " . error_get_last()['message']);
-                }
-                
-                // Verify the ZIP was created
-                if (!file_exists($zipPath)) {
-                    throw new \Exception("File ZIP tidak ditemukan setelah proses pembuatan");
-                }
-                
-                // Log ZIP file info after creation
-                \Log::info('ZIP file created', [
-                    'zip_path' => $zipPath,
-                    'zip_exists' => file_exists($zipPath),
-                    'zip_size' => file_exists($zipPath) ? filesize($zipPath) : 0,
-                    'close_result' => $closeResult
-                ]);
-                
-            } catch (\Exception $zipEx) {
-                \Log::error("ZIP creation error: " . $zipEx->getMessage(), [
-                    'trace' => $zipEx->getTraceAsString()
-                ]);
-                throw $zipEx;
+            }
+            
+            // Tutup ZIP
+            if (!$zip->close()) {
+                throw new \Exception("Gagal menutup file ZIP");
             }
             
             // Buat notifikasi sukses
@@ -1487,12 +1380,7 @@ class ReportController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Batch rapor berhasil digenerate',
-                'download_url' => $downloadUrl,
-                'stats' => [
-                    'total' => count($siswaIds),
-                    'success' => count($successSiswa),
-                    'error' => count($errorSiswa)
-                ]
+                'download_url' => $downloadUrl
             ]);
             
         } catch (\Exception $e) {
@@ -1513,13 +1401,8 @@ class ReportController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
-                'error_detail' => env('APP_DEBUG') ? [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => array_slice($e->getTrace(), 0, 3)
-                ] : null
-            ], 500);
+                'message' => $e->getMessage()
+            ], 400);
         }
     }
 
