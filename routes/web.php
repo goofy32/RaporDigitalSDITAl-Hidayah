@@ -684,82 +684,22 @@
             'destroy' => 'absence.destroy',
         ]);
 
-        Route::get('/debug/nilai-siswa/{siswaId}', function($siswaId) {
+    // Add this to your routes/web.php file inside the wali-kelas route group
+    Route::get('/debug/report-data/{siswaId}/{type}', function($siswaId, $type) {
+        try {
             $siswa = \App\Models\Siswa::find($siswaId);
             if (!$siswa) {
-                return response()->json(['error' => 'Siswa tidak ditemukan']);
+                return response()->json(['error' => 'Siswa not found'], 404);
             }
             
             $tahunAjaranId = session('tahun_ajaran_id');
-            $semester = 1; // Untuk UTS
+            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
             
-            // Query nilai dengan berbagai pendekatan
-            $result = [
-                'siswa' => [
-                    'id' => $siswa->id,
-                    'nama' => $siswa->nama,
-                    'kelas_id' => $siswa->kelas_id,
-                    'tahun_ajaran_id' => $siswa->tahun_ajaran_id
-                ],
-                'kelas' => [
-                    'id' => $siswa->kelas->id,
-                    'nomor_kelas' => $siswa->kelas->nomor_kelas,
-                    'nama_kelas' => $siswa->kelas->nama_kelas,
-                    'tahun_ajaran_id' => $siswa->kelas->tahun_ajaran_id
-                ],
-                'session' => [
-                    'tahun_ajaran_id' => $tahunAjaranId
-                ],
-            ];
+            // Get the semester based on report type and current tahun ajaran
+            $currentSemester = $tahunAjaran ? $tahunAjaran->semester : null;
+            $reportSemester = $type === 'UTS' ? 1 : 2;
             
-            // Query 1: Nilai tanpa filter tahun ajaran
-            $nilai1 = $siswa->nilais()->with('mataPelajaran')->get();
-            $result['nilai_queries']['no_filter'] = [
-                'count' => $nilai1->count(),
-                'nilai' => $nilai1->map(function($n) {
-                    return [
-                        'id' => $n->id,
-                        'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                        'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                        'tahun_ajaran_id' => $n->tahun_ajaran_id
-                    ];
-                })
-            ];
-            
-            // Query 2: Nilai dengan filter tahun ajaran dan semester
-            $nilai2 = $siswa->nilais()
-                ->with('mataPelajaran')
-                ->whereHas('mataPelajaran', function($q) use ($semester) {
-                    $q->where('semester', $semester);
-                })
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->get();
-            
-            $result['nilai_queries']['filtered'] = [
-                'count' => $nilai2->count(),
-                'nilai' => $nilai2->map(function($n) {
-                    return [
-                        'id' => $n->id,
-                        'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                        'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                        'tahun_ajaran_id' => $n->tahun_ajaran_id
-                    ];
-                })
-            ];
-            
-            return response()->json($result);
-        })->middleware(['auth:guru']);
-
-        Route::get('/debug/rapor-processor/{siswaId}', function($siswaId) {
-            $siswa = \App\Models\Siswa::find($siswaId);
-            if (!$siswa) {
-                return response()->json(['error' => 'Siswa tidak ditemukan']);
-            }
-            
-            $tahunAjaranId = session('tahun_ajaran_id');
-            $type = 'UTS'; // Atau 'UAS'
-            
-            // Cari template yang sesuai
+            // Find the appropriate template
             $template = \App\Models\ReportTemplate::where('type', $type)
                 ->where('is_active', true)
                 ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
@@ -767,99 +707,111 @@
                 })
                 ->first();
             
-            if (!$template) {
-        return response()->json(['error' => 'Template tidak ditemukan']);
-    }
-        
-        // Hasil simulasi data untuk rapor
-        $result = [
-            'siswa' => [
-                'id' => $siswa->id,
-                'nama' => $siswa->nama,
-                'kelas' => [
-                    'id' => $siswa->kelas->id,
-                    'nomor_kelas' => $siswa->kelas->nomor_kelas,
-                    'nama_kelas' => $siswa->kelas->nama_kelas
+            // Get nilai for both semesters
+            $nilaiSemester1 = $siswa->nilais()
+                ->with(['mataPelajaran'])
+                ->whereHas('mataPelajaran', function($query) {
+                    $query->where('semester', 1);
+                })
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->where('nilai_akhir_rapor', '!=', null)
+                ->get();
+                
+            $nilaiSemester2 = $siswa->nilais()
+                ->with(['mataPelajaran'])
+                ->whereHas('mataPelajaran', function($query) {
+                    $query->where('semester', 2);
+                })
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->where('nilai_akhir_rapor', '!=', null)
+                ->get();
+            
+            // Get absensi for both semesters
+            $absensiSemester1 = $siswa->absensi()
+                ->where('semester', 1)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->first();
+                
+            $absensiSemester2 = $siswa->absensi()
+                ->where('semester', 2)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->first();
+            
+            return response()->json([
+                'siswa' => [
+                    'id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'kelas_id' => $siswa->kelas_id
+                ],
+                'tahunAjaran' => [
+                    'id' => $tahunAjaranId,
+                    'tahun_ajaran' => $tahunAjaran ? $tahunAjaran->tahun_ajaran : null,
+                    'semester' => $currentSemester,
+                ],
+                'report' => [
+                    'type' => $type,
+                    'reportSemester' => $reportSemester
+                ],
+                'template' => $template ? [
+                    'id' => $template->id,
+                    'type' => $template->type,
+                    'is_active' => $template->is_active,
+                    'semester' => $template->semester,
+                    'tahun_ajaran_id' => $template->tahun_ajaran_id
+                ] : null,
+                'nilai' => [
+                    'semester1' => [
+                        'count' => $nilaiSemester1->count(),
+                        'nilai' => $nilaiSemester1->map(function($n) {
+                            return [
+                                'id' => $n->id,
+                                'mata_pelajaran' => $n->mataPelajaran ? $n->mataPelajaran->nama_pelajaran : null,
+                                'nilai_akhir_rapor' => $n->nilai_akhir_rapor
+                            ];
+                        })
+                    ],
+                    'semester2' => [
+                        'count' => $nilaiSemester2->count(),
+                        'nilai' => $nilaiSemester2->map(function($n) {
+                            return [
+                                'id' => $n->id,
+                                'mata_pelajaran' => $n->mataPelajaran ? $n->mataPelajaran->nama_pelajaran : null,
+                                'nilai_akhir_rapor' => $n->nilai_akhir_rapor
+                            ];
+                        })
+                    ]
+                ],
+                'absensi' => [
+                    'semester1' => $absensiSemester1 ? [
+                        'id' => $absensiSemester1->id,
+                        'sakit' => $absensiSemester1->sakit,
+                        'izin' => $absensiSemester1->izin,
+                        'tanpa_keterangan' => $absensiSemester1->tanpa_keterangan
+                    ] : null,
+                    'semester2' => $absensiSemester2 ? [
+                        'id' => $absensiSemester2->id,
+                        'sakit' => $absensiSemester2->sakit,
+                        'izin' => $absensiSemester2->izin,
+                        'tanpa_keterangan' => $absensiSemester2->tanpa_keterangan
+                    ] : null
+                ],
+                'diagnosisResult' => [
+                    'hasNilaiForReportType' => $type === 'UTS' ? $nilaiSemester1->count() > 0 : $nilaiSemester2->count() > 0,
+                    'hasAbsensiForReportType' => $type === 'UTS' ? ($absensiSemester1 !== null) : ($absensiSemester2 !== null),
+                    'hasTemplateForReportType' => $template !== null,
+                    'expectedDataSemester' => $type === 'UTS' ? 1 : 2,
+                    'actualTahunAjaranSemester' => $currentSemester
                 ]
-            ],
-            'template' => [
-                'id' => $template->id,
-                'type' => $template->type,
-                'tahun_ajaran_id' => $template->tahun_ajaran_id
-            ],
-            'session' => [
-                'tahun_ajaran_id' => $tahunAjaranId
-            ]
-        ];
-        
-        // Simulasi pengambilan data nilai seperti di RaporTemplateProcessor
-        $semester = $type === 'UTS' ? 1 : 2;
-        
-        // 1. Nilai tanpa filter tahun ajaran
-        $nilai1 = $siswa->nilais()
-            ->with(['mataPelajaran'])
-            ->whereHas('mataPelajaran', function($q) use ($semester) {
-                $q->where('semester', $semester);
-            })
-            ->get();
-        
-        $result['data_simulation']['no_filter'] = [
-            'count' => $nilai1->count(),
-            'nilai' => $nilai1->map(function($n) {
-                return [
-                    'id' => $n->id,
-                    'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                    'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                    'tahun_ajaran_id' => $n->tahun_ajaran_id
-                ];
-            })
-        ];
-        
-        // 2. Nilai dengan filter tahun ajaran
-        $nilai2 = $siswa->nilais()
-            ->with(['mataPelajaran'])
-            ->whereHas('mataPelajaran', function($q) use ($semester) {
-                $q->where('semester', $semester);
-            })
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->get();
-        
-        $result['data_simulation']['with_filter'] = [
-            'count' => $nilai2->count(),
-            'nilai' => $nilai2->map(function($n) {
-                return [
-                    'id' => $n->id,
-                    'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                    'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                    'tahun_ajaran_id' => $n->tahun_ajaran_id
-                ];
-            })
-        ];
-        
-        // Cek juga nilai pada tahun ajaran lama
-        $tahunAjaranLama = 1; // ID tahun ajaran lama
-        $nilai3 = $siswa->nilais()
-            ->with(['mataPelajaran'])
-            ->whereHas('mataPelajaran', function($q) use ($semester) {
-                $q->where('semester', $semester);
-            })
-            ->where('tahun_ajaran_id', $tahunAjaranLama)
-            ->get();
-        
-        $result['data_simulation']['old_year'] = [
-            'count' => $nilai3->count(),
-            'nilai' => $nilai3->map(function($n) {
-                return [
-                    'id' => $n->id,
-                    'mata_pelajaran' => $n->mataPelajaran->nama_pelajaran ?? 'Tidak ada',
-                    'nilai_akhir_rapor' => $n->nilai_akhir_rapor,
-                    'tahun_ajaran_id' => $n->tahun_ajaran_id
-                ];
-            })
-        ];
-        
-        return response()->json($result);
-    })->middleware(['auth:guru']);
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
+        }
+    })->name('debug.report-data');
+    
 
 // Tambahkan di web.php dalam grup route wali_kelas
 Route::get('/debug/siswa/487', function() {

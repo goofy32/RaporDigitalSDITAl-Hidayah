@@ -562,7 +562,7 @@ document.addEventListener('alpine:init', function() {
         // Jika ada siswa yang datanya belum lengkap
         if (invalidSiswa.length > 0) {
             // Gunakan SweetAlert untuk konfirmasi yang lebih baik
-        const result = await Swal.fire({
+            const result = await Swal.fire({
                 icon: 'warning',
                 title: 'Data Tidak Lengkap',
                 html: `
@@ -595,7 +595,8 @@ document.addEventListener('alpine:init', function() {
                 }
             });
             
-            const response = await fetch('/wali-kelas/rapor/batch-generate', {
+            // Create a request object that we can clone if needed
+            const request = new Request('/wali-kelas/rapor/batch-generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -607,48 +608,72 @@ document.addEventListener('alpine:init', function() {
                     tahun_ajaran_id: this.tahunAjaranId
                 })
             });
+            
+            // Fetch with the request object
+            const response = await fetch(request);
 
             // Tutup loading alert
             loadingAlert.close();
 
+            // Clone the response before reading it
+            const responseClone = response.clone();
+
             if (!response.ok) {
-                // Coba ambil pesan error dalam format JSON
+                // Try to parse as JSON first
                 try {
                     const error = await response.json();
                     throw new Error(error.message || 'Gagal generate batch rapor');
                 } catch (jsonError) {
-                    // Jika bukan JSON, ambil teks error
-                    const errorText = await response.text();
-                    throw new Error(`Gagal generate batch rapor (${response.status}): ${errorText.substring(0, 100)}...`);
+                    // If JSON parsing fails, try to get text from the cloned response
+                    try {
+                        const errorText = await responseClone.text();
+                        throw new Error(`Gagal generate batch rapor (${response.status}): ${errorText.substring(0, 100)}...`);
+                    } catch (textError) {
+                        // If both fail, throw a generic error
+                        throw new Error(`Gagal generate batch rapor (HTTP ${response.status})`);
+                    }
                 }
             }
 
-            const data = await response.json();
-            
-            if (data.success && data.download_url) {
-                // Tampilkan Swal dengan link download
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil Generate Batch Rapor',
-                    html: `
-                        <p>${data.message}</p>
-                        <p class="mt-4">Klik tombol di bawah untuk mengunduh:</p>
-                    `,
-                    confirmButtonText: 'Download ZIP',
-                    showCancelButton: true,
-                    cancelButtonText: 'Tutup'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Buka URL download di tab baru
-                        window.open(data.download_url, '_blank');
-                    }
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal',
-                    text: data.message || 'Terjadi kesalahan saat memproses batch rapor'
-                });
+            // Try to parse response as JSON using the cloned response
+            try {
+                const data = await responseClone.json();
+                
+                if (data.success && data.download_url) {
+                    // Tampilkan Swal dengan link download
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Generate Batch Rapor',
+                        html: `
+                            <p>${data.message}</p>
+                            <p class="mt-4">Klik tombol di bawah untuk mengunduh:</p>
+                        `,
+                        confirmButtonText: 'Download ZIP',
+                        showCancelButton: true,
+                        cancelButtonText: 'Tutup'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Buka URL download di tab baru
+                            window.open(data.download_url, '_blank');
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.message || 'Terjadi kesalahan saat memproses batch rapor'
+                    });
+                }
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                
+                // If we can't parse the JSON, try to get the raw response text
+                try {
+                    const textResponse = await response.text();
+                    throw new Error(`Invalid response format: ${textResponse.substring(0, 100)}...`);
+                } catch (textError) {
+                    throw new Error('Failed to process response');
+                }
             }
         } catch (error) {
             console.error('Error:', error);
@@ -663,29 +688,29 @@ document.addEventListener('alpine:init', function() {
         }
     },
 
-        validateData(nilaiCount, hasAbsensi) {
-            const messages = [];
-            if (!nilaiCount || nilaiCount === 0) messages.push("- Data nilai belum lengkap");
-            if (!hasAbsensi) messages.push("- Data kehadiran belum lengkap");
-            if (!this.tahunAjaranId) messages.push("- Tahun ajaran tidak ditemukan");
-            
-            if (messages.length > 0) {
-                // Better error feedback with SweetAlert instead of plain alert
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Data Tidak Lengkap',
-                    html: `
-                        <p>Tidak bisa melanjutkan karena:</p>
-                        <ul class="text-left mt-2">
-                            ${messages.map(msg => `<li>${msg}</li>`).join('')}
-                        </ul>
-                    `,
-                    confirmButtonText: 'Mengerti'
-                });
-                return false;
-            }
-            return true;
-        },
+    validateData(nilaiCount, hasAbsensi) {
+        const messages = [];
+        if (!nilaiCount || nilaiCount === 0) messages.push("- Data nilai belum lengkap");
+        if (!hasAbsensi) messages.push("- Data kehadiran belum lengkap");
+        if (!this.tahunAjaranId) messages.push("- Tahun ajaran tidak ditemukan");
+        
+        if (messages.length > 0) {
+            // Better error feedback with SweetAlert instead of plain alert
+            Swal.fire({
+                icon: 'warning',
+                title: 'Data Tidak Lengkap',
+                html: `
+                    <p>Tidak bisa melanjutkan karena:</p>
+                    <ul class="text-left mt-2">
+                        ${messages.map(msg => `<li>${msg}</li>`).join('')}
+                    </ul>
+                `,
+                confirmButtonText: 'Mengerti'
+            });
+            return false;
+        }
+        return true;
+    },
 
         async debugSiswaData(siswaId) {
             try {

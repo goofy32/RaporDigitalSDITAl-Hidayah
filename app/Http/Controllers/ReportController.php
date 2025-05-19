@@ -1202,7 +1202,7 @@ class ReportController extends Controller
             foreach ($siswaList as $index => $siswa) {
                 try {
                     // Validasi data siswa
-                    $semester = $type === 'UTS' ? 1 : 2;
+                    $semester = $this->getReportDataSemester();
                     
                     // Cek nilai
                     $hasNilai = $siswa->nilais()

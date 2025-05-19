@@ -144,6 +144,20 @@ class RaporTemplateProcessor
     }
     
     
+    protected function getSemesterForType($type, $tahunAjaranId)
+    {
+        // Get the tahun ajaran to determine the actual semester
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        
+        if ($tahunAjaran) {
+            // Instead of hardcoding UTS=1 and UAS=2, use the actual semester from tahun ajaran
+            return $tahunAjaran->semester;
+        }
+        
+        // Fallback to the old logic if tahun ajaran not found
+        return $type === 'UTS' ? 1 : 2;
+    }
+
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
      * 
@@ -151,7 +165,7 @@ class RaporTemplateProcessor
      */
     protected function collectAllData()
     {
-        $semester = $this->type === 'UTS' ? 1 : 2;
+        $semester = $this->getReportDataSemester();
         $tahunAjaranId = $this->tahunAjaranId;
         
         // Data Siswa
@@ -178,12 +192,13 @@ class RaporTemplateProcessor
         ];
     
         // Data Nilai - Filter berdasarkan tahun ajaran yang dipilih
+        $semester = $this->getReportDataSemester();
         $nilaiQuery = $this->siswa->nilais()
             ->with(['mataPelajaran'])
             ->whereHas('mataPelajaran', function($q) use ($semester) {
                 $q->where('semester', $semester);
             })
-            ->where('tahun_ajaran_id', $tahunAjaranId); // Tambahkan filter ini
+            ->where('tahun_ajaran_id', $tahunAjaranId);
             
         $nilaiCollection = $nilaiQuery->get();
         
@@ -854,6 +869,23 @@ class RaporTemplateProcessor
             throw new RaporException('Gagal generate rapor: ' . $e->getMessage(), 'general_error', 500, $e);
         }
     }
+    
+    /**
+     * Get the semester data to use for the report
+     */
+    protected function getReportDataSemester()
+    {
+        // Always use the current semester from the tahun ajaran
+        if ($this->tahunAjaranId) {
+            $tahunAjaran = \App\Models\TahunAjaran::find($this->tahunAjaranId);
+            if ($tahunAjaran) {
+                return $tahunAjaran->semester;
+            }
+        }
+        
+        // Fallback to the old logic if tahun ajaran not found
+        return $this->type === 'UTS' ? 1 : 2;
+    }
 
    /**
      * Validasi data sebelum generate rapor
@@ -864,6 +896,9 @@ class RaporTemplateProcessor
     protected function validateData()
     {
         $tahunAjaranId = $this->tahunAjaranId;
+        
+        // Use the new method to determine semester based on current tahun ajaran
+        $semester = $this->getSemesterForType($this->type, $tahunAjaranId);
 
         // Validasi template aktif
         if (!$this->template->is_active) {
@@ -875,7 +910,11 @@ class RaporTemplateProcessor
         }
 
         // Validasi apakah siswa memiliki nilai untuk tahun ajaran yang aktif
+        // Use the determined semester instead of type-based semester
         $hasAnyNilai = $this->siswa->nilais()
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
             })
@@ -883,14 +922,16 @@ class RaporTemplateProcessor
             
         if (!$hasAnyNilai) {
             throw new RaporException(
-                'Siswa belum memiliki nilai pada tahun ajaran ini. Mohon input nilai terlebih dahulu.',
+                'Siswa belum memiliki nilai pada tahun ajaran ini untuk semester ' . $semester . '. Mohon input nilai terlebih dahulu.',
                 'data_incomplete',
                 self::ERROR_DATA_INCOMPLETE
             );
         }
 
         // Cek kehadiran untuk tahun ajaran yang aktif
+        // Use the determined semester instead of type-based semester
         $hasAbsensi = $this->siswa->absensi()
+            ->where('semester', $semester) // Use the determined semester
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);
             })
@@ -898,7 +939,7 @@ class RaporTemplateProcessor
             
         if (!$hasAbsensi) {
             throw new RaporException(
-                'Data kehadiran siswa pada tahun ajaran ini belum diisi.',
+                'Data kehadiran siswa pada tahun ajaran ini untuk semester ' . $semester . ' belum diisi.',
                 'data_incomplete',
                 self::ERROR_DATA_INCOMPLETE
             );
