@@ -138,7 +138,7 @@
                                 })->implode(', ');
                             @endphp
                             
-                            <span class="text-xs text-blue-600" title="{{ $allKelasText }}">
+                            <span class="text-xs text-green-600" title="{{ $allKelasText }}">
                                 {{ $kelasText }}
                             </span>
                         @elseif($template->kelas_id)

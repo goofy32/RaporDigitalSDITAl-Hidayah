@@ -1,3 +1,4 @@
+
 @extends('layouts.app')
 
 @section('title', 'Kenaikan Kelas dan Kelulusan')
@@ -68,13 +69,29 @@
         <h3 class="text-lg font-semibold text-green-800 mb-2">Proses Kenaikan Kelas Massal</h3>
         <p class="text-green-700 mb-4">Proses ini akan memindahkan semua siswa dari tahun ajaran {{ $tahunAjaranAktif->tahun_ajaran }} ke kelas dengan tingkat yang lebih tinggi di tahun ajaran {{ $tahunAjaranBaru->tahun_ajaran }}.</p>
         
+        @php
+            // Check if there are any active students in the current academic year
+            $hasActiveStudents = false;
+            foreach($kelasAktif as $kelas) {
+                if ($kelas->siswas->where('status', 'aktif')->count() > 0) {
+                    $hasActiveStudents = true;
+                    break;
+                }
+            }
+        @endphp
+
         <div class="flex items-center">
             <button type="button" 
                     @click="$dispatch('open-confirm-modal')"
-                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 {{ !$hasActiveStudents ? 'opacity-50 cursor-not-allowed' : '' }}"
+                    {{ !$hasActiveStudents ? 'disabled' : '' }}>
                 Proses Kenaikan Kelas Otomatis
             </button>
-            <span class="ml-2 text-sm text-green-600">*Siswa kelas akhir (Kelas 6) akan ditandai lulus</span>
+            @if(!$hasActiveStudents)
+                <span class="ml-2 text-sm text-red-600">* Tidak ada siswa aktif untuk diproses</span>
+            @else
+                <span class="ml-2 text-sm text-green-600">* Siswa kelas akhir (Kelas 6) akan ditandai lulus</span>
+            @endif
         </div>
         
         <!-- Modal Konfirmasi -->

@@ -83,7 +83,7 @@
             transform: translateZ(0);
         }
 
-        /* Adjust disabled icon opacity */
+            /* Adjust disabled icon opacity */
         #logo-sidebar a.cursor-not-allowed img {
             opacity: 0.6 !important;
             filter: grayscale(1) brightness(0.4);
@@ -123,72 +123,6 @@
             min-width: 1.25rem !important;
             min-height: 1.25rem !important;
         }
-
-        /* FIX UNTUK CONTENT JUMPING */
-        body {
-            overflow-y: scroll !important; /* Selalu tampilkan scrollbar */
-            height: 100%;
-            width: 100%;
-        }
-
-        html {
-            height: 100%;
-            overflow-y: scroll;
-        }
-
-        /* Pastikan content container memiliki height minimal viewport */
-        .p-4.sm\:ml-64 {
-            min-height: 100vh;
-            position: relative;
-            transition: none !important;
-        }
-
-        /* Normalisasi margin top untuk konten utama */
-        #main {
-            position: relative;
-            will-change: contents;
-            contain: layout style;
-            transition: none !important;
-            min-height: 70vh;
-        }
-
-        /* Standarisasi konten dalam main container */
-        #main .mt-14 {
-            margin-top: 0 !important;
-        }
-
-        .p-4.sm\:ml-64 .mt-14 {
-            margin-top: 3.5rem !important; /* Kembalikan margin untuk navbar height */
-        }
-
-        /* Pastikan progress bar berada di atas konten lain */
-        .turbo-progress-bar {
-            height: 3px !important;
-            background-color: #10B981 !important;
-            z-index: 9999;
-        }
-
-        /* Perbaikan khusus untuk transisi antar halaman */
-        .turbo-loading {
-            transition: none !important;
-        }
-
-        /* Tambahkan background transparan untuk menghindari efek flashing */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: transparent;
-            z-index: -1;
-        }
-
-        /* Pastikan konten yang di-scroll tidak melompat */
-        html, body {
-            scroll-behavior: auto !important;
-        }
     </style>
     <style>
         [x-cloak] { 
@@ -227,42 +161,9 @@
         }
     </style>
 
-    <!-- Page Loading Indicator -->
-    <style>
-        #page-loading-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        
-        #page-loading-indicator.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-    </style>
+    <img src="{{ asset('images/logo/sdit-logo.png') }}" alt="SDIT Logo">
 </head>
 <body>
-    <!-- Page Loading Indicator -->
-    <div id="page-loading-indicator">
-        <div class="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-            <svg class="animate-spin h-10 w-10 text-green-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="text-gray-700">Memuat halaman...</p>
-        </div>
-    </div>
-
     <!-- Add loading overlay component -->
     <x-content-loading-overlay />
 
@@ -281,8 +182,8 @@
         </script>
     @endif
 
-    <div class="p-4 sm:ml-64 min-h-screen bg-white" id="content-wrapper">
-        <div class="mt-14" id="content-inner"> <!-- Padding top untuk navbar -->
+    <div class="p-4 sm:ml-64 min-h-screen bg-white">
+        <div class="mt-14"> <!-- Padding top untuk navbar -->
             @if(session('tahun_ajaran_id') && isset($activeTahunAjaran) && $activeTahunAjaran && session('tahun_ajaran_id') != $activeTahunAjaran->id)
                 <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
                     <div class="flex">
@@ -351,106 +252,6 @@
             // Setup event listeners for settings modal
             document.addEventListener('open-settings', function() {
                 window.dispatchEvent(new CustomEvent('open-settings'));
-            });
-        });
-    </script>
-
-    <!-- Fix Content Jumping During Navigation -->
-    <script>
-        // Capture original body height
-        let originalHeight = 0;
-        let savedScrollPos = 0;
-
-        // Store page dimensions before navigation
-        document.addEventListener('turbo:before-visit', function() {
-            // Activate loading indicator
-            const loader = document.getElementById('page-loading-indicator');
-            if (loader) {
-                loader.classList.add('active');
-            }
-
-            // Save current scroll position
-            savedScrollPos = window.scrollY;
-            
-            // Store current page height
-            originalHeight = Math.max(
-                document.body.scrollHeight,
-                document.documentElement.scrollHeight
-            );
-            
-            // Set minimum height to prevent layout shift
-            // Tambahkan padding tambahan untuk topbar
-            const contentInner = document.getElementById('content-inner');
-            if (contentInner) {
-                contentInner.style.minHeight = (originalHeight - 56) + 'px'; // 56px adalah perkiraan tinggi topbar
-            }
-            
-            // Ensure sidebar is visible
-            const sidebar = document.getElementById('logo-sidebar');
-            if (sidebar && window.innerWidth >= 640) {
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('sm:translate-x-0');
-            }
-        });
-
-        // Apply fixes after navigation is complete
-        document.addEventListener('turbo:render', function() {
-            // Hide loading indicator with slight delay to ensure smooth transition
-            setTimeout(() => {
-                const loader = document.getElementById('page-loading-indicator');
-                if (loader) {
-                    loader.classList.remove('active');
-                }
-            }, 150);
-
-            // Reset container height after a delay (ensures content is fully loaded)
-            setTimeout(() => {
-                const contentInner = document.getElementById('content-inner');
-                if (contentInner) {
-                    contentInner.style.minHeight = '';
-                }
-            }, 300);
-            
-            // Re-apply Alpine bindings if necessary
-            if (window.Alpine) {
-                window.Alpine.initTree(document.body);
-            }
-        });
-
-        // Fix specific for turbo frame loading
-        document.addEventListener('turbo:frame-render', function() {
-            // Additional fixes for frame loading
-            const loader = document.getElementById('page-loading-indicator');
-            if (loader) {
-                loader.classList.remove('active');
-            }
-        });
-
-        // Fix for when navigation times out
-        document.addEventListener('turbo:request-timeout', function() {
-            const loader = document.getElementById('page-loading-indicator');
-            if (loader) {
-                loader.classList.remove('active');
-            }
-            document.getElementById('content-wrapper').style.minHeight = '';
-        });
-
-        // Ensure sidebar is always properly initialized
-        document.addEventListener('turbo:load', function() {
-            // Make sure sidebar is visible after page load
-            const sidebar = document.getElementById('logo-sidebar');
-            if (sidebar && window.innerWidth >= 640) {
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('sm:translate-x-0');
-            }
-        });
-
-        // Ensure images are loaded and visible
-        document.addEventListener('turbo:load', function() {
-            const sidebarImages = document.querySelectorAll('#logo-sidebar img');
-            sidebarImages.forEach(img => {
-                img.style.opacity = '1';
-                img.style.visibility = 'visible';
             });
         });
     </script>
@@ -572,6 +373,6 @@
             img.style.visibility = 'visible';
         });
     })();
-    </script>
+</script>
 </body>
 </html>

@@ -100,23 +100,6 @@ document.addEventListener('turbo:before-render', (event) => {
 });
 
 document.addEventListener('turbo:before-render', () => {
-
-    const scrollPosition = window.scrollY;
-    // Store the current page height to prevent layout shifts
-    const pageHeight = document.body.offsetHeight;
-    document.body.style.minHeight = `${pageHeight}px`;
-    
-    // After rendering is complete, restore normal behavior
-    window.requestAnimationFrame(() => {
-        document.addEventListener('turbo:render', () => {
-        // Remove fixed height after a short delay to ensure smooth transition
-        setTimeout(() => {
-            document.body.style.minHeight = '';
-            // Maintain scroll position if needed
-            window.scrollTo(0, scrollPosition);
-        }, 50);
-        }, { once: true });
-    });
     // Bersihkan state Alpine
     Alpine.store('report').showPreview = false;
     Alpine.store('report').previewContent = '';
