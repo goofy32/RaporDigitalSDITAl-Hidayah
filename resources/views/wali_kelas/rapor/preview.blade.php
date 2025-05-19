@@ -85,7 +85,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($siswa->nilaiEkstrakurikuler as $ekskul)
+                    @forelse($siswa->nilaiEkstrakurikuler->where('tahun_ajaran_id', session('tahun_ajaran_id')) as $ekskul)
                     <tr class="bg-white border-b">
                         <td class="px-6 py-4">{{ $ekskul->ekstrakurikuler->nama_ekstrakurikuler }}</td>
                         <td class="px-6 py-4">{{ $ekskul->deskripsi }}</td>
@@ -105,20 +105,23 @@
     <!-- Kehadiran -->
     <div>
         <h3 class="text-lg font-semibold mb-3">Kehadiran</h3>
-        <div class="grid grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-lg shadow">
-                <p class="text-sm text-gray-600">Sakit</p>
-                <p class="text-2xl font-bold">{{ $siswa->absensi->sakit ?? 0 }}</p>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <p class="text-sm text-gray-600">Sakit</p>
+                    @php
+                        $absensi = $siswa->absensi->where('tahun_ajaran_id', session('tahun_ajaran_id'))->first();
+                    @endphp
+                    <p class="text-2xl font-bold">{{ $absensi ? $absensi->sakit : 0 }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <p class="text-sm text-gray-600">Izin</p>
+                    <p class="text-2xl font-bold">{{ $absensi ? $absensi->izin : 0 }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <p class="text-sm text-gray-600">Tanpa Keterangan</p>
+                    <p class="text-2xl font-bold">{{ $absensi ? $absensi->tanpa_keterangan : 0 }}</p>
+                </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow">
-                <p class="text-sm text-gray-600">Izin</p>
-                <p class="text-2xl font-bold">{{ $siswa->absensi->izin ?? 0 }}</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow">
-                <p class="text-sm text-gray-600">Tanpa Keterangan</p>
-                <p class="text-2xl font-bold">{{ $siswa->absensi->tanpa_keterangan ?? 0 }}</p>
-            </div>
-        </div>
     </div>
 
     <!-- Status Data -->

@@ -795,6 +795,17 @@ class RaporTemplateProcessor
                         ]);
                     }
                 }
+
+                $remainingPlaceholders = $this->processor->getVariables();
+                    foreach ($remainingPlaceholders as $placeholder) {
+                        try {
+                            $this->processor->setValue($placeholder, '');  // Replace with empty string
+                        } catch (\Exception $e) {
+                            Log::warning("Could not clean remaining placeholder '{$placeholder}':", [
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
             } catch (\Exception $e) {
                 Log::error('Gagal mengisi placeholder:', [
                     'error' => $e->getMessage(),

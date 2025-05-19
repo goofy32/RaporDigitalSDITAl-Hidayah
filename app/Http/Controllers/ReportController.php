@@ -554,7 +554,8 @@ class ReportController extends Controller
         return response()->download($filePath, $downloadFilename);
     }
 
-    public function downloadPdf(Siswa $siswa) {
+    public function downloadPdf(Siswa $siswa) 
+    {
         $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
         return $pdf->download("rapor_{$siswa->nis}.pdf");
     }
@@ -566,17 +567,35 @@ class ReportController extends Controller
                 'kelas',
                 'nilais' => function($query) {
                     $tahunAjaranId = session('tahun_ajaran_id');
+                    $type = request('type', 'UTS');
+                    $semester = $type === 'UTS' ? 1 : 2;
+                    
                     // Pastikan filter tahun ajaran diterapkan
                     $query->where('tahun_ajaran_id', $tahunAjaranId);
                     
-                    // Jika perlu filter semester
-                    $semester = request('type', 'UTS') === 'UTS' ? 1 : 2; 
+                    // Filter berdasarkan semester 
                     $query->whereHas('mataPelajaran', function($q) use ($semester) {
                         $q->where('semester', $semester);
                     });
                 },
                 'nilais.mataPelajaran',
-                // relasi lainnya
+                
+                // Add proper filtering for ekstrakurikuler
+                'nilaiEkstrakurikuler' => function($query) {
+                    $tahunAjaranId = session('tahun_ajaran_id');
+                    $query->where('tahun_ajaran_id', $tahunAjaranId);
+                },
+                'nilaiEkstrakurikuler.ekstrakurikuler',
+                
+                // Add proper filtering for absensi
+                'absensi' => function($query) {
+                    $type = request('type', 'UTS');
+                    $semester = $type === 'UTS' ? 1 : 2;
+                    $tahunAjaranId = session('tahun_ajaran_id');
+                    
+                    $query->where('semester', $semester)
+                        ->where('tahun_ajaran_id', $tahunAjaranId);
+                }
             ])->findOrFail($siswa_id);
             
             // Render view ke HTML
