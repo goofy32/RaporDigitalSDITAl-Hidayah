@@ -1191,7 +1191,7 @@ class ReportController extends Controller
                 ->get();
                 
             if ($siswaList->count() !== count($siswaIds)) {
-                throw new \Exception('Fitur Ini masih maintenance untuk Tahun Ajaran ini, Harapkan Gunakan Fitur Download Rapor Satu per Satu di Icon Aksi');
+                throw new \Exception('Cetak Semua Rapor Masih Maintenance di Tahun Ajaran ini, Harap Gunakan Fitur Download Rapor Satu per Satu di Icon Aksi');
             }
             
             // Cek template untuk tipe rapor yang diminta
