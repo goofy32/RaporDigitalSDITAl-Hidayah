@@ -861,6 +861,241 @@
         return response()->json($result);
     })->middleware(['auth:guru']);
 
+// Tambahkan di web.php dalam grup route wali_kelas
+Route::get('/debug/siswa/487', function() {
+    try {
+        // Ambil data siswa dengan ID 487
+        $siswa = \App\Models\Siswa::with([
+            'kelas',
+            'kelas.tahunAjaran',
+            'nilais' => function($query) {
+                $tahunAjaranId = session('tahun_ajaran_id');
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            },
+            'nilais.mataPelajaran',
+            'nilaiEkstrakurikuler' => function($query) {
+                $tahunAjaranId = session('tahun_ajaran_id');
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            },
+            'nilaiEkstrakurikuler.ekstrakurikuler',
+            'absensi' => function($query) {
+                $tahunAjaranId = session('tahun_ajaran_id');
+                $semester = 2; // Hardcode semester 2 untuk tahun ajaran genap
+                $query->where('tahun_ajaran_id', $tahunAjaranId)
+                      ->where('semester', $semester);
+            }
+        ])->find(487);
+        
+        if (!$siswa) {
+            return response()->json([
+                'error' => 'Siswa dengan ID 487 tidak ditemukan'
+            ], 404);
+        }
+        
+        // Ambil detail kelas
+        $kelas = $siswa->kelas;
+        $kelasDetail = $kelas ? [
+            'id' => $kelas->id,
+            'nomor_kelas' => $kelas->nomor_kelas,
+            'nama_kelas' => $kelas->nama_kelas,
+            'nama_lengkap' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}",
+            'tahun_ajaran_id' => $kelas->tahun_ajaran_id,
+            'tahun_ajaran' => $kelas->tahunAjaran ? $kelas->tahunAjaran->tahun_ajaran : null,
+            'semester' => $kelas->tahunAjaran ? $kelas->tahunAjaran->semester : null
+        ] : null;
+        
+        // Cek template aktif untuk siswa ini
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $templateUTS = null;
+        $templateUAS = null;
+        
+        if ($kelas) {
+            // Cek template UTS
+            $templateUTS = \App\Models\ReportTemplate::where('type', 'UTS')
+                ->where('is_active', true)
+                ->where(function($query) use ($kelas) {
+                    $query->where('kelas_id', $kelas->id)
+                        ->orWhereHas('kelasList', function($q) use ($kelas) {
+                            $q->where('kelas_id', $kelas->id);
+                        })
+                        ->orWhereNull('kelas_id'); // template global
+                })
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->first();
+                
+            // Cek template UAS
+            $templateUAS = \App\Models\ReportTemplate::where('type', 'UAS')
+                ->where('is_active', true)
+                ->where(function($query) use ($kelas) {
+                    $query->where('kelas_id', $kelas->id)
+                        ->orWhereHas('kelasList', function($q) use ($kelas) {
+                            $q->where('kelas_id', $kelas->id);
+                        })
+                        ->orWhereNull('kelas_id'); // template global
+                })
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->first();
+        }
+        
+        // Cek status nilai
+        $nilaiStatus = [];
+        $mapelSemester1 = [];
+        $mapelSemester2 = [];
+        
+        if ($kelas) {
+            // Ambil mata pelajaran semester 1 (UTS)
+            $mapelSemester1 = \App\Models\MataPelajaran::where('kelas_id', $kelas->id)
+                ->where('semester', 1)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->get()
+                ->map(function($mapel) {
+                    return [
+                        'id' => $mapel->id,
+                        'nama_pelajaran' => $mapel->nama_pelajaran,
+                        'guru_id' => $mapel->guru_id,
+                        'is_muatan_lokal' => $mapel->is_muatan_lokal
+                    ];
+                });
+                
+            // Ambil mata pelajaran semester 2 (UAS)
+            $mapelSemester2 = \App\Models\MataPelajaran::where('kelas_id', $kelas->id)
+                ->where('semester', 2)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->get()
+                ->map(function($mapel) {
+                    return [
+                        'id' => $mapel->id,
+                        'nama_pelajaran' => $mapel->nama_pelajaran,
+                        'guru_id' => $mapel->guru_id,
+                        'is_muatan_lokal' => $mapel->is_muatan_lokal
+                    ];
+                });
+        }
+        
+        // Cek nilai semester 1 (UTS)
+        $nilaiUTS = $siswa->nilais()
+            ->whereHas('mataPelajaran', function($q) {
+                $q->where('semester', 1);
+            })
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('nilai_akhir_rapor', '!=', null)
+            ->get()
+            ->map(function($nilai) {
+                return [
+                    'id' => $nilai->id,
+                    'mata_pelajaran_id' => $nilai->mata_pelajaran_id,
+                    'mata_pelajaran' => $nilai->mataPelajaran ? $nilai->mataPelajaran->nama_pelajaran : null,
+                    'nilai_akhir_rapor' => $nilai->nilai_akhir_rapor
+                ];
+            });
+            
+        // Cek nilai semester 2 (UAS)
+        $nilaiUAS = $siswa->nilais()
+            ->whereHas('mataPelajaran', function($q) {
+                $q->where('semester', 2);
+            })
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('nilai_akhir_rapor', '!=', null)
+            ->get()
+            ->map(function($nilai) {
+                return [
+                    'id' => $nilai->id,
+                    'mata_pelajaran_id' => $nilai->mata_pelajaran_id,
+                    'mata_pelajaran' => $nilai->mataPelajaran ? $nilai->mataPelajaran->nama_pelajaran : null,
+                    'nilai_akhir_rapor' => $nilai->nilai_akhir_rapor
+                ];
+            });
+            
+        // Cek absensi siswa
+        $absensiSemester1 = \App\Models\Absensi::where('siswa_id', $siswa->id)
+            ->where('semester', 1)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->first();
+            
+        $absensiSemester2 = \App\Models\Absensi::where('siswa_id', $siswa->id)
+            ->where('semester', 2)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->first();
+            
+        // Compile semua data untuk debugging
+        return response()->json([
+            'siswa' => [
+                'id' => $siswa->id,
+                'nis' => $siswa->nis,
+                'nisn' => $siswa->nisn,
+                'nama' => $siswa->nama,
+                'kelas_id' => $siswa->kelas_id,
+                'tahun_ajaran_id' => $siswa->tahun_ajaran_id
+            ],
+            'kelas' => $kelasDetail,
+            'templates' => [
+                'UTS' => $templateUTS ? [
+                    'id' => $templateUTS->id,
+                    'filename' => $templateUTS->filename,
+                    'path' => $templateUTS->path,
+                    'is_active' => $templateUTS->is_active,
+                    'tahun_ajaran_id' => $templateUTS->tahun_ajaran_id
+                ] : null,
+                'UAS' => $templateUAS ? [
+                    'id' => $templateUAS->id,
+                    'filename' => $templateUAS->filename,
+                    'path' => $templateUAS->path,
+                    'is_active' => $templateUAS->is_active,
+                    'tahun_ajaran_id' => $templateUAS->tahun_ajaran_id
+                ] : null
+            ],
+            'mata_pelajaran' => [
+                'semester_1_count' => count($mapelSemester1),
+                'semester_1' => $mapelSemester1,
+                'semester_2_count' => count($mapelSemester2),
+                'semester_2' => $mapelSemester2
+            ],
+            'nilai' => [
+                'uts_count' => count($nilaiUTS),
+                'uts' => $nilaiUTS,
+                'uas_count' => count($nilaiUAS),
+                'uas' => $nilaiUAS,
+            ],
+            'absensi' => [
+                'semester_1' => $absensiSemester1 ? [
+                    'id' => $absensiSemester1->id,
+                    'sakit' => $absensiSemester1->sakit,
+                    'izin' => $absensiSemester1->izin,
+                    'tanpa_keterangan' => $absensiSemester1->tanpa_keterangan,
+                    'tahun_ajaran_id' => $absensiSemester1->tahun_ajaran_id
+                ] : null,
+                'semester_2' => $absensiSemester2 ? [
+                    'id' => $absensiSemester2->id,
+                    'sakit' => $absensiSemester2->sakit,
+                    'izin' => $absensiSemester2->izin,
+                    'tanpa_keterangan' => $absensiSemester2->tanpa_keterangan,
+                    'tahun_ajaran_id' => $absensiSemester2->tahun_ajaran_id
+                ] : null
+            ],
+            'ekstrakurikuler' => $siswa->nilaiEkstrakurikuler->map(function($eks) {
+                return [
+                    'id' => $eks->id,
+                    'ekstrakurikuler_id' => $eks->ekstrakurikuler_id,
+                    'nama_ekstrakurikuler' => $eks->ekstrakurikuler ? $eks->ekstrakurikuler->nama_ekstrakurikuler : null,
+                    'predikat' => $eks->predikat,
+                    'deskripsi' => $eks->deskripsi,
+                    'tahun_ajaran_id' => $eks->tahun_ajaran_id
+                ];
+            }),
+            'session' => [
+                'tahun_ajaran_id' => $tahunAjaranId
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => array_slice($e->getTrace(), 0, 5)
+        ], 500);
+    }
+})->name('debug.siswa.487');
+
     // Add this to your routes/web.php file
     Route::get('/debug/siswa-wali-kelas', function() {
         $guru = auth()->guard('guru')->user();

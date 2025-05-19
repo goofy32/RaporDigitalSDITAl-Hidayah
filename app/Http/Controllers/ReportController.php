@@ -562,44 +562,56 @@ class ReportController extends Controller
     
     public function previewRapor($siswa_id) {
         try {
+            // Ambil tipe rapor dari query param
+            $type = request('type', 'UTS');
+            $tahunAjaranId = session('tahun_ajaran_id');
+            
+            // Ambil semester dari tahun ajaran
+            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+            $semester = $tahunAjaran ? $tahunAjaran->semester : 1;
+            
+            \Log::info('Preview rapor', [
+                'siswa_id' => $siswa_id,
+                'type' => $type,
+                'semester' => $semester,
+                'tahun_ajaran_id' => $tahunAjaranId
+            ]);
+            
             // Cari siswa dengan relasi yang dibutuhkan
             $siswa = Siswa::with([
                 'kelas',
-                'nilais' => function($query) {
-                    $tahunAjaranId = session('tahun_ajaran_id');
-                    $type = request('type', 'UTS');
-                    $semester = $type === 'UTS' ? 1 : 2;
-                    
-                    // Pastikan filter tahun ajaran diterapkan
+                'nilais' => function($query) use ($tahunAjaranId, $semester) {
+                    // Filter nilai berdasarkan semester dan tahun ajaran
                     $query->where('tahun_ajaran_id', $tahunAjaranId);
-                    
-                    // Filter berdasarkan semester 
                     $query->whereHas('mataPelajaran', function($q) use ($semester) {
                         $q->where('semester', $semester);
                     });
                 },
                 'nilais.mataPelajaran',
-                
-                // Add proper filtering for ekstrakurikuler
-                'nilaiEkstrakurikuler' => function($query) {
-                    $tahunAjaranId = session('tahun_ajaran_id');
+                'nilaiEkstrakurikuler' => function($query) use ($tahunAjaranId) {
                     $query->where('tahun_ajaran_id', $tahunAjaranId);
                 },
                 'nilaiEkstrakurikuler.ekstrakurikuler',
-                
-                // Add proper filtering for absensi
-                'absensi' => function($query) {
-                    $type = request('type', 'UTS');
-                    $semester = $type === 'UTS' ? 1 : 2;
-                    $tahunAjaranId = session('tahun_ajaran_id');
-                    
+                'absensi' => function($query) use ($tahunAjaranId, $semester) {
                     $query->where('semester', $semester)
                         ->where('tahun_ajaran_id', $tahunAjaranId);
                 }
             ])->findOrFail($siswa_id);
             
+            // Logging untuk debug
+            \Log::info('Preview data loaded', [
+                'siswa_id' => $siswa->id,
+                'nilais_count' => $siswa->nilais->count(),
+                'ekstrakurikuler_count' => $siswa->nilaiEkstrakurikuler->count(),
+                'has_absensi' => $siswa->absensi ? true : false
+            ]);
+            
             // Render view ke HTML
-            $html = view('wali_kelas.rapor.preview', compact('siswa'))->render();
+            $html = view('wali_kelas.rapor.preview', [
+                'siswa' => $siswa,
+                'type' => $type,
+                'semester' => $semester
+            ])->render();
             
             // Kembalikan sebagai JSON response
             return response()->json([
@@ -945,18 +957,26 @@ class ReportController extends Controller
         $guru = auth()->user();
         $tahunAjaranId = session('tahun_ajaran_id');
         
-        // Log untuk debug
-        \Log::info('Rapor WaliKelas - Session Info:', [
-            'guru_id' => $guru->id,
-            'session_tahun_ajaran_id' => $tahunAjaranId
-        ]);
-        
-        // Periksa tahun ajaran saat ini ada di session
-        if (!$tahunAjaranId) {
-            return redirect()->back()->with('error', 'Tahun ajaran belum dipilih.');
+        // Ambil data tahun ajaran untuk mendapatkan semester yang benar
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        if (!$tahunAjaran) {
+            return redirect()->back()->with('error', 'Data tahun ajaran tidak ditemukan.');
         }
         
-        // Ambil kelas yang diwalikan untuk tahun ajaran saat ini
+        // PENTING: Semester dan tipe adalah dua hal berbeda!
+        // Semester bisa 1/2 (ganjil/genap)
+        // Tipe bisa UTS/UAS (tengah semester/akhir semester)
+        $semester = $tahunAjaran->semester; // 1 atau 2
+        $type = request('type', 'UTS'); // Default ke UTS, tapi bisa diubah dengan query param
+        
+        \Log::info('Rapor WaliKelas - Info penting:', [
+            'semester' => $semester,
+            'type' => $type,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'kombinasi_valid' => "Semester {$semester} - {$type}"
+        ]);
+        
+        // Ambil kelas yang diwalikan
         $kelas = DB::table('guru_kelas')
             ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
             ->where('guru_kelas.guru_id', $guru->id)
@@ -966,42 +986,28 @@ class ReportController extends Controller
             ->select('kelas.*')
             ->first();
         
-        // Log untuk debug
-        \Log::info('Rapor WaliKelas - Kelas Result:', [
-            'kelas' => $kelas ? json_encode($kelas) : 'null'
-        ]);
-        
         if (!$kelas) {
-            // Tampilkan pesan yang jelas
-            return redirect()->back()->with('error', 'Anda tidak menjadi wali kelas untuk tahun ajaran yang dipilih. Silakan pilih tahun ajaran dimana Anda menjadi wali kelas atau hubungi admin untuk menjadikan Anda wali kelas di tahun ajaran ini.');
+            return redirect()->back()->with('error', 'Anda tidak menjadi wali kelas untuk tahun ajaran yang dipilih.');
         }
         
-        // Ambil siswa dengan menggunakan kelas_id yang sudah ditemukan
-        $type = request('type', 'UTS');
-        
-        // Query siswa berdasarkan kelas_id saja
+        // Query siswa
         $siswa = Siswa::with(['nilais.mataPelajaran', 'absensi'])
             ->where('kelas_id', $kelas->id)
             ->get();
-        
-        // Log siswa yang ditemukan
-        \Log::info('Rapor WaliKelas - Siswa Found:', [
-            'count' => $siswa->count(),
-            'siswa_ids' => $siswa->pluck('id')->toArray(),
-            'siswa_names' => $siswa->pluck('nama')->toArray()
-        ]);
         
         // Prepare data for each student
         $diagnosisResults = [];
         $nilaiCounts = [];
         
         foreach ($siswa as $s) {
+            // Diagnosis tetap berdasarkan tipe, tapi perlu disesuaikan lagi
             $diagnosisResults[$s->id] = $s->diagnoseDataCompleteness($type);
             
-            // Calculate nilai count for each student
+            // Hitung jumlah nilai yang sudah memiliki nilai_akhir_rapor
+            // PENTING: Untuk UTS/UAS di semester yang sama, perlu dibedakan lagi
+            // dengan field tambahan di tabel nilai
             $nilaiCount = $s->nilais()
-                ->whereHas('mataPelajaran', function($q) use ($type) {
-                    $semester = $type === 'UTS' ? 1 : 2;
+                ->whereHas('mataPelajaran', function($q) use ($semester) {
                     $q->where('semester', $semester);
                 })
                 ->where('tahun_ajaran_id', $tahunAjaranId)
@@ -1011,7 +1017,15 @@ class ReportController extends Controller
             $nilaiCounts[$s->id] = $nilaiCount;
         }
         
-        return view('wali_kelas.rapor.index', compact('siswa', 'diagnosisResults', 'nilaiCounts'));
+        return view('wali_kelas.rapor.index', [
+            'siswa' => $siswa,
+            'diagnosisResults' => $diagnosisResults,
+            'nilaiCounts' => $nilaiCounts,
+            'type' => $type, // Kirim ke view
+            'semester' => $semester, // Kirim ke view
+            'tahunAjaran' => $tahunAjaran,
+            'kelas' => $kelas
+        ]);
     }
 
     public function activate(ReportTemplate $template)
@@ -1370,19 +1384,19 @@ class ReportController extends Controller
         }
     }
 
-    public function getTemplateForSiswa(Siswa $siswa, $type, $tahunAjaranId = null)
+    protected function getTemplateForSiswa(Siswa $siswa, $type, $tahunAjaranId = null)
     {
         $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
         
         \Log::info('Looking for template', [
             'siswa_id' => $siswa->id,
             'siswa_kelas_id' => $siswa->kelas_id,
-            'type' => $type,
+            'type' => $type, // UTS atau UAS
             'tahun_ajaran_id' => $tahunAjaranId
         ]);
         
         // First look for class-specific template using the many-to-many relationship
-        $template = ReportTemplate::where('type', $type)
+        $template = ReportTemplate::where('type', $type) // PENTING: ini adalah tipe UTS/UAS
             ->where('is_active', true)
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                 return $query->where('tahun_ajaran_id', $tahunAjaranId);

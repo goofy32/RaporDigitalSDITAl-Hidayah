@@ -98,33 +98,28 @@ class Siswa extends Model
      */
     public function diagnoseDataCompleteness($type = 'UTS')
     {
-        $semester = $type === 'UTS' ? 1 : 2;
+        // Ambil semester dari tahun ajaran aktif
         $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+        $semester = $tahunAjaran ? $tahunAjaran->semester : 1;
+        
+        \Log::info('diagnoseDataCompleteness untuk', [
+            'siswa_id' => $this->id,
+            'siswa_nama' => $this->nama,
+            'type' => $type, // UTS atau UAS
+            'semester' => $semester, // 1 atau 2
+            'tahun_ajaran_id' => $tahunAjaranId
+        ]);
+        
         $result = [
             'nilai_status' => false,
             'nilai_message' => '',
             'absensi_status' => false,
             'absensi_message' => '',
-            'semester_mismatch' => false,
-            'tahun_ajaran_mismatch' => false,
             'complete' => false
         ];
         
-        // Get current tahun ajaran dan semester
-        $currentTahunAjaran = null;
-        if ($tahunAjaranId) {
-            $currentTahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
-        }
-        
-        // Cek apakah ada ketidakcocokan antara semester rapor dan tahun ajaran
-        if ($currentTahunAjaran && $currentTahunAjaran->semester != $semester) {
-            $result['semester_mismatch'] = true;
-            $semesterName = $semester == 1 ? 'Ganjil (1)' : 'Genap (2)';
-            $currentSemesterName = $currentTahunAjaran->semester == 1 ? 'Ganjil (1)' : 'Genap (2)';
-            $result['semester_message'] = "Ketidakcocokan semester: Rapor {$type} membutuhkan semester {$semesterName}, tapi tahun ajaran aktif menggunakan semester {$currentSemesterName}";
-        }
-        
-        // Cek mata pelajaran
+        // Cek mata pelajaran untuk semester ini
         $mataPelajarans = $this->kelas->mataPelajarans()
             ->where('semester', $semester)
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
@@ -132,23 +127,9 @@ class Siswa extends Model
             })
             ->get();
         
-        // Cek apakah ada nilai di tahun ajaran lain
-        $nilaiTahunAjaranLain = $this->nilais()
-            ->whereHas('mataPelajaran', function($q) use ($semester) {
-                $q->where('semester', $semester);
-            })
-            ->where('nilai_akhir_rapor', '!=', null)
-            ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                return $query->where('tahun_ajaran_id', '!=', $tahunAjaranId);
-            })
-            ->exists();
-            
-        if ($nilaiTahunAjaranLain) {
-            $result['tahun_ajaran_mismatch'] = true;
-            $result['tahun_ajaran_message'] = "Nilai tersedia di tahun ajaran lain, tapi tidak di tahun ajaran aktif";
-        }
-        
         // Cek nilai di tahun ajaran yang aktif
+        // PENTING: Untuk membedakan nilai UTS dan UAS, idealnya ada field tambahan
+        // tapi untuk saat ini, kita bisa gunakan semua nilai yang ada di semester yang sama
         $nilaiCount = $this->nilais()
             ->whereHas('mataPelajaran', function($q) use ($semester) {
                 $q->where('semester', $semester);
@@ -163,37 +144,15 @@ class Siswa extends Model
             $result['nilai_status'] = true;
             $result['nilai_message'] = "Data nilai lengkap ({$nilaiCount} mata pelajaran)";
         } else {
-            // Periksa berbagai kemungkinan masalah nilai
-            if ($result['tahun_ajaran_mismatch']) {
-                $result['nilai_message'] = "Nilai tersedia di tahun ajaran lain, tapi tidak di tahun ajaran aktif";
+            // Berbagai kemungkinan masalah nilai
+            if ($mataPelajarans->count() == 0) {
+                $result['nilai_message'] = "Tidak ada mata pelajaran untuk semester {$semester} pada tahun ajaran ini";
             } else {
-                // Cek apakah nilai TP/LM sudah diisi tapi nilai akhir belum
-                $hasPartialNilai = $this->nilais()
-                    ->whereHas('mataPelajaran', function($q) use ($semester) {
-                        $q->where('semester', $semester);
-                    })
-                    ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                        return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                    })
-                    ->where(function($q) {
-                        $q->whereNotNull('nilai_tp')
-                        ->orWhereNotNull('nilai_lm')
-                        ->orWhereNotNull('nilai_tes')
-                        ->orWhereNotNull('nilai_non_tes');
-                    })
-                    ->exists();
-                    
-                if ($hasPartialNilai) {
-                    $result['nilai_message'] = "Nilai TP/LM/Tes sudah diisi, tapi nilai akhir rapor belum dihitung";
-                } else if ($mataPelajarans->count() == 0) {
-                    $result['nilai_message'] = "Tidak ada mata pelajaran untuk semester {$semester} pada tahun ajaran ini";
-                } else {
-                    $result['nilai_message'] = "Belum ada nilai yang diinput sama sekali";
-                }
+                $result['nilai_message'] = "Belum ada nilai yang diinput sama sekali untuk semester {$semester}";
             }
         }
         
-        // Cek kehadiran semester yang sesuai dan tahun ajaran
+        // Cek kehadiran untuk semester ini
         $absensi = $this->absensi()
             ->where('semester', $semester)
             ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
@@ -205,19 +164,7 @@ class Siswa extends Model
             $result['absensi_status'] = true;
             $result['absensi_message'] = "Data absensi lengkap";
         } else {
-            // Cek apakah absensi ada di tahun ajaran lain
-            $absensiTahunAjaranLain = $this->absensi()
-                ->where('semester', $semester)
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', '!=', $tahunAjaranId);
-                })
-                ->exists();
-                
-            if ($absensiTahunAjaranLain) {
-                $result['absensi_message'] = "Data absensi tersedia di tahun ajaran lain, tapi tidak di tahun ajaran aktif";
-            } else {
-                $result['absensi_message'] = "Data absensi belum diinput untuk semester {$semester}";
-            }
+            $result['absensi_message'] = "Data absensi belum diinput untuk semester {$semester}";
         }
         
         $result['complete'] = $result['nilai_status'] && $result['absensi_status'];

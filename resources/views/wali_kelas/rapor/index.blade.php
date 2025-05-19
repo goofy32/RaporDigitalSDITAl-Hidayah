@@ -270,55 +270,45 @@
 <script>
 document.addEventListener('alpine:init', function() {
     Alpine.data('raporManager', () => ({
-        activeTab: 'UTS',
+        activeTab: '{{ $type }}', // Gunakan tipe dari controller
         loading: false,
         initialized: false,
         selectedSiswa: [],
         searchQuery: '',
         showPreview: false,
         previewContent: '',
-        templateUASActive: false,
         templateUTSActive: false,
+        templateUASActive: false,
         tahunAjaranId: "{{ session('tahun_ajaran_id') }}",
+        semester: {{ $semester }}, // Tambahkan semester dari controller
         
         init() {
             console.log('Initializing raporManager');
             // Cek template yang aktif terlebih dahulu
             this.checkActiveTemplates().then((data) => {
                 this.initialized = true;
-
-                // Kita perlu tahu mana template yang aktif
-                const utsActive = data.UTS_active;
-                const uasActive = data.UAS_active;
+                this.templateUTSActive = data.UTS_active;
+                this.templateUASActive = data.UAS_active;
                 
                 // Tentukan tab default berdasarkan template yang aktif
-                if (uasActive) {
-                    this.activeTab = 'UAS'; // Jika UAS aktif, tampilkan tab UAS secara default
-                } else if (utsActive) {
-                    this.activeTab = 'UTS'; // Jika hanya UTS yang aktif
-                } else {
-                    // Jika keduanya tidak aktif, tetap di UTS tapi munculkan pesan
+                if (this.templateUASActive && this.activeTab === 'UAS') {
+                    this.activeTab = 'UAS';
+                } else if (this.templateUTSActive && this.activeTab === 'UTS') {
                     this.activeTab = 'UTS';
-                    setTimeout(() => {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Tidak Ada Template Aktif',
-                            text: 'Tidak ada template rapor yang aktif. Silakan hubungi admin untuk mengaktifkan template.',
-                            confirmButtonColor: '#3085d6',
-                        });
-                    }, 500);
+                } else if (this.templateUASActive) {
+                    this.activeTab = 'UAS';
+                } else if (this.templateUTSActive) {
+                    this.activeTab = 'UTS';
+                } else {
+                    // Jika keduanya tidak aktif, tetap di tab yang diminta
+                    this.activeTab = '{{ $type }}';
                 }
                 
-                // Baru kemudian cek localStorage, tapi prioritaskan template yang aktif
+                // Baru kemudian cek localStorage
                 const savedTab = localStorage.getItem('activeRaporTab');
-                if (savedTab) {
-                    // Validasi apakah template untuk tab tersebut aktif
-                    if (savedTab === 'UAS' && uasActive) {
-                        this.activeTab = 'UAS';
-                    } else if (savedTab === 'UTS' && utsActive) {
-                        this.activeTab = 'UTS';
-                    }
-                    // Jika tidak aktif, tetap gunakan default yang sudah diatur di atas
+                if (savedTab && ((savedTab === 'UAS' && this.templateUASActive) || 
+                                 (savedTab === 'UTS' && this.templateUTSActive))) {
+                    this.activeTab = savedTab;
                 }
                 
                 // Simpan tab yang aktif ke localStorage
@@ -405,8 +395,11 @@ document.addEventListener('alpine:init', function() {
                 this.loading = true;
                 console.log('Fetching preview for siswa ID:', siswaId);
                 
-                // Tambahkan query parameter tahun_ajaran_id
-                const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}?tahun_ajaran_id=${this.tahunAjaranId}`);
+                // Gunakan activeTab, bukan hardcoded
+                const type = this.activeTab; 
+                
+                // Tambahkan query parameter tahun_ajaran_id dan type
+                const response = await fetch(`/wali-kelas/rapor/preview/${siswaId}?tahun_ajaran_id=${this.tahunAjaranId}&type=${type}`);
                 console.log('Preview response status:', response.status);
                 
                 // Jika tidak sukses, tampilkan detail error
@@ -429,38 +422,38 @@ document.addEventListener('alpine:init', function() {
                 }
             } catch (error) {
                 console.error('Error in handlePreview:', error);
-                alert('Terjadi kesalahan saat memuat preview rapor: ' + error.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Memuat Preview',
+                    text: error.message
+                });
             } finally {
                 this.loading = false;
             }
         },
 
-    async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
-        if (!this.validateData(nilaiCount, hasAbsensi)) return;
-        
-        try {
-            this.loading = true;
+        async handleGenerate(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
+            if (!this.validateData(nilaiCount, hasAbsensi)) return;
             
-            // Add logging to help diagnose the issue
-            console.log('Generating report for:', {
-                siswaId, 
-                type: this.activeTab,
-                tahunAjaranId: this.tahunAjaranId
-            });
-            
-            const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    type: this.activeTab,
-                    tahun_ajaran_id: this.tahunAjaranId,
-                    action: 'download'
-                })
-            });
+            try {
+                this.loading = true;
+                
+                // Gunakan tipe yang benar, bukan hardcoded
+                const type = this.activeTab;
+                
+                const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        tahun_ajaran_id: this.tahunAjaranId,
+                        action: 'download'
+                    })
+                });
 
             // Better error handling - log response status
             console.log('Response status:', response.status);
