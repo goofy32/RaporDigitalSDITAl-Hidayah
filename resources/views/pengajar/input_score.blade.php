@@ -3,6 +3,19 @@
 @section('title', 'Input Nilai Siswa')
 
 @section('content')
+<style>
+    /* Remove spinner buttons from number inputs */
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+    
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+</style>
+
 <div class="p-4 mt-16 bg-white shadow-md rounded-lg">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700 flex items-center gap-2">
@@ -24,7 +37,7 @@
                     @click="window.saveData()"
                     x-bind:disabled="$store.formProtection.isSubmitting || {{ count($students) == 0 ? 'true' : 'false' }}"
                     class="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed">
-                <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpanx'"></span>
+                <span x-text="$store.formProtection.isSubmitting ? 'Menyimpan...' : 'Simpan'"></span>
             </button>
         </div>
     </div>
@@ -242,17 +255,39 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function markFormChanged() {
+    // Set our local formChanged variable
     formChanged = true;
-    window.$store.formProtection.markAsChanged();
+    
+    // Try to access the Alpine store only if it exists
+    try {
+        if (window.Alpine && Alpine.store('formProtection')) {
+            Alpine.store('formProtection').markAsChanged();
+        }
+    } catch (e) {
+        console.warn('Could not access Alpine formProtection store', e);
+    }
 }
 
 function updateCalculations(e) {
     // Tandai baris sebagai telah berubah untuk semua jenis input
     const row = e.target.closest('tr');
-    row.dataset.scoresChanged = 'true';
-    
-    calculateAverages(row);
-    markFormChanged();
+    if (row) {
+        row.dataset.scoresChanged = 'true';
+        
+        calculateAverages(row);
+        
+        // Mark form as changed without relying on Alpine.js
+        formChanged = true;
+        
+        // Try to use Alpine store if available
+        try {
+            if (window.Alpine && Alpine.store('formProtection')) {
+                Alpine.store('formProtection').markAsChanged();
+            }
+        } catch (e) {
+            console.warn('Could not access Alpine formProtection store', e);
+        }
+    }
 }
 
 // New function to only calculate intermediate values without affecting final scores
@@ -318,8 +353,8 @@ function calculateAverages(row) {
 
     tpInputs.forEach(input => {
         let value = parseFloat(input.value);
-        // Hapus kondisi '&& value > 0' agar nilai 0 dianggap valid
-        if (!isNaN(value)) {
+        // Only count values that are not empty and not NaN
+        if (!isNaN(value) && input.value !== '') {
             tpSum += value;
             validTpCount++;
         }
@@ -328,6 +363,9 @@ function calculateAverages(row) {
     if (validTpCount > 0) {
         let naTP = tpSum / validTpCount;
         row.querySelector('.na-tp').value = naTP.toFixed(2);
+    } else {
+        // If no valid inputs, clear the average
+        row.querySelector('.na-tp').value = '';
     }
 
     // 2. Hitung rata-rata Nilai LM 
@@ -337,7 +375,7 @@ function calculateAverages(row) {
 
     lmInputs.forEach(input => {
         let value = parseFloat(input.value);
-        if (!isNaN(value)) { // Hapus kondisi && value > 0
+        if (!isNaN(value) && input.value !== '') {
             lmSum += value;
             validLmCount++;
         }
@@ -346,32 +384,47 @@ function calculateAverages(row) {
     if (validLmCount > 0) {
         let naLM = lmSum / validLmCount;
         row.querySelector('.na-lm').value = naLM.toFixed(2);
+    } else {
+        // If no valid inputs, clear the average
+        row.querySelector('.na-lm').value = '';
     }
 
     // 3. Hitung Nilai Akhir Semester
-    let nilaiTes = parseFloat(row.querySelector('input[name*="[nilai_tes]"]').value) || 0;
-    let nilaiNonTes = parseFloat(row.querySelector('input[name*="[nilai_non_tes]"]').value) || 0;
-
-    // Selalu hitung, meskipun nilainya 0
-    let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
-    row.querySelector('input[name*="[nilai_akhir]"]').value = nilaiAkhirSemester.toFixed(2);
+    let nilaiTesInput = row.querySelector('input[name*="[nilai_tes]"]');
+    let nilaiNonTesInput = row.querySelector('input[name*="[nilai_non_tes]"]');
+    let nilaiTes = nilaiTesInput.value !== '' ? parseFloat(nilaiTesInput.value) : null;
+    let nilaiNonTes = nilaiNonTesInput.value !== '' ? parseFloat(nilaiNonTesInput.value) : null;
+    
+    let nilaiAkhirSemesterInput = row.querySelector('input[name*="[nilai_akhir]"]');
+    
+    // Calculate only if both test scores are available
+    if (nilaiTes !== null && nilaiNonTes !== null) {
+        let nilaiAkhirSemester = (nilaiTes * 0.6) + (nilaiNonTes * 0.4);
+        nilaiAkhirSemesterInput.value = nilaiAkhirSemester.toFixed(2);
+    } else {
+        nilaiAkhirSemesterInput.value = '';
+    }
 
     // 4. Hitung Nilai Akhir Rapor dengan bobot dinamis
-    let naTP = parseFloat(row.querySelector('.na-tp').value) || 0;
-    let naLM = parseFloat(row.querySelector('.na-lm').value) || 0;
+    let naTPInput = row.querySelector('.na-tp');
+    let naLMInput = row.querySelector('.na-lm');
+    let naTP = naTPInput.value !== '' ? parseFloat(naTPInput.value) : null;
+    let naLM = naLMInput.value !== '' ? parseFloat(naLMInput.value) : null;
+    let nilaiAkhirSemester = nilaiAkhirSemesterInput.value !== '' ? parseFloat(nilaiAkhirSemesterInput.value) : null;
 
     // Ambil bobot dari variabel global
     let bobotTP = parseFloat(window.bobotNilai?.bobot_tp || 0.25);
     let bobotLM = parseFloat(window.bobotNilai?.bobot_lm || 0.25);
     let bobotAS = parseFloat(window.bobotNilai?.bobot_as || 0.50);
 
-    // Selalu hitung ulang jika nilai berubah
-    if (row.dataset.scoresChanged === 'true') {
+    let nilaiAkhirRaporInput = row.querySelector('input[name*="[nilai_akhir_rapor]"]');
+    
+    // Calculate final grade only if all components are available
+    if (naTP !== null && naLM !== null && nilaiAkhirSemester !== null) {
         let nilaiAkhirRapor = (naTP * bobotTP) + (naLM * bobotLM) + (nilaiAkhirSemester * bobotAS);
-        row.querySelector('input[name*="[nilai_akhir_rapor]"]').value = Math.round(nilaiAkhirRapor);
-        
-        // Reset flag perubahan setelah kalkulasi
-        row.dataset.scoresChanged = 'false';
+        nilaiAkhirRaporInput.value = Math.round(nilaiAkhirRapor);
+    } else {
+        nilaiAkhirRaporInput.value = '';
     }
     
     // 5. Sorot nilai yang dibawah KKM
@@ -490,29 +543,27 @@ function deleteNilai(siswaId, mapelId) {
         cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Cari baris tabel yang sesuai dengan siswa
+            // Find the row for this student
             const row = document.querySelector(`input[name^="scores[${siswaId}]"]`).closest('tr');
             
             if (row) {
-                // Reset semua input nilai menjadi kosong
+                // Clear all input values (set to empty, not zero)
                 row.querySelectorAll('input[type="number"]').forEach(input => {
-                    input.value = '0';
+                    input.value = '';
+                    
+                    // Trigger change event manually to update calculations
+                    const event = new Event('input', { bubbles: true });
+                    input.dispatchEvent(event);
                 });
                 
-                // Tandai bahwa ada perubahan pada form
-                markFormChanged();
+                // Mark form as changed
+                formChanged = true;
                 
-                // Set atribut dataset untuk memaksa kalkulasi ulang
-                row.dataset.scoresChanged = 'true';
-                
-                // Hitung ulang nilai
-                calculateAverages(row);
-                
-                // Tampilkan pesan sukses
+                // Show success message
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil!',
-                    text: 'Nilai berhasil dihapus dari form. Klik "Simpan & Preview" untuk menyimpan perubahan.',
+                    text: 'Nilai berhasil dihapus dari form. Klik "Simpan" untuk menyimpan perubahan.',
                     confirmButtonColor: '#10b981'
                 });
             } else {
@@ -529,10 +580,12 @@ function deleteNilai(siswaId, mapelId) {
 
 window.saveData = async function() {
     try {
+        // Always validate first
         if (!validateForm()) {
             return;
         }
 
+        // Show loading indicator
         Swal.fire({
             title: 'Menyimpan Nilai...',
             allowOutsideClick: false,
@@ -541,14 +594,12 @@ window.saveData = async function() {
             }
         });
 
-        const formData = new FormData(document.getElementById('saveForm'));
+        // Create a FormData object from the form
+        const form = document.getElementById('saveForm');
+        const formData = new FormData(form);
         
-        document.querySelectorAll('#students-table input[type="number"]').forEach(input => {
-            if (input.value === '') {
-                input.value = '0';
-            }
-        });
-        const response = await fetch(document.getElementById('saveForm').action, {
+        // Make the AJAX request
+        const response = await fetch(form.action, {
             method: 'POST',
             body: formData,
             headers: {
@@ -556,40 +607,52 @@ window.saveData = async function() {
             }
         });
 
+        // Parse the response
         const data = await response.json();
         
+        // Handle success
         if (data.success) {
-            // Reset the form changed flag after successful save
+            // Reset changed flags
             formChanged = false;
-            Alpine.store('formProtection').reset();
             
-            // Reset all rows' changed state since they're now saved
+            // Try to use Alpine store if available
+            try {
+                if (window.Alpine && Alpine.store('formProtection')) {
+                    Alpine.store('formProtection').reset();
+                }
+            } catch (e) {
+                console.warn('Could not access Alpine formProtection store', e);
+            }
+            
+            // Reset all row change flags
             document.querySelectorAll('#students-table tbody tr').forEach(row => {
                 row.dataset.scoresChanged = 'false';
             });
             
-            // Get the preview URL and score index URL
+            // Get navigation URLs
             const currentUrl = window.location.href;
             const previewUrl = currentUrl.replace('/input', '/preview');
-            const scoreIndexUrl = '/pengajar/score'; // URL to the score.blade.php
+            const scoreIndexUrl = '/pengajar/score';
             
+            // Show success message with options
             const result = await Swal.fire({
                 icon: 'success',
                 title: 'Berhasil!',
                 text: 'Nilai berhasil disimpan!',
                 confirmButtonText: 'Lihat Preview',
-                confirmButtonColor: '#10b981', // Green color
+                confirmButtonColor: '#10b981',
                 showCancelButton: true,
-                cancelButtonText: 'Ok',  // Changed "Lihat Detail" to "Ok"
-                cancelButtonColor: '#6b7280', // Gray color
+                cancelButtonText: 'Ok',
+                cancelButtonColor: '#6b7280',
                 reverseButtons: true
             });
             
+            // Handle user choice
             if (result.isConfirmed) {
-                // User memilih "Lihat Preview"
+                // User chose "Lihat Preview"
                 window.location.href = previewUrl;
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                // User memilih "Ok" - redirect to score index page
+                // User chose "Ok"
                 window.location.href = scoreIndexUrl;
             }
         } else {
@@ -597,7 +660,17 @@ window.saveData = async function() {
         }
     } catch (error) {
         console.error('Error:', error);
-        Alpine.store('formProtection').isSubmitting = false;
+        
+        // Try to reset Alpine store's submitting flag if available
+        try {
+            if (window.Alpine && Alpine.store('formProtection')) {
+                Alpine.store('formProtection').isSubmitting = false;
+            }
+        } catch (e) {
+            console.warn('Could not access Alpine formProtection store', e);
+        }
+        
+        // Show error message
         await Swal.fire({
             icon: 'error',
             title: 'Gagal!',

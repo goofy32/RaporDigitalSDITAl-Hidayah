@@ -130,9 +130,13 @@ class Guru extends Authenticatable
      */
     public function getKelasYangDiajarAttribute()
     {
-        return Kelas::whereHas('mataPelajarans', function($query) {
-            $query->where('guru_id', $this->id);
-        })->get();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        return Kelas::whereHas('mataPelajarans', function($query) use ($tahunAjaranId) {
+            $query->where('guru_id', $this->id)
+                ->where('tahun_ajaran_id', $tahunAjaranId);
+        })->where('tahun_ajaran_id', $tahunAjaranId)
+        ->get();
     }
 
     /**

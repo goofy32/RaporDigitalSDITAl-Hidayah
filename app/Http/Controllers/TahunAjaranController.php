@@ -265,6 +265,72 @@ class TahunAjaranController extends Controller
         }
     }
 
+    private function preserveTeacherAssignments($sourceTahunAjaran, $newTahunAjaran)
+    {
+        \Log::info("Starting teacher preservation process", [
+            'source_year' => $sourceTahunAjaran->id,
+            'new_year' => $newTahunAjaran->id
+        ]);
+        
+        // Step 1: Get ALL teachers from the source year
+        $sourceTeachers = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('kelas.tahun_ajaran_id', $sourceTahunAjaran->id)
+            ->select(
+                'guru_kelas.guru_id',
+                'guru_kelas.is_wali_kelas',
+                'guru_kelas.role',
+                'kelas.nomor_kelas',
+                'kelas.nama_kelas'
+            )
+            ->get();
+        
+        \Log::info("Found {$sourceTeachers->count()} teacher assignments in source year");
+        
+        // Step 2: For each teacher, find the SAME GRADE LEVEL class in the new year
+        foreach ($sourceTeachers as $teacher) {
+            // Look for the same grade level and section in the new year
+            $targetClass = Kelas::where('tahun_ajaran_id', $newTahunAjaran->id)
+                ->where('nomor_kelas', $teacher->nomor_kelas)
+                ->where('nama_kelas', $teacher->nama_kelas)
+                ->first();
+            
+            if ($targetClass) {
+                // Check if this assignment already exists to avoid duplicates
+                $exists = DB::table('guru_kelas')
+                    ->where('guru_id', $teacher->guru_id)
+                    ->where('kelas_id', $targetClass->id)
+                    ->where('role', $teacher->role)
+                    ->exists();
+                
+                if (!$exists) {
+                    // Create the new teacher assignment
+                    DB::table('guru_kelas')->insert([
+                        'guru_id' => $teacher->guru_id,
+                        'kelas_id' => $targetClass->id,
+                        'is_wali_kelas' => $teacher->is_wali_kelas,
+                        'role' => $teacher->role,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    \Log::info("Assigned teacher to new class", [
+                        'guru_id' => $teacher->guru_id,
+                        'nomor_kelas' => $teacher->nomor_kelas,
+                        'nama_kelas' => $teacher->nama_kelas,
+                        'new_kelas_id' => $targetClass->id
+                    ]);
+                }
+            } else {
+                \Log::warning("Could not find matching class in new year", [
+                    'grade' => $teacher->nomor_kelas,
+                    'section' => $teacher->nama_kelas
+                ]);
+            }
+        }
+    }
+
+
     public function advanceToNextSemester($id)
     {
         DB::beginTransaction();
@@ -797,10 +863,26 @@ class TahunAjaranController extends Controller
     public function processCopy(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'tahun_ajaran' => 'required|string|regex:/^\d{4}\/\d{4}$/',
+            'tahun_ajaran' => [
+                'required',
+                'string',
+                'regex:/^\d{4}\/\d{4}$/',
+                function ($attribute, $value, $fail) {
+                    // Check for existing academic years with this name
+                    $exists = TahunAjaran::withTrashed()
+                        ->where('tahun_ajaran', $value)
+                        ->where('semester', request('semester'))
+                        ->exists();
+                    
+                    if ($exists) {
+                        $fail('Tahun ajaran dan semester ini sudah ada. Silakan gunakan nama yang berbeda atau semester yang berbeda.');
+                    }
+                }
+            ],
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
             'semester' => 'required|integer|in:1,2',
+            'preserve_teacher_assignments' => 'boolean', 
             'copy_kelas' => 'boolean',
             'increment_kelas' => 'boolean',
             'create_kelas_one' => 'boolean',
@@ -810,6 +892,13 @@ class TahunAjaranController extends Controller
             'copy_kkm' => 'boolean',
             'copy_bobot_nilai' => 'boolean',
             'is_active' => 'boolean'
+        ]);
+
+        \Log::info("Starting academic year copy process", [
+            'source_id' => $id,
+            'increment_kelas' => $request->increment_kelas ? 'yes' : 'no',
+            'preserve_teachers' => $request->preserve_teacher_assignments ? 'yes' : 'no',
+            'create_kelas_one' => $request->create_kelas_one ? 'yes' : 'no'
         ]);
     
         if ($validator->fails()) {
@@ -839,24 +928,44 @@ class TahunAjaranController extends Controller
                 'deskripsi' => $request->deskripsi ?? ('Tahun Ajaran ' . $request->tahun_ajaran)
             ]);
     
-            // Copy kelas jika diminta
+            // Pass preserve_teacher_assignments to copyKelas
+            $preserveTeachers = $request->has('preserve_teacher_assignments');
+            $incrementKelasNumbers = $request->increment_kelas ?? false;
+            
             $kelasMapping = [];
             if ($request->copy_kelas) {
                 $kelasMapping = $this->copyKelas(
                     $sourceTahunAjaran, 
                     $newTahunAjaran, 
-                    $request->increment_kelas ?? false
+                    $incrementKelasNumbers,
+                    $preserveTeachers
                 );
                 
-                // Buat kelas 1 baru jika diminta
+                // Create Class 1 if requested
                 if ($request->create_kelas_one) {
                     $this->createKelasOne($newTahunAjaran);
                 }
+                
+                // Handle teacher assignments if preserving
+                if ($preserveTeachers) {
+                    $this->preserveTeacherAssignments($sourceTahunAjaran, $newTahunAjaran);
+                }
+
+                if ($request->create_kelas_one && $preserveTeachers) {
+                    $this->preserveClass1Teachers($sourceTahunAjaran, $newTahunAjaran);
+                }
             }
-    
-            // Copy mata pelajaran jika diminta
+
+            // Copy mata pelajaran jika diminta, dengan parameter tambahan
             if ($request->copy_mata_pelajaran) {
-                $this->copyMataPelajaran($sourceTahunAjaran, $newTahunAjaran, $request->semester, $kelasMapping);
+                $this->copyMataPelajaran(
+                    $sourceTahunAjaran, 
+                    $newTahunAjaran, 
+                    $request->semester, 
+                    $kelasMapping,
+                    $preserveTeachers,
+                    $incrementKelasNumbers
+                );
             }
     
             // Copy template rapor jika diminta
@@ -893,14 +1002,120 @@ class TahunAjaranController extends Controller
             return redirect()->back()->with('error', 'Gagal menyalin tahun ajaran: ' . $e->getMessage());
         }
     }
+
+    private function preserveClass1Teachers($sourceTahunAjaran, $newTahunAjaran)
+    {
+        // Get all Class 1 teachers from the source year
+        $class1Teachers = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('kelas.tahun_ajaran_id', $sourceTahunAjaran->id)
+            ->where('kelas.nomor_kelas', 1) // Only Class 1
+            ->select(
+                'guru_kelas.guru_id',
+                'guru_kelas.is_wali_kelas',
+                'guru_kelas.role',
+                'kelas.nama_kelas'
+            )
+            ->get();
+            
+        // Find new Class 1 entries and assign teachers
+        foreach ($class1Teachers as $teacher) {
+            $newClass1 = Kelas::where('tahun_ajaran_id', $newTahunAjaran->id)
+                ->where('nomor_kelas', 1)
+                ->where('nama_kelas', $teacher->nama_kelas)
+                ->first();
+                
+            if ($newClass1) {
+                // Check if already assigned
+                $exists = DB::table('guru_kelas')
+                    ->where('guru_id', $teacher->guru_id)
+                    ->where('kelas_id', $newClass1->id)
+                    ->exists();
+                    
+                if (!$exists) {
+                    DB::table('guru_kelas')->insert([
+                        'guru_id' => $teacher->guru_id,
+                        'kelas_id' => $newClass1->id,
+                        'is_wali_kelas' => $teacher->is_wali_kelas,
+                        'role' => $teacher->role,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    \Log::info("Preserved Class 1 teacher assignment", [
+                        'guru_id' => $teacher->guru_id,
+                        'new_class_id' => $newClass1->id
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function handleClass1TeacherAssignments($sourceTahunAjaran, $newTahunAjaran)
+    {
+        // Find all Class 1 teachers from source year
+        $class1Teachers = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('kelas.tahun_ajaran_id', $sourceTahunAjaran->id)
+            ->where('kelas.nomor_kelas', 1)
+            ->select(
+                'guru_kelas.guru_id',
+                'guru_kelas.is_wali_kelas',
+                'guru_kelas.role',
+                'kelas.nama_kelas'
+            )
+            ->get();
+        
+        // For each Class 1 teacher, assign them to the corresponding Class 1 in the new year
+        foreach ($class1Teachers as $teacher) {
+            $targetKelas = Kelas::where('tahun_ajaran_id', $newTahunAjaran->id)
+                ->where('nomor_kelas', 1)
+                ->where('nama_kelas', $teacher->nama_kelas)
+                ->first();
+                
+            if ($targetKelas) {
+                // Check if this assignment already exists
+                $exists = DB::table('guru_kelas')
+                    ->where('guru_id', $teacher->guru_id)
+                    ->where('kelas_id', $targetKelas->id)
+                    ->exists();
+                    
+                if (!$exists) {
+                    DB::table('guru_kelas')->insert([
+                        'guru_id' => $teacher->guru_id,
+                        'kelas_id' => $targetKelas->id,
+                        'is_wali_kelas' => $teacher->is_wali_kelas,
+                        'role' => $teacher->role,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    \Log::info("Assigned Class 1 teacher to new Class 1", [
+                        'guru_id' => $teacher->guru_id,
+                        'target_kelas_id' => $targetKelas->id,
+                        'nama_kelas' => $teacher->nama_kelas
+                    ]);
+                }
+            }
+        }
+    }
     
     // Metode helper untuk menyalin kelas dengan opsi peningkatan nomor kelas
-    private function copyKelas($sourceTahunAjaran, $newTahunAjaran, $incrementKelasNumbers = false)
+    private function copyKelas($sourceTahunAjaran, $newTahunAjaran, $incrementKelasNumbers = false, $preserveTeachers = false)
     {
         $sourceKelas = Kelas::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
         $kelasMapping = [];
         
-        foreach ($sourceKelas as $kelas) {
+        // Group source classes by their grade number and name
+        $sourceKelasGroups = $sourceKelas->groupBy(function($kelas) {
+            return $kelas->nomor_kelas . '-' . $kelas->nama_kelas;
+        });
+        
+        // Process each unique class (preventing duplicates)
+        foreach ($sourceKelasGroups as $classKey => $classGroup) {
+            // Take the first class from each group as our reference
+            $kelas = $classGroup->first();
+            
             $newKelas = $kelas->replicate();
             $newKelas->tahun_ajaran_id = $newTahunAjaran->id;
             
@@ -916,23 +1131,42 @@ class TahunAjaranController extends Controller
             
             $newKelas->save();
             
-            // Simpan mapping kelas lama ke kelas baru
-            $kelasMapping[$kelas->id] = $newKelas->id;
+            // Map ALL classes from this group to the new class
+            foreach ($classGroup as $sourceClass) {
+                $kelasMapping[$sourceClass->id] = $newKelas->id;
+            }
             
-            // Sync guru untuk kelas baru
-            $guruRelations = DB::table('guru_kelas')
-                              ->where('kelas_id', $kelas->id)
-                              ->get();
-            
-            foreach ($guruRelations as $relation) {
-                DB::table('guru_kelas')->insert([
-                    'guru_id' => $relation->guru_id,
-                    'kelas_id' => $newKelas->id,
-                    'is_wali_kelas' => $relation->is_wali_kelas,
-                    'role' => $relation->role,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
+            // Only copy teacher relationships if NOT preserving teachers
+            // This is the critical change
+            if (!$preserveTeachers) {
+                // Get all teacher relationships for this class group
+                $teacherIds = [];
+                foreach ($classGroup as $sourceClass) {
+                    $guruRelations = DB::table('guru_kelas')
+                        ->where('kelas_id', $sourceClass->id)
+                        ->get();
+                        
+                    foreach ($guruRelations as $relation) {
+                        // Create a unique key to prevent duplicate teacher assignments
+                        $relationKey = $relation->guru_id . '-' . $relation->is_wali_kelas . '-' . $relation->role;
+                        
+                        if (!isset($teacherIds[$relationKey])) {
+                            $teacherIds[$relationKey] = $relation;
+                        }
+                    }
+                }
+                
+                // Add all unique teacher relationships to the new class
+                foreach ($teacherIds as $relation) {
+                    DB::table('guru_kelas')->insert([
+                        'guru_id' => $relation->guru_id,
+                        'kelas_id' => $newKelas->id,
+                        'is_wali_kelas' => $relation->is_wali_kelas,
+                        'role' => $relation->role,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
             }
         }
         
@@ -942,6 +1176,16 @@ class TahunAjaranController extends Controller
     // Metode baru untuk membuat kelas 1 di tahun ajaran baru
     private function createKelasOne($tahunAjaran)
     {
+        // First check if Class 1 already exists in this academic year
+        $existingKelas1 = Kelas::where('nomor_kelas', 1)
+            ->where('tahun_ajaran_id', $tahunAjaran->id)
+            ->get();
+            
+        $existingKelasMap = [];
+        foreach ($existingKelas1 as $kelas) {
+            $existingKelasMap[$kelas->nama_kelas] = $kelas;
+        }
+        
         // Ambil semua kelas 1 dari tahun ajaran sebelumnya sebagai referensi
         $lastYearKelas = Kelas::where('nomor_kelas', 1)
             ->where('tahun_ajaran_id', '!=', $tahunAjaran->id)
@@ -950,26 +1194,34 @@ class TahunAjaranController extends Controller
         
         // Jika tidak ada referensi, buat kelas 1A dan 1B
         if ($lastYearKelas->isEmpty()) {
-            $kelasA = new Kelas([
-                'nomor_kelas' => 1,
-                'nama_kelas' => 'A',
-                'tahun_ajaran_id' => $tahunAjaran->id
-            ]);
-            $kelasA->save();
+            // Only create if they don't already exist
+            if (!isset($existingKelasMap['A'])) {
+                $kelasA = new Kelas([
+                    'nomor_kelas' => 1,
+                    'nama_kelas' => 'A',
+                    'tahun_ajaran_id' => $tahunAjaran->id
+                ]);
+                $kelasA->save();
+            }
             
-            $kelasB = new Kelas([
-                'nomor_kelas' => 1,
-                'nama_kelas' => 'B',
-                'tahun_ajaran_id' => $tahunAjaran->id
-            ]);
-            $kelasB->save();
+            if (!isset($existingKelasMap['B'])) {
+                $kelasB = new Kelas([
+                    'nomor_kelas' => 1,
+                    'nama_kelas' => 'B',
+                    'tahun_ajaran_id' => $tahunAjaran->id
+                ]);
+                $kelasB->save();
+            }
         } else {
             // Salin struktur kelas 1 dari tahun sebelumnya
             foreach ($lastYearKelas as $kelas) {
-                $newKelas = $kelas->replicate();
-                $newKelas->tahun_ajaran_id = $tahunAjaran->id;
-                $newKelas->nomor_kelas = 1; // Pastikan nomor kelas adalah 1
-                $newKelas->save();
+                // Only create if this specific class section doesn't exist
+                if (!isset($existingKelasMap[$kelas->nama_kelas])) {
+                    $newKelas = $kelas->replicate();
+                    $newKelas->tahun_ajaran_id = $tahunAjaran->id;
+                    $newKelas->nomor_kelas = 1; // Pastikan nomor kelas adalah 1
+                    $newKelas->save();
+                }
             }
         }
     }
@@ -1021,18 +1273,39 @@ class TahunAjaranController extends Controller
     /**
      * Helper method untuk copy mata pelajaran dari satu tahun ajaran ke tahun ajaran lain.
      */
-    private function copyMataPelajaran($sourceTahunAjaran, $newTahunAjaran, $newSemester = null)
+    private function copyMataPelajaran($sourceTahunAjaran, $newTahunAjaran, $newSemester = null, $kelasMapping = [], $preserveTeachers = false, $incrementKelasNumbers = false)
     {
         $sourceMataPelajaran = MataPelajaran::where('tahun_ajaran_id', $sourceTahunAjaran->id)->get();
         
         // Ambil mapping kelas lama ke kelas baru
-        $kelasMapping = [];
-        $oldKelasIds = Kelas::where('tahun_ajaran_id', $sourceTahunAjaran->id)->pluck('id')->toArray();
-        $newKelasIds = Kelas::where('tahun_ajaran_id', $newTahunAjaran->id)->pluck('id')->toArray();
+        if (empty($kelasMapping)) {
+            $oldKelasIds = Kelas::where('tahun_ajaran_id', $sourceTahunAjaran->id)->pluck('id')->toArray();
+            $newKelasIds = Kelas::where('tahun_ajaran_id', $newTahunAjaran->id)->pluck('id')->toArray();
+            
+            // Jika jumlah kelas sama, asumsikan mereka berkorespondensi 1-1
+            if (count($oldKelasIds) === count($newKelasIds)) {
+                $kelasMapping = array_combine($oldKelasIds, $newKelasIds);
+            }
+        }
         
-        // Jika jumlah kelas sama, asumsikan mereka berkorespondensi 1-1
-        if (count($oldKelasIds) === count($newKelasIds)) {
-            $kelasMapping = array_combine($oldKelasIds, $newKelasIds);
+        // Jika preserveTeachers aktif, ambil mapping wali kelas per nomor kelas
+        $waliKelasMapping = [];
+        if ($preserveTeachers) {
+            // Ambil semua wali kelas dari tahun ajaran baru
+            $newWaliKelas = DB::table('guru_kelas')
+                ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+                ->where('kelas.tahun_ajaran_id', $newTahunAjaran->id)
+                ->where('guru_kelas.is_wali_kelas', true)
+                ->select('guru_kelas.guru_id', 'kelas.id as kelas_id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
+                ->get();
+                
+            // Buat mapping wali kelas berdasarkan nomor kelas dan nama kelas
+            foreach ($newWaliKelas as $wali) {
+                $key = $wali->nomor_kelas . '-' . $wali->nama_kelas;
+                $waliKelasMapping[$key] = $wali->guru_id;
+            }
+            
+            \Log::info("Wali Kelas mapping for new academic year:", $waliKelasMapping);
         }
         
         foreach ($sourceMataPelajaran as $mapel) {
@@ -1045,8 +1318,34 @@ class TahunAjaranController extends Controller
             }
             
             // Jika ada mapping kelas, gunakan kelas baru
-            if (isset($kelasMapping[$mapel->kelas_id])) {
-                $newMapel->kelas_id = $kelasMapping[$mapel->kelas_id];
+            $oldKelasId = $mapel->kelas_id;
+            $newKelasId = null;
+            
+            if (isset($kelasMapping[$oldKelasId])) {
+                $newKelasId = $kelasMapping[$oldKelasId];
+                $newMapel->kelas_id = $newKelasId;
+                
+                // Jika preserveTeachers aktif, update guru pengampu
+                if ($preserveTeachers) {
+                    // Ambil info kelas baru
+                    $newKelas = Kelas::find($newKelasId);
+                    
+                    if ($newKelas) {
+                        $kelasKey = $newKelas->nomor_kelas . '-' . $newKelas->nama_kelas;
+                        
+                        // Jika ada wali kelas untuk kelas ini, gunakan wali kelas tersebut
+                        if (isset($waliKelasMapping[$kelasKey])) {
+                            $newMapel->guru_id = $waliKelasMapping[$kelasKey];
+                            
+                            \Log::info("Updated mata pelajaran guru:", [
+                                'mata_pelajaran' => $mapel->nama_pelajaran,
+                                'old_guru_id' => $mapel->guru_id,
+                                'new_guru_id' => $newMapel->guru_id,
+                                'kelas' => $kelasKey
+                            ]);
+                        }
+                    }
+                }
             }
             
             $newMapel->save();

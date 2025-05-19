@@ -914,22 +914,57 @@ class ReportController extends Controller
     public function indexWaliKelas()
     {
         $guru = auth()->user();
-        $kelas = $guru->kelasWali;
-        
-        if (!$kelas) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan');
-        }
-        
-        $type = request('type', 'UTS');
         $tahunAjaranId = session('tahun_ajaran_id');
         
-        $siswa = $kelas->siswas()
-            ->with(['nilais.mataPelajaran', 'absensi'])
+        // Log untuk debug
+        \Log::info('Rapor WaliKelas - Session Info:', [
+            'guru_id' => $guru->id,
+            'session_tahun_ajaran_id' => $tahunAjaranId
+        ]);
+        
+        // Periksa tahun ajaran saat ini ada di session
+        if (!$tahunAjaranId) {
+            return redirect()->back()->with('error', 'Tahun ajaran belum dipilih.');
+        }
+        
+        // Ambil kelas yang diwalikan untuk tahun ajaran saat ini
+        $kelas = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $guru->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.*')
+            ->first();
+        
+        // Log untuk debug
+        \Log::info('Rapor WaliKelas - Kelas Result:', [
+            'kelas' => $kelas ? json_encode($kelas) : 'null'
+        ]);
+        
+        if (!$kelas) {
+            // Tampilkan pesan yang jelas
+            return redirect()->back()->with('error', 'Anda tidak menjadi wali kelas untuk tahun ajaran yang dipilih. Silakan pilih tahun ajaran dimana Anda menjadi wali kelas atau hubungi admin untuk menjadikan Anda wali kelas di tahun ajaran ini.');
+        }
+        
+        // Ambil siswa dengan menggunakan kelas_id yang sudah ditemukan
+        $type = request('type', 'UTS');
+        
+        // Query siswa berdasarkan kelas_id saja
+        $siswa = Siswa::with(['nilais.mataPelajaran', 'absensi'])
+            ->where('kelas_id', $kelas->id)
             ->get();
+        
+        // Log siswa yang ditemukan
+        \Log::info('Rapor WaliKelas - Siswa Found:', [
+            'count' => $siswa->count(),
+            'siswa_ids' => $siswa->pluck('id')->toArray(),
+            'siswa_names' => $siswa->pluck('nama')->toArray()
+        ]);
         
         // Prepare data for each student
         $diagnosisResults = [];
-        $nilaiCounts = []; // Add this array to track nilai counts
+        $nilaiCounts = [];
         
         foreach ($siswa as $s) {
             $diagnosisResults[$s->id] = $s->diagnoseDataCompleteness($type);
@@ -940,9 +975,7 @@ class ReportController extends Controller
                     $semester = $type === 'UTS' ? 1 : 2;
                     $q->where('semester', $semester);
                 })
-                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })
+                ->where('tahun_ajaran_id', $tahunAjaranId)
                 ->where('nilai_akhir_rapor', '!=', null)
                 ->count();
                 
