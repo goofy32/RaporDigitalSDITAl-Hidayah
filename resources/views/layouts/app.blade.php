@@ -14,7 +14,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
-    
     <!-- Preload critical images -->
     <link rel="preload" href="{{ asset('images/icons/dashboard-icon.png') }}" as="image" fetchpriority="high">
     <link rel="preload" href="{{ asset('images/icons/subject-icon.png') }}" as="image" fetchpriority="high">
@@ -37,14 +36,54 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    
-    <!-- For production, use these instead -->
-    <!-- <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script> -->
-    <!-- <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script> -->
-    
-    <!-- Babel for JSX (development only - remove in production) -->
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <!-- Content-area loading overlay styles with green theme -->
     <style>
+        /* Content-area loading overlay */
+        #content-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        
+        #content-loading-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Green loading spinner */
+        .content-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(34, 197, 94, 0.2); /* Green-500 with low opacity */
+            border-top: 3px solid #22c55e; /* Green-500 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+        }
+        
+        .content-spinner-text {
+            margin-top: 0.75rem;
+            font-size: 0.875rem;
+            color: #16a34a; /* Green-600 for text */
+            font-weight: 500;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         /* Fix sidebar active state styles - remove background colors */
         #logo-sidebar a.active,
         #logo-sidebar a:focus,
@@ -83,7 +122,7 @@
             transform: translateZ(0);
         }
 
-            /* Adjust disabled icon opacity */
+        /* Adjust disabled icon opacity */
         #logo-sidebar a.cursor-not-allowed img {
             opacity: 0.6 !important;
             filter: grayscale(1) brightness(0.4);
@@ -123,8 +162,7 @@
             min-width: 1.25rem !important;
             min-height: 1.25rem !important;
         }
-    </style>
-    <style>
+    
         [x-cloak] { 
             display: none !important; 
         }
@@ -149,7 +187,7 @@
 
         /* Prevent flash during navigation */
         .turbo-progress-bar {
-            background-color: #3B82F6 !important;
+            background-color: #22c55e !important; /* Green progress bar */
         }
 
         body.edit-subject-page #logo-sidebar {
@@ -160,11 +198,9 @@
             margin-left: 16rem !important;
         }
     </style>
-
-    <img src="{{ asset('images/logo/sdit-logo.png') }}" alt="SDIT Logo">
 </head>
 <body>
-    <!-- Add loading overlay component -->
+    <!-- Keep your existing content loading overlay component -->
     <x-content-loading-overlay />
 
     <x-admin.topbar data-turbo-permanent id="topbar"></x-admin.topbar>
@@ -182,7 +218,49 @@
         </script>
     @endif
 
-    <div class="p-4 sm:ml-64 min-h-screen bg-white">
+    <!-- Main content area with the loading overlay -->
+    <div class="p-4 sm:ml-64 min-h-screen bg-white relative">
+        <!-- Content-specific loading overlay - green theme -->
+        <div id="content-loading-overlay" 
+             x-data="{ 
+                 active: false,
+                 init() {
+                     // Show overlay when navigation starts
+                     document.addEventListener('turbo:before-visit', () => {
+                         this.active = true;
+                     });
+                     
+                     // Show on form submissions
+                     document.addEventListener('turbo:submit-start', () => {
+                         this.active = true;
+                     });
+                     
+                     // Hide when page is rendered
+                     document.addEventListener('turbo:render', () => {
+                         setTimeout(() => {
+                             this.active = false;
+                         }, 100);
+                     });
+                     
+                     // Additional events to hide the overlay
+                     document.addEventListener('turbo:load', () => {
+                         setTimeout(() => {
+                             this.active = false;
+                         }, 100);
+                     });
+                     
+                     document.addEventListener('turbo:before-fetch-response', () => {
+                         setTimeout(() => {
+                             this.active = false;
+                         }, 100);
+                     });
+                 }
+             }"
+             :class="{ 'active': active }">
+            <div class="content-spinner"></div>
+            <p class="content-spinner-text">Loading...</p>
+        </div>
+
         <div class="mt-14"> <!-- Padding top untuk navbar -->
             @if(session('tahun_ajaran_id') && isset($activeTahunAjaran) && $activeTahunAjaran && session('tahun_ajaran_id') != $activeTahunAjaran->id)
                 <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
@@ -253,7 +331,56 @@
             document.addEventListener('open-settings', function() {
                 window.dispatchEvent(new CustomEvent('open-settings'));
             });
+            
+            // Setup Alpine store for controlling loading state
+            if (window.Alpine) {
+                window.Alpine.store('contentLoading', {
+                    isLoading: false,
+                    
+                    startLoading() {
+                        this.isLoading = true;
+                        document.getElementById('content-loading-overlay').classList.add('active');
+                    },
+                    
+                    stopLoading() {
+                        this.isLoading = false;
+                        document.getElementById('content-loading-overlay').classList.remove('active');
+                    }
+                });
+            }
+            
+            // Force sidebar to be visible after navigation
+            const sidebar = document.getElementById('logo-sidebar');
+            if (sidebar) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('sm:translate-x-0');
+            }
+            
+            // Fix sidebar images and states
+            preloadAndCacheSidebarIcons();
+            if (typeof updateSidebarActiveState === 'function') {
+                updateSidebarActiveState();
+            }
         });
+        
+        // Force immediate loading of sidebar images
+        (function() {
+            const sidebarImages = document.querySelectorAll('#logo-sidebar img');
+            sidebarImages.forEach(img => {
+                // Force immediate loading by creating a new Image
+                const image = new Image();
+                image.onload = function() {
+                    img.style.opacity = '1';
+                    img.style.visibility = 'visible';
+                    img.setAttribute('data-loaded', 'true');
+                };
+                image.src = img.src;
+                
+                // Set default state
+                img.style.opacity = '1';
+                img.style.visibility = 'visible';
+            });
+        })();
     </script>
 
     @stack('scripts')

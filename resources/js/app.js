@@ -1431,6 +1431,18 @@ document.addEventListener('alpine:init', () => {
   }));
 });
 
+Alpine.store('pageTransition', {
+    isLoading: false,
+    
+    startLoading() {
+        this.isLoading = true;
+    },
+    
+    stopLoading() {
+        this.isLoading = false;
+    }
+});
+
 Alpine.store('pageLoading', {
     isLoading: false,
     elementStates: {}, // Track state per element
