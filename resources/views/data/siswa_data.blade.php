@@ -52,7 +52,7 @@
                         <tbody>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">NISN</th>
-                                <td class="px-4 py-2">{{ $student['nisn'] }}</td>
+                                <td class="px-4 py-2">{{ str_starts_with($student['nisn'], 'S2-') ? substr($student['nisn'], 3) : $student['nisn'] }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="px-4 py-2 font-medium text-gray-900">Nama</th>

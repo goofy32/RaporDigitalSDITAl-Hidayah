@@ -48,11 +48,11 @@
                         <tbody>
                             <tr class="border-b">
                                 <th class="text-left px-4 py-2 bg-gray-50 w-1/3">NISN</th>
-                                <td class="px-4 py-2">{{ $student->nisn }}</td>
+                                <td class="px-4 py-2">{{ str_starts_with($student->nisn, 'S2-') ? substr($student->nisn, 3) : $student->nisn }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="text-left px-4 py-2 bg-gray-50">NIS</th>
-                                <td class="px-4 py-2">{{ $student->nis }}</td>
+                                <td class="px-4 py-2">{{ str_starts_with($student->nis, 'S2-') ? substr($student->nis, 3) : $student->nis }}</td>
                             </tr>
                             <tr class="border-b">
                                 <th class="text-left px-4 py-2 bg-gray-50">Nama</th>
