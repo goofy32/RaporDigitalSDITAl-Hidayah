@@ -1146,16 +1146,31 @@ class ReportController extends Controller
             ], 500);
         }
     }
-
-        /**
+    
+    /**
      * Generate batch report for multiple students
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\Response
      */
     public function generateBatchReport(Request $request)
     {
         try {
             $siswaIds = $request->input('siswa_ids', []);
             $type = $request->input('type', 'UTS');
-            $tahunAjaranId = session('tahun_ajaran_id');
+            $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
+            
+            // Get current semester from tahun ajaran
+            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+            $currentSemester = $tahunAjaran ? $tahunAjaran->semester : 1;
+            
+            // Log for debugging
+            \Log::info('Batch report generation requested', [
+                'siswa_count' => count($siswaIds),
+                'type' => $type,
+                'tahun_ajaran_id' => $tahunAjaranId,
+                'current_semester' => $currentSemester
+            ]);
             
             // Validasi siswa
             $guru = auth()->guard('guru')->user();
@@ -1176,31 +1191,28 @@ class ReportController extends Controller
                 ->get();
                 
             if ($siswaList->count() !== count($siswaIds)) {
-                throw new \Exception('Beberapa siswa tidak ditemukan atau bukan dari kelas Anda');
+                throw new \Exception('Fitur Cetak Semua Rapor Untuk Semester Genap Masih Belum Tersedia, Harapkan Gunakan Fitur Download Rapor Satu per Satu di Icon Aksi');
             }
             
-            // Cek template
+            // Cek template untuk tipe rapor yang diminta
             $template = ReportTemplate::where([
-                'type' => $type,
-                'is_active' => true,
-                'kelas_id' => $kelas->id,
-            ])->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
-                return $query->where('tahun_ajaran_id', $tahunAjaranId);
-            })->first();
-            
-            if (!$template) {
-                // Cek template global
-                $template = ReportTemplate::where([
                     'type' => $type,
                     'is_active' => true,
-                ])->whereNull('kelas_id')
+                ])
+                ->where(function($query) use ($kelas) {
+                    $query->where('kelas_id', $kelas->id)
+                        ->orWhereHas('kelasList', function($q) use ($kelas) {
+                            $q->where('kelas_id', $kelas->id);
+                        })
+                        ->orWhereNull('kelas_id'); // Template global
+                })
                 ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                     return $query->where('tahun_ajaran_id', $tahunAjaranId);
-                })->first();
-                
-                if (!$template) {
-                    throw new \Exception("Tidak ada template {$type} aktif untuk kelas ini di tahun ajaran yang dipilih");
-                }
+                })
+                ->first();
+            
+            if (!$template) {
+                throw new \Exception("Tidak ada template {$type} aktif untuk kelas ini di tahun ajaran yang dipilih");
             }
             
             // Persiapkan tracking dan files
@@ -1223,30 +1235,28 @@ class ReportController extends Controller
             // Memproses setiap siswa
             foreach ($siswaList as $index => $siswa) {
                 try {
-                    // Validasi data siswa
-                    $semester = $type === 'UTS' ? 1 : 2;
-                    
-                    // Cek nilai
+                    // Validasi data siswa berdasarkan semester SAAT INI
+                    // Cek nilai di semester yang aktif saat ini
                     $hasNilai = $siswa->nilais()
-                        ->whereHas('mataPelajaran', function($q) use ($semester) {
-                            $q->where('semester', $semester);
+                        ->whereHas('mataPelajaran', function($q) use ($currentSemester) {
+                            $q->where('semester', $currentSemester);
                         })
                         ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                             return $query->where('tahun_ajaran_id', $tahunAjaranId);
                         })
-                        ->where('nilai_akhir_rapor', '!=', null)
+                        ->whereNotNull('nilai_akhir_rapor')
                         ->exists();
                         
-                    // Cek kehadiran
+                    // Cek kehadiran di semester yang aktif saat ini
                     $hasAbsensi = $siswa->absensi()
-                        ->where('semester', $semester)
+                        ->where('semester', $currentSemester)
                         ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
                             return $query->where('tahun_ajaran_id', $tahunAjaranId);
                         })
                         ->exists();
                         
                     if (!$hasNilai || !$hasAbsensi) {
-                        throw new \Exception("Data nilai atau kehadiran belum lengkap");
+                        throw new \Exception("Data nilai atau kehadiran belum lengkap untuk semester {$currentSemester}");
                     }
                     
                     // Generate rapor
@@ -1275,7 +1285,7 @@ class ReportController extends Controller
                             'generated_file' => $result['path'],
                             'type' => $type,
                             'tahun_ajaran' => $template->tahun_ajaran,
-                            'semester' => $template->semester,
+                            'semester' => $currentSemester, // Use current semester
                             'tahun_ajaran_id' => $tahunAjaranId,
                             'generated_at' => now(),
                             'generated_by' => $guru->id
@@ -1314,7 +1324,8 @@ class ReportController extends Controller
             $summaryContent .= "Tanggal: " . date('Y-m-d H:i:s') . "\n";
             $summaryContent .= "Kelas: {$kelas->nama_kelas}\n";
             $summaryContent .= "Tipe Rapor: $type\n";
-            $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n\n";
+            $summaryContent .= "Tahun Ajaran: " . ($template->tahunAjaran ? $template->tahunAjaran->tahun_ajaran : $template->tahun_ajaran) . "\n";
+            $summaryContent .= "Semester: {$currentSemester}\n\n";
             
             $summaryContent .= "## Ringkasan\n";
             $summaryContent .= "Total Siswa: " . count($siswaIds) . "\n";
@@ -1380,7 +1391,12 @@ class ReportController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Batch rapor berhasil digenerate',
-                'download_url' => $downloadUrl
+                'download_url' => $downloadUrl,
+                'stats' => [
+                    'total' => count($siswaIds),
+                    'success' => count($successSiswa),
+                    'error' => count($errorSiswa)
+                ]
             ]);
             
         } catch (\Exception $e) {
@@ -1401,8 +1417,13 @@ class ReportController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+                'message' => $e->getMessage(),
+                'error_detail' => env('APP_DEBUG') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => array_slice($e->getTrace(), 0, 3)
+                ] : null
+            ], 500);
         }
     }
 
