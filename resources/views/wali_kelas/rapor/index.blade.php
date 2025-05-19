@@ -592,7 +592,7 @@ document.addEventListener('alpine:init', function() {
         try {
             this.loading = true;
             
-            // Tampilkan loading indicator yang informatif
+            // Tampilkan loading indicator
             const loadingAlert = Swal.fire({
                 title: 'Memproses Rapor',
                 html: 'Mohon tunggu sebentar...',
@@ -630,40 +630,40 @@ document.addEventListener('alpine:init', function() {
                 }
             }
 
-            const blob = await response.blob();
+            const data = await response.json();
             
-            // Get the class name for a nicer filename
-            const classInfo = document.querySelector('h2').innerText.match(/Kelas\s+([^\s]+)/i);
-            const className = classInfo ? classInfo[1] : '';
-            
-            // Format: Rapor_Batch_UTS_Kelas1A_20230501.zip
-            const timestamp = new Date().toISOString().slice(0,10).replace(/-/g,'');
-            const fileName = `Rapor_Batch_${this.activeTab}_Kelas${className}_${timestamp}.zip`;
-            
-            await this.downloadFile(blob, fileName);
-            
-            // Notifikasi sukses
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil',
-                text: 'Batch rapor berhasil digenerate dan diunduh'
-            });
+            if (data.success && data.download_url) {
+                // Tampilkan Swal dengan link download
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Generate Batch Rapor',
+                    html: `
+                        <p>${data.message}</p>
+                        <p class="mt-4">Klik tombol di bawah untuk mengunduh:</p>
+                    `,
+                    confirmButtonText: 'Download ZIP',
+                    showCancelButton: true,
+                    cancelButtonText: 'Tutup'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Buka URL download di tab baru
+                        window.open(data.download_url, '_blank');
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Terjadi kesalahan saat memproses batch rapor'
+                });
+            }
         } catch (error) {
             console.error('Error:', error);
-            // Alert yang lebih informatif
+            
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal Mencetak Rapor',
-                html: `
-                    <p>${error.message}</p>
-                    <p class="mt-2 text-sm text-red-600">Kemungkinan penyebab:</p>
-                    <ul class="text-left mt-2 text-sm list-disc pl-5">
-                        <li>Data siswa tidak lengkap untuk tahun ajaran ${this.tahunAjaranId || 'yang dipilih'}</li>
-                        <li>Template rapor tidak tersedia atau tidak aktif</li>
-                        <li>Error server saat memproses (periksa log server)</li>
-                    </ul>
-                `,
-                confirmButtonText: 'Mengerti'
+                text: error.message || 'Terjadi kesalahan tak terduga'
             });
         } finally {
             this.loading = false;
