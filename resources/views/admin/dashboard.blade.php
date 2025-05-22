@@ -133,7 +133,6 @@
                                             <!-- Title with timestamp -->
                                             <div class="flex justify-between items-center mb-1">
                                                 <h3 class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></h3>
-                                                <span class="text-xs text-gray-500 ml-2 whitespace-nowrap" x-text="formatTimeStamp(item.created_at)"></span>
                                             </div>
                                             
                                             <!-- Content with no truncation - full text display -->
