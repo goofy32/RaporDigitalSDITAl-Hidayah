@@ -110,94 +110,253 @@ document.addEventListener('turbo:before-render', () => {
     }
 });
 
+
+// HAPUS komponen geminiChat yang lama dan ganti dengan ini:
+
 Alpine.data('geminiChat', () => ({
     isOpen: false,
     message: '',
     chats: [],
     isLoading: false,
     error: null,
+    suggestions: [
+        'Bagaimana cara login sebagai guru?',
+        'Format tahun ajaran yang benar?',
+        'Cara mengatasi duplikat tahun ajaran?',
+        'Langkah setup awal sistem?',
+        'Cara generate rapor siswa?',
+        'Troubleshooting template rapor?'
+    ],
+    showSuggestions: true,
     
     init() {
+        console.log('Gemini Chat initialized');
         this.loadHistory();
+        this.showWelcomeMessage();
+    },
+
+    // Getter untuk akses store
+    get knowledgeBaseLoaded() {
+        return this.$store.gemini.knowledgeBaseLoaded;
+    },
+
+    get apiKeyExists() {
+        return this.$store.gemini.apiKeyExists;
+    },
+    
+    showWelcomeMessage() {
+        if (this.chats.length === 0) {
+            this.chats.push({
+                message: 'Selamat datang!',
+                response: 'Halo! Saya adalah asisten AI untuk Sistem RAPOR SDIT Al-Hidayah. Saya dapat membantu Anda dengan:\n\n• Panduan login dan navigasi sistem\n• Setup awal dan konfigurasi\n• Troubleshooting masalah umum\n• Workflow penggunaan sehari-hari\n• Tips dan best practices\n\nSilakan tanyakan apa yang ingin Anda ketahui tentang sistem ini!',
+                created_at: new Date().toISOString(),
+                is_welcome: true
+            });
+        }
     },
     
     toggleChat() {
         this.isOpen = !this.isOpen;
-        if (this.isOpen && this.chats.length === 0) {
+        console.log('Chat toggled:', this.isOpen);
+        
+        if (this.isOpen) {
             this.loadHistory();
+            this.$nextTick(() => {
+                this.scrollToBottom();
+            });
         }
     },
     
     async loadHistory() {
+        console.log('Loading chat history...');
         try {
-            const response = await fetch('/admin/gemini/history');
+            const response = await fetch('/admin/gemini/history', {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            console.log('History response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            console.log('History data received:', data);
             
             if (data.success) {
-                this.chats = data.chats.reverse(); // Reverse agar yang terbaru ada di bawah
+                const historyChats = data.chats.filter(chat => !chat.is_welcome);
+                if (this.chats.length <= 1) {
+                    this.chats = [...this.chats, ...historyChats.reverse()];
+                }
+            } else {
+                console.error('History load failed:', data.message);
+                this.error = data.message || 'Gagal memuat riwayat chat';
             }
         } catch (error) {
             console.error('Error loading chat history:', error);
-            this.error = 'Gagal memuat riwayat chat';
+            this.error = 'Gagal memuat riwayat chat: ' + error.message;
         }
     },
     
-    async sendMessage() {
-        if (!this.message.trim()) return;
+    async sendMessage(messageText = null) {
+        // Pastikan messageText adalah string
+        let finalMessage = messageText;
+        if (finalMessage === null || finalMessage === undefined) {
+            finalMessage = this.message;
+        }
         
-        const userMessage = this.message;
+        // Convert to string dan trim
+        finalMessage = String(finalMessage || '');
+        
+        if (!finalMessage.trim()) {
+            console.log('Empty message, not sending');
+            return;
+        }
+        
+        console.log('Sending message:', finalMessage);
+        
+        // Reset form
         this.message = '';
         this.isLoading = true;
+        this.showSuggestions = false;
+        this.error = null;
         
-        // Tambahkan pesan user ke chat list
+        // Add user message to chat
         this.chats.push({
-            message: userMessage,
-            response: '...',
-            created_at: new Date().toISOString()
+            message: finalMessage,
+            response: 'Mengetik...',
+            created_at: new Date().toISOString(),
+            is_sending: true
         });
         
-        // Scroll ke bawah
-        this.$nextTick(() => {
-            const chatContainer = this.$refs.chatContainer;
-            if (chatContainer) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-        });
+        this.scrollToBottom();
         
         try {
             const response = await fetch('/admin/gemini/send-message', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ message: userMessage })
+                body: JSON.stringify({ message: finalMessage })
             });
             
-            const data = await response.json();
+            console.log('Send message response status:', response.status);
             
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Send message data received:', data);
+            
+            // Update last chat with response
+            const lastChatIndex = this.chats.length - 1;
             if (data.success) {
-                // Update chat terakhir dengan response
-                this.chats[this.chats.length - 1].response = data.response;
+                this.chats[lastChatIndex].response = data.response;
+                this.chats[lastChatIndex].id = data.chat?.id;
+                this.chats[lastChatIndex].is_sending = false;
             } else {
-                // Update chat terakhir dengan pesan error
-                this.chats[this.chats.length - 1].response = 'Maaf, terjadi kesalahan saat memproses pesan Anda.';
+                this.chats[lastChatIndex].response = `Error: ${data.message || 'Terjadi kesalahan saat memproses pesan'}`;
+                this.chats[lastChatIndex].is_error = true;
+                this.chats[lastChatIndex].is_sending = false;
             }
         } catch (error) {
             console.error('Error sending message:', error);
-            // Update chat terakhir dengan pesan error
-            this.chats[this.chats.length - 1].response = 'Maaf, terjadi kesalahan saat mengirim pesan.';
+            
+            // Update last chat with error
+            const lastChatIndex = this.chats.length - 1;
+            this.chats[lastChatIndex].response = `Connection Error: ${error.message}. Pastikan koneksi internet stabil dan coba lagi.`;
+            this.chats[lastChatIndex].is_error = true;
+            this.chats[lastChatIndex].is_sending = false;
+            
+            this.error = error.message;
         } finally {
             this.isLoading = false;
-            
-            // Scroll ke bawah lagi setelah respons
-            this.$nextTick(() => {
-                const chatContainer = this.$refs.chatContainer;
-                if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            });
+            this.scrollToBottom();
         }
+    },
+
+    // Tambahkan juga method untuk handle form submit
+    handleFormSubmit(event) {
+        event.preventDefault();
+        
+        // Ambil message dari input
+        const messageInput = event.target.querySelector('input[type="text"]');
+        if (messageInput) {
+            const message = messageInput.value;
+            this.sendMessage(message);
+        } else {
+            this.sendMessage();
+        }
+    },
+
+    // Method untuk suggestion yang aman
+    useSuggestion(suggestion) {
+        console.log('Using suggestion:', suggestion);
+        
+        // Pastikan suggestion adalah string
+        const safeMessage = String(suggestion || '');
+        if (safeMessage.trim()) {
+            this.sendMessage(safeMessage);
+        }
+    },
+    
+    clearChat() {
+        if (confirm('Apakah Anda yakin ingin menghapus riwayat chat?')) {
+            this.chats = [];
+            this.showWelcomeMessage();
+            this.showSuggestions = true;
+            this.error = null;
+            console.log('Chat cleared');
+        }
+    },
+    
+    scrollToBottom() {
+        this.$nextTick(() => {
+            const chatContainer = this.$refs.chatContainer;
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        });
+    },
+    
+    // Method untuk format waktu yang bisa diakses dari template
+    getRelativeTime(dateString) {
+        return this.$store.helpers.getRelativeTime(dateString);
+    },
+
+    formatTimestamp(dateString) {
+        return this.$store.helpers.formatTimestamp(dateString);
+    },
+
+    formatResponse(text) {
+        return this.$store.helpers.formatResponseText(text);
+    },
+    
+    copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Teks berhasil disalin');
+        }).catch(() => {
+            this.showToast('Gagal menyalin teks');
+        });
+    },
+    
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-4 left-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 transition-opacity';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
     }
 }));
 
@@ -454,13 +613,134 @@ document.addEventListener('DOMContentLoaded', preloadAndCacheSidebarIcons);
 document.addEventListener('turbo:load', preloadAndCacheSidebarIcons);
 document.addEventListener('turbo:render', preloadAndCacheSidebarIcons);
 
-
-
 document.addEventListener('alpine:init', () => {
-    Alpine.store('sidebar', {
-        dropdownState: {
+    // Gemini Store untuk global state
+    Alpine.store('gemini', {
+        knowledgeBaseLoaded: false,
+        apiKeyExists: false,
+        connectionTested: false,
+        
+        async checkStatus() {
+            try {
+                const response = await fetch('/admin/gemini/test-knowledge', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.knowledgeBaseLoaded = data.file_exists || false;
+                    this.apiKeyExists = data.api_key_exists || false;
+                    this.connectionTested = true;
+                    console.log('Gemini status checked:', { 
+                        knowledgeBaseLoaded: this.knowledgeBaseLoaded, 
+                        apiKeyExists: this.apiKeyExists 
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to check Gemini status:', error);
+                this.connectionTested = true;
+            }
+        }
+    });
 
+    // Helper functions store
+    Alpine.store('helpers', {
+        getRelativeTime(dateString) {
+            if (!dateString) return '';
+            
+            try {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return 'Baru saja';
+                if (diffMins < 60) return `${diffMins} menit lalu`;
+                if (diffHours < 24) return `${diffHours} jam lalu`;
+                if (diffDays < 7) return `${diffDays} hari lalu`;
+                
+                return date.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: diffDays > 365 ? 'numeric' : undefined
+                });
+            } catch (error) {
+                console.error('Error formatting relative time:', error);
+                return dateString;
+            }
         },
+
+        formatTimestamp(dateString) {
+            if (!dateString) return '';
+            
+            try {
+                const date = new Date(dateString);
+                const now = new Date();
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                const isToday = date.toDateString() === now.toDateString();
+                const isYesterday = date.toDateString() === yesterday.toDateString();
+                const isCurrentYear = date.getFullYear() === now.getFullYear();
+                
+                if (isToday) {
+                    return date.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else if (isYesterday) {
+                    return `Kemarin ${date.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    })}`;
+                } else if (isCurrentYear) {
+                    return `${date.toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short'
+                    })} ${date.toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    })}`;
+                } else {
+                    return date.toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+                }
+            } catch (e) {
+                console.error('Error formatting date:', e);
+                return dateString;
+            }
+        },
+
+        truncateText(text, maxLength = 50) {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        },
+
+        formatResponseText(text) {
+            if (!text) return '';
+            
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>')
+                .replace(/• /g, '• ');
+        }
+    });
+
+    // Sidebar Store (existing)
+    Alpine.store('sidebar', {
+        dropdownState: {},
         
         toggleDropdown(name) {
             this.dropdownState[name] = !this.dropdownState[name];
@@ -475,25 +755,7 @@ document.addEventListener('alpine:init', () => {
         }
     });
 
-    Alpine.data('placeholderGuide', () => ({
-        placeholderSearch: '',
-        activeCategory: 'siswa',
-        
-        init() {
-            // Initialize any required data
-        },
-        
-        copyPlaceholder(text) {
-            navigator.clipboard.writeText(text)
-                .then(() => {
-                    this.showFeedback('success', 'Placeholder berhasil disalin');
-                })
-                .catch(() => {
-                    this.showFeedback('error', 'Gagal menyalin placeholder');
-                });
-        }
-    }));
-
+    // Keyboard Shortcut Store (existing)
     Alpine.store('keyboardShortcut', {
         logoutKeyCombination: {
             key: 'l',
@@ -515,7 +777,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         confirmLogout() {
-            // Tampilkan konfirmasi sebelum logout
             const confirmed = confirm('Apakah Anda yakin ingin logout?');
             if (confirmed) {
                 this.logout();
@@ -544,6 +805,30 @@ document.addEventListener('alpine:init', () => {
             }
         }
     });
+
+    // Initialize stores
+    Alpine.store('gemini').checkStatus();
+    Alpine.store('keyboardShortcut').init();
+
+    // Existing components...
+    Alpine.data('placeholderGuide', () => ({
+        placeholderSearch: '',
+        activeCategory: 'siswa',
+        
+        init() {
+            // Initialize any required data
+        },
+        
+        copyPlaceholder(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    this.showFeedback('success', 'Placeholder berhasil disalin');
+                })
+                .catch(() => {
+                    this.showFeedback('error', 'Gagal menyalin placeholder');
+                });
+        }
+    }));
 });
 
 // Alpine Stores

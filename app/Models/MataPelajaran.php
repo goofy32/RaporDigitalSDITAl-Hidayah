@@ -64,6 +64,24 @@ class MataPelajaran extends Model
         });
     }
     
+    public function catatanMataPelajaran()
+    {
+        return $this->hasMany(CatatanMataPelajaran::class);
+    }
+
+    // Get catatan for specific student and type
+    public function getCatatanForSiswa($siswaId, $type = 'umum')
+    {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $selectedSemester = session('selected_semester', 1);
+        
+        return $this->catatanMataPelajaran()
+            ->where('siswa_id', $siswaId)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('semester', $selectedSemester)
+            ->where('type', $type)
+            ->first();
+    }
     /**
      * Scope untuk filter berdasarkan tahun ajaran
      */

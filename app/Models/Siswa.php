@@ -208,6 +208,27 @@ class Siswa extends Model
         });
     }
 
+    public function catatanSiswa()
+    {
+        return $this->hasMany(CatatanSiswa::class);
+    }
+
+    public function catatanMataPelajaran()
+    {
+        return $this->hasMany(CatatanMataPelajaran::class);
+    }
+
+    public function getCatatanForCurrentSemester($type = 'umum')
+    {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $selectedSemester = session('selected_semester', 1);
+        
+        return $this->catatanSiswa()
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('semester', $selectedSemester)
+            ->where('type', $type)
+            ->first();
+    }
     /**
      * Periksa apakah siswa berada di kelas yang diwalikan oleh guru
      * 

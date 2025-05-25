@@ -190,9 +190,21 @@ class RaporTemplateProcessor
             'fase' => $this->determineFase($this->siswa->kelas->nomor_kelas),
             'semester' => $this->schoolProfile->semester == 1 ? 'Ganjil' : 'Genap',
         ];
-    
+
+        // ========== CATATAN SISWA ==========
+        // Get student notes based on report type
+        $catatanType = strtolower($this->type); // 'uts' or 'uas'
+        
+        // Get general student notes (catatan_guru)
+        $catatanSiswa = \App\Models\CatatanSiswa::where('siswa_id', $this->siswa->id)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('semester', $semester)
+            ->where('type', $catatanType)
+            ->first();
+            
+        $data['catatan_guru'] = $catatanSiswa ? $catatanSiswa->catatan : '-';
+
         // Data Nilai - Filter berdasarkan tahun ajaran yang dipilih
-        $semester = $this->getReportDataSemester();
         $nilaiQuery = $this->siswa->nilais()
             ->with(['mataPelajaran'])
             ->whereHas('mataPelajaran', function($q) use ($semester) {
@@ -211,20 +223,20 @@ class RaporTemplateProcessor
             'mapel_list' => $nilai->keys()->toArray(),
             'tahun_ajaran_id' => $tahunAjaranId
         ]);
-    
+
         // Pisahkan mata pelajaran reguler dan muatan lokal
         $mapelReguler = $nilaiCollection->groupBy('mataPelajaran.nama_pelajaran')
             ->filter(function($value, $key) {
                 return $value->first() && 
-                       $value->first()->mataPelajaran && 
-                       $value->first()->mataPelajaran->is_muatan_lokal == 0;
+                    $value->first()->mataPelajaran && 
+                    $value->first()->mataPelajaran->is_muatan_lokal == 0;
             });
             
         $mulok = $nilaiCollection->groupBy('mataPelajaran.nama_pelajaran')
             ->filter(function($value, $key) {
                 return $value->first() && 
-                       $value->first()->mataPelajaran && 
-                       $value->first()->mataPelajaran->is_muatan_lokal == 1;
+                    $value->first()->mataPelajaran && 
+                    $value->first()->mataPelajaran->is_muatan_lokal == 1;
             });
             
         Log::info('Pembagian mata pelajaran:', [
@@ -233,7 +245,7 @@ class RaporTemplateProcessor
             'reguler_list' => $mapelReguler->keys()->toArray(),
             'mulok_list' => $mulok->keys()->toArray()
         ]);
-    
+
         // Definisi mata pelajaran wajib dengan urutan tertentu dan sinonim yang lebih tepat
         $priorityMapel = [
             'pai' => ['Pendidikan Agama Islam', 'PAI', 'Agama Islam', 'Pendidikan Agama dan Budi Pekerti'],
@@ -243,28 +255,16 @@ class RaporTemplateProcessor
             'pjok' => ['PJOK', 'Pendidikan Jasmani', 'Olahraga', 'Pendidikan Jasmani Olahraga dan Kesehatan'],
             'seni_musik' => ['Seni Musik', 'Musik', 'Kesenian', 'Seni', 'Seni Budaya', 'SBK'],
             'bahasa_inggris' => ['Bahasa Inggris', 'B. Inggris', 'English'],
-            'ips' => ['IPS', 'Ilmu Pengetahuan Sosial', 'Ilmu Sosial'] // Tambahkan IPS
+            'ips' => ['IPS', 'Ilmu Pengetahuan Sosial', 'Ilmu Sosial']
         ];
-    
+
         // Urutan standar mata pelajaran
         $mapelOrder = ['pai', 'ppkn', 'bahasa_indonesia', 'matematika', 'ips', 'seni_musik', 'pjok', 'bahasa_inggris'];
-    
-        // Nama-nama default untuk mapel (untuk placeholder)
-        $mapelNames = [
-            'pai' => 'Pendidikan Agama dan Budi Pekerti',
-            'ppkn' => 'Pendidikan Pancasila',
-            'bahasa_indonesia' => 'Bahasa Indonesia',
-            'matematika' => 'Matematika',
-            'ips' => 'Ilmu Pengetahuan Sosial',
-            'pjok' => 'Pendidikan Jasmani, Olahraga, dan Kesehatan',
-            'seni_musik' => 'Seni Musik',
-            'bahasa_inggris' => 'Bahasa Inggris'
-        ];
-    
+
         // Identifikasi semua mata pelajaran terlebih dahulu
         $mapelIdentified = [];
         $processedMapelNames = []; // Track nama mata pelajaran yang sudah diproses
-    
+
         foreach ($mapelReguler as $mapelName => $nilaiMapel) {
             $matchedKey = $this->findMatchingMapel($mapelName, $priorityMapel);
             
@@ -273,13 +273,15 @@ class RaporTemplateProcessor
                 if (!isset($mapelIdentified[$matchedKey])) {
                     $mapelIdentified[$matchedKey] = [
                         'name' => $mapelName,
-                        'nilai' => $nilaiMapel
+                        'nilai' => $nilaiMapel,
+                        'mata_pelajaran_id' => $nilaiMapel->first()->mata_pelajaran_id
                     ];
                     $processedMapelNames[] = $mapelName;
                     
                     Log::info("Mata pelajaran diidentifikasi", [
                         'nama' => $mapelName,
-                        'key' => $matchedKey
+                        'key' => $matchedKey,
+                        'mata_pelajaran_id' => $nilaiMapel->first()->mata_pelajaran_id
                     ]);
                 } else {
                     Log::warning("Duplikasi mata pelajaran terdeteksi", [
@@ -290,7 +292,7 @@ class RaporTemplateProcessor
                 }
             }
         }
-    
+
         // Siapkan struktur data untuk placeholder dinamis
         $dynamicPlaceholders = [];
         $mapelCount = 1;
@@ -302,6 +304,7 @@ class RaporTemplateProcessor
                 $mapelInfo = $mapelIdentified[$key];
                 $mapelName = $mapelInfo['name'];
                 $nilaiMapel = $mapelInfo['nilai'];
+                $mataPelajaranId = $mapelInfo['mata_pelajaran_id'];
                 
                 if (in_array($key, $processedKeys)) {
                     Log::warning("Mata pelajaran dengan key '$key' sudah diproses. Mengabaikan untuk mencegah duplikasi.", [
@@ -327,11 +330,24 @@ class RaporTemplateProcessor
                     $data["capaian_$key"] = $nilaiAkhir->deskripsi ?? 
                         $this->generateSpecificCapaian($nilaiValue, $key);
                         
+                    // ========== CATATAN MATA PELAJARAN ==========
+                    // Get subject-specific notes
+                    $catatanMapel = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
+                        ->where('siswa_id', $this->siswa->id)
+                        ->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->where('semester', $semester)
+                        ->where('type', $catatanType)
+                        ->first();
+                        
+                    $data["catatan_$key"] = $catatanMapel ? $catatanMapel->catatan : '-';
+                        
                     // Tambahkan ke placeholder dinamis
                     $dynamicPlaceholders[$mapelCount] = [
                         'nama' => $mapelName,
                         'nilai' => $data["nilai_$key"],
-                        'capaian' => $data["capaian_$key"]
+                        'capaian' => $data["capaian_$key"],
+                        'catatan' => $data["catatan_$key"],
+                        'mata_pelajaran_id' => $mataPelajaranId
                     ];
                     
                     $mapelCount++;
@@ -340,7 +356,8 @@ class RaporTemplateProcessor
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
                         'placeholder_position' => $mapelCount - 1,
-                        'tahun_ajaran_id' => $tahunAjaranId
+                        'tahun_ajaran_id' => $tahunAjaranId,
+                        'mata_pelajaran_id' => $mataPelajaranId
                     ]);
                 } else {
                     // Jika tidak ada nilai_akhir_rapor, gunakan rata-rata nilai lain dengan filter tahun ajaran
@@ -354,31 +371,47 @@ class RaporTemplateProcessor
                         $data["nilai_$key"] = number_format($avgNilai, 1);
                         $data["capaian_$key"] = $this->generateSpecificCapaian($avgNilai, $key);
                         
+                        // Get catatan for this subject
+                        $catatanMapel = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
+                            ->where('siswa_id', $this->siswa->id)
+                            ->where('tahun_ajaran_id', $tahunAjaranId)
+                            ->where('semester', $semester)
+                            ->where('type', $catatanType)
+                            ->first();
+                            
+                        $data["catatan_$key"] = $catatanMapel ? $catatanMapel->catatan : '-';
+                        
                         // Tambahkan ke placeholder dinamis
                         $dynamicPlaceholders[$mapelCount] = [
                             'nama' => $mapelName,
                             'nilai' => $data["nilai_$key"],
-                            'capaian' => $data["capaian_$key"]
+                            'capaian' => $data["capaian_$key"],
+                            'catatan' => $data["catatan_$key"],
+                            'mata_pelajaran_id' => $mataPelajaranId
                         ];
                         
                         $mapelCount++;
                     } else {
                         $data["nilai_$key"] = '-';
                         $data["capaian_$key"] = '-';
+                        $data["catatan_$key"] = '-';
                     }
                 }
             } else {
                 // Jika key tidak ada di data, set nilai default
                 $data["nilai_$key"] = '-';
                 $data["capaian_$key"] = '-';
+                $data["catatan_$key"] = '-';
                 
                 Log::info("Mata pelajaran $key tidak ditemukan dalam data siswa");
             }
         }
-    
+
         // Proses mata pelajaran reguler lainnya yang belum diidentifikasi
         foreach ($mapelReguler as $mapelName => $nilaiMapel) {
             if (!in_array($mapelName, $processedMapelNames) && $mapelCount <= 10) {
+                $mataPelajaranId = $nilaiMapel->first()->mata_pelajaran_id;
+                
                 // Cari nilai akhir rapor dengan filter tahun ajaran
                 $nilaiAkhir = $nilaiMapel
                     ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
@@ -390,12 +423,22 @@ class RaporTemplateProcessor
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
                     
+                    // Get catatan for this subject
+                    $catatanMapel = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
+                        ->where('siswa_id', $this->siswa->id)
+                        ->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->where('semester', $semester)
+                        ->where('type', $catatanType)
+                        ->first();
+                    
                     // Tambahkan ke placeholder dinamis
                     $dynamicPlaceholders[$mapelCount] = [
                         'nama' => $mapelName,
                         'nilai' => number_format($nilaiValue, 1),
                         'capaian' => $nilaiAkhir->deskripsi ?? 
-                            $this->generateCapaianDeskripsi($nilaiValue, $mapelName)
+                            $this->generateCapaianDeskripsi($nilaiValue, $mapelName),
+                        'catatan' => $catatanMapel ? $catatanMapel->catatan : '-',
+                        'mata_pelajaran_id' => $mataPelajaranId
                     ];
                     
                     $processedMapelNames[] = $mapelName;
@@ -405,29 +448,34 @@ class RaporTemplateProcessor
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
                         'placeholder_position' => $mapelCount - 1,
-                        'tahun_ajaran_id' => $tahunAjaranId
+                        'tahun_ajaran_id' => $tahunAjaranId,
+                        'mata_pelajaran_id' => $mataPelajaranId
                     ]);
                 }
             }
         }
-    
+
         // Isi placeholder dinamis di template
         for ($i = 1; $i <= 10; $i++) {
             if (isset($dynamicPlaceholders[$i])) {
                 $data["nama_matapelajaran$i"] = $dynamicPlaceholders[$i]['nama'];
                 $data["nilai_matapelajaran$i"] = $dynamicPlaceholders[$i]['nilai'];
                 $data["capaian_matapelajaran$i"] = $dynamicPlaceholders[$i]['capaian'];
+                $data["catatan_matapelajaran$i"] = $dynamicPlaceholders[$i]['catatan']; // NEW
             } else {
                 $data["nama_matapelajaran$i"] = '-';
                 $data["nilai_matapelajaran$i"] = '-';
                 $data["capaian_matapelajaran$i"] = '-';
+                $data["catatan_matapelajaran$i"] = '-'; // NEW
             }
         }
-    
-        // Proses Muatan Lokal dengan filter tahun ajaran
+
+        // Proses Muatan Lokal dengan filter tahun ajaran dan catatan
         $mulokCount = 1;
         foreach ($mulok as $nama => $nilaiMulok) {
             if ($mulokCount <= 5) {
+                $mataPelajaranId = $nilaiMulok->first()->mata_pelajaran_id;
+                
                 // Filter nilai berdasarkan tahun ajaran
                 $nilaiAkhir = $nilaiMulok
                     ->when($tahunAjaranId, function($collection) use ($tahunAjaranId) {
@@ -457,17 +505,28 @@ class RaporTemplateProcessor
                         $this->generateCapaianDeskripsi($avgNilai, $nama) : '-';
                 }
                 
+                // Get catatan for this muatan lokal
+                $catatanMulok = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
+                    ->where('siswa_id', $this->siswa->id)
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->where('semester', $semester)
+                    ->where('type', $catatanType)
+                    ->first();
+                    
+                $data["catatan_mulok$mulokCount"] = $catatanMulok ? $catatanMulok->catatan : '-'; // NEW
+                
                 $mulokCount++;
             }
         }
-    
+
         // Tambahkan default untuk muatan lokal yang tidak ada
         for ($i = $mulokCount; $i <= 5; $i++) {
             $data["nama_mulok$i"] = '-';
             $data["nilai_mulok$i"] = '-';
             $data["capaian_mulok$i"] = '-';
+            $data["catatan_mulok$i"] = '-'; // NEW
         }
-    
+
         // Data Ekstrakurikuler dengan filter tahun ajaran
         $ekstrakurikuler = $this->siswa->nilaiEkstrakurikuler()
             ->with('ekstrakurikuler')
@@ -486,7 +545,7 @@ class RaporTemplateProcessor
                 $data["ekskul{$i}_keterangan"] = '-';
             }
         }
-    
+
         // Data Kehadiran dengan filter tahun ajaran
         $absensi = $this->siswa->absensi()
             ->where('semester', $semester)
@@ -511,7 +570,7 @@ class RaporTemplateProcessor
             $data['kepala_sekolah'] = $this->schoolProfile->kepala_sekolah ?: '-';
             $data['wali_kelas'] = $this->siswa->kelas->waliKelasName ?: '-';
             $data['nip_kepala_sekolah'] = $this->schoolProfile->nip_kepala_sekolah ?? '-';
-            $data['nip_wali_kelas'] = '-'; // Tambahkan jika ada
+            $data['nip_wali_kelas'] = '-';
             $data['tanggal_terbit'] = date('d-m-Y');
             $data['tempat_terbit'] = $this->schoolProfile->tempat_terbit ?: '-';
             
@@ -545,10 +604,7 @@ class RaporTemplateProcessor
             $data['email_sekolah'] = '-';
             $data['npsn'] = '-';
         }
-        
-        // Catatan guru
-        $data['catatan_guru'] = '-';
-    
+
         // Log data akhir yang akan diisi ke template
         Log::info('Data placeholder yang telah disiapkan:', [
             'mata_pelajaran_count' => count(array_filter(array_keys($data), function($key) {
@@ -557,9 +613,10 @@ class RaporTemplateProcessor
             'mulok_count' => count(array_filter(array_keys($data), function($key) {
                 return strpos($key, 'nama_mulok') === 0;
             })),
-            'tahun_ajaran_id' => $tahunAjaranId
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'catatan_guru' => $data['catatan_guru']
         ]);
-    
+
         return $data;
     }
     

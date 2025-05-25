@@ -1,3 +1,4 @@
+{{-- resources/views/wali_kelas/student.blade.php --}}
 @extends('layouts.wali_kelas.app')
 
 @section('title', 'Data Siswa')
@@ -12,7 +13,6 @@
 
         <!-- Search Bar -->
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-            <!-- Perbaiki route untuk form pencarian -->
             <form action="{{ route('wali_kelas.student.index') }}" method="GET" class="w-full">
                 <div class="flex gap-2">
                     <input type="text" name="search" value="{{ request('search') }}"
@@ -58,18 +58,37 @@
                         <td class="px-6 py-4">{{ $student->jenis_kelamin }}</td>
                         <td class="px-6 py-4">
                             <div class="flex justify-center gap-2">
-                                <!-- Perbaiki semua route untuk tombol aksi -->
-                                <a href="{{ route('wali_kelas.student.show', $student->id) }}" class="text-blue-600 hover:text-blue-800">
+                                <!-- Detail -->
+                                <a href="{{ route('wali_kelas.student.show', $student->id) }}" 
+                                   class="text-blue-600 hover:text-blue-800"
+                                   title="Detail Siswa">
                                     <img src="{{ asset('images/icons/detail.png') }}" alt="Detail Icon" class="w-5 h-5">
                                 </a>
-                                <a href="{{ route('wali_kelas.student.edit', $student->id) }}" class="text-yellow-600 hover:text-yellow-800">
+                                
+                                <!-- Edit -->
+                                <a href="{{ route('wali_kelas.student.edit', $student->id) }}" 
+                                   class="text-yellow-600 hover:text-yellow-800"
+                                   title="Edit Siswa">
                                     <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
                                 </a>
+                                
+                                <!-- Catatan Siswa - NEW -->
+                                <a href="{{ route('wali_kelas.catatan.siswa.show', $student->id) }}" 
+                                   class="text-purple-600 hover:text-purple-800"
+                                   title="Catatan Siswa">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </a>
+                                
+                                <!-- Delete -->
                                 <form action="{{ route('wali_kelas.student.destroy', $student->id) }}" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-800" 
-                                        onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                                    <button type="submit" 
+                                            class="text-red-600 hover:text-red-800" 
+                                            title="Hapus Siswa"
+                                            onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
                                         <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
                                     </button>
                                 </form>
