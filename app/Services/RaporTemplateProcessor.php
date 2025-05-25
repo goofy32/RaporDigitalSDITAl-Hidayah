@@ -157,7 +157,7 @@ class RaporTemplateProcessor
         // Fallback to the old logic if tahun ajaran not found
         return $type === 'UTS' ? 1 : 2;
     }
-
+    
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
      * 
@@ -204,6 +204,9 @@ class RaporTemplateProcessor
             
         $data['catatan_guru'] = $catatanSiswa ? $catatanSiswa->catatan : '-';
 
+        // ========== AMBIL DATA KKM TERLEBIH DAHULU ==========
+        $kkmData = $this->getKkmData($tahunAjaranId);
+
         // Data Nilai - Filter berdasarkan tahun ajaran yang dipilih
         $nilaiQuery = $this->siswa->nilais()
             ->with(['mataPelajaran'])
@@ -221,7 +224,8 @@ class RaporTemplateProcessor
             'siswa_id' => $this->siswa->id,
             'mapel_count' => $nilai->count(),
             'mapel_list' => $nilai->keys()->toArray(),
-            'tahun_ajaran_id' => $tahunAjaranId
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'kkm_count' => count($kkmData)
         ]);
 
         // Pisahkan mata pelajaran reguler dan muatan lokal
@@ -340,6 +344,9 @@ class RaporTemplateProcessor
                         ->first();
                         
                     $data["catatan_$key"] = $catatanMapel ? $catatanMapel->catatan : '-';
+                    
+                    // ========== KKM MATA PELAJARAN ==========
+                    $data["kkm_$key"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
                         
                     // Tambahkan ke placeholder dinamis
                     $dynamicPlaceholders[$mapelCount] = [
@@ -347,6 +354,7 @@ class RaporTemplateProcessor
                         'nilai' => $data["nilai_$key"],
                         'capaian' => $data["capaian_$key"],
                         'catatan' => $data["catatan_$key"],
+                        'kkm' => $data["kkm_$key"], // BARU
                         'mata_pelajaran_id' => $mataPelajaranId
                     ];
                     
@@ -355,6 +363,7 @@ class RaporTemplateProcessor
                     Log::info("Mata pelajaran $key diproses", [
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
+                        'kkm' => $data["kkm_$key"],
                         'placeholder_position' => $mapelCount - 1,
                         'tahun_ajaran_id' => $tahunAjaranId,
                         'mata_pelajaran_id' => $mataPelajaranId
@@ -381,12 +390,16 @@ class RaporTemplateProcessor
                             
                         $data["catatan_$key"] = $catatanMapel ? $catatanMapel->catatan : '-';
                         
+                        // KKM untuk mata pelajaran dengan rata-rata nilai
+                        $data["kkm_$key"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
+                        
                         // Tambahkan ke placeholder dinamis
                         $dynamicPlaceholders[$mapelCount] = [
                             'nama' => $mapelName,
                             'nilai' => $data["nilai_$key"],
                             'capaian' => $data["capaian_$key"],
                             'catatan' => $data["catatan_$key"],
+                            'kkm' => $data["kkm_$key"],
                             'mata_pelajaran_id' => $mataPelajaranId
                         ];
                         
@@ -395,6 +408,7 @@ class RaporTemplateProcessor
                         $data["nilai_$key"] = '-';
                         $data["capaian_$key"] = '-';
                         $data["catatan_$key"] = '-';
+                        $data["kkm_$key"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
                     }
                 }
             } else {
@@ -402,6 +416,7 @@ class RaporTemplateProcessor
                 $data["nilai_$key"] = '-';
                 $data["capaian_$key"] = '-';
                 $data["catatan_$key"] = '-';
+                $data["kkm_$key"] = '70'; // Default KKM
                 
                 Log::info("Mata pelajaran $key tidak ditemukan dalam data siswa");
             }
@@ -438,6 +453,7 @@ class RaporTemplateProcessor
                         'capaian' => $nilaiAkhir->deskripsi ?? 
                             $this->generateCapaianDeskripsi($nilaiValue, $mapelName),
                         'catatan' => $catatanMapel ? $catatanMapel->catatan : '-',
+                        'kkm' => isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70', // BARU
                         'mata_pelajaran_id' => $mataPelajaranId
                     ];
                     
@@ -447,6 +463,7 @@ class RaporTemplateProcessor
                     Log::info("Mata pelajaran lainnya diproses", [
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
+                        'kkm' => $dynamicPlaceholders[$mapelCount-1]['kkm'],
                         'placeholder_position' => $mapelCount - 1,
                         'tahun_ajaran_id' => $tahunAjaranId,
                         'mata_pelajaran_id' => $mataPelajaranId
@@ -461,12 +478,14 @@ class RaporTemplateProcessor
                 $data["nama_matapelajaran$i"] = $dynamicPlaceholders[$i]['nama'];
                 $data["nilai_matapelajaran$i"] = $dynamicPlaceholders[$i]['nilai'];
                 $data["capaian_matapelajaran$i"] = $dynamicPlaceholders[$i]['capaian'];
-                $data["catatan_matapelajaran$i"] = $dynamicPlaceholders[$i]['catatan']; // NEW
+                $data["catatan_matapelajaran$i"] = $dynamicPlaceholders[$i]['catatan'];
+                $data["kkm_matapelajaran$i"] = $dynamicPlaceholders[$i]['kkm']; // BARU
             } else {
                 $data["nama_matapelajaran$i"] = '-';
                 $data["nilai_matapelajaran$i"] = '-';
                 $data["capaian_matapelajaran$i"] = '-';
-                $data["catatan_matapelajaran$i"] = '-'; // NEW
+                $data["catatan_matapelajaran$i"] = '-';
+                $data["kkm_matapelajaran$i"] = '70'; // BARU - Default KKM
             }
         }
 
@@ -513,7 +532,10 @@ class RaporTemplateProcessor
                     ->where('type', $catatanType)
                     ->first();
                     
-                $data["catatan_mulok$mulokCount"] = $catatanMulok ? $catatanMulok->catatan : '-'; // NEW
+                $data["catatan_mulok$mulokCount"] = $catatanMulok ? $catatanMulok->catatan : '-';
+                
+                // KKM untuk muatan lokal
+                $data["kkm_mulok$mulokCount"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70'; // BARU
                 
                 $mulokCount++;
             }
@@ -524,7 +546,8 @@ class RaporTemplateProcessor
             $data["nama_mulok$i"] = '-';
             $data["nilai_mulok$i"] = '-';
             $data["capaian_mulok$i"] = '-';
-            $data["catatan_mulok$i"] = '-'; // NEW
+            $data["catatan_mulok$i"] = '-';
+            $data["kkm_mulok$i"] = '70'; // BARU - Default KKM
         }
 
         // Data Ekstrakurikuler dengan filter tahun ajaran
@@ -613,16 +636,44 @@ class RaporTemplateProcessor
             'mulok_count' => count(array_filter(array_keys($data), function($key) {
                 return strpos($key, 'nama_mulok') === 0;
             })),
+            'kkm_count' => count(array_filter(array_keys($data), function($key) {
+                return strpos($key, 'kkm_') === 0;
+            })),
             'tahun_ajaran_id' => $tahunAjaranId,
             'catatan_guru' => $data['catatan_guru']
         ]);
 
         return $data;
     }
-    
-    // Bagian selanjutnya seperti findMatchingMapel(), determineFase(), dll. tetap sama
-    // ...
-    
+
+    /**
+     * Ambil data KKM untuk semua mata pelajaran
+     * 
+     * @param int|null $tahunAjaranId
+     * @return array
+     */
+    protected function getKkmData($tahunAjaranId = null)
+    {
+        $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
+        
+        // Ambil semua KKM berdasarkan tahun ajaran
+        $kkmCollection = \App\Models\Kkm::where('tahun_ajaran_id', $tahunAjaranId)
+            ->get();
+        
+        // Convert ke array dengan mata_pelajaran_id sebagai key
+        $kkmData = [];
+        foreach ($kkmCollection as $kkm) {
+            $kkmData[$kkm->mata_pelajaran_id] = $kkm->nilai;
+        }
+        
+        Log::info('Data KKM yang diambil:', [
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'kkm_count' => count($kkmData),
+            'kkm_data' => $kkmData
+        ]);
+        
+        return $kkmData;
+    }
     /**
      * Cari mata pelajaran yang cocok berdasarkan nama
      * 

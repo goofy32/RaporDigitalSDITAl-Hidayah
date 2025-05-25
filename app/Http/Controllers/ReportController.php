@@ -1541,10 +1541,10 @@ class ReportController extends Controller
             $dynamicPatterns = [
                 'nama_matapelajaran\d+',
                 'nilai_matapelajaran\d+',
-                'capaian_matapelajaran\d+',
+                'catatan_matapelajaran\d+',
                 'nama_mulok\d+',
                 'nilai_mulok\d+',
-                'capaian_mulok\d+',
+                'catatan_mulok\d+',
                 'ekskul\d+_nama',
                 'ekskul\d+_keterangan'
             ];
