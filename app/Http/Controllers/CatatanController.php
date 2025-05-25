@@ -107,29 +107,76 @@ class CatatanController extends Controller
     /**
      * Show list of subjects for adding notes
      */
-    public function indexCatatanMataPelajaran()
-    {
-        $guru = Auth::guard('guru')->user();
-        $tahunAjaranId = session('tahun_ajaran_id');
-        $selectedSemester = session('selected_semester', 1);
-        
-        // Get subjects taught by this teacher (including as wali kelas)
-        $kelas = $guru->kelasWali;
-        
-        if (!$kelas) {
-            return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan.');
-        }
-        
-        // Get subjects in the class that this teacher can manage
-        $mataPelajarans = MataPelajaran::where('kelas_id', $kelas->id)
-            ->where('tahun_ajaran_id', $tahunAjaranId)
-            ->where('semester', $selectedSemester)
-            ->with(['guru'])
-            ->orderBy('nama_pelajaran')
-            ->get();
-        
-        return view('wali_kelas.catatan.mata_pelajaran.index', compact('mataPelajarans', 'kelas'));
+public function indexCatatanMataPelajaran()
+{
+    $guru = Auth::guard('guru')->user();
+    $tahunAjaranId = session('tahun_ajaran_id');
+    
+    // FIX: Ambil semester dari tahun ajaran aktif, bukan dari session
+    $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
+    $correctSemester = $tahunAjaran ? $tahunAjaran->semester : 1;
+    
+    // Update session jika tidak sesuai
+    if (session('selected_semester') != $correctSemester) {
+        session(['selected_semester' => $correctSemester]);
+        \Log::info('Updated selected_semester to match tahun ajaran', [
+            'old_semester' => session('selected_semester'),
+            'new_semester' => $correctSemester,
+            'tahun_ajaran' => $tahunAjaran->tahun_ajaran ?? 'unknown'
+        ]);
     }
+    
+    $selectedSemester = $correctSemester; // Gunakan semester yang benar
+    
+    // Get kelas wali yang benar
+    $kelas = DB::table('guru_kelas')
+        ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+        ->where('guru_kelas.guru_id', $guru->id)
+        ->where('guru_kelas.is_wali_kelas', true)
+        ->where('guru_kelas.role', 'wali_kelas')
+        ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+        ->select('kelas.*')
+        ->first();
+    
+    if ($kelas) {
+        $kelas = \App\Models\Kelas::find($kelas->id);
+    }
+    
+    if (!$kelas) {
+        return redirect()->back()->with('error', 'Anda tidak memiliki kelas yang diwalikan untuk tahun ajaran ini.');
+    }
+    
+    \Log::info('CatatanController Fixed Debug', [
+        'guru_id' => $guru->id,
+        'tahun_ajaran_id' => $tahunAjaranId,
+        'correct_semester' => $correctSemester,
+        'kelas_id' => $kelas->id,
+        'tahun_ajaran_info' => $tahunAjaran ? [
+            'tahun_ajaran' => $tahunAjaran->tahun_ajaran,
+            'semester' => $tahunAjaran->semester,
+            'is_active' => $tahunAjaran->is_active
+        ] : null
+    ]);
+    
+    // Query dengan semester yang benar
+    $mataPelajarans = MataPelajaran::where('kelas_id', $kelas->id)
+        ->where('tahun_ajaran_id', $tahunAjaranId)
+        ->where('semester', $selectedSemester)
+        ->with(['guru'])
+        ->orderBy('nama_pelajaran')
+        ->get();
+    
+    \Log::info('Final MataPelajaran Query Result (Fixed)', [
+        'total' => $mataPelajarans->count(),
+        'query_conditions' => [
+            'kelas_id' => $kelas->id,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'semester' => $selectedSemester
+        ]
+    ]);
+    
+    return view('wali_kelas.catatan.mata_pelajaran.index', compact('mataPelajarans', 'kelas'));
+}
     
     /**
      * Show form for adding notes to a specific subject for all students

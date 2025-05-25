@@ -322,23 +322,14 @@ class DashboardController extends Controller
             ]);
             
             if (!$kelasWali) {
-                // Jika kelasWali tidak ditemukan, coba tampilkan semua relasi guru-kelas untuk debugging
-                $guruKelasRelations = DB::table('guru_kelas')
-                    ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
-                    ->where('guru_kelas.guru_id', $guru->id)
-                    ->select('guru_kelas.*', 'kelas.tahun_ajaran_id', 'kelas.nomor_kelas', 'kelas.nama_kelas')
-                    ->get();
-                    
-                \Log::info("Semua relasi guru-kelas", [
-                    'relations' => $guruKelasRelations
-                ]);
-                
                 return view('wali_kelas.dashboard', [
                     'totalSiswa' => 0,
                     'totalMapel' => 0,
                     'totalEkskul' => 0,
                     'totalAbsensi' => 0,
                     'kelas' => null,
+                    'mataPelajarans' => collect(), // Empty collection untuk dropdown
+                    'overallProgress' => 0, // Tambahkan overall progress
                     'notifications' => collect(),
                     'recentActivities' => collect(),
                     'schoolProfile' => \App\Models\ProfilSekolah::first()
@@ -357,6 +348,13 @@ class DashboardController extends Controller
             $totalMapel = \App\Models\MataPelajaran::where('kelas_id', $kelasWali->id)
                 ->where('tahun_ajaran_id', $tahunAjaranId)
                 ->count();
+                
+            // Get mata pelajaran untuk dropdown (sama seperti di pengajar)
+            $mataPelajarans = \App\Models\MataPelajaran::where('kelas_id', $kelasWali->id)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->with(['guru'])
+                ->orderBy('nama_pelajaran')
+                ->get();
             
             // Get absensi count
             $totalAbsensi = DB::table('absensis')
@@ -377,6 +375,9 @@ class DashboardController extends Controller
                 \Log::warning('Tabel nilai_ekstrakurikuler error: ' . $e->getMessage());
                 $totalEkskul = 0;
             }
+            
+            // Calculate overall progress untuk wali kelas (seperti di pengajar)
+            $overallProgress = $this->calculateOverallProgressForWaliKelas($kelasWali->id, $tahunAjaranId);
             
             // Get kelas info
             $kelas = \App\Models\Kelas::find($kelasWali->id);
@@ -426,6 +427,8 @@ class DashboardController extends Controller
                 'totalEkskul',
                 'totalAbsensi',
                 'kelas',
+                'mataPelajarans', // Tambahkan ini untuk dropdown
+                'overallProgress', // Tambahkan overall progress
                 'notifications',
                 'recentActivities',
                 'schoolProfile',
@@ -438,6 +441,114 @@ class DashboardController extends Controller
         }
     }
     
+    private function calculateOverallProgressForWaliKelas($kelasId, $tahunAjaranId = null)
+    {
+        try {
+            $tahunAjaranId = $tahunAjaranId ?: session('tahun_ajaran_id');
+            
+            // Get all students in this class
+            $totalStudents = \App\Models\Siswa::where('kelas_id', $kelasId)->count();
+            
+            // Get all mata pelajaran for this class
+            $mataPelajarans = \App\Models\MataPelajaran::where('kelas_id', $kelasId)
+                ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                    return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                })
+                ->get();
+                
+            if ($mataPelajarans->isEmpty() || $totalStudents === 0) {
+                \Log::info("No subjects or students found for wali kelas");
+                return 0;
+            }
+            
+            // Calculate the total number of scores needed
+            $totalScoresNeeded = 0;
+            $totalScoresCompleted = 0;
+            
+            foreach ($mataPelajarans as $mapel) {
+                // Each student needs a final score for each subject
+                $totalScoresNeeded += $totalStudents;
+                
+                // Count how many students have completed scores for this subject
+                $completedScores = \App\Models\Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->when($tahunAjaranId, function($query) use ($tahunAjaranId) {
+                        return $query->where('tahun_ajaran_id', $tahunAjaranId);
+                    })
+                    ->count();
+                    
+                $totalScoresCompleted += $completedScores;
+            }
+            
+            \Log::info("Wali Kelas - Total scores needed: {$totalScoresNeeded}, completed: {$totalScoresCompleted}");
+            
+            // Calculate percentage
+            $progress = $totalScoresNeeded > 0 ? 
+                min(100, ($totalScoresCompleted / $totalScoresNeeded) * 100) : 0;
+                
+            \Log::info("Calculated wali kelas overall progress: {$progress}%");
+            
+            return $progress;
+        } catch (\Exception $e) {
+            \Log::error('Error calculating wali kelas overall progress: ' . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    /**
+     * Get progress for a specific mata pelajaran (untuk wali kelas)
+     * 
+     * @param int $mataPelajaranId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMataPelajaranProgressWaliKelas($mataPelajaranId)
+    {
+        try {
+            $guru = Auth::guard('guru')->user();
+            if (!$guru) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $mataPelajaran = MataPelajaran::findOrFail($mataPelajaranId);
+            
+            // Check if this is the wali kelas for this subject's class
+            $isWaliKelas = DB::table('guru_kelas')
+                ->where('guru_id', $guru->id)
+                ->where('kelas_id', $mataPelajaran->kelas_id)
+                ->where('is_wali_kelas', true)
+                ->where('role', 'wali_kelas')
+                ->exists();
+                
+            if (!$isWaliKelas) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Get students in this class
+            $siswaCount = Siswa::where('kelas_id', $mataPelajaran->kelas_id)->count();
+            
+            if ($siswaCount === 0) {
+                return response()->json(['progress' => 0]);
+            }
+
+            // Count completed scores for this subject
+            $completedCount = Nilai::where('mata_pelajaran_id', $mataPelajaranId)
+                ->whereNotNull('nilai_akhir_rapor')
+                ->count();
+
+            // Calculate progress percentage (handle division by zero)
+            $progress = $siswaCount > 0 ? ($completedCount / $siswaCount) * 100 : 0;
+
+            return response()->json([
+                'progress' => round($progress, 2),
+                'completed' => $completedCount,
+                'total' => $siswaCount
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error calculating mata pelajaran progress for wali kelas: ' . $e->getMessage());
+            return response()->json(['error' => 'Terjadi kesalahan'], 500);
+        }
+    }
+
     // Method untuk mengambil progress keseluruhan kelas wali
     public function getOverallProgressWaliKelas()
     {

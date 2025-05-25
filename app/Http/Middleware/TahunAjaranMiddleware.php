@@ -24,56 +24,73 @@ class TahunAjaranMiddleware
         $tahunAjaranId = session('tahun_ajaran_id');
         
         // Jika tidak ada di session, gunakan tahun ajaran aktif
-        if (!$tahunAjaranId) {
+        if (!$tahunAjaranId || !$this->isValidTahunAjaranId($tahunAjaranId)) {
             $activeTahunAjaran = TahunAjaran::where('is_active', true)->first();
             
             if ($activeTahunAjaran) {
                 session(['tahun_ajaran_id' => $activeTahunAjaran->id]);
+                // FIX: Sync semester session dengan tahun ajaran aktif
+                session(['selected_semester' => $activeTahunAjaran->semester]);
                 $tahunAjaranId = $activeTahunAjaran->id;
+                \Log::info("Auto-sync tahun ajaran dan semester: Set ke tahun ajaran aktif (ID: {$tahunAjaranId}, Semester: {$activeTahunAjaran->semester})");
             } else {
-                // Jika tidak ada tahun ajaran aktif, gunakan tahun ajaran terbaru
-                $latestTahunAjaran = TahunAjaran::orderBy('tanggal_mulai', 'desc')->first();
+                // Gunakan tahun ajaran terbaru jika tidak ada yang aktif
+                $latestTahunAjaran = TahunAjaran::orderBy('id', 'desc')->first();
                 if ($latestTahunAjaran) {
                     session(['tahun_ajaran_id' => $latestTahunAjaran->id]);
+                    session(['selected_semester' => $latestTahunAjaran->semester]);
                     $tahunAjaranId = $latestTahunAjaran->id;
+                    \Log::info("Auto-sync tahun ajaran dan semester: Set ke tahun ajaran terbaru (ID: {$tahunAjaranId}, Semester: {$latestTahunAjaran->semester})");
                 }
+            }
+        } else {
+            // FIX: Jika tahun ajaran ID valid, pastikan semester juga sync
+            $tahunAjaran = TahunAjaran::find($tahunAjaranId);
+            if ($tahunAjaran && session('selected_semester') != $tahunAjaran->semester) {
+                session(['selected_semester' => $tahunAjaran->semester]);
+                \Log::info("Sync semester session dengan tahun ajaran", [
+                    'tahun_ajaran_id' => $tahunAjaranId,
+                    'old_semester' => session('selected_semester'),
+                    'new_semester' => $tahunAjaran->semester
+                ]);
             }
         }
         
         // Share tahun ajaran ke semua view
-    $tahunAjaran = null;
-    if ($tahunAjaranId) {
-        // Gunakan withTrashed() untuk mendapatkan tahun ajaran meskipun telah diarsipkan
-        $tahunAjaran = TahunAjaran::withTrashed()->find($tahunAjaranId);
-        
-        if ($tahunAjaran) {
-            view()->share('activeTahunAjaran', $tahunAjaran);
+        $tahunAjaran = null;
+        if ($tahunAjaranId) {
+            // Gunakan withTrashed() untuk mendapatkan tahun ajaran meskipun telah diarsipkan
+            $tahunAjaran = TahunAjaran::withTrashed()->find($tahunAjaranId);
             
-            // Tambahkan tahun ajaran ke request untuk digunakan di controller
-            $request->merge(['tahun_ajaran_id' => $tahunAjaranId]);
-            
-            // Tambahkan ke request attributes agar bisa diakses dengan $request->attributes->get('tahun_ajaran_id')
-            $request->attributes->add(['tahun_ajaran_id' => $tahunAjaranId]);
-            
-            // Tambahkan flag untuk mengetahui apakah tahun ajaran yang dipilih telah diarsipkan
-            $request->attributes->add(['tahun_ajaran_is_archived' => $tahunAjaran->trashed()]);
-            view()->share('tahunAjaranIsArchived', $tahunAjaran->trashed());
-        } else {
-            // Tahun ajaran tidak ditemukan, mungkin sudah dihapus
-            // Reset session dan cari tahun ajaran lain
-            session()->forget('tahun_ajaran_id');
-            $newActiveTahunAjaran = TahunAjaran::where('is_active', true)->first();
-            
-            if ($newActiveTahunAjaran) {
-                session(['tahun_ajaran_id' => $newActiveTahunAjaran->id]);
-                view()->share('activeTahunAjaran', $newActiveTahunAjaran);
-                $request->merge(['tahun_ajaran_id' => $newActiveTahunAjaran->id]);
-                $request->attributes->add(['tahun_ajaran_id' => $newActiveTahunAjaran->id]);
-                $request->attributes->add(['tahun_ajaran_is_archived' => $newActiveTahunAjaran->trashed()]);
-                view()->share('tahunAjaranIsArchived', $newActiveTahunAjaran->trashed());
+            if ($tahunAjaran) {
+                view()->share('activeTahunAjaran', $tahunAjaran);
+                
+                // Tambahkan tahun ajaran ke request untuk digunakan di controller
+                $request->merge(['tahun_ajaran_id' => $tahunAjaranId]);
+                
+                // Tambahkan ke request attributes agar bisa diakses dengan $request->attributes->get('tahun_ajaran_id')
+                $request->attributes->add(['tahun_ajaran_id' => $tahunAjaranId]);
+                
+                // Tambahkan flag untuk mengetahui apakah tahun ajaran yang dipilih telah diarsipkan
+                $request->attributes->add(['tahun_ajaran_is_archived' => $tahunAjaran->trashed()]);
+                view()->share('tahunAjaranIsArchived', $tahunAjaran->trashed());
+            } else {
+                // Tahun ajaran tidak ditemukan, mungkin sudah dihapus
+                // Reset session dan cari tahun ajaran lain
+                session()->forget('tahun_ajaran_id');
+                $newActiveTahunAjaran = TahunAjaran::where('is_active', true)->first();
+                
+                if ($newActiveTahunAjaran) {
+                    session(['tahun_ajaran_id' => $newActiveTahunAjaran->id]);
+                    session(['selected_semester' => $newActiveTahunAjaran->semester]); // Add semester sync here too
+                    view()->share('activeTahunAjaran', $newActiveTahunAjaran);
+                    $request->merge(['tahun_ajaran_id' => $newActiveTahunAjaran->id]);
+                    $request->attributes->add(['tahun_ajaran_id' => $newActiveTahunAjaran->id]);
+                    $request->attributes->add(['tahun_ajaran_is_archived' => $newActiveTahunAjaran->trashed()]);
+                    view()->share('tahunAjaranIsArchived', $newActiveTahunAjaran->trashed());
+                }
             }
         }
-    }
         
         // Ambil daftar semua tahun ajaran (untuk dropdown selector)
         $tahunAjaransQuery = TahunAjaran::orderBy('is_active', 'desc')
@@ -103,5 +120,20 @@ class TahunAjaranMiddleware
         }
         
         return $next($request);
+    }
+    
+    /**
+     * Cek apakah ID tahun ajaran valid (ada di database)
+     * 
+     * @param int $id
+     * @return bool
+     */
+    private function isValidTahunAjaranId($id)
+    {
+        if (!$id) {
+            return false;
+        }
+        
+        return TahunAjaran::withTrashed()->where('id', $id)->exists();
     }
 }

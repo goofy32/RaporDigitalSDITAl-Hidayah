@@ -3,7 +3,7 @@
 @section('title', 'Dashboard Wali Kelas')
 
 @section('content') 
-<div x-data="{ mapelProgress: [] }" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
+<div x-data="dashboard" x-init="$store.notification.fetchNotifications(); $store.notification.startAutoRefresh()">
 
     <!-- Statistics Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-14">
@@ -30,6 +30,14 @@
 
             <!-- Bottom Row - 1 Card -->
             <div class="grid grid-cols-2 gap-4">
+                <!-- Mata Pelajaran Card -->
+                <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50">
+                    <div class="p-4">
+                        <p class="text-2xl font-bold text-green-600">{{ $totalMapel }}</p>
+                        <p class="text-sm text-green-600">Mata Pelajaran</p>
+                    </div>
+                </div>
+
                 <!-- Ekstrakurikuler Card -->
                 <div class="rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-gray-50" onclick="navigateTo('{{ route('wali_kelas.ekstrakurikuler.index') }}')">
                     <div class="p-4">
@@ -90,23 +98,111 @@
         </div>
     </div>
 
-    <!-- Dropdown & Charts Section (Full Width)
+    <!-- Dropdown and Charts Section -->
     <div class="mt-8">
-        Dropdown Pilih Kelas
-        <div class="mb-8">
-            <h3 class="block text-sm font-medium text-gray-700">Kelas Yang Diwalikan</h3>
-            <div class="p-3 mt-1 rounded-lg border border-gray-300 bg-gray-50">
-                @if(isset($kelas))
-                    <span class="font-medium text-green-700">{{ $kelas->nomor_kelas }} {{ $kelas->nama_kelas }}</span>
-                @else
-                    <span class="text-yellow-600">Anda belum ditugaskan sebagai wali kelas</span>
-                @endif
+        <label for="subject" class="block text-sm font-medium text-gray-700">Pilih Mata Pelajaran</label>
+        <select id="subject" 
+            x-model="selectedSubject" 
+            @change="fetchSubjectProgress"
+            class="block w-full p-2 mt-1 rounded-lg border border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500">
+            <option value="">Pilih mata pelajaran...</option>
+            @if(isset($kelas) && $kelas)
+                @foreach($mataPelajarans as $mapel)
+                    <option value="{{ $mapel->id }}">{{ $mapel->nama_pelajaran }} ({{ $mapel->guru ? $mapel->guru->nama : 'Tidak ada guru' }})</option>
+                @endforeach
+            @else
+                <option disabled>Tidak ada mata pelajaran tersedia</option>
+            @endif
+        </select>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <!-- Chart Keseluruhan -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Keseluruhan</h3>
+                <div class="flex flex-col items-center">
+                    <div class="w-64 h-64 relative">
+                        <canvas id="overallPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chart Per Mata Pelajaran -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Input Nilai Per Mata Pelajaran</h3>
+                <div class="flex flex-col items-center">
+                    <div class="w-64 h-64 relative">
+                        <canvas id="classProgressChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-     -->
 </div>
-@endsection
+
+<style>
+/* Container for notifications with dynamic height */
+.notifications-container {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 4px;
+}
+
+/* Notification item styling */
+.notification-item {
+  position: relative;
+  margin-bottom: 1rem;
+  min-height: 80px;
+}
+
+/* Word breaking for long text */
+.break-words {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Keep truncation for titles */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Notification content */
+.notification-content {
+  width: 100%;
+}
+
+/* Flex child */
+.flex-1 {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+/* Content paragraph */
+.notification-content p.text-gray-600 {
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+/* Custom scrollbar styling */
+.notifications-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.notifications-container::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+/* Make sure timestamps are properly displayed */
+.text-gray-500.ml-2 {
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+</style>
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -126,7 +222,6 @@ function destroyCharts() {
     }
 }
 
-
 function initCharts() {
     const defaultOptions = {
         responsive: true,
@@ -141,21 +236,25 @@ function initCharts() {
         }
     };
 
+    // Overall Progress Chart
     const overallCtx = document.getElementById('overallPieChart')?.getContext('2d');
     if (overallCtx) {
+        // Get a safe progress value (0-100)
+        const safeProgress = Math.min(100, Math.max(0, {{ $overallProgress ?? 0 }}));
+        
         overallChart = new Chart(overallCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Selesai', 'Belum'],
                 datasets: [{
-                    data: [60, 40], // Nilai default, akan diupdate oleh fetchKelasProgress
+                    data: [safeProgress, 100 - safeProgress],
                     backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
                     borderWidth: 0
                 }]
             },
             options: {
                 ...defaultOptions,
-                cutout: '60%'
+                cutout: '60%',
             },
             plugins: [{
                 id: 'centerText',
@@ -169,8 +268,7 @@ function initCharts() {
                     ctx.font = fontSize + 'em sans-serif';
                     ctx.textBaseline = 'middle';
                     
-                    const data = chart.data.datasets[0].data;
-                    const text = Math.round(data[0]) + '%';
+                    const text = Math.round(safeProgress) + '%';
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
 
@@ -182,6 +280,7 @@ function initCharts() {
         });
     }
 
+    // Class Progress Chart (Initially empty)
     const classCtx = document.getElementById('classProgressChart')?.getContext('2d');
     if (classCtx) {
         classChart = new Chart(classCtx, {
@@ -196,7 +295,7 @@ function initCharts() {
             },
             options: {
                 ...defaultOptions,
-                cutout: '60%'
+                cutout: '60%',
             },
             plugins: [{
                 id: 'centerText',
@@ -210,8 +309,7 @@ function initCharts() {
                     ctx.font = fontSize + 'em sans-serif';
                     ctx.textBaseline = 'middle';
                     
-                    const data = chart.data.datasets[0].data;
-                    const text = Math.round(data[0]) + '%';
+                    const text = Math.round(kelasProgress) + '%';
                     const textX = Math.round((width - ctx.measureText(text).width) / 2);
                     const textY = height / 2;
 
@@ -224,66 +322,138 @@ function initCharts() {
     }
 }
 
-function updateCharts(overallProgress, classProgress) {
-    if (overallChart) {
-        overallChart.data.datasets[0].data = [overallProgress, 100 - overallProgress];
-        overallChart.update();
-    }
+function updateClassChart(progress) {
+    kelasProgress = Math.min(100, Math.max(0, progress));
     if (classChart) {
-        classChart.data.datasets[0].data = [classProgress, 100 - classProgress];
+        classChart.data.datasets[0].data = [kelasProgress, 100 - kelasProgress];
         classChart.update();
     }
 }
 
-function fetchKelasProgress() {
-    Promise.all([
-        fetch("{{ route('wali_kelas.overall.progress') }}", {
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        }),
-        fetch("{{ route('wali_kelas.kelas.progress') }}", {
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-    ])
-    .then(responses => Promise.all(responses.map(r => r.json())))
-    .then(([overallData, kelasData]) => {
-        if (overallData.progress !== undefined && kelasData.progress !== undefined) {
-            updateCharts(overallData.progress, kelasData.progress);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        updateCharts(0, 0);
-    });
+function fetchSubjectProgress(subjectId) {
+    const selectedSubject = subjectId || document.getElementById('subject')?.value;
+    if (selectedSubject) {
+        const url = `/wali-kelas/mata-pelajaran-progress/${selectedSubject}`;
+        console.log('Fetching progress from:', url);
+        
+        fetch(url)
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Progress data received:', data);
+                updateClassChart(data.progress);
+            })
+            .catch(error => {
+                console.error('Error fetching subject progress:', error);
+                updateClassChart(0);
+            });
+    } else {
+        updateClassChart(0);
+    }
 }
 
-// Inisialisasi
-document.addEventListener('DOMContentLoaded', () => {
-    initCharts();
-    fetchKelasProgress();
+// Event handlers untuk initialization
+document.addEventListener('alpine:init', () => {
+    Alpine.data('dashboard', () => ({
+        selectedSubject: '',
+        mapelProgress: [],
+        
+        init() {
+            console.log('Dashboard initialized for wali kelas');
+            setTimeout(() => {
+                this.initCharts();
+            }, 100);
+
+            this.$watch('selectedSubject', value => {
+                console.log('Selected subject changed to:', value);
+                if (value) {
+                    this.fetchSubjectProgress();
+                }
+            });
+        },
+        
+        fetchSubjectProgress() {
+            console.log('Alpine fetchSubjectProgress called with:', this.selectedSubject);
+            if (!this.selectedSubject) return;
+            
+            // Panggil fungsi global untuk memastikan kompatibilitas
+            window.fetchSubjectProgress(this.selectedSubject);
+        }
+    }));
 });
 
-// Event Listeners
-document.addEventListener('turbo:load', () => {
-    if (window.location.pathname.includes('/wali-kelas/dashboard')) {
-        destroyCharts();
-        setTimeout(() => {
+// Function untuk mengecek apakah di halaman dashboard
+function isDashboardPage() {
+    return window.location.pathname.includes('/wali-kelas/dashboard');
+}
+
+// Function untuk menangani inisialisasi dashboard
+function handleDashboardInit() {
+    if (isDashboardPage()) {
+        const isLoaded = sessionStorage.getItem(WALIKELAS_DASHBOARD_KEY);
+        if (!isLoaded) {
+            sessionStorage.setItem(WALIKELAS_DASHBOARD_KEY, 'true');
+            window.location.reload();
+        } else {
+            destroyCharts();
             initCharts();
-            fetchKelasProgress();
-        }, 100);
+        }
+    }
+}
+
+// Event Listeners untuk navigasi dan reload
+document.addEventListener('DOMContentLoaded', handleDashboardInit);
+document.addEventListener('turbo:load', handleDashboardInit);
+document.addEventListener('turbo:render', handleDashboardInit);
+
+document.addEventListener('turbo:load', () => {
+    handleDashboardInit();
+});
+
+document.addEventListener('turbo:render', () => {
+    handleDashboardInit();
+});
+
+document.addEventListener('turbo:visit', () => {
+    if (!isDashboardPage()) {
+        sessionStorage.removeItem(WALIKELAS_DASHBOARD_KEY);
     }
 });
 
-document.addEventListener('turbo:before-cache', destroyCharts);
+// Cleanup saat navigasi
+document.addEventListener('turbo:before-cache', () => {
+    destroyCharts();
+});
 
+// Handle unload
+window.addEventListener('unload', () => {
+    destroyCharts();
+    if (!isDashboardPage()) {
+        sessionStorage.removeItem(WALIKELAS_DASHBOARD_KEY);
+    }
+});
+
+// Inisialisasi awal
+if (document.readyState === 'complete') {
+    handleDashboardInit();
+} else {
+    window.addEventListener('load', handleDashboardInit);
+}
+
+// Function untuk navigasi
 function navigateTo(url) {
     window.location.href = url;
 }
 </script>
-
+<script>
+    // Make sure this variable is declared globally
+    window.overallProgress = {{ $overallProgress ?? 0 }};
+    console.log("Overall progress from server:", window.overallProgress);
+</script>
 @endpush
+@endsection

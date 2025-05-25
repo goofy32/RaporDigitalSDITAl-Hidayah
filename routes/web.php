@@ -210,7 +210,11 @@
         Route::put('kelas/{id}', [ClassController::class, 'update'])->name('kelas.update');
         Route::delete('kelas/{id}', [ClassController::class, 'destroy'])->name('kelas.destroy');
         
+        Route::get('/set-semester/{tahunAjaranId}/{semester}', [TahunAjaranController::class, 'setSessionSemester'])
+            ->name('admin.set-semester');
+
         Route::prefix('tahun-ajaran')->name('tahun.ajaran.')->group(function () {
+            // Route yang sudah ada...
             Route::post('/{id}/restore', [TahunAjaranController::class, 'restore'])->name('restore'); 
             Route::get('/', [TahunAjaranController::class, 'index'])->name('index');
             Route::get('/create', [TahunAjaranController::class, 'create'])->name('create');
@@ -222,9 +226,17 @@
             Route::get('/{id}/copy', [TahunAjaranController::class, 'copy'])->name('copy');
             Route::post('/{id}/copy', [TahunAjaranController::class, 'processCopy'])->name('process-copy');
             Route::delete('/{id}', [TahunAjaranController::class, 'destroy'])->name('destroy');
-            Route::post('/{id}/advance-semester', [TahunAjaranController::class, 'advanceToNextSemester'])
-            ->name('advance-semester');
             Route::delete('/{id}/force-delete', [TahunAjaranController::class, 'forceDelete'])->name('force-delete');
+            
+            // Route baru untuk sistem semester dengan snapshot
+            Route::post('/{id}/advance-semester', [TahunAjaranController::class, 'advanceToNextSemester'])
+                ->name('advance-semester');
+            Route::post('/{id}/return-semester', [TahunAjaranController::class, 'returnToSemester1'])
+                ->name('return-semester');
+            Route::get('/{id}/snapshots', [TahunAjaranController::class, 'getSnapshots'])
+                ->name('get-snapshots');
+            Route::post('/{id}/create-snapshot', [TahunAjaranController::class, 'createManualSnapshot'])
+                ->name('create-snapshot');
         });
         
         // Teacher Management
@@ -319,6 +331,9 @@
             ->name('pengajar.')  // Tambahkan ini untuk name prefix
             ->group(function () {
 
+        Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgress'])
+            ->name('mata_pelajaran.progress');
+
         Route::get('/check-access/{mapelId}', function($mapelId) {
             $guru = Auth::guard('guru')->user();
             $mapel = \App\Models\MataPelajaran::find($mapelId);
@@ -349,14 +364,14 @@
         Route::get('/nilai/bobot', [BobotNilaiController::class, 'getBobot'])->name('nilai.bobot');
         
         Route::get('/dashboard', [DashboardController::class, 'pengajarDashboard'])->name('dashboard');
+            
+            
         Route::get('/kelas-progress/overall', [DashboardController::class, 'getOverallClassProgress'])
             ->name('kelas.progress.overall');
         
         // Route baru untuk mata pelajaran
         Route::get('/kelas-progress/{id}', [DashboardController::class, 'getKelasProgress'])
             ->name('kelas.progress');
-        Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgress'])
-            ->name('mata_pelajaran.progress');
 
         Route::get('/profile', [TeacherController::class, 'showProfile'])->name('profile');
         
@@ -418,208 +433,6 @@
                 Route::get('/ajax/get-catatan', [CatatanController::class, 'getCatatanForSiswa'])->name('get-catatan');
             });
         });
-
-        Route::get('/debug/mata-pelajaran-wali-kelas', function() {
-            $guru = auth()->guard('guru')->user();
-            $tahunAjaranId = session('tahun_ajaran_id');
-            $selectedSemester = session('selected_semester', 1);
-            
-            // Get kelas wali
-            $kelas = $guru->kelasWali;
-            
-            if (!$kelas) {
-                return response()->json([
-                    'error' => 'Guru tidak memiliki kelas wali',
-                    'guru_info' => [
-                        'id' => $guru->id,
-                        'nama' => $guru->nama,
-                        'is_wali_kelas' => $guru->isWaliKelas()
-                    ]
-                ]);
-            }
-            
-            // Query mata pelajaran dengan berbagai kondisi
-            $result = [
-                'guru_info' => [
-                    'id' => $guru->id,
-                    'nama' => $guru->nama,
-                    'is_wali_kelas' => $guru->isWaliKelas()
-                ],
-                'kelas_info' => [
-                    'id' => $kelas->id,
-                    'nomor_kelas' => $kelas->nomor_kelas,
-                    'nama_kelas' => $kelas->nama_kelas,
-                    'tahun_ajaran_id' => $kelas->tahun_ajaran_id
-                ],
-                'session_info' => [
-                    'tahun_ajaran_id' => $tahunAjaranId,
-                    'selected_semester' => $selectedSemester
-                ],
-                'mata_pelajaran_queries' => []
-            ];
-            
-            // Query 1: Semua mata pelajaran di kelas tanpa filter
-            $mapel1 = \App\Models\MataPelajaran::where('kelas_id', $kelas->id)->get();
-            $result['mata_pelajaran_queries']['all_in_class'] = [
-                'count' => $mapel1->count(),
-                'data' => $mapel1->map(function($m) {
-                    return [
-                        'id' => $m->id,
-                        'nama_pelajaran' => $m->nama_pelajaran,
-                        'kelas_id' => $m->kelas_id,
-                        'tahun_ajaran_id' => $m->tahun_ajaran_id,
-                        'semester' => $m->semester,
-                        'guru_id' => $m->guru_id
-                    ];
-                })
-            ];
-            
-            // Query 2: Filter berdasarkan tahun ajaran
-            $mapel2 = \App\Models\MataPelajaran::where('kelas_id', $kelas->id)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->get();
-            $result['mata_pelajaran_queries']['filtered_by_tahun_ajaran'] = [
-                'count' => $mapel2->count(),
-                'data' => $mapel2->map(function($m) {
-                    return [
-                        'id' => $m->id,
-                        'nama_pelajaran' => $m->nama_pelajaran,
-                        'kelas_id' => $m->kelas_id,
-                        'tahun_ajaran_id' => $m->tahun_ajaran_id,
-                        'semester' => $m->semester,
-                        'guru_id' => $m->guru_id
-                    ];
-                })
-            ];
-            
-            // Query 3: Filter berdasarkan tahun ajaran dan semester
-            $mapel3 = \App\Models\MataPelajaran::where('kelas_id', $kelas->id)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->where('semester', $selectedSemester)
-                ->get();
-            $result['mata_pelajaran_queries']['filtered_by_tahun_ajaran_and_semester'] = [
-                'count' => $mapel3->count(),
-                'data' => $mapel3->map(function($m) {
-                    return [
-                        'id' => $m->id,
-                        'nama_pelajaran' => $m->nama_pelajaran,
-                        'kelas_id' => $m->kelas_id,
-                        'tahun_ajaran_id' => $m->tahun_ajaran_id,
-                        'semester' => $m->semester,
-                        'guru_id' => $m->guru_id
-                    ];
-                })
-            ];
-            
-            // Query 4: Yang digunakan di controller catatan (sama dengan CatatanController)
-            $mapel4 = \App\Models\MataPelajaran::where('kelas_id', $kelas->id)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->where('semester', $selectedSemester)
-                ->with(['guru'])
-                ->orderBy('nama_pelajaran')
-                ->get();
-            $result['mata_pelajaran_queries']['controller_query'] = [
-                'count' => $mapel4->count(),
-                'data' => $mapel4->map(function($m) {
-                    return [
-                        'id' => $m->id,
-                        'nama_pelajaran' => $m->nama_pelajaran,
-                        'kelas_id' => $m->kelas_id,
-                        'tahun_ajaran_id' => $m->tahun_ajaran_id,
-                        'semester' => $m->semester,
-                        'guru_id' => $m->guru_id,
-                        'guru_nama' => $m->guru ? $m->guru->nama : null
-                    ];
-                })
-            ];
-            
-            return response()->json($result);
-        })->name('debug.mata_pelajaran_wali_kelas');
-
-        // Debug route untuk cek semua mata pelajaran di sistem
-        Route::get('/debug/all-mata-pelajaran', function() {
-            $tahunAjaranId = session('tahun_ajaran_id');
-            $selectedSemester = session('selected_semester', 1);
-            
-            $allMapel = \App\Models\MataPelajaran::with(['kelas', 'guru'])
-                ->orderBy('kelas_id')
-                ->orderBy('nama_pelajaran')
-                ->get();
-            
-            $result = [
-                'session_info' => [
-                    'tahun_ajaran_id' => $tahunAjaranId,
-                    'selected_semester' => $selectedSemester
-                ],
-                'total_mata_pelajaran' => $allMapel->count(),
-                'mata_pelajaran_by_tahun_ajaran' => [],
-                'mata_pelajaran_by_semester' => []
-            ];
-            
-            // Group by tahun ajaran
-            foreach ($allMapel->groupBy('tahun_ajaran_id') as $tahunId => $mapels) {
-                $result['mata_pelajaran_by_tahun_ajaran'][$tahunId] = [
-                    'count' => $mapels->count(),
-                    'mapels' => $mapels->map(function($m) {
-                        return [
-                            'id' => $m->id,
-                            'nama' => $m->nama_pelajaran,
-                            'kelas' => $m->kelas ? "{$m->kelas->nomor_kelas} {$m->kelas->nama_kelas}" : null,
-                            'semester' => $m->semester,
-                            'guru' => $m->guru ? $m->guru->nama : null
-                        ];
-                    })->toArray()
-                ];
-            }
-            
-            // Group by semester
-            foreach ($allMapel->groupBy('semester') as $sem => $mapels) {
-                $result['mata_pelajaran_by_semester'][$sem] = [
-                    'count' => $mapels->count(),
-                    'mapels' => $mapels->map(function($m) {
-                        return [
-                            'id' => $m->id,
-                            'nama' => $m->nama_pelajaran,
-                            'kelas' => $m->kelas ? "{$m->kelas->nomor_kelas} {$m->kelas->nama_kelas}" : null,
-                            'tahun_ajaran_id' => $m->tahun_ajaran_id,
-                            'guru' => $m->guru ? $m->guru->nama : null
-                        ];
-                    })->toArray()
-                ];
-            }
-            
-            return response()->json($result);
-        })->name('debug.all_mata_pelajaran');
-
-        // Debug route untuk cek tahun ajaran dan semester
-        Route::get('/debug/tahun-ajaran-info', function() {
-            $tahunAjaranId = session('tahun_ajaran_id');
-            $selectedSemester = session('selected_semester');
-            
-            $tahunAjaran = \App\Models\TahunAjaran::find($tahunAjaranId);
-            $allTahunAjaran = \App\Models\TahunAjaran::orderBy('tahun_ajaran', 'desc')->get();
-            
-            return response()->json([
-                'session' => [
-                    'tahun_ajaran_id' => $tahunAjaranId,
-                    'selected_semester' => $selectedSemester
-                ],
-                'current_tahun_ajaran' => $tahunAjaran ? [
-                    'id' => $tahunAjaran->id,
-                    'tahun_ajaran' => $tahunAjaran->tahun_ajaran,
-                    'semester' => $tahunAjaran->semester,
-                    'is_active' => $tahunAjaran->is_active
-                ] : null,
-                'all_tahun_ajaran' => $allTahunAjaran->map(function($ta) {
-                    return [
-                        'id' => $ta->id,
-                        'tahun_ajaran' => $ta->tahun_ajaran,
-                        'semester' => $ta->semester,
-                        'is_active' => $ta->is_active
-                    ];
-                })
-            ]);
-        })->name('debug.tahun_ajaran_info');
         
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -638,6 +451,9 @@
             
         Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgressWaliKelas'])
             ->name('kelas.progress');
+
+        Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgressWaliKelas'])
+             ->name('mata_pelajaran.progress');
         // Student Management
         Route::prefix('siswa')->name('student.')->group(function () {
             Route::get('/', [StudentController::class, 'waliKelasIndex'])->name('index');
@@ -680,25 +496,25 @@
         // Ensure this route exists for tujuan pembelajaran view
         Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}/view', [TujuanPembelajaranController::class, 'teacherView'])
             ->name('tujuan_pembelajaran.view');
-            
+        
         Route::prefix('rapor')->name('rapor.')->group(function () {
-            Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
-            
-            // Gunakan model binding dan middleware
-            Route::middleware('check.rapor.access')->group(function () {
-                Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
-                Route::get('/download/{siswa}/{type}', [ReportController::class, 'downloadReport'])->name('download');
-            });
-
-            Route::get('/preview/{siswa}', [ReportController::class, 'previewRapor'])->name('preview');
-
-
-            Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])
-            ->name('check-templates');
-            
-            Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
-            Route::get('download-pdf/{siswa}', [ReportController::class, 'downloadPdf']) ->name('rapor.download-pdf');
-            Route::get('/preview-pdf/{siswa}', [ReportController::class, 'previewPdf'])->name('preview-pdf');
-            Route::get('/download-pdf/{siswa}', [ReportController::class, 'downloadPdf'])->name('download-pdf');
+        Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
+        
+        // Gunakan model binding dan middleware
+        Route::middleware('check.rapor.access')->group(function () {
+            Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
+            Route::get('/download/{siswa}/{type}', [ReportController::class, 'downloadReport'])->name('download');
         });
+
+        Route::get('/preview/{siswa}', [ReportController::class, 'previewRapor'])->name('preview');
+
+
+        Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])
+        ->name('check-templates');
+        
+        Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
+        Route::get('download-pdf/{siswa}', [ReportController::class, 'downloadPdf']) ->name('rapor.download-pdf');
+        Route::get('/preview-pdf/{siswa}', [ReportController::class, 'previewPdf'])->name('preview-pdf');
+        Route::get('/download-pdf/{siswa}', [ReportController::class, 'downloadPdf'])->name('download-pdf');
     });
+});
