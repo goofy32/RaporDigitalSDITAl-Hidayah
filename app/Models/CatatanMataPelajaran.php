@@ -14,44 +14,53 @@ class CatatanMataPelajaran extends Model
     protected $fillable = [
         'mata_pelajaran_id',
         'siswa_id',
-        'catatan',
         'tahun_ajaran_id',
         'semester',
-        'type',
+        'type', // 'umum', 'uts', 'uas'
+        'catatan',
         'created_by'
     ];
-    
+
+    protected $casts = [
+        'semester' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
+
     public function mataPelajaran()
     {
-        return $this->belongsTo(MataPelajaran::class);
+        return $this->belongsTo(MataPelajaran::class, 'mata_pelajaran_id');
     }
-    
+
     public function siswa()
     {
-        return $this->belongsTo(Siswa::class);
+        return $this->belongsTo(Siswa::class, 'siswa_id');
     }
-    
+
     public function tahunAjaran()
     {
-        return $this->belongsTo(TahunAjaran::class);
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
     }
-    
+
     public function creator()
     {
         return $this->belongsTo(Guru::class, 'created_by');
     }
-    
-    public function scopeForCurrentContext($query)
-    {
-        $tahunAjaranId = session('tahun_ajaran_id');
-        $selectedSemester = session('selected_semester', 1);
-        
-        return $query->where('tahun_ajaran_id', $tahunAjaranId)
-                    ->where('semester', $selectedSemester);
-    }
-    
+
+    /**
+     * Scope untuk filter berdasarkan type catatan
+     */
     public function scopeByType($query, $type)
     {
         return $query->where('type', $type);
+    }
+
+    /**
+     * Scope untuk filter berdasarkan siswa dan mata pelajaran
+     */
+    public function scopeForSiswaMapel($query, $siswaId, $mataPelajaranId)
+    {
+        return $query->where('siswa_id', $siswaId)
+                    ->where('mata_pelajaran_id', $mataPelajaranId);
     }
 }

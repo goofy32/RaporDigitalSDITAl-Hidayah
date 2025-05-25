@@ -43,13 +43,13 @@
                             Umum
                         </button>
                         <button type="button" @click="activeTab = 'uts'" 
-                                :class="activeTab === 'uts' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'"
-                                class="px-4 py-2 rounded border hover:bg-blue-50">
+                                :class="activeTab === 'uts' ? 'bg-green-600 text-white' : 'bg-white text-gray-700'"
+                                class="px-4 py-2 rounded border hover:bg-green-50">
                             UTS
                         </button>
                         <button type="button" @click="activeTab = 'uas'" 
-                                :class="activeTab === 'uas' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700'"
-                                class="px-4 py-2 rounded border hover:bg-purple-50">
+                                :class="activeTab === 'uas' ? 'bg-green-600 text-white' : 'bg-white text-gray-700'"
+                                class="px-4 py-2 rounded border hover:bg-green-50">
                             UAS
                         </button>
                     </div>
@@ -111,7 +111,7 @@
                             <textarea 
                                 name="catatan[{{ $siswa->id }}][uts]"
                                 rows="3"
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                                 placeholder="Tulis catatan UTS untuk {{ $siswa->nama }}...">{{ $existingCatatan[$siswa->id]['uts'][0]->catatan ?? '' }}</textarea>
                             <p class="text-sm text-gray-500">Catatan ini akan muncul di rapor UTS</p>
                         </div>
@@ -122,7 +122,7 @@
                             <textarea 
                                 name="catatan[{{ $siswa->id }}][uas]"
                                 rows="3"
-                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                                 placeholder="Tulis catatan UAS untuk {{ $siswa->nama }}...">{{ $existingCatatan[$siswa->id]['uas'][0]->catatan ?? '' }}</textarea>
                             <p class="text-sm text-gray-500">Catatan ini akan muncul di rapor UAS</p>
                         </div>

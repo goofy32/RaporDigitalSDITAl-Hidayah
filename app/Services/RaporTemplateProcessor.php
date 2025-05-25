@@ -158,6 +158,59 @@ class RaporTemplateProcessor
         return $type === 'UTS' ? 1 : 2;
     }
     
+    protected function debugCatatanData($tahunAjaranId, $semester, $catatanType)
+    {
+        Log::info('=== DEBUG CATATAN DATA ===', [
+            'siswa_id' => $this->siswa->id,
+            'siswa_nama' => $this->siswa->nama,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'semester' => $semester,
+            'catatan_type' => $catatanType
+        ]);
+
+        // Cek semua catatan mata pelajaran untuk siswa ini
+        $allCatatan = \App\Models\CatatanMataPelajaran::where('siswa_id', $this->siswa->id)
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('semester', $semester)
+            ->where('type', $catatanType)
+            ->with('mataPelajaran')
+            ->get();
+
+        Log::info('Semua catatan mata pelajaran:', [
+            'count' => $allCatatan->count(),
+            'data' => $allCatatan->map(function($catatan) {
+                return [
+                    'id' => $catatan->id,
+                    'mata_pelajaran_id' => $catatan->mata_pelajaran_id,
+                    'mata_pelajaran_nama' => $catatan->mataPelajaran->nama_pelajaran ?? 'N/A',
+                    'catatan' => $catatan->catatan,
+                    'type' => $catatan->type,
+                    'semester' => $catatan->semester
+                ];
+            })->toArray()
+        ]);
+
+        // Cek juga semua mata pelajaran untuk siswa ini
+        $allMapel = $this->siswa->nilais()
+            ->with(['mataPelajaran'])
+            ->whereHas('mataPelajaran', function($q) use ($semester) {
+                $q->where('semester', $semester);
+            })
+            ->where('tahun_ajaran_id', $tahunAjaranId)
+            ->get()
+            ->groupBy('mata_pelajaran_id');
+
+        Log::info('Mata pelajaran dengan nilai:', [
+            'count' => $allMapel->count(),
+            'mapel_ids' => $allMapel->keys()->toArray(),
+            'mapel_names' => $allMapel->map(function($nilai, $mapelId) {
+                return $nilai->first()->mataPelajaran->nama_pelajaran ?? 'N/A';
+            })->toArray()
+        ]);
+
+        return $allCatatan;
+    }
+
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
      * 
@@ -167,6 +220,10 @@ class RaporTemplateProcessor
     {
         $semester = $this->getReportDataSemester();
         $tahunAjaranId = $this->tahunAjaranId;
+        $catatanType = strtolower($this->type); // 'uts' or 'uas'
+    
+        // DEBUG: Cek data catatan
+        $this->debugCatatanData($tahunAjaranId, $semester, $catatanType);
         
         // Data Siswa
         $data = [
@@ -297,9 +354,9 @@ class RaporTemplateProcessor
             }
         }
 
-        // Siapkan struktur data untuk placeholder dinamis
+        // INISIALISASI VARIABEL YANG DIPERLUKAN - PERBAIKAN UTAMA
         $dynamicPlaceholders = [];
-        $mapelCount = 1;
+        $mapelCount = 1; // INISIALISASI VARIABEL INI
         $processedKeys = []; // Track key yang sudah diproses
         
         // Proses mata pelajaran berdasarkan urutan prioritas
@@ -354,7 +411,7 @@ class RaporTemplateProcessor
                         'nilai' => $data["nilai_$key"],
                         'capaian' => $data["capaian_$key"],
                         'catatan' => $data["catatan_$key"],
-                        'kkm' => $data["kkm_$key"], // BARU
+                        'kkm' => $data["kkm_$key"],
                         'mata_pelajaran_id' => $mataPelajaranId
                     ];
                     
@@ -364,6 +421,7 @@ class RaporTemplateProcessor
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
                         'kkm' => $data["kkm_$key"],
+                        'catatan' => $data["catatan_$key"],
                         'placeholder_position' => $mapelCount - 1,
                         'tahun_ajaran_id' => $tahunAjaranId,
                         'mata_pelajaran_id' => $mataPelajaranId
@@ -453,7 +511,7 @@ class RaporTemplateProcessor
                         'capaian' => $nilaiAkhir->deskripsi ?? 
                             $this->generateCapaianDeskripsi($nilaiValue, $mapelName),
                         'catatan' => $catatanMapel ? $catatanMapel->catatan : '-',
-                        'kkm' => isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70', // BARU
+                        'kkm' => isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70',
                         'mata_pelajaran_id' => $mataPelajaranId
                     ];
                     
@@ -463,6 +521,7 @@ class RaporTemplateProcessor
                     Log::info("Mata pelajaran lainnya diproses", [
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
+                        'catatan' => $dynamicPlaceholders[$mapelCount-1]['catatan'],
                         'kkm' => $dynamicPlaceholders[$mapelCount-1]['kkm'],
                         'placeholder_position' => $mapelCount - 1,
                         'tahun_ajaran_id' => $tahunAjaranId,
@@ -479,13 +538,13 @@ class RaporTemplateProcessor
                 $data["nilai_matapelajaran$i"] = $dynamicPlaceholders[$i]['nilai'];
                 $data["capaian_matapelajaran$i"] = $dynamicPlaceholders[$i]['capaian'];
                 $data["catatan_matapelajaran$i"] = $dynamicPlaceholders[$i]['catatan'];
-                $data["kkm_matapelajaran$i"] = $dynamicPlaceholders[$i]['kkm']; // BARU
+                $data["kkm_matapelajaran$i"] = $dynamicPlaceholders[$i]['kkm'];
             } else {
                 $data["nama_matapelajaran$i"] = '-';
                 $data["nilai_matapelajaran$i"] = '-';
                 $data["capaian_matapelajaran$i"] = '-';
                 $data["catatan_matapelajaran$i"] = '-';
-                $data["kkm_matapelajaran$i"] = '70'; // BARU - Default KKM
+                $data["kkm_matapelajaran$i"] = '70';
             }
         }
 
@@ -535,7 +594,7 @@ class RaporTemplateProcessor
                 $data["catatan_mulok$mulokCount"] = $catatanMulok ? $catatanMulok->catatan : '-';
                 
                 // KKM untuk muatan lokal
-                $data["kkm_mulok$mulokCount"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70'; // BARU
+                $data["kkm_mulok$mulokCount"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
                 
                 $mulokCount++;
             }
@@ -547,7 +606,7 @@ class RaporTemplateProcessor
             $data["nilai_mulok$i"] = '-';
             $data["capaian_mulok$i"] = '-';
             $data["catatan_mulok$i"] = '-';
-            $data["kkm_mulok$i"] = '70'; // BARU - Default KKM
+            $data["kkm_mulok$i"] = '70';
         }
 
         // Data Ekstrakurikuler dengan filter tahun ajaran
@@ -638,6 +697,9 @@ class RaporTemplateProcessor
             })),
             'kkm_count' => count(array_filter(array_keys($data), function($key) {
                 return strpos($key, 'kkm_') === 0;
+            })),
+            'catatan_count' => count(array_filter(array_keys($data), function($key) {
+                return strpos($key, 'catatan_') === 0;
             })),
             'tahun_ajaran_id' => $tahunAjaranId,
             'catatan_guru' => $data['catatan_guru']
@@ -879,7 +941,7 @@ class RaporTemplateProcessor
     {
         try {
             Log::info('Starting generate() with template type: ' . $this->type, [
-                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran yang digunakan
+                'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
             
             // 1. Validasi data
@@ -896,22 +958,39 @@ class RaporTemplateProcessor
             Log::info('Variables in template:', [
                 'found_variables' => $variables,
                 'template_type' => $this->type,
-                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran yang digunakan
+                'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
             
-            // 4. Isi semua placeholder
+            // 4. Isi semua placeholder - PERBAIKAN UTAMA
             try {
+                // First pass: Fill all available data
                 foreach ($data as $key => $value) {
                     if (in_array($key, $variables)) {
-                        $this->processor->setValue($key, $value ?: '-');
+                        // Convert value to string and handle empty values
+                        $processedValue = $this->processPlaceholderValue($value);
+                        $this->processor->setValue($key, $processedValue);
+                        
+                        // DEBUG: Log placeholder yang berhasil diisi
+                        if (strpos($key, 'catatan_') === 0 && $processedValue !== '-') {
+                            Log::info("Placeholder catatan berhasil diisi:", [
+                                'key' => $key,
+                                'value' => $processedValue
+                            ]);
+                        }
                     }
                 }
                 
-                // Isi placeholder yang ada di template tapi tidak ada di data
+                // Second pass: Fill missing placeholders with defaults
                 $missingPlaceholders = array_diff($variables, array_keys($data));
                 foreach ($missingPlaceholders as $placeholder) {
                     try {
-                        $this->processor->setValue($placeholder, '-');
+                        $defaultValue = $this->getDefaultPlaceholderValue($placeholder);
+                        $this->processor->setValue($placeholder, $defaultValue);
+                        
+                        Log::info("Placeholder missing diisi dengan default:", [
+                            'placeholder' => $placeholder,
+                            'default_value' => $defaultValue
+                        ]);
                     } catch (\Exception $e) {
                         Log::warning("Could not set value for missing placeholder '{$placeholder}':", [
                             'error' => $e->getMessage()
@@ -919,22 +998,29 @@ class RaporTemplateProcessor
                     }
                 }
 
+                // Third pass: Clean any remaining placeholders
                 $remainingPlaceholders = $this->processor->getVariables();
-                    foreach ($remainingPlaceholders as $placeholder) {
-                        try {
-                            $this->processor->setValue($placeholder, '');  // Replace with empty string
-                        } catch (\Exception $e) {
-                            Log::warning("Could not clean remaining placeholder '{$placeholder}':", [
-                                'error' => $e->getMessage()
-                            ]);
-                        }
+                Log::info('Remaining placeholders after processing:', [
+                    'count' => count($remainingPlaceholders),
+                    'placeholders' => $remainingPlaceholders
+                ]);
+                
+                foreach ($remainingPlaceholders as $placeholder) {
+                    try {
+                        $this->processor->setValue($placeholder, '');
+                        Log::info("Cleaned remaining placeholder: {$placeholder}");
+                    } catch (\Exception $e) {
+                        Log::warning("Could not clean remaining placeholder '{$placeholder}':", [
+                            'error' => $e->getMessage()
+                        ]);
                     }
+                }
             } catch (\Exception $e) {
                 Log::error('Gagal mengisi placeholder:', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'siswa_id' => $this->siswa->id,
-                    'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran untuk debug
+                    'tahun_ajaran_id' => $this->tahunAjaranId
                 ]);
                 
                 throw new RaporException(
@@ -961,7 +1047,7 @@ class RaporTemplateProcessor
                 'trace' => $e->getTraceAsString(),
                 'siswa_id' => $this->siswa->id,
                 'template_id' => $this->template->id,
-                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran untuk debug
+                'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
             
             throw $e;
@@ -971,13 +1057,67 @@ class RaporTemplateProcessor
                 'trace' => $e->getTraceAsString(),
                 'siswa_id' => $this->siswa->id,
                 'template_id' => $this->template->id,
-                'tahun_ajaran_id' => $this->tahunAjaranId // Log tahun ajaran untuk debug
+                'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
             
             throw new RaporException('Gagal generate rapor: ' . $e->getMessage(), 'general_error', 500, $e);
         }
     }
     
+    /**
+     * Process placeholder value to ensure it's properly formatted
+     */
+    protected function processPlaceholderValue($value)
+    {
+        // Handle null or empty values
+        if ($value === null || $value === '') {
+            return '-';
+        }
+        
+        // Handle array values (shouldn't happen, but just in case)
+        if (is_array($value)) {
+            return implode(', ', $value);
+        }
+        
+        // Handle boolean values
+        if (is_bool($value)) {
+            return $value ? 'Ya' : 'Tidak';
+        }
+        
+        // Convert to string and trim
+        $processedValue = trim((string) $value);
+        
+        // Return default if empty after processing
+        return $processedValue ?: '-';
+    }
+
+    /**
+     * Get default value for missing placeholders
+     */
+    protected function getDefaultPlaceholderValue($placeholder)
+    {
+        // Special handling for specific placeholder types
+        if (strpos($placeholder, 'nilai_') === 0) {
+            return '-';
+        }
+        
+        if (strpos($placeholder, 'kkm_') === 0) {
+            return '70';
+        }
+        
+        if (strpos($placeholder, 'catatan_') === 0) {
+            return '-';
+        }
+        
+        if (strpos($placeholder, 'sakit') !== false || 
+            strpos($placeholder, 'izin') !== false || 
+            strpos($placeholder, 'tanpa_keterangan') !== false) {
+            return '0';
+        }
+        
+        // Default for all other placeholders
+        return '-';
+    }
     /**
      * Get the semester data to use for the report
      */

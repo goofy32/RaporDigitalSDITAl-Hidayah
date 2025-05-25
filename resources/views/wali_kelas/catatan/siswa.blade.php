@@ -43,7 +43,7 @@
 
             <!-- Catatan UTS -->
             <div>
-                <h3 class="bg-blue-600 text-white px-4 py-2 rounded-t">Catatan UTS (Tengah Semester)</h3>
+                <h3 class="bg-green-600 text-white px-4 py-2 rounded-t">Catatan UTS (Tengah Semester)</h3>
                 <div class="border border-gray-300 rounded-b p-4">
                     <label for="catatan_uts" class="block text-sm font-medium text-gray-700 mb-2">
                         Catatan khusus untuk rapor UTS
@@ -52,7 +52,7 @@
                         id="catatan_uts" 
                         name="catatan_uts" 
                         rows="4"
-                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                         placeholder="Tulis catatan khusus untuk rapor UTS...">{{ $catatanList['uts']->catatan ?? old('catatan_uts') }}</textarea>
                     <p class="text-sm text-gray-500 mt-1">Catatan ini akan muncul di rapor UTS. Maksimal 1000 karakter</p>
                 </div>
@@ -60,7 +60,7 @@
 
             <!-- Catatan UAS -->
             <div>
-                <h3 class="bg-purple-600 text-white px-4 py-2 rounded-t">Catatan UAS (Akhir Semester)</h3>
+                <h3 class="bg-green-600 text-white px-4 py-2 rounded-t">Catatan UAS (Akhir Semester)</h3>
                 <div class="border border-gray-300 rounded-b p-4">
                     <label for="catatan_uas" class="block text-sm font-medium text-gray-700 mb-2">
                         Catatan khusus untuk rapor UAS
@@ -69,7 +69,7 @@
                         id="catatan_uas" 
                         name="catatan_uas" 
                         rows="4"
-                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                         placeholder="Tulis catatan khusus untuk rapor UAS...">{{ $catatanList['uas']->catatan ?? old('catatan_uas') }}</textarea>
                     <p class="text-sm text-gray-500 mt-1">Catatan ini akan muncul di rapor UAS. Maksimal 1000 karakter</p>
                 </div>

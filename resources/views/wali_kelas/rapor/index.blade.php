@@ -189,13 +189,14 @@
 
                             <button @click="handlePreview({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
-                                class="text-green-600 hover:text-green-900 disabled:opacity-50">
+                                class="text-green-600 hover:text-green-900 disabled:opacity-50" title="Lihat Rapor">
                                 <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="action-icon">
                             </button>
                             
                             <button @click="handleGenerate({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }}, '{{ $s->nama }}')"
                                 :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
-                                :class="{ 'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}, 'text-green-600 hover:text-green-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} }">
+                                :class="{ 'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}, 'text-green-600 hover:text-green-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} }"
+                                title="Unduh Rapor">
                                 <img src="{{ asset('images/icons/download.png') }}" alt="Preview" class="action-icon">
                             </button>
                         </div>

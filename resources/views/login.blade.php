@@ -73,14 +73,14 @@
             @csrf
             <!-- Username -->
             <div class="mb-4">
-                <label for="username" class="block mb-2 text-sm font-medium text-gray-700">Username</label>
+                <label for="username" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengguna</label>
                 <input type="text" name="username" id="username" required
                     class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
 
             <!-- Password -->
             <div class="mb-4">
-                <label for="password" class="block mb-2 text-sm font-medium text-gray-700">Password</label>
+                <label for="password" class="block mb-2 text-sm font-medium text-gray-700">Sandi</label>
                 <div class="relative">
                     <input type="password" 
                         name="password" 
@@ -133,7 +133,7 @@
             <div class="flex justify-center">
                 <button type="submit"
                     class="w-full px-4 py-2 text-white bg-green-700 rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    Login
+                    Masuk
                 </button>
             </div>
         </form>
