@@ -46,12 +46,12 @@
                         <td class="px-6 py-4 text-center flex justify-around">
 
                             <!-- Edit TP Button -->
-                            <a href="{{ route('pengajar.tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline" title="Edit Tujuan Pembelajaran">
+                            <a href="{{ route('pengajar.tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline" title="Ubah Tujuan Pembelajaran">
                                 <img src="{{ asset('images/icons/edittp.png') }}" alt="Edit TP Icon" class="w-8 h-5">
                             </a>
                         
                             <!-- Edit Subject Button -->
-                            <a href="{{ route('pengajar.subject.edit', $subject->id) }}" class="text-yellow-600 hover:underline" title="Edit Mata Pelajaran">
+                            <a href="{{ route('pengajar.subject.edit', $subject->id) }}" class="text-yellow-600 hover:underline" title="Ubah Mata Pelajaran">
                                 <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
                             </a>
                         

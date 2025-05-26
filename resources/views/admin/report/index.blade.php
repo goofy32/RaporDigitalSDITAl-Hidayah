@@ -166,7 +166,7 @@
                         </td>
                         <td class="px-6 py-4 text-center whitespace-nowrap">
                             <!-- Preview Button -->
-                            <a href="#" onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}'); return false;" class="inline-block align-middle mr-2">
+                            <a href="#" onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}'); return false;" class="inline-block align-middle mr-2" title="Ubah Data">
                                 <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-5 h-5">
                             </a>
                             
@@ -174,7 +174,8 @@
                             <form action="{{ route('report.template.activate', $template->id) }}" 
                                 method="POST" 
                                 class="inline-block align-middle mr-2"
-                                onsubmit="return handleActivateToggle(event)">
+                                onsubmit="return handleActivateToggle(event)"
+                                title="Akftifkan atau Matikan Rapor">
                                 @csrf
                                 <input 
                                     type="checkbox" 
@@ -189,7 +190,8 @@
                             <form action="{{ route('report.template.destroy', $template->id) }}" 
                                 method="POST" 
                                 class="inline-block align-middle"
-                                onsubmit="return handleDelete(event)">
+                                onsubmit="return handleDelete(event)"
+                                title="Hapus Data">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="inline-block">

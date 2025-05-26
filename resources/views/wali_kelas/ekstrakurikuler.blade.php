@@ -60,10 +60,10 @@
                         <td class="px-6 py-4">{{ Str::limit($nilai->deskripsi, 50) }}</td>
                         <td class="px-6 py-4">
                             <div class="flex justify-center gap-2">
-                                <a href="{{ route('wali_kelas.ekstrakurikuler.edit', $nilai->id) }}" class="text-yellow-600 hover:text-yellow-800" title="Edit">
+                                <a href="{{ route('wali_kelas.ekstrakurikuler.edit', $nilai->id) }}" class="text-yellow-600 hover:text-yellow-800" title="Ubah Data">
                                     <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
                                 </a>
-                                <form action="{{ route('wali_kelas.ekstrakurikuler.destroy', $nilai->id) }}" method="POST" class="inline" title="Hapus">
+                                <form action="{{ route('wali_kelas.ekstrakurikuler.destroy', $nilai->id) }}" method="POST" class="inline" title="Hapus Data">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-800" 

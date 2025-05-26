@@ -66,13 +66,13 @@
                             <td class="px-6 py-4 text-center">
                                 <div class="flex space-x-2">
                                     <a href="{{ route('achievement.edit', $prestasi->id) }}" class="text-green-600 hover:text-green-800 transition-colors duration-200">
-                                        <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
+                                        <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5" title="Ubah Data">
 
                                     </a>
                                     <form action="{{ route('achievement.destroy', $prestasi->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus data ini?');" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 transition-colors duration-200">
+                                        <button type="submit" class="text-red-600 hover:text-red-800 transition-colors duration-200" title="Hapus Data">
                                             <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
                                         </button>
                                     </form>

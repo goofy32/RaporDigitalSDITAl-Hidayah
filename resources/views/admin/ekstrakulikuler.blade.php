@@ -71,14 +71,14 @@
                             <td class="px-6 py-4">{{ $ekstra->pembina }}</td>
                             <td class="px-6 py-4">
                                 <div class="flex space-x-2">
-                                    <a href="{{ route('ekstra.edit', $ekstra->id) }}" class="text-green-600 hover:text-green-800 transition-colors duration-200">
+                                    <a href="{{ route('ekstra.edit', $ekstra->id) }}" class="text-green-600 hover:text-green-800 transition-colors duration-200" title="Ubah Data">
                                         <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
                                     </a>
                                     <form action="{{ route('ekstra.destroy', $ekstra->id) }}" method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-800 transition-colors duration-200" 
-                                                onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                                                onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')" title="Hapus Data">
                                                 <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
                                         </button>
                                     </form>

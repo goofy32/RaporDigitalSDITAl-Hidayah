@@ -586,12 +586,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     @if($mapel->lingkupMateris->every(function($lm) { return $lm->tujuanPembelajarans->isNotEmpty(); }))
                                         @if(!$mapel->nilais()->exists())
                                         <a href="{{ route('pengajar.score.input_score', $mapel->id) }}"
-                                        class="text-green-600 hover:text-green-800">
+                                        class="text-green-600 hover:text-green-800" title="Masukkan Nilai">
                                                 <img src="{{ asset('images/icons/edit.png') }}" alt="Input Icon" class="w-5 h-5">
                                             </a>
                                         @else
                                         <a href="{{ route('pengajar.score.preview_score', $mapel->id) }}" 
-                                        class="text-blue-600 hover:text-blue-800"
+                                        class="text-blue-600 hover:text-blue-800" title="Lihat atau Ubah Nilai"
                                         onclick="return debugIconClick({{ $mapel->id }}, 'detail', '{{ route('pengajar.score.preview_score', $mapel->id) }}')">
                                             <img src="{{ asset('images/icons/detail.png') }}" alt="View Icon" class="w-5 h-5">
                                         </a>
@@ -599,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         @else
                                             <button type="button" 
                                                     class="text-yellow-600 hover:text-yellow-800"
-                                                    onclick="alert('Harap isi Tujuan Pembelajaran untuk mata pelajaran ini terlebih dahulu.')">
+                                                    onclick="alert('Harap isi Tujuan Pembelajaran untuk mata pelajaran ini terlebih dahulu.')" title="Anda belum menambah Tujuan Pembelajaran ke Mata Pelajaran Ini">
                                                 <img src="{{ asset('images/icons/warning.png') }}" alt="Warning Icon" class="w-5 h-5">
                                             </button>
                                         @endif
@@ -609,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 onsubmit="return confirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-800">
+                                                <button type="submit" class="text-red-600 hover:text-red-800" title="Hapus Data">
                                                     <img src="{{ asset('images/icons/delete.png') }}" alt="Delete Icon" class="w-5 h-5">
                                                 </button>
                                             </form>

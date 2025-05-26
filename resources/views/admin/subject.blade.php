@@ -71,14 +71,14 @@
                         <td class="px-6 py-4 text-center">
                         <div class="flex space-x-2">
                             <!-- Lihat TP -->
-                            <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline">
+                            <a href="{{ route('tujuan_pembelajaran.create', $subject->id) }}" class="text-blue-600 hover:underline" title="Ubah atau Lihat Tujuan Pembelajaran">
                                 <!-- Ikon Lihat TP -->
                                 <img src="{{ asset('images/icons/edittp.png') }}" alt="Extracurricular Icon" class="w-8 h-5">
 
                             </a>
                         
                             <!-- Edit Data Mata Pelajaran -->
-                            <a href="{{ route('subject.edit', $subject->id) }}" data-turbo-action="replace" class="text-green-600 hover:underline">
+                            <a href="{{ route('subject.edit', $subject->id) }}" data-turbo-action="replace" class="text-green-600 hover:underline" title="Ubah Data">
                                 <!-- Ikon Edit -->
                                 <img src="{{ asset('images/icons/edit.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
 
@@ -88,7 +88,7 @@
                             <form action="{{ route('subject.destroy', $subject->id) }}" method="POST" class="inline">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                                <button type="submit" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')" title="Hapus Data">
                                     <!-- Ikon Hapus -->
                                     <img src="{{ asset('images/icons/delete.png') }}" alt="Extracurricular Icon" class="w-5 h-5">
                                 </button>

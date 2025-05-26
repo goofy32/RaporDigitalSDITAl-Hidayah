@@ -68,7 +68,7 @@
                                 <!-- Edit -->
                                 <a href="{{ route('wali_kelas.student.edit', $student->id) }}" 
                                    class="text-yellow-600 hover:text-yellow-800"
-                                   title="Edit Siswa">
+                                   title="Ubah Data">
                                     <img src="{{ asset('images/icons/edit.png') }}" alt="Edit Icon" class="w-5 h-5">
                                 </a>
                                 

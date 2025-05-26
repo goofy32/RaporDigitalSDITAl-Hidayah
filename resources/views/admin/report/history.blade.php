@@ -120,7 +120,7 @@
                         @if($report->generated_file && Storage::disk('public')->exists($report->generated_file))
                             <a href="{{ route('admin.report.history.download', $report->id) }}" 
                                 class="text-green-600 hover:text-green-900"
-                                title="Download Rapor">
+                                title="Unduh Rapor">
                                 <img src="{{ asset('images/icons/download.png') }}" alt="Preview" class="w-6 h-6 object-contain">
                             </a>
                         @else
