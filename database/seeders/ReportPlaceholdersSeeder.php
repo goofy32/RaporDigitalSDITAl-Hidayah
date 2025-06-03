@@ -89,22 +89,16 @@ class ReportPlaceholdersSeeder extends Seeder
                 'is_required' => $i <= 4
             ];
             
+            // UBAH: Ganti dari capaian_matapelajaran menjadi capaian_kompetensi
             $mapelPlaceholders[] = [
-                'placeholder_key' => "capaian_matapelajaran{$i}",
-                'description' => "Capaian mata pelajaran {$i}",
+                'placeholder_key' => "capaian_kompetensi{$i}",
+                'description' => "Capaian kompetensi mata pelajaran {$i} (otomatis berdasarkan nilai + kustomisasi wali kelas)",
                 'category' => 'mapel',
                 'is_required' => $i <= 4
             ];
             
-            // TAMBAHAN BARU: Catatan dari guru untuk setiap mata pelajaran
-            $mapelPlaceholders[] = [
-                'placeholder_key' => "catatan_matapelajaran{$i}",
-                'description' => "Catatan guru mata pelajaran {$i}",
-                'category' => 'mapel',
-                'is_required' => false
-            ];
-            
-            // TAMBAHAN BARU: KKM untuk setiap mata pelajaran
+            // HAPUS: catatan_matapelajaran karena sudah diganti dengan capaian kompetensi
+            // KKM tetap ada
             $mapelPlaceholders[] = [
                 'placeholder_key' => "kkm_matapelajaran{$i}",
                 'description' => "KKM mata pelajaran {$i}",
@@ -132,22 +126,16 @@ class ReportPlaceholdersSeeder extends Seeder
                 'is_required' => false
             ];
             
+            // UBAH: Ganti dari capaian_mulok menjadi capaian_kompetensi_mulok
             $mulokPlaceholders[] = [
-                'placeholder_key' => "capaian_mulok{$i}",
-                'description' => "Capaian muatan lokal {$i}",
+                'placeholder_key' => "capaian_kompetensi_mulok{$i}",
+                'description' => "Capaian kompetensi muatan lokal {$i} (otomatis berdasarkan nilai + kustomisasi)",
                 'category' => 'mulok',
                 'is_required' => false
             ];
             
-            // TAMBAHAN BARU: Catatan guru untuk setiap muatan lokal
-            $mulokPlaceholders[] = [
-                'placeholder_key' => "catatan_mulok{$i}",
-                'description' => "Catatan guru muatan lokal {$i}",
-                'category' => 'mulok',
-                'is_required' => false
-            ];
-            
-            // TAMBAHAN BARU: KKM untuk setiap muatan lokal
+            // HAPUS: catatan_mulok
+            // KKM tetap ada
             $mulokPlaceholders[] = [
                 'placeholder_key' => "kkm_mulok{$i}",
                 'description' => "KKM muatan lokal {$i}",
@@ -181,39 +169,32 @@ class ReportPlaceholdersSeeder extends Seeder
         // Support juga untuk placeholder lama (backward compatibility)
         $oldPlaceholders = [
             ['placeholder_key' => 'nilai_pai', 'description' => 'Nilai Pendidikan Agama Islam', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_pai', 'description' => 'Capaian Pendidikan Agama Islam', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_pai', 'description' => 'Catatan guru Pendidikan Agama Islam', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_pai', 'description' => 'KKM Pendidikan Agama Islam', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_pai', 'description' => 'Capaian kompetensi Pendidikan Agama Islam', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_pai', 'description' => 'KKM Pendidikan Agama Islam', 'category' => 'mapel_lama', 'is_required' => false],
             
             ['placeholder_key' => 'nilai_ppkn', 'description' => 'Nilai PPKN', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_ppkn', 'description' => 'Capaian PPKN', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_ppkn', 'description' => 'Catatan guru PPKN', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_ppkn', 'description' => 'KKM PPKN', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_ppkn', 'description' => 'Capaian kompetensi PPKN', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_ppkn', 'description' => 'KKM PPKN', 'category' => 'mapel_lama', 'is_required' => false],
             
             ['placeholder_key' => 'nilai_bahasa_indonesia', 'description' => 'Nilai Bahasa Indonesia', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_bahasa_indonesia', 'description' => 'Capaian Bahasa Indonesia', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_bahasa_indonesia', 'description' => 'Catatan guru Bahasa Indonesia', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_bahasa_indonesia', 'description' => 'KKM Bahasa Indonesia', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_bahasa_indonesia', 'description' => 'Capaian kompetensi Bahasa Indonesia', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_bahasa_indonesia', 'description' => 'KKM Bahasa Indonesia', 'category' => 'mapel_lama', 'is_required' => false],
             
             ['placeholder_key' => 'nilai_matematika', 'description' => 'Nilai Matematika', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_matematika', 'description' => 'Capaian Matematika', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_matematika', 'description' => 'Catatan guru Matematika', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_matematika', 'description' => 'KKM Matematika', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_matematika', 'description' => 'Capaian kompetensi Matematika', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_matematika', 'description' => 'KKM Matematika', 'category' => 'mapel_lama', 'is_required' => false],
             
             ['placeholder_key' => 'nilai_pjok', 'description' => 'Nilai PJOK', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_pjok', 'description' => 'Capaian PJOK', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_pjok', 'description' => 'Catatan guru PJOK', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_pjok', 'description' => 'KKM PJOK', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_pjok', 'description' => 'Capaian kompetensi PJOK', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_pjok', 'description' => 'KKM PJOK', 'category' => 'mapel_lama', 'is_required' => false],
             
             ['placeholder_key' => 'nilai_seni_musik', 'description' => 'Nilai Seni Musik', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_seni_musik', 'description' => 'Capaian Seni Musik', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_seni_musik', 'description' => 'Catatan guru Seni Musik', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_seni_musik', 'description' => 'KKM Seni Musik', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_seni_musik', 'description' => 'Capaian kompetensi Seni Musik', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_seni_musik', 'description' => 'KKM Seni Musik', 'category' => 'mapel_lama', 'is_required' => false],
             
             ['placeholder_key' => 'nilai_bahasa_inggris', 'description' => 'Nilai Bahasa Inggris', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'capaian_bahasa_inggris', 'description' => 'Capaian Bahasa Inggris', 'category' => 'mapel_lama', 'is_required' => false],
-            ['placeholder_key' => 'catatan_bahasa_inggris', 'description' => 'Catatan guru Bahasa Inggris', 'category' => 'mapel_lama', 'is_required' => false], // BARU
-            ['placeholder_key' => 'kkm_bahasa_inggris', 'description' => 'KKM Bahasa Inggris', 'category' => 'mapel_lama', 'is_required' => false], // BARU
+            ['placeholder_key' => 'capaian_kompetensi_bahasa_inggris', 'description' => 'Capaian kompetensi Bahasa Inggris', 'category' => 'mapel_lama', 'is_required' => false],
+            ['placeholder_key' => 'kkm_bahasa_inggris', 'description' => 'KKM Bahasa Inggris', 'category' => 'mapel_lama', 'is_required' => false],
         ];
         
         DB::table('report_placeholders')->insert($oldPlaceholders);

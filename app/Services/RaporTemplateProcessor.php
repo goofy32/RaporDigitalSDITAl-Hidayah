@@ -213,6 +213,7 @@ class RaporTemplateProcessor
 
     /**
      * Mengumpulkan semua data yang diperlukan untuk template rapor
+     * Updated untuk sistem capaian kompetensi baru
      * 
      * @return array
      */
@@ -220,10 +221,6 @@ class RaporTemplateProcessor
     {
         $semester = $this->getReportDataSemester();
         $tahunAjaranId = $this->tahunAjaranId;
-        $catatanType = strtolower($this->type); // 'uts' or 'uas'
-    
-        // DEBUG: Cek data catatan
-        $this->debugCatatanData($tahunAjaranId, $semester, $catatanType);
         
         // Data Siswa
         $data = [
@@ -248,15 +245,11 @@ class RaporTemplateProcessor
             'semester' => $this->schoolProfile->semester == 1 ? 'Ganjil' : 'Genap',
         ];
 
-        // ========== CATATAN SISWA ==========
-        // Get student notes based on report type
-        $catatanType = strtolower($this->type); // 'uts' or 'uas'
-        
-        // Get general student notes (catatan_guru)
+        // ========== CATATAN SISWA (CATATAN GURU) ==========
         $catatanSiswa = \App\Models\CatatanSiswa::where('siswa_id', $this->siswa->id)
             ->where('tahun_ajaran_id', $tahunAjaranId)
             ->where('semester', $semester)
-            ->where('type', $catatanType)
+            ->where('type', 'umum') // Gunakan type umum untuk catatan guru
             ->first();
             
         $data['catatan_guru'] = $catatanSiswa ? $catatanSiswa->catatan : '-';
@@ -354,9 +347,9 @@ class RaporTemplateProcessor
             }
         }
 
-        // INISIALISASI VARIABEL YANG DIPERLUKAN - PERBAIKAN UTAMA
+        // INISIALISASI VARIABEL YANG DIPERLUKAN
         $dynamicPlaceholders = [];
-        $mapelCount = 1; // INISIALISASI VARIABEL INI
+        $mapelCount = 1;
         $processedKeys = []; // Track key yang sudah diproses
         
         // Proses mata pelajaran berdasarkan urutan prioritas
@@ -388,29 +381,22 @@ class RaporTemplateProcessor
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
                     $data["nilai_$key"] = number_format($nilaiValue, 1);
-                    $data["capaian_$key"] = $nilaiAkhir->deskripsi ?? 
-                        $this->generateSpecificCapaian($nilaiValue, $key);
-                        
-                    // ========== CATATAN MATA PELAJARAN ==========
-                    // Get subject-specific notes
-                    $catatanMapel = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
-                        ->where('siswa_id', $this->siswa->id)
-                        ->where('tahun_ajaran_id', $tahunAjaranId)
-                        ->where('semester', $semester)
-                        ->where('type', $catatanType)
-                        ->first();
-                        
-                    $data["catatan_$key"] = $catatanMapel ? $catatanMapel->catatan : '-';
                     
-                    // ========== KKM MATA PELAJARAN ==========
+                    // CAPAIAN KOMPETENSI - SISTEM BARU
+                    $data["capaian_kompetensi_$key"] = \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                        $this->siswa->id,
+                        $mataPelajaranId,
+                        $tahunAjaranId
+                    );
+                        
+                    // KKM MATA PELAJARAN
                     $data["kkm_$key"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
                         
                     // Tambahkan ke placeholder dinamis
                     $dynamicPlaceholders[$mapelCount] = [
                         'nama' => $mapelName,
                         'nilai' => $data["nilai_$key"],
-                        'capaian' => $data["capaian_$key"],
-                        'catatan' => $data["catatan_$key"],
+                        'capaian_kompetensi' => $data["capaian_kompetensi_$key"],
                         'kkm' => $data["kkm_$key"],
                         'mata_pelajaran_id' => $mataPelajaranId
                     ];
@@ -421,7 +407,7 @@ class RaporTemplateProcessor
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
                         'kkm' => $data["kkm_$key"],
-                        'catatan' => $data["catatan_$key"],
+                        'capaian_kompetensi' => substr($data["capaian_kompetensi_$key"], 0, 100) . '...',
                         'placeholder_position' => $mapelCount - 1,
                         'tahun_ajaran_id' => $tahunAjaranId,
                         'mata_pelajaran_id' => $mataPelajaranId
@@ -436,17 +422,11 @@ class RaporTemplateProcessor
                         
                     if ($avgNilai) {
                         $data["nilai_$key"] = number_format($avgNilai, 1);
-                        $data["capaian_$key"] = $this->generateSpecificCapaian($avgNilai, $key);
-                        
-                        // Get catatan for this subject
-                        $catatanMapel = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
-                            ->where('siswa_id', $this->siswa->id)
-                            ->where('tahun_ajaran_id', $tahunAjaranId)
-                            ->where('semester', $semester)
-                            ->where('type', $catatanType)
-                            ->first();
-                            
-                        $data["catatan_$key"] = $catatanMapel ? $catatanMapel->catatan : '-';
+                        $data["capaian_kompetensi_$key"] = \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                            $this->siswa->id,
+                            $mataPelajaranId,
+                            $tahunAjaranId
+                        );
                         
                         // KKM untuk mata pelajaran dengan rata-rata nilai
                         $data["kkm_$key"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
@@ -455,8 +435,7 @@ class RaporTemplateProcessor
                         $dynamicPlaceholders[$mapelCount] = [
                             'nama' => $mapelName,
                             'nilai' => $data["nilai_$key"],
-                            'capaian' => $data["capaian_$key"],
-                            'catatan' => $data["catatan_$key"],
+                            'capaian_kompetensi' => $data["capaian_kompetensi_$key"],
                             'kkm' => $data["kkm_$key"],
                             'mata_pelajaran_id' => $mataPelajaranId
                         ];
@@ -464,16 +443,14 @@ class RaporTemplateProcessor
                         $mapelCount++;
                     } else {
                         $data["nilai_$key"] = '-';
-                        $data["capaian_$key"] = '-';
-                        $data["catatan_$key"] = '-';
+                        $data["capaian_kompetensi_$key"] = '-';
                         $data["kkm_$key"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
                     }
                 }
             } else {
                 // Jika key tidak ada di data, set nilai default
                 $data["nilai_$key"] = '-';
-                $data["capaian_$key"] = '-';
-                $data["catatan_$key"] = '-';
+                $data["capaian_kompetensi_$key"] = '-';
                 $data["kkm_$key"] = '70'; // Default KKM
                 
                 Log::info("Mata pelajaran $key tidak ditemukan dalam data siswa");
@@ -496,21 +473,15 @@ class RaporTemplateProcessor
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
                     
-                    // Get catatan for this subject
-                    $catatanMapel = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
-                        ->where('siswa_id', $this->siswa->id)
-                        ->where('tahun_ajaran_id', $tahunAjaranId)
-                        ->where('semester', $semester)
-                        ->where('type', $catatanType)
-                        ->first();
-                    
                     // Tambahkan ke placeholder dinamis
                     $dynamicPlaceholders[$mapelCount] = [
                         'nama' => $mapelName,
                         'nilai' => number_format($nilaiValue, 1),
-                        'capaian' => $nilaiAkhir->deskripsi ?? 
-                            $this->generateCapaianDeskripsi($nilaiValue, $mapelName),
-                        'catatan' => $catatanMapel ? $catatanMapel->catatan : '-',
+                        'capaian_kompetensi' => \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                            $this->siswa->id,
+                            $mataPelajaranId,
+                            $tahunAjaranId
+                        ),
                         'kkm' => isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70',
                         'mata_pelajaran_id' => $mataPelajaranId
                     ];
@@ -521,7 +492,7 @@ class RaporTemplateProcessor
                     Log::info("Mata pelajaran lainnya diproses", [
                         'nama' => $mapelName,
                         'nilai' => $nilaiValue,
-                        'catatan' => $dynamicPlaceholders[$mapelCount-1]['catatan'],
+                        'capaian_kompetensi' => substr($dynamicPlaceholders[$mapelCount-1]['capaian_kompetensi'], 0, 100) . '...',
                         'kkm' => $dynamicPlaceholders[$mapelCount-1]['kkm'],
                         'placeholder_position' => $mapelCount - 1,
                         'tahun_ajaran_id' => $tahunAjaranId,
@@ -536,19 +507,17 @@ class RaporTemplateProcessor
             if (isset($dynamicPlaceholders[$i])) {
                 $data["nama_matapelajaran$i"] = $dynamicPlaceholders[$i]['nama'];
                 $data["nilai_matapelajaran$i"] = $dynamicPlaceholders[$i]['nilai'];
-                $data["capaian_matapelajaran$i"] = $dynamicPlaceholders[$i]['capaian'];
-                $data["catatan_matapelajaran$i"] = $dynamicPlaceholders[$i]['catatan'];
+                $data["capaian_kompetensi$i"] = $dynamicPlaceholders[$i]['capaian_kompetensi']; // BARU
                 $data["kkm_matapelajaran$i"] = $dynamicPlaceholders[$i]['kkm'];
             } else {
                 $data["nama_matapelajaran$i"] = '-';
                 $data["nilai_matapelajaran$i"] = '-';
-                $data["capaian_matapelajaran$i"] = '-';
-                $data["catatan_matapelajaran$i"] = '-';
+                $data["capaian_kompetensi$i"] = '-'; // BARU
                 $data["kkm_matapelajaran$i"] = '70';
             }
         }
 
-        // Proses Muatan Lokal dengan filter tahun ajaran dan catatan
+        // Proses Muatan Lokal dengan filter tahun ajaran dan capaian kompetensi
         $mulokCount = 1;
         foreach ($mulok as $nama => $nilaiMulok) {
             if ($mulokCount <= 5) {
@@ -568,8 +537,11 @@ class RaporTemplateProcessor
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
                     $data["nilai_mulok$mulokCount"] = number_format($nilaiValue, 1);
-                    $data["capaian_mulok$mulokCount"] = $nilaiAkhir->deskripsi ?? 
-                        $this->generateCapaianDeskripsi($nilaiValue, $nama);
+                    $data["capaian_kompetensi_mulok$mulokCount"] = \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                        $this->siswa->id,
+                        $mataPelajaranId,
+                        $tahunAjaranId
+                    ); // BARU
                 } else {
                     // Jika tidak ada nilai_akhir_rapor, cari alternatif dengan filter tahun ajaran
                     $avgNilai = $nilaiMulok
@@ -579,19 +551,13 @@ class RaporTemplateProcessor
                         ->avg('nilai_tp');
                         
                     $data["nilai_mulok$mulokCount"] = $avgNilai ? number_format($avgNilai, 1) : '-';
-                    $data["capaian_mulok$mulokCount"] = $avgNilai ? 
-                        $this->generateCapaianDeskripsi($avgNilai, $nama) : '-';
+                    $data["capaian_kompetensi_mulok$mulokCount"] = $avgNilai ? 
+                        \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                            $this->siswa->id,
+                            $mataPelajaranId,
+                            $tahunAjaranId
+                        ) : '-'; // BARU
                 }
-                
-                // Get catatan for this muatan lokal
-                $catatanMulok = \App\Models\CatatanMataPelajaran::where('mata_pelajaran_id', $mataPelajaranId)
-                    ->where('siswa_id', $this->siswa->id)
-                    ->where('tahun_ajaran_id', $tahunAjaranId)
-                    ->where('semester', $semester)
-                    ->where('type', $catatanType)
-                    ->first();
-                    
-                $data["catatan_mulok$mulokCount"] = $catatanMulok ? $catatanMulok->catatan : '-';
                 
                 // KKM untuk muatan lokal
                 $data["kkm_mulok$mulokCount"] = isset($kkmData[$mataPelajaranId]) ? $kkmData[$mataPelajaranId] : '70';
@@ -604,8 +570,7 @@ class RaporTemplateProcessor
         for ($i = $mulokCount; $i <= 5; $i++) {
             $data["nama_mulok$i"] = '-';
             $data["nilai_mulok$i"] = '-';
-            $data["capaian_mulok$i"] = '-';
-            $data["catatan_mulok$i"] = '-';
+            $data["capaian_kompetensi_mulok$i"] = '-'; // BARU
             $data["kkm_mulok$i"] = '70';
         }
 
@@ -698,8 +663,8 @@ class RaporTemplateProcessor
             'kkm_count' => count(array_filter(array_keys($data), function($key) {
                 return strpos($key, 'kkm_') === 0;
             })),
-            'catatan_count' => count(array_filter(array_keys($data), function($key) {
-                return strpos($key, 'catatan_') === 0;
+            'capaian_kompetensi_count' => count(array_filter(array_keys($data), function($key) {
+                return strpos($key, 'capaian_kompetensi') === 0;
             })),
             'tahun_ajaran_id' => $tahunAjaranId,
             'catatan_guru' => $data['catatan_guru']

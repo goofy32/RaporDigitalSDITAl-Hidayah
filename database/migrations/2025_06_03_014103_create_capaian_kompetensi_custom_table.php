@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('capaian_kompetensi_custom', function (Blueprint $table) {
+        Schema::create('capaian_custom', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('siswa_id');
             $table->unsignedBigInteger('mata_pelajaran_id');

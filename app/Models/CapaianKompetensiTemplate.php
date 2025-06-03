@@ -1,4 +1,5 @@
 <?php
+// app/Models/CapaianKompetensiTemplate.php
 
 namespace App\Models;
 
@@ -8,6 +9,8 @@ use App\Traits\HasTahunAjaran;
 class CapaianKompetensiTemplate extends Model
 {
     use HasTahunAjaran;
+    
+    protected $table = 'capaian_templates';
     
     protected $fillable = [
         'mata_pelajaran',

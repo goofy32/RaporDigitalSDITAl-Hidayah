@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('capaian_kompetensi_templates', function (Blueprint $table) {
+        Schema::create('capaian_templates', function (Blueprint $table) {
             $table->id();
             $table->string('mata_pelajaran'); // Nama mata pelajaran (PAI, Matematika, dll)
             $table->decimal('nilai_min', 5, 2); // Nilai minimum untuk range

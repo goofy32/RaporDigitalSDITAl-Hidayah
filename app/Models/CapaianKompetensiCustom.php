@@ -9,7 +9,7 @@ class CapaianKompetensiCustom extends Model
 {
     use HasTahunAjaran;
     
-    protected $table = 'capaian_kompetensi_custom';
+    protected $table = 'capaian_custom';
 
     protected $fillable = [
         'siswa_id',

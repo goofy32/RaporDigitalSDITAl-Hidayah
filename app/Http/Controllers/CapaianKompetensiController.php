@@ -155,7 +155,7 @@ class CapaianKompetensiController extends Controller
         $mataPelajaran = MataPelajaran::findOrFail($mataPelajaranId);
 
         // Cek akses wali kelas
-        $kelas = $guru->kelasWali;
+        $kelas = $guru->kelasWali()->first();
         if (!$kelas || $mataPelajaran->kelas_id !== $kelas->id) {
             return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit capaian kompetensi mata pelajaran ini.');
         }
@@ -190,7 +190,7 @@ class CapaianKompetensiController extends Controller
         $mataPelajaran = MataPelajaran::findOrFail($mataPelajaranId);
 
         // Cek akses wali kelas
-        $kelas = $guru->kelasWali;
+        $kelas = $guru->kelasWali()->first();
         if (!$kelas || $mataPelajaran->kelas_id !== $kelas->id) {
             return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit capaian kompetensi mata pelajaran ini.');
         }

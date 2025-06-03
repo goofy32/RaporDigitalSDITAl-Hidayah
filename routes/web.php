@@ -23,6 +23,7 @@
     use App\Http\Controllers\BobotNilaiController;
     use App\Http\Controllers\KenaikanKelasController;
     use App\Http\Controllers\CatatanController;
+    use App\Http\Controllers\CapaianKompetensiController;
     use App\Models\Siswa;
     use App\Models\FormatRapor;
     use Illuminate\Support\Facades\Auth;
@@ -417,7 +418,11 @@
         ->group(function () {
 
         
-        
+        Route::prefix('capaian-kompetensi')->name('capaian_kompetensi.')->group(function () {
+            Route::get('/', [CapaianKompetensiController::class, 'waliKelasIndex'])->name('index');
+            Route::get('/{mataPelajaran}/edit', [CapaianKompetensiController::class, 'waliKelasEdit'])->name('edit');
+            Route::put('/{mataPelajaran}', [CapaianKompetensiController::class, 'waliKelasUpdate'])->name('update');
+        });
         Route::prefix('catatan')->name('catatan.')->group(function () {
             // Catatan Siswa
             Route::prefix('siswa')->name('siswa.')->group(function () {
