@@ -17,6 +17,11 @@ class KkmController extends Controller
             ->with('error', 'Pengaturan KKM tersedia melalui menu pengaturan di navbar');
     }
     
+    public function subjectView()
+    {
+        return view('admin.subject.kkm');
+    }
+    
     public function store(Request $request)
     {
         $request->validate([

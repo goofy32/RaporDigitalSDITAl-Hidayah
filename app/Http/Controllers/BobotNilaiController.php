@@ -15,6 +15,11 @@ class BobotNilaiController extends Controller
             ->with('info', 'Pengaturan Bobot Nilai tersedia melalui menu pengaturan di navbar');
     }
     
+    public function subjectView()
+    {
+        return view('admin.subject.bobot-nilai');
+    }
+    
     public function update(Request $request)
     {
         $validated = $request->validate([

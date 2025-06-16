@@ -29,7 +29,7 @@
                 <h3 class="bg-green-700 text-white px-4 py-2 rounded-t">Catatan Umum</h3>
                 <div class="border border-gray-300 rounded-b p-4">
                     <label for="catatan_umum" class="block text-sm font-medium text-gray-700 mb-2">
-                        Catatan umum untuk siswa ini
+                        Catatan Guru untuk siswa ini
                     </label>
                     <textarea 
                         id="catatan_umum" 
@@ -41,7 +41,7 @@
                 </div>
             </div>
 
-            <!-- Catatan UTS -->
+            <!-- Catatan UTS 
             <div>
                 <h3 class="bg-green-600 text-white px-4 py-2 rounded-t">Catatan UTS (Tengah Semester)</h3>
                 <div class="border border-gray-300 rounded-b p-4">
@@ -58,7 +58,7 @@
                 </div>
             </div>
 
-            <!-- Catatan UAS -->
+            Catatan UAS 
             <div>
                 <h3 class="bg-green-600 text-white px-4 py-2 rounded-t">Catatan UAS (Akhir Semester)</h3>
                 <div class="border border-gray-300 rounded-b p-4">
@@ -75,6 +75,8 @@
                 </div>
             </div>
         </div>
+
+        -->
 
         <!-- Submit Button -->
         <div class="flex justify-end mt-6">

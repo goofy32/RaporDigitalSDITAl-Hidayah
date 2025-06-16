@@ -199,6 +199,10 @@
         Route::get('students/upload', [StudentController::class, 'uploadPage'])->name('student.upload');
         Route::post('students/import', [StudentController::class, 'importExcel'])->name('student.import');
 
+        // Subject Settings Routes - harus di atas resource route untuk menghindari konflik
+        Route::get('subject/bobot-nilai', [BobotNilaiController::class, 'subjectView'])->name('admin.subject.bobot-nilai');
+        Route::get('subject/kkm', [KkmController::class, 'subjectView'])->name('admin.subject.kkm');
+        
         // Subject Routes
         Route::resource('subject', SubjectController::class);
 
@@ -422,6 +426,13 @@
             Route::get('/', [CapaianKompetensiController::class, 'waliKelasIndex'])->name('index');
             Route::get('/{mataPelajaran}/edit', [CapaianKompetensiController::class, 'waliKelasEdit'])->name('edit');
             Route::put('/{mataPelajaran}', [CapaianKompetensiController::class, 'waliKelasUpdate'])->name('update');
+            
+            // Route baru untuk range templates
+            Route::get('/range-templates', [CapaianKompetensiController::class, 'rangeTemplates'])->name('range_templates');
+            Route::put('/range-templates', [CapaianRangeTemplateController::class, 'update'])->name('range_templates.update');
+            Route::post('/range-templates', [CapaianRangeTemplateController::class, 'store'])->name('range_templates.store');
+            Route::delete('/range-templates/{id}', [CapaianRangeTemplateController::class, 'destroy'])->name('range_templates.destroy');
+            Route::post('/range-templates/reset', [CapaianRangeTemplateController::class, 'resetToDefault'])->name('range_templates.reset');
         });
         Route::prefix('catatan')->name('catatan.')->group(function () {
             // Catatan Siswa
