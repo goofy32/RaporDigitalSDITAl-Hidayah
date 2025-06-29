@@ -119,14 +119,7 @@ Alpine.data('geminiChat', () => ({
     chats: [],
     isLoading: false,
     error: null,
-    suggestions: [
-        'Bagaimana cara login sebagai guru?',
-        'Format tahun ajaran yang benar?',
-        'Cara mengatasi duplikat tahun ajaran?',
-        'Langkah setup awal sistem?',
-        'Cara generate rapor siswa?',
-        'Troubleshooting template rapor?'
-    ],
+    suggestions: [],
     showSuggestions: true,
     
     init() {
