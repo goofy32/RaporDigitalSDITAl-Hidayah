@@ -6,19 +6,59 @@
 <div>
     <div class="p-4 bg-white mt-14">
         <!-- Header dengan tombol seperti screenshot -->
-        <div class="flex justify-between items-center mb-6">
+        <!-- <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-green-700">Bobot Nilai</h2>
             <div class="flex gap-2">
                 <a href="{{ route('subject.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium">
                     Kembali
                 </a>
-                <button @click="saveBobot" :disabled="!isTotalValid" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium">
+                <button type="button" @click.prevent="saveBobot()" :disabled="!isTotalValid"class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium">
                     Simpan
                 </button>
             </div>
-        </div>
+        </div> -->
 
-        <div x-data="bobotNilaiForm">
+        <div x-data="bobotNilaiForm"> 
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-green-700">Bobot Nilai</h2>
+                <div class="flex gap-2">
+                    <a href="{{ route('subject.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium">
+                        Kembali
+                    </a>
+                    <button @click="saveBobot" :disabled="!isTotalValid" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium">
+                        Simpan
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-green-800">
+                        <svg class="inline-block w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Bobot Nilai Saat Ini
+                    </h3>
+                    <span class="text-sm text-green-600">Tahun Ajaran {{ session('tahun_ajaran_text', 'Aktif') }}</span>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-4 mt-4">
+                    <div class="bg-white p-3 rounded-lg border border-green-200">
+                        <div class="text-sm text-gray-600">S.TP (Tujuan Pembelajaran)</div>
+                        <div class="text-2xl font-bold text-green-700" x-text="Math.round(bobotData.bobot_tp * 100) + '%'"></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-green-200">
+                        <div class="text-sm text-gray-600">S.LM (Lingkup Materi)</div>
+                        <div class="text-2xl font-bold text-green-700" x-text="Math.round(bobotData.bobot_lm * 100) + '%'"></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-green-200">
+                        <div class="text-sm text-gray-600">S.AS (Akhir Semester)</div>
+                        <div class="text-2xl font-bold text-green-700" x-text="Math.round(bobotData.bobot_as * 100) + '%'"></div>
+                    </div>
+                </div>
+            </div>
+
+
             <!-- Alert Penting Diperhatikan seperti screenshot -->
             <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-6">
                 <h4 class="text-md font-medium text-yellow-800 mb-2">Penting Diperhatikan:</h4>
@@ -122,6 +162,7 @@ document.addEventListener('alpine:init', () => {
         },
         
         init() {
+            console.log('BobotNilai Component Initialized');
             this.fetchBobotData();
         },
         
@@ -144,7 +185,7 @@ document.addEventListener('alpine:init', () => {
                 this.showAlert('error', 'Total bobot harus 100%');
                 return;
             }
-            
+
             // Tampilkan konfirmasi terlebih dahulu
             const confirmMessage = `
             Perhatian! Perubahan bobot nilai akan mempengaruhi:
@@ -193,7 +234,16 @@ document.addEventListener('alpine:init', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    this.showAlert('success', 'Bobot nilai berhasil disimpan dan akan diterapkan pada semua perhitungan nilai');
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: 'Bobot nilai berhasil disimpan',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    
+                    // Redirect ke halaman subject
+                    window.location.href = '{{ route("subject.index") }}';
                 } else {
                     this.showAlert('error', data.message || 'Gagal menyimpan bobot nilai');
                 }
@@ -204,18 +254,22 @@ document.addEventListener('alpine:init', () => {
         },
 
         showAlert(type, message) {
-            // Use SweetAlert2 if available
-            if (window.Swal) {
-                Swal.fire({
-                    icon: type,
-                    title: type === 'success' ? 'Berhasil!' : 'Perhatian!',
-                    text: message,
-                    timer: 3000,
-                    showConfirmButton: false
-                });
-            } else {
-                alert(message);
+            console.log('Alert:', type, message); // Debug log
+            
+            // Check if SweetAlert2 is loaded
+            if (typeof Swal === 'undefined') {
+                console.error('SweetAlert2 not loaded!');
+                alert(message); // Fallback
+                return;
             }
+            
+            Swal.fire({
+                icon: type,
+                title: type === 'success' ? 'Berhasil!' : 'Perhatian!',
+                text: message,
+                timer: 3000,
+                showConfirmButton: false
+            });
         }
     }));
 });

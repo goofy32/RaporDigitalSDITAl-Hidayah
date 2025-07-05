@@ -6,19 +6,30 @@
 <div>
     <div class="p-4 bg-white mt-14">
         <!-- Header dengan tombol seperti screenshot -->
-        <div class="flex justify-between items-center mb-6">
+        <!-- <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-green-700">Kriteria Ketuntasan Minimal</h2>
             <div class="flex gap-2">
                 <a href="{{ route('subject.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium">
                     Kembali
                 </a>
-                <button @click="saveKkm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                <button type="button" @click.prevent="saveKkm()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
                     Simpan
                 </button>
             </div>
-        </div>
+        </div> -->
 
         <div x-data="kkmForm">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-green-700">Kriteria Ketuntasan Minimal</h2>
+                <div class="flex gap-2">
+                    <a href="{{ route('subject.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium">
+                        Kembali
+                    </a>
+                    <!-- <button @click="saveKkm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                        Simpan
+                    </button> -->
+                </div>
+            </div>
             <!-- Pengaturan Notifikasi KKM -->
             <div class="p-4 bg-green-50 border border-green-200 rounded-lg mb-6">
                 <h4 class="text-lg font-medium text-green-800 mb-2">Pengaturan Notifikasi KKM</h4>
@@ -39,7 +50,7 @@
                     </p>
                 </div>
                 <button 
-                    @click="saveKkmNotificationSettings" 
+                    type="button" @click.prevent="saveKkmNotificationSettings()"
                     class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                 >
                     Simpan Pengaturan Notifikasi
@@ -84,7 +95,7 @@
 
             <!-- Tombol Tambah ke Tabel -->
             <div class="mb-6">
-                <button @click="addToTable" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                <button type="button" @click.prevent="addToTable()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
                     Tambah ke Tabel
                 </button>
             </div>
@@ -140,8 +151,8 @@
             </div>
 
             <!-- Pengaturan KKM Massal -->
-            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 class="text-lg font-medium text-blue-800 mb-2">Pengaturan KKM Massal</h4>
+            <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 class="text-lg font-medium text-green-800 mb-2">Pengaturan KKM Massal</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <label class="block mb-2 text-sm font-medium text-gray-900">
@@ -149,14 +160,14 @@
                         </label>
                         <input type="number" x-model="globalKkmData.nilai" 
                                min="0" max="100" 
-                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5"
                                placeholder="Contoh: 70">
                     </div>
                     
                     <div class="flex items-end">
                         <div class="flex items-center h-10">
                             <input type="checkbox" id="overwrite" x-model="globalKkmData.overwriteExisting" 
-                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                   class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                             <label for="overwrite" class="ml-2 text-sm text-gray-700">
                                 Timpa nilai KKM yang sudah ada
                             </label>
@@ -164,7 +175,7 @@
                     </div>
                     
                     <div class="flex items-end">
-                        <button @click="applyGlobalKkm" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                        <button type="button" @click.prevent="applyGlobalKkm()" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
                             Terapkan KKM Massal
                         </button>
                     </div>
@@ -201,6 +212,7 @@ document.addEventListener('alpine:init', () => {
         },
         
         init() {
+            console.log('KKM Component Initialized');
             this.fetchKelasData();
             this.fetchKkmList();
             this.initKkmNotificationSettings();
@@ -338,9 +350,16 @@ document.addEventListener('alpine:init', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    this.fetchKkmList();
-                    this.resetForms();
-                    this.showAlert('success', 'KKM berhasil disimpan');
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: 'KKM berhasil disimpan',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    
+                    // Redirect ke halaman subject
+                    window.location.href = '{{ route("subject.index") }}';
                 } else {
                     this.showAlert('error', data.message || 'Gagal menyimpan KKM');
                 }

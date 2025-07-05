@@ -6,7 +6,7 @@
 <div class="p-4 bg-white block sm:flex items-center justify-between border-b border-gray-200">
     <div class="mb-1 w-full">
         <div class="mb-4">
-            <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">Audit Log Details</h1>
+            <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">Catatan Aktivitas Lengkap</h1>
         </div>
         <div class="sm:flex">
             <div class="flex items-center space-x-2 sm:space-x-3 ml-auto">
@@ -14,7 +14,7 @@
                     <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                     </svg>
-                    Back to Audit Logs
+                    Kembali ke catatan aktivitas
                 </a>
             </div>
         </div>
@@ -23,18 +23,18 @@
 
 <div class="p-4">
     <div class="bg-white shadow rounded-lg p-4 md:p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-4">Log Information</h2>
+        <h2 class="text-lg font-semibold mb-4">Information Catatan Aktivitas</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <p class="text-sm font-medium text-gray-500">Event ID</p>
+                <p class="text-sm font-medium text-gray-500">ID Aktivitas</p>
                 <p class="text-base font-medium text-gray-900">{{ $auditLog->id }}</p>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">Date & Time</p>
+                <p class="text-sm font-medium text-gray-500">Tanggal & Waktu</p>
                 <p class="text-base font-medium text-gray-900">{{ $auditLog->created_at->format('F d, Y H:i:s') }}</p>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">Action</p>
+                <p class="text-sm font-medium text-gray-500">Aksi</p>
                 <p class="text-base font-medium">
                     <span class="px-2 py-1 text-xs rounded-full 
                         @if(in_array($auditLog->action, ['login_success', 'created']))
@@ -52,11 +52,11 @@
                 </p>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">IP Address</p>
+                <p class="text-sm font-medium text-gray-500">Alamat IP</p>
                 <p class="text-base font-medium text-gray-900">{{ $auditLog->ip_address ?? 'N/A' }}</p>
             </div>
             <div>
-                <p class="text-sm font-medium text-gray-500">User Agent</p>
+                <p class="text-sm font-medium text-gray-500">Jenis User</p>
                 <p class="text-base font-medium text-gray-900 break-words">{{ $auditLog->user_agent ?? 'N/A' }}</p>
             </div>
             <div>
@@ -101,7 +101,7 @@
     </div>
 
     <div class="bg-white shadow rounded-lg p-4 md:p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-4">Description</h2>
+        <h2 class="text-lg font-semibold mb-4">Deskripsi</h2>
         <div class="bg-gray-50 p-4 rounded-lg">
             <p class="text-base text-gray-900">{{ $auditLog->description ?? 'No description provided' }}</p>
         </div>
@@ -116,9 +116,9 @@
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3">Field</th>
-                                <th scope="col" class="px-6 py-3">Old Value</th>
-                                <th scope="col" class="px-6 py-3">New Value</th>
+                                <th scope="col" class="px-6 py-3">Bidang</th>
+                                <th scope="col" class="px-6 py-3">Nilai lama</th>
+                                <th scope="col" class="px-6 py-3">Nilai Baru</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -162,8 +162,8 @@
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3">Field</th>
-                                <th scope="col" class="px-6 py-3">Value</th>
+                                <th scope="col" class="px-6 py-3">Bidang</th>
+                                <th scope="col" class="px-6 py-3">Nilai</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -191,8 +191,8 @@
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3">Field</th>
-                                <th scope="col" class="px-6 py-3">Deleted Value</th>
+                                <th scope="col" class="px-6 py-3">Bidang</th>
+                                <th scope="col" class="px-6 py-3">Nilai yang telah di delete</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -217,7 +217,7 @@
                 </div>
             @else
                 <div class="bg-gray-50 p-4 rounded-lg">
-                    <p class="text-base text-gray-900">No detailed change information available</p>
+                    <p class="text-base text-gray-900">Tidak ada detail informasi yang ada</p>
                 </div>
             @endif
         </div>
