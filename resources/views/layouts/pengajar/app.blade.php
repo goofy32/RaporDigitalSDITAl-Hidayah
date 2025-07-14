@@ -119,7 +119,7 @@
             @yield('content')
         </div>
     </div>
-
+    
     @stack('scripts')
 
     @if(Session::has('success'))

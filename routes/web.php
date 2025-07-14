@@ -107,12 +107,17 @@
     // Admin Routes - Guard: web, Role: admin only
     Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
 
-        Route::post('/gemini/send-message', [GeminiChatController::class, 'sendMessage'])->name('gemini.send');
-        Route::get('/gemini/history', [GeminiChatController::class, 'getHistory'])->name('gemini.history');
-        Route::post('/gemini/update-knowledge', [GeminiChatController::class, 'updateKnowledgeBase'])->name('gemini.update-knowledge');
-        Route::get('/gemini/test-knowledge', [GeminiChatController::class, 'testKnowledgeBase'])->name('gemini.test-knowledge');
-        Route::get('/gemini/debug-test', [GeminiChatController::class, 'debugTest'])->name('gemini.debug-test');
-        Route::get('/gemini/test-direct', [GeminiChatController::class, 'testGeminiDirectly'])->name('gemini.test-direct');
+        Route::prefix('gemini')->name('gemini.')->group(function () {
+            Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');
+            Route::get('/history', [GeminiChatController::class, 'getHistory'])->name('history');
+            Route::post('/update-knowledge', [GeminiChatController::class, 'updateKnowledgeBase'])->name('update-knowledge');
+            Route::get('/test-knowledge', [GeminiChatController::class, 'testKnowledgeBase'])->name('test-knowledge');
+            Route::get('/debug-test', [GeminiChatController::class, 'debugTest'])->name('debug-test');
+            Route::get('/test-direct', [GeminiChatController::class, 'testGeminiDirectly'])->name('test-direct');
+            Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
+            Route::delete('/chat/{id}', [GeminiChatController::class, 'deleteChat'])->name('delete-chat');
+        });
+
         Route::prefix('kkm')->name('admin.kkm.')->group(function() {
             Route::get('/', [KkmController::class, 'index'])->name('index');
             Route::post('/', [KkmController::class, 'store'])->name('store');
@@ -153,8 +158,6 @@
             return response()->json(['kelas' => $kelas]);
         })->name('kelas.data');
 
-        Route::post('/gemini/send-message', [GeminiChatController::class, 'sendMessage'])->name('gemini.send');
-        Route::get('/gemini/history', [GeminiChatController::class, 'getHistory'])->name('gemini.history');
 
         Route::get('/set-tahun-ajaran/{id}', function($id) {
             session(['tahun_ajaran_id' => $id]);
@@ -339,6 +342,14 @@
         Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgress'])
             ->name('mata_pelajaran.progress');
 
+        Route::prefix('gemini')->name('gemini.')->group(function () {
+            Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');
+            Route::get('/history', [GeminiChatController::class, 'getHistory'])->name('history');
+
+            Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
+            Route::delete('/chat/{id}', [GeminiChatController::class, 'deleteChat'])->name('delete-chat');
+        });
+
         Route::get('/check-access/{mapelId}', function($mapelId) {
             $guru = Auth::guard('guru')->user();
             $mapel = \App\Models\MataPelajaran::find($mapelId);
@@ -421,6 +432,13 @@
         ->name('wali_kelas.')
         ->group(function () {
 
+        Route::prefix('gemini')->name('gemini.')->group(function () {
+            Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');
+            Route::get('/history', [GeminiChatController::class, 'getHistory'])->name('history');
+
+            Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
+            Route::delete('/chat/{id}', [GeminiChatController::class, 'deleteChat'])->name('delete-chat');
+        });
         
         Route::prefix('capaian-kompetensi')->name('capaian_kompetensi.')->group(function () {
             Route::get('/', [CapaianKompetensiController::class, 'waliKelasIndex'])->name('index');

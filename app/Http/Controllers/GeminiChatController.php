@@ -4,6 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\GeminiChat;
 use Illuminate\Http\Request;
+use App\Models\Siswa;
+use App\Models\Nilai;
+use App\Models\MataPelajaran;
+use App\Models\Kelas;
+use App\Models\TahunAjaran;
+use App\Models\Guru;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +24,16 @@ class GeminiChatController extends Controller
         $this->systemContext = $this->loadKnowledgeBase();
     }
 
+    private function getUserId()
+    {
+        if (Auth::guard('web')->check()) {
+            return Auth::guard('web')->id();
+        } elseif (Auth::guard('guru')->check()) {
+            return Auth::guard('guru')->id();
+        }
+        return null;
+    }
+    
     public function sendMessage(Request $request)
     {
         $request->validate([
@@ -26,13 +42,11 @@ class GeminiChatController extends Controller
 
         $userMessage = $request->message;
         
-        // Debug logging
         Log::info('User message received: ' . $userMessage);
         Log::info('Knowledge base length: ' . strlen($this->systemContext));
         
         $apiKey = env('GEMINI_API_KEY');
         
-        // Pastikan API key ada
         if (!$apiKey) {
             Log::error('GEMINI_API_KEY not found in .env');
             return response()->json([
@@ -40,89 +54,208 @@ class GeminiChatController extends Controller
                 'message' => 'API key tidak ditemukan. Periksa konfigurasi.'
             ], 500);
         }
-        
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={$apiKey}";
 
-        // Buat prompt dengan context knowledge base
-        $contextualPrompt = $this->buildContextualPrompt($userMessage);
+        // Analisis intent dan ambil data
+        $intent = $this->analyzeUserIntent($userMessage);
         
-        // Debug: log prompt yang dikirim
+        if ($intent === 'knowledge_base') {
+            $databaseData = ['message' => 'Menggunakan knowledge base untuk panduan sistem'];
+        } else {
+            $databaseData = $this->fetchNilaiAnalysisData($intent, $userMessage);
+        }
+
+        // Buat contextual prompt
+        $contextualPrompt = $this->buildNilaiAnalysisPrompt($userMessage, $databaseData, $intent);
+        
+        // Log prompt yang dikirim
         Log::info('Contextual prompt: ' . substr($contextualPrompt, 0, 500) . '...');
-
-        try {
-            $response = Http::timeout(30)->post($url, [
-                'contents' => [
-                    [
-                        'parts' => [
-                            [
-                                'text' => $contextualPrompt
-                            ]
-                        ]
-                    ]
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.3,
-                    'maxOutputTokens' => 1200,
-                    'topP' => 0.8,
-                    'topK' => 40,
-                ]
-            ]);
-
-            // Debug: log response status
-            Log::info('Gemini API response status: ' . $response->status());
-            Log::info('Gemini API response body: ' . $response->body());
-
-            if (!$response->successful()) {
-                Log::error('Gemini API Error: ' . $response->body());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'API tidak merespons dengan benar. Status: ' . $response->status()
-                ], 500);
-            }
-
-            $data = $response->json();
-            
-            // Debug: log parsed data
-            Log::info('Parsed response data: ' . json_encode($data));
-            
-            $aiResponse = $this->extractResponse($data);
-            
-            if (!$aiResponse) {
-                Log::error('No response text found in API response');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tidak dapat mengekstrak respons dari API'
-                ], 500);
-            }
-
-            // Bersihkan response
-            $aiResponse = $this->cleanResponse($aiResponse);
-            
-            // Debug: log final response
-            Log::info('Final AI response: ' . $aiResponse);
-
-            // Simpan chat ke database
-            $chat = GeminiChat::create([
-                'user_id' => Auth::id(),
-                'message' => $userMessage,
-                'response' => $aiResponse
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'response' => $aiResponse,
-                'chat' => $chat
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Gemini Chat Exception: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+        
+        // HANYA SATU KALI: Panggil sendWithRetry (sudah include retry logic)
+        $apiResponse = $this->sendWithRetry($contextualPrompt, $userMessage);
+        
+        if (!$apiResponse['success']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
-            ], 500);
+                'message' => $apiResponse['message'] ?? 'Terjadi kesalahan saat memproses permintaan'
+            ], $apiResponse['status'] ?? 500);
         }
+
+        // Log final response
+        Log::info('Final AI response: ' . $apiResponse['data']);
+
+        // Simpan chat ke database
+        $chat = GeminiChat::create([
+            'user_id' => $this->getUserId(),
+            'message' => $userMessage,
+            'response' => $apiResponse['data']
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'response' => $apiResponse['data'],
+            'chat' => $chat,
+            'model_used' => $apiResponse['model_used'] ?? 'unknown',
+            'fallback' => $apiResponse['fallback'] ?? false
+        ]);
+    }
+
+    private function sendWithRetry($contextualPrompt, $userMessage)
+    {
+        $apiKey = env('GEMINI_API_KEY');
+        
+        // STRATEGI MULTI-MODEL: Coba model berbeda jika ada masalah
+        $models = [
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-flash-8b-latest',
+            'gemini-1.5-pro-latest'
+        ];
+        
+        $maxRetries = 3;
+        $baseDelay = 2; // detik
+        
+        foreach ($models as $modelIndex => $model) {
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    Log::info("Attempt {$attempt} with model: {$model}");
+                    
+                    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+                    
+                    $response = Http::timeout(30)->post($url, [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    [
+                                        'text' => $contextualPrompt
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'generationConfig' => [
+                            'temperature' => 0.3,
+                            'maxOutputTokens' => $model === 'gemini-1.5-pro-latest' ? 2000 : 1000,
+                            'topP' => 0.8,
+                            'topK' => 40,
+                        ]
+                    ]);
+
+                    Log::info("Response status: {$response->status()} for model: {$model}");
+                    
+                    // SUCCESS CASE
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $aiResponse = $this->extractResponse($data);
+                        
+                        if ($aiResponse) {
+                            $cleanResponse = $this->cleanResponse($aiResponse);
+                            Log::info("Success with model {$model} on attempt {$attempt}");
+                            
+                            return [
+                                'success' => true,
+                                'data' => $cleanResponse,
+                                'model_used' => $model,
+                                'attempt' => $attempt
+                            ];
+                        }
+                    }
+                    
+                    // HANDLE SPECIFIC ERRORS
+                    $errorData = $response->json();
+                    $errorCode = $response->status();
+                    $errorMessage = $errorData['error']['message'] ?? 'Unknown error';
+                    
+                    Log::warning("Error {$errorCode} with {$model}: {$errorMessage}");
+                    
+                    // 503 Service Unavailable - Retry dengan delay
+                    if ($errorCode === 503) {
+                        if ($attempt < $maxRetries) {
+                            $delay = $baseDelay * pow(2, $attempt - 1); // Exponential backoff
+                            Log::info("Model {$model} overloaded, retrying in {$delay}s...");
+                            sleep($delay);
+                            continue;
+                        }
+                        // Jika sudah max retry, coba model berikutnya
+                        Log::info("Max retries reached for {$model}, trying next model");
+                        break;
+                    }
+                    
+                    // 429 Rate Limit - Retry dengan delay lebih lama
+                    if ($errorCode === 429) {
+                        if ($attempt < $maxRetries) {
+                            $delay = 10 * $attempt; // 10, 20, 30 detik
+                            Log::info("Rate limited, waiting {$delay}s...");
+                            sleep($delay);
+                            continue;
+                        }
+                        break;
+                    }
+                    
+                    // 400 Bad Request - Jangan retry, langsung coba model lain
+                    if ($errorCode === 400) {
+                        Log::warning("Bad request for {$model}, trying next model");
+                        break;
+                    }
+                    
+                    // Other errors - Try next attempt
+                    if ($attempt < $maxRetries) {
+                        sleep($baseDelay);
+                        continue;
+                    }
+                    
+                } catch (\Exception $e) {
+                    Log::error("Exception with {$model} attempt {$attempt}: " . $e->getMessage());
+                    
+                    if ($attempt < $maxRetries) {
+                        sleep($baseDelay);
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // FALLBACK: Jika semua model gagal
+        return $this->getFallbackResponse($userMessage);
+    }
+
+    private function analyzeUserIntent($message)
+    {
+        $message = strtolower(trim($message));
+        
+        // Cek Knowledge Base intent dulu
+        if ($this->isKnowledgeBaseQuestion($message)) {
+            return 'knowledge_base';
+        }
+        
+        // Lalu cek Nilai Analysis intent
+        return $this->analyzeNilaiIntent($message);
+    }
+
+    private function isKnowledgeBaseQuestion($message)
+    {
+        $knowledgeKeywords = [
+            'cara', 'bagaimana', 'login', 'error', 'masalah', 'setup', 
+            'tahun ajaran', 'template', 'troubleshoot', 'tidak bisa',
+            'panduan', 'help', 'bantuan', 'menu', 'akses', 'duplikat'
+        ];
+        
+        $knowledgePatterns = [
+            '/cara.*login/', '/bagaimana.*setup/', '/error.*/', 
+            '/tidak.*bisa/', '/masalah.*/', '/panduan.*/',
+            '/duplikat.*tahun/', '/template.*rapor/'
+        ];
+        
+        foreach ($knowledgeKeywords as $keyword) {
+            if (strpos($message, $keyword) !== false) {
+                return true;
+            }
+        }
+        
+        foreach ($knowledgePatterns as $pattern) {
+            if (preg_match($pattern, $message)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     public function testKnowledgeBase()
@@ -245,10 +378,25 @@ WORKFLOW PENGGUNAAN:
 
     public function getHistory()
     {
-        $chats = GeminiChat::where('user_id', Auth::id())
-                           ->orderBy('created_at', 'desc')
-                           ->take(10)
-                           ->get();
+        $userId = null;
+        
+        if (Auth::guard('web')->check()) {
+            $userId = Auth::guard('web')->id();
+        } elseif (Auth::guard('guru')->check()) {
+            $userId = Auth::guard('guru')->id();
+        }
+        
+        if (!$userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not authenticated'
+            ], 401);
+        }
+        
+        $chats = GeminiChat::where('user_id', $userId)
+                        ->orderBy('created_at', 'desc')
+                        ->take(10)
+                        ->get();
         
         return response()->json([
             'success' => true,
@@ -314,5 +462,1368 @@ WORKFLOW PENGGUNAAN:
         
         Log::error('Could not extract response from: ' . json_encode($data));
         return null;
+    }
+    private function analyzeNilaiIntent($message)
+    {
+        $message = strtolower(trim($message));
+        
+        $nilaiPatterns = [
+            'nilai_overview' => [
+                'keywords' => ['overview', 'ringkasan', 'gambaran', 'statistik'],
+                'patterns' => ['/gambaran.*nilai/', '/overview.*akademik/', '/ringkasan.*performa/', '/statistik.*nilai/']
+            ],
+            'siswa_lemah' => [
+                'keywords' => ['lemah', 'rendah', 'kurang', 'perlu.*perhatian', 'di.*bawah.*kkm'],
+                'patterns' => ['/siswa.*lemah/', '/nilai.*rendah/', '/di bawah.*kkm/', '/perlu.*bantuan/', '/perhatian.*khusus/']
+            ],
+            'siswa_terbaik' => [
+                'keywords' => ['terbaik', 'tinggi', 'unggul', 'prestasi', 'ranking'],
+                'patterns' => ['/siswa.*terbaik/', '/nilai.*tinggi/', '/prestasi.*baik/', '/ranking.*atas/', '/top.*siswa/']
+            ],
+            'mata_pelajaran_analisis' => [
+                'keywords' => ['mapel', 'mata.*pelajaran', 'pelajaran', 'sulit', 'mudah'],
+                'patterns' => ['/mapel.*sulit/', '/mata.*pelajaran.*lemah/', '/pelajaran.*mudah/', '/analisis.*mapel/']
+            ],
+            'kelas_perbandingan' => [
+                'keywords' => ['kelas', 'bandingkan', 'perbandingan', 'vs'],
+                'patterns' => ['/kelas.*vs/', '/bandingkan.*kelas/', '/performa.*kelas/', '/perbandingan.*kelas/']
+            ],
+            'trend_nilai' => [
+                'keywords' => ['trend', 'perkembangan', 'naik', 'turun', 'progress'],
+                'patterns' => ['/trend.*nilai/', '/perkembangan.*akademik/', '/naik.*turun/', '/progress.*nilai/']
+            ],
+            'siswa_belum_dinilai' => [
+                'keywords' => ['belum', 'kosong', 'missing', 'tidak ada', 'belum diisi'],
+                'patterns' => [
+                    '/siswa.*belum.*nilai/', 
+                    '/belum.*diisi/', 
+                    '/nilai.*kosong/', 
+                    '/missing.*nilai/',
+                    '/siswa.*tidak.*ada.*nilai/',
+                    '/progress.*input/',
+                    '/kelengkapan.*nilai/'
+                ]
+            ],
+            'progress_input_nilai' => [
+                'keywords' => ['progress', 'kelengkapan', 'selesai', 'sudah', 'status', 'persen'],
+                'patterns' => [
+                    '/progress.*input/', 
+                    '/kelengkapan.*nilai/', 
+                    '/status.*nilai/',
+                    '/sudah.*selesai/',
+                    '/berapa.*persen/',
+                    '/berapa.*%/'
+                ]
+            ]
+        ];
+        
+        foreach ($nilaiPatterns as $intent => $config) {
+            foreach ($config['keywords'] as $keyword) {
+                if (strpos($message, $keyword) !== false) {
+                    foreach ($config['patterns'] as $pattern) {
+                        if (preg_match($pattern, $message)) {
+                            return $intent;
+                        }
+                    }
+                    return $intent;
+                }
+            }
+        }
+        
+        return 'general_nilai';
+    }
+
+    private function fetchNilaiAnalysisData($intent, $userMessage)
+    {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $userRole = $this->getUserRole();
+        $data = [];
+        
+        try {
+            switch ($intent) {
+                case 'nilai_overview':
+                    $data = $this->getNilaiOverview($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'siswa_lemah':
+                    $data = $this->getSiswaLemah($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'siswa_terbaik':
+                    $data = $this->getSiswaTerbaik($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'mata_pelajaran_analisis':
+                    $data = $this->getMataPelajaranAnalisis($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'kelas_perbandingan':
+                    $data = $this->getKelasPerbandingan($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'trend_nilai':
+                    $data = $this->getTrendNilai($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'siswa_belum_dinilai':
+                    $data = $this->getSiswaBelumDinilai($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'progress_input_nilai':
+                    $data = $this->getProgressInputNilai($tahunAjaranId, $userRole);
+                    break;
+                    
+                default:
+                    $data = $this->getGeneralNilaiStats($tahunAjaranId, $userRole);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching nilai analysis data: ' . $e->getMessage());
+            $data = ['error' => 'Tidak dapat mengambil data nilai'];
+        }
+        
+        return $data;
+    }
+
+    private function getUserRole()
+    {
+        if (Auth::guard('web')->check()) {
+            return 'admin';
+        } elseif (Auth::guard('guru')->check()) {
+            return session('selected_role') === 'wali_kelas' ? 'wali_kelas' : 'guru';
+        }
+        return 'guest';
+    }
+
+    private function getNilaiOverview($tahunAjaranId, $userRole)
+    {
+        $query = Nilai::where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereNotNull('nilai_akhir_rapor');
+        
+        // Filter berdasarkan role
+        $query = $this->applyRoleFilterToNilai($query, $userRole);
+        
+        $nilais = $query->get();
+        
+        if ($nilais->isEmpty()) {
+            return ['message' => 'Belum ada data nilai untuk tahun ajaran ini'];
+        }
+        
+        $nilai_akhir = $nilais->pluck('nilai_akhir_rapor');
+        
+        return [
+            'total_nilai' => $nilais->count(),
+            'rata_rata' => round($nilai_akhir->avg(), 2),
+            'nilai_tertinggi' => $nilai_akhir->max(),
+            'nilai_terendah' => $nilai_akhir->min(),
+            'distribusi' => [
+                'sangat_baik' => $nilai_akhir->filter(fn($n) => $n >= 90)->count(),
+                'baik' => $nilai_akhir->filter(fn($n) => $n >= 80 && $n < 90)->count(),
+                'cukup' => $nilai_akhir->filter(fn($n) => $n >= 70 && $n < 80)->count(),
+                'kurang' => $nilai_akhir->filter(fn($n) => $n < 70)->count(),
+            ],
+            'statistik_mapel' => $this->getTopBottomMapel($nilais),
+            'context' => "Overview nilai akademik tahun ajaran " . TahunAjaran::find($tahunAjaranId)->tahun_ajaran
+        ];
+    }
+
+    private function getFallbackResponse($userMessage)
+    {
+        Log::error("All Gemini models failed, providing fallback response");
+        
+        // Analisis sederhana berdasarkan keyword
+        $message = strtolower($userMessage);
+        
+        if (strpos($message, 'nilai') !== false || strpos($message, 'akademik') !== false) {
+            $fallbackResponse = "Maaf, sistem AI sedang mengalami gangguan. Namun saya dapat membantu dengan informasi dasar:
+
+    📊 **UNTUK ANALISIS NILAI:**
+    - Cek dashboard untuk statistik nilai
+    - Gunakan menu 'Score Management' untuk input nilai
+    - Lihat progress di dashboard admin/guru
+
+    🔍 **INFORMASI YANG TERSEDIA:**
+    - Data nilai real-time di dashboard
+    - Progress input nilai per guru
+    - Statistik performa kelas
+
+    💡 **SARAN:**
+    Silakan coba lagi dalam beberapa menit, atau gunakan menu navigasi untuk mengakses data nilai secara langsung.";
+        } else {
+            $fallbackResponse = "Maaf, sistem AI sedang mengalami gangguan. Silakan coba beberapa saat lagi.
+
+    🛠️ **SOLUSI SEMENTARA:**
+    - Gunakan menu navigasi untuk mengakses fitur yang diperlukan
+    - Cek dokumentasi sistem di menu bantuan
+    - Hubungi admin sistem jika ada masalah urgent
+
+    Sistem akan kembali normal dalam beberapa menit. Terima kasih atas pengertiannya.";
+        }
+        
+        return [
+            'success' => true,
+            'data' => $fallbackResponse,
+            'model_used' => 'fallback',
+            'fallback' => true
+        ];
+    }
+
+    private function getSiswaLemah($tahunAjaranId, $userRole)
+    {
+        $query = Siswa::whereHas('nilais', function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('nilai_akhir_rapor', '<', 70);
+        });
+        
+        // Filter berdasarkan role
+        $query = $this->applyRoleFilterToSiswa($query, $userRole);
+        
+        $siswaLemah = $query->with(['kelas', 'nilais' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('nilai_akhir_rapor', '<', 70)
+            ->with('mataPelajaran');
+        }])->limit(20)->get();
+        
+        $analisis = $siswaLemah->map(function($siswa) {
+            $nilaiLemah = $siswa->nilais->where('nilai_akhir_rapor', '<', 70);
+            return [
+                'nama' => $siswa->nama,
+                'kelas' => $siswa->kelas->nomor_kelas . $siswa->kelas->nama_kelas,
+                'jumlah_mapel_lemah' => $nilaiLemah->count(),
+                'rata_nilai' => round($nilaiLemah->avg('nilai_akhir_rapor'), 2),
+                'mapel_terlemah' => $nilaiLemah->sortBy('nilai_akhir_rapor')->first()->mataPelajaran->nama_pelajaran ?? 'N/A'
+            ];
+        });
+        
+        return [
+            'total_siswa_lemah' => $siswaLemah->count(),
+            'detail_siswa' => $analisis->values(),
+            'rekomendasi' => $this->generateRekomendasiSiswaLemah($analisis),
+            'context' => 'Analisis siswa yang memerlukan perhatian khusus'
+        ];
+    }
+
+    private function getSiswaTerbaik($tahunAjaranId, $userRole)
+    {
+        $query = Siswa::whereHas('nilais', function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('nilai_akhir_rapor', '>=', 85);
+        });
+        
+        $query = $this->applyRoleFilterToSiswa($query, $userRole);
+        
+        $siswaTerbaik = $query->with(['kelas', 'nilais' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->with('mataPelajaran');
+        }])->get();
+        
+        $analisis = $siswaTerbaik->map(function($siswa) {
+            $nilaiSiswa = $siswa->nilais->whereNotNull('nilai_akhir_rapor');
+            return [
+                'nama' => $siswa->nama,
+                'kelas' => $siswa->kelas->nomor_kelas . $siswa->kelas->nama_kelas,
+                'rata_nilai' => round($nilaiSiswa->avg('nilai_akhir_rapor'), 2),
+                'jumlah_mapel' => $nilaiSiswa->count(),
+                'nilai_tertinggi' => $nilaiSiswa->max('nilai_akhir_rapor')
+            ];
+        })->sortByDesc('rata_nilai')->take(10);
+        
+        return [
+            'total_siswa_berprestasi' => $siswaTerbaik->count(),
+            'top_10_siswa' => $analisis->values(),
+            'insights' => $this->generateInsightsSiswaTerbaik($analisis),
+            'context' => 'Analisis siswa berprestasi tinggi'
+        ];
+    }
+
+    private function getMataPelajaranAnalisis($tahunAjaranId, $userRole)
+    {
+        $query = MataPelajaran::with(['nilais' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereNotNull('nilai_akhir_rapor');
+        }])->where('tahun_ajaran_id', $tahunAjaranId);
+        
+        $query = $this->applyRoleFilterToMapel($query, $userRole);
+        
+        $mataPelajarans = $query->get();
+        
+        $analisisMapel = $mataPelajarans->map(function($mapel) {
+            $nilais = $mapel->nilais->pluck('nilai_akhir_rapor');
+            if ($nilais->isEmpty()) return null;
+            
+            return [
+                'nama_mapel' => $mapel->nama_pelajaran,
+                'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
+                'guru' => $mapel->guru->nama,
+                'rata_nilai' => round($nilais->avg(), 2),
+                'siswa_count' => $nilais->count(),
+                'tingkat_kesulitan' => $this->kategorikanTingkatKesulitan($nilais->avg()),
+                'distribusi_nilai' => [
+                    'di_atas_85' => $nilais->filter(fn($n) => $n >= 85)->count(),
+                    'di_bawah_70' => $nilais->filter(fn($n) => $n < 70)->count()
+                ]
+            ];
+        })->filter()->sortBy('rata_nilai');
+        
+        return [
+            'total_mapel' => $analisisMapel->count(),
+            'mapel_tersulit' => $analisisMapel->first(),
+            'mapel_termudah' => $analisisMapel->last(),
+            'detail_analisis' => $analisisMapel->values(),
+            'rekomendasi' => $this->generateRekomendasiMapel($analisisMapel),
+            'context' => 'Analisis tingkat kesulitan mata pelajaran'
+        ];
+    }
+
+    private function getKelasPerbandingan($tahunAjaranId, $userRole)
+    {
+        $query = Kelas::with(['siswas.nilais' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereNotNull('nilai_akhir_rapor');
+        }])->where('tahun_ajaran_id', $tahunAjaranId);
+        
+        if ($userRole === 'wali_kelas') {
+            $guru = Auth::guard('guru')->user();
+            $kelasId = $guru->getWaliKelasId();
+            $query->where('id', $kelasId);
+        }
+        
+        $kelasList = $query->get();
+        
+        $perbandinganKelas = $kelasList->map(function($kelas) {
+            $allNilai = $kelas->siswas->flatMap->nilais->pluck('nilai_akhir_rapor');
+            
+            return [
+                'kelas' => $kelas->nomor_kelas . $kelas->nama_kelas,
+                'jumlah_siswa' => $kelas->siswas->count(),
+                'rata_nilai' => $allNilai->isNotEmpty() ? round($allNilai->avg(), 2) : 0,
+                'nilai_tertinggi' => $allNilai->max() ?? 0,
+                'nilai_terendah' => $allNilai->min() ?? 0,
+                'siswa_di_atas_kkm' => $allNilai->filter(fn($n) => $n >= 70)->count(),
+                'wali_kelas' => $kelas->getWaliKelas()->nama ?? 'Belum ditentukan'
+            ];
+        })->sortByDesc('rata_nilai');
+        
+        return [
+            'total_kelas' => $perbandinganKelas->count(),
+            'kelas_terbaik' => $perbandinganKelas->first(),
+            'kelas_terlemah' => $perbandinganKelas->last(),
+            'detail_perbandingan' => $perbandinganKelas->values(),
+            'insights' => $this->generateInsightsPerbandinganKelas($perbandinganKelas),
+            'context' => 'Perbandingan performa antar kelas'
+        ];
+    }
+
+    private function getTrendNilai($tahunAjaranId, $userRole)
+    {
+        $query = Nilai::where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereNotNull('nilai_akhir_rapor');
+        
+        $query = $this->applyRoleFilterToNilai($query, $userRole);
+        
+        $nilais = $query->with(['siswa', 'mataPelajaran'])
+            ->orderBy('created_at')
+            ->get();
+        
+        // Group by month untuk trend
+        $trendBulanan = $nilais->groupBy(function($nilai) {
+            return $nilai->created_at->format('Y-m');
+        })->map(function($nilaiPerBulan) {
+            return [
+                'bulan' => $nilaiPerBulan->first()->created_at->format('M Y'),
+                'rata_nilai' => round($nilaiPerBulan->avg('nilai_akhir_rapor'), 2),
+                'jumlah_nilai' => $nilaiPerBulan->count()
+            ];
+        });
+        
+        return [
+            'trend_bulanan' => $trendBulanan->values(),
+            'total_data_points' => $nilais->count(),
+            'rata_keseluruhan' => round($nilais->avg('nilai_akhir_rapor'), 2),
+            'trend_direction' => $this->calculateTrendDirection($trendBulanan),
+            'context' => 'Analisis trend perkembangan nilai'
+        ];
+    }
+
+    private function getSiswaBelumDinilai($tahunAjaranId, $userRole)
+    {
+        $guru = Auth::guard('guru')->user();
+        
+        if ($userRole === 'guru') {
+            // Ambil mata pelajaran yang diajar guru ini
+            $mataPelajarans = MataPelajaran::where('guru_id', $guru->id)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->with(['kelas.siswas'])
+                ->get();
+            
+            $siswaBelumDinilai = [];
+            
+            foreach ($mataPelajarans as $mapel) {
+                $siswasDiKelas = $mapel->kelas->siswas;
+                
+                foreach ($siswasDiKelas as $siswa) {
+                    // Cek apakah siswa sudah punya nilai untuk mata pelajaran ini
+                    $hasNilai = Nilai::where('siswa_id', $siswa->id)
+                        ->where('mata_pelajaran_id', $mapel->id)
+                        ->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->whereNotNull('nilai_akhir_rapor')
+                        ->exists();
+                    
+                    if (!$hasNilai) {
+                        $siswaBelumDinilai[] = [
+                            'siswa_id' => $siswa->id,
+                            'nama_siswa' => $siswa->nama,
+                            'nis' => $siswa->nis,
+                            'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
+                            'mata_pelajaran' => $mapel->nama_pelajaran,
+                            'mata_pelajaran_id' => $mapel->id,
+                            'status' => 'Belum ada nilai akhir rapor'
+                        ];
+                    }
+                }
+            }
+            
+            return [
+                'total_siswa_belum_dinilai' => count($siswaBelumDinilai),
+                'detail_siswa' => $siswaBelumDinilai,
+                'mata_pelajaran_yang_diajar' => $mataPelajarans->map(function($mapel) {
+                    return [
+                        'nama' => $mapel->nama_pelajaran,
+                        'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas
+                    ];
+                }),
+                'prioritas_aksi' => $this->generatePrioritasInputNilai($siswaBelumDinilai),
+                'context' => 'Daftar siswa yang belum diisi nilai oleh guru ' . $guru->nama
+            ];
+            
+        } elseif ($userRole === 'wali_kelas') {
+            // Untuk wali kelas - cek semua mata pelajaran di kelasnya
+            $kelasId = $guru->getWaliKelasId();
+            
+            if (!$kelasId) {
+                return ['error' => 'Anda bukan wali kelas atau kelas tidak ditemukan'];
+            }
+            
+            $kelas = Kelas::with(['siswas', 'mataPelajarans.guru'])->find($kelasId);
+            $mataPelajarans = MataPelajaran::where('kelas_id', $kelasId)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->with('guru')
+                ->get();
+            
+            $analisisPerMapel = [];
+            
+            foreach ($mataPelajarans as $mapel) {
+                $siswaBelumDinilai = [];
+                
+                foreach ($kelas->siswas as $siswa) {
+                    $hasNilai = Nilai::where('siswa_id', $siswa->id)
+                        ->where('mata_pelajaran_id', $mapel->id)
+                        ->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->whereNotNull('nilai_akhir_rapor')
+                        ->exists();
+                    
+                    if (!$hasNilai) {
+                        $siswaBelumDinilai[] = [
+                            'nama_siswa' => $siswa->nama,
+                            'nis' => $siswa->nis
+                        ];
+                    }
+                }
+                
+                $analisisPerMapel[] = [
+                    'mata_pelajaran' => $mapel->nama_pelajaran,
+                    'guru' => $mapel->guru->nama,
+                    'total_siswa' => $kelas->siswas->count(),
+                    'siswa_belum_dinilai' => count($siswaBelumDinilai),
+                    'persentase_selesai' => $kelas->siswas->count() > 0 ? 
+                        round((($kelas->siswas->count() - count($siswaBelumDinilai)) / $kelas->siswas->count()) * 100, 2) : 0,
+                    'detail_siswa_belum_dinilai' => $siswaBelumDinilai
+                ];
+            }
+            
+            return [
+                'kelas' => $kelas->nomor_kelas . $kelas->nama_kelas,
+                'total_siswa_di_kelas' => $kelas->siswas->count(),
+                'analisis_per_mapel' => $analisisPerMapel,
+                'mapel_prioritas' => $this->getMapelPrioritas($analisisPerMapel),
+                'rekomendasi_wali_kelas' => $this->generateRekomendasiWaliKelas($analisisPerMapel),
+                'context' => 'Analisis kelengkapan nilai untuk kelas ' . $kelas->nomor_kelas . $kelas->nama_kelas
+            ];
+            
+        } else {
+            // Untuk admin - overview semua
+            return $this->getOverviewSiswaBelumDinilaiAdmin($tahunAjaranId);
+        }
+    }
+
+    private function getAdminProgressSummary($tahunAjaranId)
+    {
+        // Ambil statistik aggregat saja, bukan detail per siswa
+        $totalGuru = Guru::whereHas('mataPelajarans', function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId);
+        })->count();
+        
+        $totalMataPelajaran = MataPelajaran::where('tahun_ajaran_id', $tahunAjaranId)->count();
+        
+        $totalNilaiExpected = MataPelajaran::where('tahun_ajaran_id', $tahunAjaranId)
+            ->withCount('kelas.siswas as siswa_count')
+            ->get()
+            ->sum('siswa_count');
+        
+        $totalNilaiCompleted = Nilai::where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereNotNull('nilai_akhir_rapor')
+            ->count();
+        
+        $overallProgress = $totalNilaiExpected > 0 ? 
+            round(($totalNilaiCompleted / $totalNilaiExpected) * 100, 2) : 0;
+        
+        // Ambil 5 guru dengan progress terendah saja
+        $guruProgress = $this->getTopBottomGuruProgress($tahunAjaranId, 5);
+        
+        return [
+            'total_guru' => $totalGuru,
+            'total_mata_pelajaran' => $totalMataPelajaran,
+            'overall_progress' => $overallProgress,
+            'total_expected' => $totalNilaiExpected,
+            'total_completed' => $totalNilaiCompleted,
+            'guru_terendah' => $guruProgress['terendah'],
+            'guru_tertinggi' => $guruProgress['tertinggi'],
+            'context' => 'Summary progress input nilai seluruh sekolah'
+        ];
+    }
+
+    private function getTopBottomGuruProgress($tahunAjaranId, $limit = 5)
+    {
+        $allGuru = Guru::whereHas('mataPelajarans', function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId);
+        })->with(['mataPelajarans' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas:id');
+        }])->get();
+        
+        $guruProgress = [];
+        
+        foreach ($allGuru as $guru) {
+            $totalExpected = 0;
+            $totalCompleted = 0;
+            
+            foreach ($guru->mataPelajarans as $mapel) {
+                $siswaCount = $mapel->kelas->siswas()->count();
+                $nilaiCount = Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->count();
+                
+                $totalExpected += $siswaCount;
+                $totalCompleted += $nilaiCount;
+            }
+            
+            $completionRate = $totalExpected > 0 ? 
+                round(($totalCompleted / $totalExpected) * 100, 2) : 0;
+            
+            $guruProgress[] = [
+                'nama' => $guru->nama,
+                'completion_rate' => $completionRate,
+                'mapel_count' => $guru->mataPelajarans->count()
+            ];
+        }
+        
+        $sorted = collect($guruProgress)->sortBy('completion_rate');
+        
+        return [
+            'terendah' => $sorted->take($limit)->values()->all(),
+            'tertinggi' => $sorted->sortByDesc('completion_rate')->take($limit)->values()->all()
+        ];
+    }
+
+    private function compactDatabaseData($databaseData, $intent)
+    {
+        // Jika data kosong atau error
+        if (empty($databaseData) || isset($databaseData['error'])) {
+            return $databaseData;
+        }
+        
+        // Ringkas berdasarkan intent
+        switch ($intent) {
+            case 'siswa_belum_dinilai':
+                // ULTRA COMPACT untuk admin
+                if (isset($databaseData['total_entries_expected'])) {
+                    return [
+                        'total_expected' => $databaseData['total_entries_expected'] ?? 0,
+                        'total_missing' => $databaseData['total_entries_missing'] ?? 0,
+                        'completion_rate' => $databaseData['overall_completion'] ?? 0,
+                        'urgent_count' => count($databaseData['urgent_actions'] ?? []),
+                        'guru_slowest' => array_slice($databaseData['guru_progress_ranking'] ?? [], 0, 3), // Hanya 3 teratas
+                        'context' => 'Analisis kelengkapan input nilai'
+                    ];
+                }
+                
+                // Untuk guru individual
+                return [
+                    'total_belum_dinilai' => $databaseData['total_siswa_belum_dinilai'] ?? 0,
+                    'mapel_bermasalah' => $databaseData['total_mapel_bermasalah'] ?? 0,
+                    'detail_ringkas' => array_slice($databaseData['detail_siswa'] ?? [], 0, 5), // Hanya 5 siswa
+                    'context' => $databaseData['context'] ?? ''
+                ];
+                
+            case 'progress_input_nilai':
+                return [
+                    'overall_progress' => $databaseData['overall_progress'] ?? 0,
+                    'mapel_count' => $databaseData['total_mata_pelajaran'] ?? 0,
+                    'next_action' => $databaseData['next_action'] ?? '',
+                    'context' => 'Progress input nilai'
+                ];
+                
+            case 'nilai_overview':
+                return [
+                    'total_nilai' => $databaseData['total_nilai'] ?? 0,
+                    'rata_rata' => $databaseData['rata_rata'] ?? 0,
+                    'context' => 'Overview nilai akademik'
+                ];
+                
+            case 'siswa_lemah':
+                return [
+                    'total_lemah' => $databaseData['total_siswa_lemah'] ?? 0,
+                    'sample_siswa' => array_slice($databaseData['detail_siswa'] ?? [], 0, 3), // Hanya 3 siswa
+                    'context' => 'Siswa yang perlu perhatian'
+                ];
+                
+            case 'siswa_terbaik':
+                return [
+                    'total_berprestasi' => $databaseData['total_siswa_berprestasi'] ?? 0,
+                    'top_3' => array_slice($databaseData['top_10_siswa'] ?? [], 0, 3), // Hanya 3 siswa
+                    'context' => 'Siswa berprestasi'
+                ];
+                
+            default:
+                return [
+                    'message' => 'Data tersedia untuk analisis',
+                    'context' => $databaseData['context'] ?? ''
+                ];
+        }
+    }
+
+    private function getProgressInputNilai($tahunAjaranId, $userRole)
+    {
+        $guru = Auth::guard('guru')->user();
+        
+        if ($userRole === 'guru') {
+            $mataPelajarans = MataPelajaran::where('guru_id', $guru->id)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->with('kelas.siswas')
+                ->get();
+            
+            $progressData = [];
+            
+            foreach ($mataPelajarans as $mapel) {
+                $totalSiswa = $mapel->kelas->siswas->count();
+                $siswaSudahDinilai = Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->distinct('siswa_id')
+                    ->count();
+                
+                $persentase = $totalSiswa > 0 ? round(($siswaSudahDinilai / $totalSiswa) * 100, 2) : 0;
+                
+                $progressData[] = [
+                    'mata_pelajaran' => $mapel->nama_pelajaran,
+                    'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
+                    'total_siswa' => $totalSiswa,
+                    'siswa_sudah_dinilai' => $siswaSudahDinilai,
+                    'siswa_belum_dinilai' => $totalSiswa - $siswaSudahDinilai,
+                    'persentase_selesai' => $persentase,
+                    'status' => $this->getStatusProgress($persentase)
+                ];
+            }
+            
+            $overallProgress = $this->calculateOverallProgress($progressData);
+            
+            return [
+                'guru' => $guru->nama,
+                'total_mata_pelajaran' => count($progressData),
+                'overall_progress' => $overallProgress,
+                'detail_per_mapel' => $progressData,
+                'next_action' => $this->getNextActionRecommendation($progressData),
+                'context' => 'Progress input nilai untuk guru ' . $guru->nama
+            ];
+            
+        } elseif ($userRole === 'wali_kelas') {
+            // Progress untuk wali kelas - semua mapel di kelasnya
+            $kelasId = $guru->getWaliKelasId();
+            $kelas = Kelas::with('siswas')->find($kelasId);
+            $mataPelajarans = MataPelajaran::where('kelas_id', $kelasId)
+                ->where('tahun_ajaran_id', $tahunAjaranId)
+                ->with('guru')
+                ->get();
+            
+            $progressPerMapel = [];
+            $totalSiswa = $kelas->siswas->count();
+            
+            foreach ($mataPelajarans as $mapel) {
+                $siswaSudahDinilai = Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->distinct('siswa_id')
+                    ->count();
+                
+                $persentase = $totalSiswa > 0 ? round(($siswaSudahDinilai / $totalSiswa) * 100, 2) : 0;
+                
+                $progressPerMapel[] = [
+                    'mata_pelajaran' => $mapel->nama_pelajaran,
+                    'guru' => $mapel->guru->nama,
+                    'siswa_sudah_dinilai' => $siswaSudahDinilai,
+                    'siswa_belum_dinilai' => $totalSiswa - $siswaSudahDinilai,
+                    'persentase_selesai' => $persentase,
+                    'status' => $this->getStatusProgress($persentase)
+                ];
+            }
+            
+            return [
+                'kelas' => $kelas->nomor_kelas . $kelas->nama_kelas,
+                'total_siswa' => $totalSiswa,
+                'total_mata_pelajaran' => count($progressPerMapel),
+                'progress_per_mapel' => $progressPerMapel,
+                'mapel_selesai' => collect($progressPerMapel)->where('persentase_selesai', 100)->count(),
+                'mapel_belum_selesai' => collect($progressPerMapel)->where('persentase_selesai', '<', 100)->count(),
+                'urgency_list' => $this->getUrgencyList($progressPerMapel),
+                'context' => 'Progress input nilai untuk kelas ' . $kelas->nomor_kelas . $kelas->nama_kelas
+            ];
+        } else {
+            // PERBAIKAN: Untuk admin, ambil summary saja, bukan detail
+            return $this->getAdminProgressSummary($tahunAjaranId);
+        }
+    }
+
+    private function getGeneralNilaiStats($tahunAjaranId, $userRole)
+    {
+        return [
+            'message' => 'Silakan tanyakan hal spesifik tentang nilai akademik',
+            'suggestions' => [
+                'Berikan overview nilai akademik',
+                'Siswa mana yang memerlukan perhatian?',
+                'Progress input nilai saya',
+                'Analisis mata pelajaran tersulit'
+            ]
+        ];
+    }
+
+    // Helper methods
+    private function applyRoleFilterToNilai($query, $userRole)
+    {
+        switch ($userRole) {
+            case 'guru':
+                $guru = Auth::guard('guru')->user();
+                return $query->whereHas('mataPelajaran', function($q) use ($guru) {
+                    $q->where('guru_id', $guru->id);
+                });
+                
+            case 'wali_kelas':
+                $guru = Auth::guard('guru')->user();
+                $kelasId = $guru->getWaliKelasId();
+                return $query->whereHas('siswa', function($q) use ($kelasId) {
+                    $q->where('kelas_id', $kelasId);
+                });
+                
+            case 'admin':
+            default:
+                return $query;
+        }
+    }
+
+    private function applyRoleFilterToSiswa($query, $userRole)
+    {
+        switch ($userRole) {
+            case 'guru':
+                $guru = Auth::guard('guru')->user();
+                return $query->whereHas('kelas.mataPelajarans', function($q) use ($guru) {
+                    $q->where('guru_id', $guru->id);
+                });
+                
+            case 'wali_kelas':
+                $guru = Auth::guard('guru')->user();
+                $kelasId = $guru->getWaliKelasId();
+                return $query->where('kelas_id', $kelasId);
+                
+            case 'admin':
+            default:
+                return $query;
+        }
+    }
+
+    private function applyRoleFilterToMapel($query, $userRole)
+    {
+        switch ($userRole) {
+            case 'guru':
+                $guru = Auth::guard('guru')->user();
+                return $query->where('guru_id', $guru->id);
+                
+            case 'wali_kelas':
+                $guru = Auth::guard('guru')->user();
+                $kelasId = $guru->getWaliKelasId();
+                return $query->where('kelas_id', $kelasId);
+                
+            case 'admin':
+            default:
+                return $query;
+        }
+    }
+
+    private function getTopBottomMapel($nilais)
+    {
+    $mapelStats = $nilais->groupBy('mata_pelajaran_id')->map(function($nilaiMapel) {
+        $rataMapel = $nilaiMapel->avg('nilai_akhir_rapor');
+        $mapel = $nilaiMapel->first()->mataPelajaran;
+        
+        return [
+            'nama_mapel' => $mapel->nama_pelajaran,
+            'rata_nilai' => round($rataMapel, 2),
+            'jumlah_nilai' => $nilaiMapel->count()
+        ];
+    })->sortByDesc('rata_nilai');
+    
+    return [
+        'mapel_terbaik' => $mapelStats->first(),
+        'mapel_terlemah' => $mapelStats->last()
+    ];
+    }
+
+    private function generateRekomendasiSiswaLemah($analisisSiswa)
+    {
+    if ($analisisSiswa->isEmpty()) {
+        return ['message' => 'Tidak ada siswa yang memerlukan perhatian khusus'];
+    }
+    
+    $mapelBermasalah = $analisisSiswa->pluck('mapel_terlemah')->countBy();
+    $mapelTersulit = $mapelBermasalah->sortDesc()->keys()->first();
+    
+    return [
+        'mata_pelajaran_prioritas' => $mapelTersulit,
+        'strategi' => [
+            'Buat program remedial khusus untuk ' . $mapelTersulit,
+            'Bentuk kelompok belajar peer-to-peer',
+            'Konsultasi dengan guru mata pelajaran',
+            'Libatkan orang tua dalam monitoring'
+        ],
+        'tindak_lanjut' => 'Evaluasi mingguan dan konseling individual'
+    ];
+    }
+
+    private function generateInsightsSiswaTerbaik($analisis)
+    {
+    if ($analisis->isEmpty()) {
+        return ['message' => 'Belum ada data siswa berprestasi'];
+    }
+    
+    $rataKeseluruhan = $analisis->avg('rata_nilai');
+    
+    return [
+        'rata_siswa_terbaik' => round($rataKeseluruhan, 2),
+        'standar_prestasi' => $rataKeseluruhan >= 90 ? 'Sangat Tinggi' : ($rataKeseluruhan >= 85 ? 'Tinggi' : 'Baik'),
+        'rekomendasi' => [
+            'Berikan tantangan pembelajaran yang lebih tinggi',
+            'Jadikan mentor untuk siswa lain',
+            'Sediakan program pengayaan',
+            'Persiapkan untuk kompetisi akademik'
+        ]
+    ];
+    }
+
+    private function kategorikanTingkatKesulitan($rataRata)
+    {
+    if ($rataRata >= 85) return 'Mudah';
+    if ($rataRata >= 75) return 'Sedang';
+    if ($rataRata >= 65) return 'Sulit';
+    return 'Sangat Sulit';
+    }
+
+    private function generateRekomendasiMapel($analisisMapel)
+    {
+    if ($analisisMapel->isEmpty()) {
+        return ['message' => 'Belum ada data untuk analisis'];
+    }
+    
+    $mapelSulit = $analisisMapel->where('tingkat_kesulitan', 'Sangat Sulit')->count();
+    $mapelMudah = $analisisMapel->where('tingkat_kesulitan', 'Mudah')->count();
+    
+    return [
+        'mapel_perlu_perhatian' => $mapelSulit,
+        'mapel_sudah_baik' => $mapelMudah,
+        'strategi_umum' => [
+            'Review metode pembelajaran untuk mapel kategori sulit',
+            'Tingkatkan alokasi waktu untuk mapel bermasalah',
+            'Evaluasi kompetensi guru pengampu',
+            'Perbaiki materi ajar dan media pembelajaran'
+        ]
+    ];
+    }
+
+    private function generateInsightsPerbandinganKelas($perbandinganKelas)
+    {
+    if ($perbandinganKelas->isEmpty()) {
+        return ['message' => 'Belum ada data perbandingan kelas'];
+    }
+    
+    $selisihTerbesar = $perbandinganKelas->first()['rata_nilai'] - $perbandinganKelas->last()['rata_nilai'];
+    
+    return [
+        'gap_performa' => round($selisihTerbesar, 2),
+        'status_gap' => $selisihTerbesar > 15 ? 'Tinggi' : ($selisihTerbesar > 8 ? 'Sedang' : 'Rendah'),
+        'rekomendasi' => [
+            'Analisis faktor penyebab perbedaan performa',
+            'Sharing best practice dari kelas terbaik',
+            'Evaluasi kompetensi wali kelas',
+            'Pemerataan distribusi guru berpengalaman'
+        ]
+    ];
+    }
+
+    private function calculateTrendDirection($trendBulanan)
+    {
+    if ($trendBulanan->count() < 2) {
+        return 'Belum bisa ditentukan';
+    }
+    
+    $dataPoints = $trendBulanan->values()->all();
+    $firstHalf = array_slice($dataPoints, 0, ceil(count($dataPoints) / 2));
+    $secondHalf = array_slice($dataPoints, ceil(count($dataPoints) / 2));
+    
+    $rataAwal = collect($firstHalf)->avg('rata_nilai');
+    $rataAkhir = collect($secondHalf)->avg('rata_nilai');
+    
+    $selisih = $rataAkhir - $rataAwal;
+    
+    if ($selisih > 2) return 'Meningkat Signifikan';
+    if ($selisih > 0.5) return 'Meningkat';
+    if ($selisih < -2) return 'Menurun Signifikan';
+    if ($selisih < -0.5) return 'Menurun';
+    return 'Stabil';
+    }
+
+    private function generatePrioritasInputNilai($siswaBelumDinilai)
+    {
+    if (empty($siswaBelumDinilai)) {
+        return ['status' => 'Semua siswa sudah dinilai', 'aksi' => 'Tidak ada aksi yang diperlukan'];
+    }
+    
+    // Group by mata pelajaran
+    $groupedByMapel = collect($siswaBelumDinilai)->groupBy('mata_pelajaran');
+    
+    $prioritas = [];
+    foreach ($groupedByMapel as $mapel => $siswa) {
+        $prioritas[] = [
+            'mata_pelajaran' => $mapel,
+            'jumlah_siswa_belum_dinilai' => count($siswa),
+            'prioritas' => count($siswa) > 5 ? 'TINGGI' : (count($siswa) > 2 ? 'SEDANG' : 'RENDAH')
+        ];
+    }
+    
+    // Sort by jumlah siswa belum dinilai
+    $prioritas = collect($prioritas)->sortByDesc('jumlah_siswa_belum_dinilai')->values()->all();
+    
+    return [
+        'status' => 'Ada siswa yang belum dinilai',
+        'total_mapel_bermasalah' => count($prioritas),
+        'prioritas_per_mapel' => $prioritas,
+        'aksi_rekomendasi' => [
+            'Prioritaskan input nilai untuk mata pelajaran dengan siswa belum dinilai terbanyak',
+            'Set target harian untuk menyelesaikan input nilai',
+            'Koordinasi dengan admin jika ada kendala sistem'
+        ]
+    ];
+    }
+
+    private function getMapelPrioritas($analisisPerMapel)
+    {
+    return collect($analisisPerMapel)
+        ->sortBy('persentase_selesai')
+        ->take(3)
+        ->map(function($mapel) {
+            return [
+                'mata_pelajaran' => $mapel['mata_pelajaran'],
+                'guru' => $mapel['guru'],
+                'persentase_selesai' => $mapel['persentase_selesai'],
+                'urgency' => $mapel['persentase_selesai'] < 25 ? 'URGENT' : 
+                            ($mapel['persentase_selesai'] < 50 ? 'HIGH' : 'MEDIUM')
+            ];
+        })
+        ->values()
+        ->all();
+    }
+
+    private function generateRekomendasiWaliKelas($analisisPerMapel)
+    {
+        $mapelBermasalah = collect($analisisPerMapel)->where('persentase_selesai', '<', 80);
+        
+        if ($mapelBermasalah->isEmpty()) {
+            return ['message' => 'Semua mata pelajaran sudah dalam progress baik'];
+        }
+        
+        return [
+            'total_mapel_bermasalah' => $mapelBermasalah->count(),
+            'guru_perlu_difollow_up' => $mapelBermasalah->pluck('guru')->unique()->values(),
+            'aksi_prioritas' => [
+                'Koordinasi dengan guru yang progress input nilainya lambat',
+                'Monitor deadline input nilai secara berkala',
+                'Bantu identifikasi kendala yang dihadapi guru',
+                'Laporkan progress ke admin jika diperlukan'
+            ]
+        ];
+    }
+
+    private function getStatusProgress($persentase)
+    {
+        if ($persentase == 100) return 'SELESAI';
+        if ($persentase >= 80) return 'HAMPIR SELESAI';
+        if ($persentase >= 50) return 'DALAM PROGRESS';
+        if ($persentase >= 20) return 'BARU DIMULAI';
+        return 'BELUM DIMULAI';
+    }
+
+    private function calculateOverallProgress($progressData)
+    {
+        if (empty($progressData)) return 0;
+        
+        $totalPersentase = collect($progressData)->sum('persentase_selesai');
+        return round($totalPersentase / count($progressData), 2);
+    }
+
+    private function getNextActionRecommendation($progressData)
+    {
+        $mapelBelumSelesai = collect($progressData)->where('persentase_selesai', '<', 100)->sortBy('persentase_selesai');
+        
+        if ($mapelBelumSelesai->isEmpty()) {
+            return 'Semua mata pelajaran sudah selesai dinilai. Lakukan review dan finalisasi.';
+        }
+        
+        $mapelPrioritas = $mapelBelumSelesai->first();
+        
+        return "Prioritas: Selesaikan input nilai untuk {$mapelPrioritas['mata_pelajaran']} di kelas {$mapelPrioritas['kelas']}. Progress saat ini: {$mapelPrioritas['persentase_selesai']}%";
+        }
+
+        private function getUrgencyList($progressPerMapel)
+        {
+        return collect($progressPerMapel)
+            ->where('persentase_selesai', '<', 75)
+            ->sortBy('persentase_selesai')
+            ->map(function($mapel) {
+                return [
+                    'mata_pelajaran' => $mapel['mata_pelajaran'],
+                    'guru' => $mapel['guru'],
+                    'persentase_selesai' => $mapel['persentase_selesai'],
+                    'action_needed' => 'Follow up dengan guru ' . $mapel['guru']
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function getOverviewSiswaBelumDinilaiAdmin($tahunAjaranId)
+    {
+        // Ambil semua kelas di tahun ajaran ini
+        $allKelas = Kelas::where('tahun_ajaran_id', $tahunAjaranId)
+            ->with(['siswas', 'mataPelajarans.guru'])
+            ->get();
+        
+        $overviewData = [];
+        $totalSiswa = 0;
+        $totalSiswaBelumDinilai = 0;
+        
+        foreach ($allKelas as $kelas) {
+            $kelasData = [
+                'kelas' => $kelas->nomor_kelas . $kelas->nama_kelas,
+                'total_siswa' => $kelas->siswas->count(),
+                'mata_pelajaran_analysis' => []
+            ];
+            
+            foreach ($kelas->mataPelajarans as $mapel) {
+                $siswaBelumDinilai = 0;
+                
+                foreach ($kelas->siswas as $siswa) {
+                    $hasNilai = Nilai::where('siswa_id', $siswa->id)
+                        ->where('mata_pelajaran_id', $mapel->id)
+                        ->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->whereNotNull('nilai_akhir_rapor')
+                        ->exists();
+                    
+                    if (!$hasNilai) {
+                        $siswaBelumDinilai++;
+                    }
+                }
+                
+                $kelasData['mata_pelajaran_analysis'][] = [
+                    'mata_pelajaran' => $mapel->nama_pelajaran,
+                    'guru' => $mapel->guru->nama,
+                    'siswa_belum_dinilai' => $siswaBelumDinilai,
+                    'persentase_selesai' => $kelas->siswas->count() > 0 ? 
+                        round((($kelas->siswas->count() - $siswaBelumDinilai) / $kelas->siswas->count()) * 100, 2) : 0
+                ];
+                
+                $totalSiswaBelumDinilai += $siswaBelumDinilai;
+            }
+            
+            $totalSiswa += $kelas->siswas->count() * $kelas->mataPelajarans->count();
+            $overviewData[] = $kelasData;
+        }
+        
+        // Analisis guru yang paling lambat
+        $guruProgress = $this->analyzeGuruProgress($tahunAjaranId);
+        
+        return [
+            'total_entries_expected' => $totalSiswa,
+            'total_entries_missing' => $totalSiswaBelumDinilai,
+            'overall_completion' => $totalSiswa > 0 ? round((($totalSiswa - $totalSiswaBelumDinilai) / $totalSiswa) * 100, 2) : 0,
+            'kelas_analysis' => $overviewData,
+            'guru_progress_ranking' => $guruProgress,
+            'urgent_actions' => $this->getUrgentActionsAdmin($overviewData),
+            'context' => 'Overview kelengkapan input nilai seluruh sekolah'
+        ];
+    }
+
+    private function analyzeGuruProgress($tahunAjaranId)
+    {
+        $allGuru = Guru::whereHas('mataPelajarans', function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId);
+        })->with(['mataPelajarans' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)->with('kelas.siswas');
+        }])->get();
+        
+        $guruAnalysis = [];
+        
+        foreach ($allGuru as $guru) {
+            $totalExpected = 0;
+            $totalCompleted = 0;
+            
+            foreach ($guru->mataPelajarans as $mapel) {
+                $siswaCount = $mapel->kelas->siswas->count();
+                $nilaiCount = Nilai::where('mata_pelajaran_id', $mapel->id)
+                    ->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->count();
+                
+                $totalExpected += $siswaCount;
+                $totalCompleted += $nilaiCount;
+            }
+            
+            $guruAnalysis[] = [
+                'nama_guru' => $guru->nama,
+                'total_expected' => $totalExpected,
+                'total_completed' => $totalCompleted,
+                'completion_rate' => $totalExpected > 0 ? round(($totalCompleted / $totalExpected) * 100, 2) : 0,
+                'mata_pelajaran_count' => $guru->mataPelajarans->count()
+            ];
+        }
+        
+        return collect($guruAnalysis)->sortBy('completion_rate')->values()->all();
+    }
+
+    private function getUrgentActionsAdmin($kelasData)
+    {
+            $urgentActions = [];
+            
+            foreach ($kelasData as $kelas) {
+                foreach ($kelas['mata_pelajaran_analysis'] as $mapel) {
+                    if ($mapel['persentase_selesai'] < 50) {
+                        $urgentActions[] = [
+                            'action' => 'Follow up dengan guru ' . $mapel['guru'],
+                            'detail' => 'Mata pelajaran ' . $mapel['mata_pelajaran'] . ' di ' . $kelas['kelas'] . ' baru ' . $mapel['persentase_selesai'] . '% selesai',
+                            'priority' => $mapel['persentase_selesai'] < 25 ? 'URGENT' : 'HIGH'
+                        ];
+                    }
+                }
+        }
+        
+        return $urgentActions;
+    }
+
+    private function buildNilaiAnalysisPrompt($userMessage, $databaseData, $intent)
+    {
+        $userRole = $this->getUserRole();
+        $roleContext = $this->getRoleContext($userRole);
+        
+        $systemPrompt = "Anda adalah AI Assistant untuk SISTEM RAPOR SDIT AL-HIDAYAH dengan dua kemampuan utama:
+    1. ANALISIS NILAI AKADEMIK (Data Real-time)
+    2. PANDUAN SISTEM (Knowledge Base)
+
+    === KONTEKS PENGGUNA ===
+    Role: {$roleContext['role']}
+    Akses: {$roleContext['akses']}
+    Fokus: {$roleContext['fokus']}
+
+    === DATA NILAI AKADEMIK REAL-TIME ===
+    Intent: {$intent}
+    " . json_encode($databaseData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "
+    === END DATA NILAI ===
+
+    === KNOWLEDGE BASE SISTEM ===
+    {$this->systemContext}
+    === END KNOWLEDGE BASE ===
+
+    === KEMAMPUAN ANALISIS NILAI ===
+    1. ANALISIS PERFORMA: Menganalisis tingkat pencapaian siswa berdasarkan nilai aktual
+    2. IDENTIFIKASI MASALAH: Mendeteksi siswa atau mata pelajaran yang memerlukan perhatian
+    3. REKOMENDASI TINDAKAN: Memberikan saran konkret untuk peningkatan nilai
+    4. TREND MONITORING: Menganalisis pola perkembangan nilai dari waktu ke waktu
+    5. KOMPARASI KELAS: Membandingkan performa antar kelas atau mata pelajaran
+    6. TRACKING INPUT: Memantau progress input nilai dan kelengkapan data
+
+    === KEMAMPUAN PANDUAN SISTEM ===
+    1. TROUBLESHOOTING: Membantu mengatasi error dan masalah sistem
+    2. WORKFLOW GUIDANCE: Panduan langkah-langkah penggunaan sistem
+    3. SETUP BANTUAN: Membantu konfigurasi dan setup awal
+    4. LOGIN ASSISTANCE: Bantuan masalah login dan akses
+    5. TEMPLATE GUIDANCE: Panduan penggunaan template rapor
+
+    === PRIORITAS RESPONSE ===
+    1. Jika pertanyaan tentang NILAI/ANALISIS/PROGRESS → Gunakan DATA REAL-TIME
+    2. Jika pertanyaan tentang CARA PAKAI/ERROR/SETUP → Gunakan KNOWLEDGE BASE  
+    3. Kombinasikan keduanya jika relevan
+    4. Selalu berikan response yang actionable dan spesifik
+
+    === INSTRUKSI KHUSUS ===
+    1. Fokus pada EFISIENSI PENGELOLAAN NILAI - berikan insights yang actionable
+    2. Gunakan data real-time untuk memberikan analisis yang akurat dan spesifik
+    3. Berikan rekomendasi yang sesuai dengan role pengguna ({$userRole})
+    4. Sertakan angka dan statistik konkret dari data
+    5. Prioritaskan siswa atau mata pelajaran yang memerlukan intervensi
+    6. Gunakan bahasa Indonesia yang profesional namun mudah dipahami
+    7. Berikan action items yang spesifik dan dapat dilakukan segera
+    8. Untuk masalah teknis, rujuk ke knowledge base dan berikan solusi step-by-step
+
+    PERTANYAAN USER: {$userMessage}
+
+    JAWABAN:";
+
+        return $systemPrompt;
+    }
+
+    private function getRoleContext($userRole)
+    {
+        switch ($userRole) {
+            case 'admin':
+                return [
+                    'role' => 'Administrator Sekolah',
+                    'akses' => 'Semua data nilai di sekolah',
+                    'fokus' => 'Monitoring keseluruhan performa akademik sekolah'
+                ];
+            case 'guru':
+                return [
+                    'role' => 'Guru Mata Pelajaran',
+                    'akses' => 'Data nilai mata pelajaran yang diajar',
+                    'fokus' => 'Efisiensi pengelolaan nilai di mata pelajaran tertentu'
+                ];
+            case 'wali_kelas':
+                return [
+                    'role' => 'Wali Kelas',
+                    'akses' => 'Data nilai semua siswa di kelas yang diwalikan',
+                    'fokus' => 'Monitoring dan pembinaan akademik siswa di kelas'
+                ];
+            default:
+                return [
+                    'role' => 'Pengguna',
+                    'akses' => 'Data terbatas',
+                    'fokus' => 'Informasi umum'
+                ];
+        }
+    }
+
+    public function testNilaiAnalysis()
+    {
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $userRole = $this->getUserRole();
+        
+        $testData = [
+            'role' => $userRole,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'sample_overview' => $this->getNilaiOverview($tahunAjaranId, $userRole),
+            'sample_siswa_lemah' => $this->getSiswaLemah($tahunAjaranId, $userRole),
+            'sample_progress' => $this->getProgressInputNilai($tahunAjaranId, $userRole)
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'test_data' => $testData,
+            'message' => 'AI Nilai Analysis siap digunakan!'
+        ]);
+    }
+    public function clearHistory()
+    {
+        try {
+            $userId = null;
+            
+            if (Auth::guard('web')->check()) {
+                $userId = Auth::guard('web')->id();
+            } elseif (Auth::guard('guru')->check()) {
+                $userId = Auth::guard('guru')->id();
+            }
+            
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+            
+            // Hapus semua chat history untuk user ini
+            $deletedCount = GeminiChat::where('user_id', $userId)->delete();
+            
+            Log::info("Chat history cleared for user {$userId}, deleted {$deletedCount} records");
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Riwayat chat berhasil dihapus',
+                'deleted_count' => $deletedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error clearing chat history: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus riwayat'
+            ], 500);
+        }
+    }
+
+    public function deleteChat($chatId)
+    {
+        try {
+            $userId = null;
+            
+            if (Auth::guard('web')->check()) {
+                $userId = Auth::guard('web')->id();
+            } elseif (Auth::guard('guru')->check()) {
+                $userId = Auth::guard('guru')->id();
+            }
+            
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+            
+            // Hapus chat spesifik milik user ini
+            $deleted = GeminiChat::where('id', $chatId)
+                                ->where('user_id', $userId)
+                                ->delete();
+            
+            if ($deleted) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Chat berhasil dihapus'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Chat tidak ditemukan atau tidak memiliki akses'
+                ], 404);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Error deleting specific chat: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menghapus chat'
+            ], 500);
+        }
     }
 }
