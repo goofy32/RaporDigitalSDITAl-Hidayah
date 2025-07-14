@@ -33,7 +33,7 @@ class GeminiChatController extends Controller
         }
         return null;
     }
-    
+
     public function sendMessage(Request $request)
     {
         $request->validate([
@@ -132,7 +132,7 @@ class GeminiChatController extends Controller
                         ],
                         'generationConfig' => [
                             'temperature' => 0.3,
-                            'maxOutputTokens' => $model === 'gemini-1.5-pro-latest' ? 2000 : 1000,
+                            'maxOutputTokens' => $model === 'gemini-2.5-flash-lite-preview-06-17' ? 800 : 500,
                             'topP' => 0.8,
                             'topK' => 40,
                         ]

@@ -1,4 +1,4 @@
-<div x-data="geminiChatDebug" class="fixed bottom-4 right-4 z-50" x-cloak>
+<div x-data="geminiChatDebug" class="fixed bottom-4 right-4 sm:right-4 sm:left-auto z-50 chatbot-container" x-cloak>
     <!-- Chat Toggle Button -->
     <button @click="toggleChat()" 
             class="bg-green-600 hover:bg-green-700 text-white p-3 rounded-full shadow-xl transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300">
@@ -13,14 +13,14 @@
 
     <!-- Chat Window -->
     <div x-show="isOpen" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 scale-95 transform translate-y-4"
-         x-transition:enter-end="opacity-100 scale-100 transform translate-y-0"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 scale-100 transform translate-y-0"
-         x-transition:leave-end="opacity-0 scale-95 transform translate-y-4"
-         class="absolute bottom-16 right-0 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
-         style="display: none; max-height: 32rem;">
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 scale-95 transform translate-y-4"
+        x-transition:enter-end="opacity-100 scale-100 transform translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 scale-100 transform translate-y-0"
+        x-transition:leave-end="opacity-0 scale-95 transform translate-y-4"
+        class="absolute bottom-16 right-0 w-96 sm:w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden chatbot-window"
+        style="display: none; max-height: 32rem;">
         
         <!-- Chat Header -->
         <div class="flex items-center justify-between p-4 bg-gradient-to-r from-green-600 to-green-700 text-white">
@@ -188,10 +188,48 @@
 <!-- Mobile responsive styles -->
 <style>
     @media (max-width: 640px) {
-        [x-data="geminiChatDebug"] .w-96 {
-            width: calc(100vw - 2rem) !important;
+        /* Container chatbot */
+        [x-data="geminiChatDebug"] {
+            position: fixed !important;
+            bottom: 0 !important;
+            right: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            z-index: 9999 !important;
+        }
+        
+        /* Button toggle tetap di pojok */
+        [x-data="geminiChatDebug"] > button {
+            position: fixed !important;
+            bottom: 1rem !important;
             right: 1rem !important;
-            left: 1rem !important;
+            z-index: 10000 !important;
+        }
+        
+        /* Chat window full screen bottom di mobile */
+        [x-data="geminiChatDebug"] .w-96 {
+            width: 100% !important;
+            max-width: none !important;
+            right: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+            position: fixed !important;
+            max-height: 70vh !important;
+            border-radius: 1rem 1rem 0 0 !important;
+        }
+        
+        /* Chat messages lebih pendek untuk ruang input */
+        [x-data="geminiChatDebug"] .overflow-y-auto {
+            max-height: calc(70vh - 8rem) !important;
+            height: auto !important;
+        }
+        
+        /* Input form sticky di bottom */
+        [x-data="geminiChatDebug"] .border-t {
+            position: sticky !important;
+            bottom: 0 !important;
+            background: white !important;
+            z-index: 10 !important;
         }
     }
 </style>
@@ -464,6 +502,35 @@ document.addEventListener('alpine:init', () => {
         
         toggleHistoryMenu() {
             this.showHistoryMenu = !this.showHistoryMenu;
+        },
+
+        isMobile() {
+            return window.innerWidth <= 640;
+        },
+
+        toggleChat() {
+            this.isOpen = !this.isOpen;
+            if (this.isOpen) {
+                this.$nextTick(() => {
+                    // Auto scroll ke bottom dan focus input di mobile
+                    if (window.innerWidth <= 640) {
+                        setTimeout(() => {
+                            const inputElement = this.$el.querySelector('input[type="text"]');
+                            if (inputElement) {
+                                inputElement.scrollIntoView({ 
+                                    behavior: 'smooth', 
+                                    block: 'center' 
+                                });
+                                // Focus setelah scroll selesai
+                                setTimeout(() => {
+                                    inputElement.focus();
+                                }, 500);
+                            }
+                        }, 300);
+                    }
+                    this.scrollToBottom();
+                });
+            }
         }
     }))
 });
