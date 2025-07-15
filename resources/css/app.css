@@ -3,3 +3,110 @@
 @tailwind components;
 
 @tailwind utilities;
+
+/* Mobile First Responsive Design */
+@media (max-width: 639px) {
+    /* Sidebar tersembunyi secara default di mobile */
+    #logo-sidebar {
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s ease;
+    }
+    
+    /* Ketika sidebar dibuka di mobile */
+    #logo-sidebar.translate-x-0 {
+        transform: translateX(0) !important;
+    }
+    
+    /* Main content full width di mobile */
+    .sm\:ml-64 {
+        margin-left: 0 !important;
+    }
+    
+    /* Topbar responsive */
+    .topbar-content {
+        padding: 0.5rem !important;
+    }
+    
+    /* Logo responsive */
+    .topbar-logo {
+        height: 2.5rem !important;
+        width: auto !important;
+    }
+    
+    /* Chat widget responsive */
+    [x-data="geminiChatDebug"] .w-96 {
+        width: calc(100vw - 2rem) !important;
+        right: 1rem !important;
+        left: 1rem !important;
+    }
+}
+
+/* Tablet */
+@media (min-width: 640px) and (max-width: 1023px) {
+    #logo-sidebar {
+        transform: translateX(0) !important;
+    }
+    
+    .sm\:ml-64 {
+        margin-left: 16rem !important;
+    }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+    #logo-sidebar {
+        transform: translateX(0) !important;
+    }
+    
+    .sm\:ml-64 {
+        margin-left: 16rem !important;
+    }
+}
+
+/* Flowbite Modal Responsive */
+.modal-container {
+    @apply w-full max-w-2xl mx-auto;
+}
+
+@media (max-width: 639px) {
+    .modal-container {
+        @apply w-full max-w-full mx-4;
+    }
+}
+
+/* Form Responsive */
+.form-container {
+    @apply grid grid-cols-1 gap-4;
+}
+
+@media (min-width: 640px) {
+    .form-container {
+        @apply grid-cols-2;
+    }
+}
+
+@media (min-width: 1024px) {
+    .form-container {
+        @apply grid-cols-3;
+    }
+}
+
+/* Table Responsive */
+.table-responsive {
+    @apply overflow-x-auto;
+}
+
+.table-responsive table {
+    @apply min-w-full;
+}
+
+@media (max-width: 639px) {
+    .table-responsive table {
+        @apply text-xs;
+    }
+    
+    .table-responsive th,
+    .table-responsive td {
+        @apply px-2 py-1;
+    }
+}

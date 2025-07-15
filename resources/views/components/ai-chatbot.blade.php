@@ -105,33 +105,70 @@
                 </div>
             </template>
             
-            <!-- Loading indicator -->
-            <!-- <div x-show="isLoading" class="flex justify-start mb-4">
+            <div x-show="isLoading" class="flex justify-start mb-4">
                 <div class="bg-gray-100 px-4 py-2 rounded-xl rounded-bl-md shadow-sm">
                     <div class="flex items-center text-gray-500">
                         <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span class="text-sm">AI sedang menganalisis nilai...</span>
+                        <span class="text-sm">
+                            (<span x-text="loadingCounter" class="font-mono font-bold text-green-600"></span>) 
+                            <span x-text="loadingMessage"></span>
+                        </span>
                     </div>
                 </div>
-            </div> -->
-
+            </div>
             <!-- Empty state -->
-            <div x-show="chats.length === 0 && !isLoading" class="text-center text-gray-500 py-8">
-                <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-                <p class="text-sm">Mulai analisis nilai akademik</p>
-                <p class="text-xs text-gray-400 mt-1">Tanyakan apapun terkait nilai dan cara menggunakan web ini</p>
+            <div x-show="chats.length === 0 && !isLoading" class="space-y-4">
+                <!-- Welcome message -->
+                <div class="bg-gray-100 text-gray-800 px-4 py-3 rounded-xl rounded-bl-md shadow-sm">
+                    <div class="flex items-start space-x-2">
+                        <div class="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-800">Halo!</p>
+                            <p class="text-xs text-gray-600 mt-1">Saya AI Assistant untuk analisis nilai akademik SDIT Al-Hidayah. Saya siap membantu Anda dengan berbagai kebutuhan terkait pengelolaan nilai dan sistem rapor.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick suggestions -->
+                <div class="space-y-2">
+                    <p class="text-xs text-gray-500 font-medium px-1">Mulai dengan pertanyaan ini:</p>
+                    <div class="space-y-1">
+                        <button @click="useSuggestion('Apa yang bisa anda lakukan?')" 
+                                class="w-full text-left bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 px-3 py-2 rounded-lg text-sm text-gray-700 hover:text-green-700 transition-colors">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Apa yang bisa anda lakukan?
+                            </span>
+                        </button>
+                        
+                        <template x-for="suggestion in getQuickSuggestions().slice(0, 2)" :key="suggestion">
+                            <button @click="useSuggestion(suggestion)" 
+                                    class="w-full text-left bg-white hover:bg-green-50 border border-gray-200 hover:border-green-300 px-3 py-2 rounded-lg text-sm text-gray-700 hover:text-green-700 transition-colors">
+                                <span class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                    <span x-text="suggestion.length > 35 ? suggestion.substring(0, 35) + '...' : suggestion"></span>
+                                </span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Suggestions -->
         <!-- <div x-show="showSuggestions && suggestions.length > 0" class="px-4 pb-3 border-t bg-gray-50">
-            <div class="text-xs text-gray-500 mb-2 font-medium">💡 Analisis yang tersedia:</div>
+            <div class="text-xs text-gray-500 mb-2 font-medium">ðŸ’¡ Analisis yang tersedia:</div>
             <div class="flex flex-wrap gap-2">
                 <template x-for="suggestion in suggestions.slice(0, 3)">
                     <button @click="useSuggestion(suggestion)" 
@@ -187,51 +224,67 @@
 
 <!-- Mobile responsive styles -->
 <style>
-    @media (max-width: 640px) {
-        /* Container chatbot */
-        [x-data="geminiChatDebug"] {
-            position: fixed !important;
-            bottom: 0 !important;
-            right: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            z-index: 9999 !important;
-        }
-        
-        /* Button toggle tetap di pojok */
-        [x-data="geminiChatDebug"] > button {
-            position: fixed !important;
-            bottom: 1rem !important;
-            right: 1rem !important;
-            z-index: 10000 !important;
-        }
-        
-        /* Chat window full screen bottom di mobile */
-        [x-data="geminiChatDebug"] .w-96 {
-            width: 100% !important;
-            max-width: none !important;
-            right: 0 !important;
-            left: 0 !important;
-            bottom: 0 !important;
-            position: fixed !important;
-            max-height: 70vh !important;
-            border-radius: 1rem 1rem 0 0 !important;
-        }
-        
-        /* Chat messages lebih pendek untuk ruang input */
-        [x-data="geminiChatDebug"] .overflow-y-auto {
-            max-height: calc(70vh - 8rem) !important;
-            height: auto !important;
-        }
-        
-        /* Input form sticky di bottom */
-        [x-data="geminiChatDebug"] .border-t {
-            position: sticky !important;
-            bottom: 0 !important;
-            background: white !important;
-            z-index: 10 !important;
-        }
+.loading-counter {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #22c55e;
+    font-size: 0.9rem;
+    text-shadow: 0 0 2px rgba(34, 197, 94, 0.3);
+}
+
+/* Animasi pulse untuk angka */
+@keyframes counterPulse {
+    0%, 100% { 
+        transform: scale(1);
+        opacity: 1;
     }
+    50% { 
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+/* Loading message dengan animasi typing */
+.loading-message {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-message::after {
+    content: '...';
+    animation: typingDots 1.5s infinite;
+}
+
+@keyframes typingDots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
+
+/* Enhanced loading container */
+.enhanced-loading {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-left: 3px solid #22c55e;
+    position: relative;
+}
+
+.enhanced-loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(to bottom, #22c55e, #16a34a);
+    animation: loadingBar 2s ease-in-out infinite;
+}
+
+@keyframes loadingBar {
+    0% { transform: scaleY(0.3); }
+    50% { transform: scaleY(1); }
+    100% { transform: scaleY(0.3); }
+}
 </style>
 
 <script>
@@ -245,6 +298,19 @@ document.addEventListener('alpine:init', () => {
         showSuggestions: true,
         suggestions: [],
         showHistoryMenu: false,
+        loadingCounter: 0,
+        loadingMessage: 'AI sedang menganalisis nilai...',
+        loadingInterval: null,
+        loadingMessages: [
+            'AI sedang menganalisis nilai...',
+            'Memproses data akademik...',
+            'Menghitung statistik...',
+            'Menganalisis performa siswa...',
+            'Menyiapkan rekomendasi...',
+            'Mengkompilasi laporan...',
+            'Memvalidasi hasil analisis...',
+            'Finalisasi respons...'
+        ],
         
         init() {
             console.log('Alpine chat component initialized');
@@ -255,40 +321,89 @@ document.addEventListener('alpine:init', () => {
             });
         },
         
+        startLoadingCounter() {
+            this.loadingCounter = 1;
+            this.loadingMessage = this.loadingMessages[0];
+            let messageIndex = 0;
+            
+            this.loadingInterval = setInterval(() => {
+                this.loadingCounter++;
+                
+                // Ganti pesan setiap 3 detik
+                if (this.loadingCounter % 3 === 0) {
+                    messageIndex = (messageIndex + 1) % this.loadingMessages.length;
+                    this.loadingMessage = this.loadingMessages[messageIndex];
+                }
+                
+                // Tambahkan variasi berdasarkan waktu
+                if (this.loadingCounter > 15) {
+                    this.loadingMessage = 'Memproses analisis kompleks...';
+                }
+                if (this.loadingCounter > 25) {
+                    this.loadingMessage = 'AI sedang berpikir keras...';
+                }
+                if (this.loadingCounter > 35) {
+                    this.loadingMessage = 'Hampir selesai...';
+                }
+            }, 1000); // Update setiap detik
+        },
+        
+        stopLoadingCounter() {
+            if (this.loadingInterval) {
+                clearInterval(this.loadingInterval);
+                this.loadingInterval = null;
+            }
+            this.loadingCounter = 0;
+        },
+        
         getUserRoleBasedSuggestions() {
             const currentPath = window.location.pathname;
             
             if (currentPath.startsWith('/admin')) {
                 return [
-                    'Berikan overview nilai akademik seluruh sekolah',
-                    'Siswa mana yang memerlukan perhatian khusus?',
-                    'Mata pelajaran mana yang paling sulit bagi siswa?',
-                    'Bagaimana perbandingan performa antar kelas?',
-                    'Progress input nilai seluruh sekolah'
+                    'Berikan overview lengkap sistem akademik',
+                    'Siswa mana yang belum diisi nilainya?',
+                    'Mata pelajaran apa yang paling sulit bagi siswa?',
+                    'Guru mana yang belum menyelesaikan input nilai?',
+                    'Berapa rata-rata nilai akademik keseluruhan?',
+                    'Bagaimana progress kesiapan rapor seluruh sekolah?',
+                    'Kelas mana yang performanya paling baik?',
+                    'Analisis nilai tertinggi dan terendah',
+                    'Guru mana yang sudah selesai input nilai?',
+                    'Berapa persen kelengkapan data akademik?'
                 ];
             } else if (currentPath.startsWith('/pengajar')) {
                 return [
-                    'Analisis nilai mata pelajaran yang saya ajar',
-                    'Siswa mana yang nilainya di bawah KKM?',
+                    'Analisis mata pelajaran yang saya ajar',
+                    'Siswa mana yang nilainya masih di bawah KKM?',
+                    'Progress input nilai saya berapa persen?',
                     'Siswa mana yang belum saya isi nilainya?',
-                    'Berapa persen progress input nilai saya?',
-                    'Bagaimana trend nilai di kelas saya?',
-                    'Mata pelajaran mana yang belum selesai saya nilai?'
+                    'Bagaimana performa kelas yang saya ajar?',
+                    'Mata pelajaran mana yang paling sulit untuk siswa?',
+                    'Siapa siswa terbaik di mata pelajaran saya?',
+                    'Berapa rata-rata nilai mata pelajaran saya?',
+                    'Trend perkembangan nilai siswa',
+                    'Rekomendasi untuk meningkatkan hasil belajar'
                 ];
             } else if (currentPath.startsWith('/wali-kelas')) {
                 return [
-                    'Ringkasan performa akademik kelas saya',
-                    'Siswa mana yang perlu bimbingan tambahan?',
-                    'Status kelengkapan nilai di kelas saya?',
-                    'Guru mana yang belum selesai input nilai di kelas saya?',
-                    'Mata pelajaran apa yang perlu difokuskan di kelas?',
-                    'Progress input nilai per mata pelajaran di kelas saya?'
+                    'Overview lengkap performa kelas saya',
+                    'Siswa mana yang perlu bimbingan khusus?',
+                    'Progress kelengkapan nilai di kelas saya',
+                    'Guru mana yang belum input nilai di kelas saya?',
+                    'Berapa siswa yang sudah siap rapor?',
+                    'Mata pelajaran apa yang perlu fokus tambahan?',
+                    'Perbandingan kelas saya dengan kelas lain',
+                    'Siswa mana yang paling berprestasi di kelas?',
+                    'Analisis kesiapan data rapor kelas saya',
+                    'Rekomendasi untuk meningkatkan performa kelas'
                 ];
             }
             
             return [
                 'Bagaimana cara menggunakan sistem ini?',
-                'Apa yang bisa saya tanyakan tentang nilai?'
+                'Apa yang bisa saya tanyakan tentang nilai?',
+                'Panduan lengkap sistem rapor'
             ];
         },
         
@@ -409,6 +524,9 @@ document.addEventListener('alpine:init', () => {
             this.isLoading = true;
             this.showSuggestions = false;
             
+            // Start countdown timer
+            this.startLoadingCounter();
+            
             this.chats.push({
                 message: userMessage,
                 response: 'AI sedang memproses... Mohon tunggu sebentar.',
@@ -457,6 +575,7 @@ document.addEventListener('alpine:init', () => {
                 this.chats[this.chats.length - 1].is_sending = false;
             } finally {
                 this.isLoading = false;
+                this.stopLoadingCounter(); // Stop countdown timer
                 this.scrollToBottom();
             }
         },
@@ -502,35 +621,6 @@ document.addEventListener('alpine:init', () => {
         
         toggleHistoryMenu() {
             this.showHistoryMenu = !this.showHistoryMenu;
-        },
-
-        isMobile() {
-            return window.innerWidth <= 640;
-        },
-
-        toggleChat() {
-            this.isOpen = !this.isOpen;
-            if (this.isOpen) {
-                this.$nextTick(() => {
-                    // Auto scroll ke bottom dan focus input di mobile
-                    if (window.innerWidth <= 640) {
-                        setTimeout(() => {
-                            const inputElement = this.$el.querySelector('input[type="text"]');
-                            if (inputElement) {
-                                inputElement.scrollIntoView({ 
-                                    behavior: 'smooth', 
-                                    block: 'center' 
-                                });
-                                // Focus setelah scroll selesai
-                                setTimeout(() => {
-                                    inputElement.focus();
-                                }, 500);
-                            }
-                        }, 300);
-                    }
-                    this.scrollToBottom();
-                });
-            }
         }
     }))
 });
