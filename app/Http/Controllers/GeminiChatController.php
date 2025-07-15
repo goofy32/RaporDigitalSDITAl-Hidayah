@@ -328,7 +328,7 @@ INSTRUKSI PENTING:
 4. Gunakan bahasa Indonesia yang formal namun ramah
 5. Jika ada langkah-langkah, berikan dalam format yang terstruktur
 6. Jika ada error atau masalah, berikan solusi yang jelas
-
+7. Jangan jawab terlalu panjang jawab sekesimpulannnya saja
 PERTANYAAN USER: {$userMessage}
 
 JAWABAN:";
@@ -469,23 +469,23 @@ WORKFLOW PENGGUNAAN:
         
         $nilaiPatterns = [
             'nilai_overview' => [
-                'keywords' => ['overview', 'ringkasan', 'gambaran', 'statistik'],
+                'keywords' => ['overview', 'ringkasan', 'gambaran', 'statistik','rata.*rata'],
                 'patterns' => ['/gambaran.*nilai/', '/overview.*akademik/', '/ringkasan.*performa/', '/statistik.*nilai/']
             ],
             'siswa_lemah' => [
-                'keywords' => ['lemah', 'rendah', 'kurang', 'perlu.*perhatian', 'di.*bawah.*kkm'],
+                'keywords' => ['lemah', 'rendah', 'kurang', 'perlu.*perhatian', 'di.*bawah.*kkm', 'kecil','paling.*jelek','bodoh','bolos'],
                 'patterns' => ['/siswa.*lemah/', '/nilai.*rendah/', '/di bawah.*kkm/', '/perlu.*bantuan/', '/perhatian.*khusus/']
             ],
             'siswa_terbaik' => [
-                'keywords' => ['terbaik', 'tinggi', 'unggul', 'prestasi', 'ranking'],
-                'patterns' => ['/siswa.*terbaik/', '/nilai.*tinggi/', '/prestasi.*baik/', '/ranking.*atas/', '/top.*siswa/']
+                'keywords' => ['terbaik', 'tinggi', 'unggul', 'prestasi', 'ranking','besar.*nilai', 'terbesar','paling.*bagus','pintar'],
+                'patterns' => ['/siswa.*terbaik/', '/nilai.*tinggi/', '/prestasi.*baik/', '/ranking.*atas/', '/top.*siswa/', '/nilai.*terbesar/']
             ],
             'mata_pelajaran_analisis' => [
                 'keywords' => ['mapel', 'mata.*pelajaran', 'pelajaran', 'sulit', 'mudah'],
                 'patterns' => ['/mapel.*sulit/', '/mata.*pelajaran.*lemah/', '/pelajaran.*mudah/', '/analisis.*mapel/']
             ],
             'kelas_perbandingan' => [
-                'keywords' => ['kelas', 'bandingkan', 'perbandingan', 'vs'],
+                'keywords' => ['kelas', 'bandingkan', 'perbandingan', 'vs','kelas.*komparasi'],
                 'patterns' => ['/kelas.*vs/', '/bandingkan.*kelas/', '/performa.*kelas/', '/perbandingan.*kelas/']
             ],
             'trend_nilai' => [
@@ -493,7 +493,7 @@ WORKFLOW PENGGUNAAN:
                 'patterns' => ['/trend.*nilai/', '/perkembangan.*akademik/', '/naik.*turun/', '/progress.*nilai/']
             ],
             'siswa_belum_dinilai' => [
-                'keywords' => ['belum', 'kosong', 'missing', 'tidak ada', 'belum diisi'],
+                'keywords' => ['belum', 'kosong', 'missing', 'tidak ada', 'belum diisi','belum.*input nilai'],
                 'patterns' => [
                     '/siswa.*belum.*nilai/', 
                     '/belum.*diisi/', 
@@ -636,22 +636,22 @@ WORKFLOW PENGGUNAAN:
         if (strpos($message, 'nilai') !== false || strpos($message, 'akademik') !== false) {
             $fallbackResponse = "Maaf, sistem AI sedang mengalami gangguan. Namun saya dapat membantu dengan informasi dasar:
 
-    📊 **UNTUK ANALISIS NILAI:**
+     **UNTUK ANALISIS NILAI:**
     - Cek dashboard untuk statistik nilai
     - Gunakan menu 'Score Management' untuk input nilai
     - Lihat progress di dashboard admin/guru
 
-    🔍 **INFORMASI YANG TERSEDIA:**
+     **INFORMASI YANG TERSEDIA:**
     - Data nilai real-time di dashboard
     - Progress input nilai per guru
     - Statistik performa kelas
 
-    💡 **SARAN:**
+     **SARAN:**
     Silakan coba lagi dalam beberapa menit, atau gunakan menu navigasi untuk mengakses data nilai secara langsung.";
         } else {
             $fallbackResponse = "Maaf, sistem AI sedang mengalami gangguan. Silakan coba beberapa saat lagi.
 
-    🛠️ **SOLUSI SEMENTARA:**
+     **SOLUSI SEMENTARA:**
     - Gunakan menu navigasi untuk mengakses fitur yang diperlukan
     - Cek dokumentasi sistem di menu bantuan
     - Hubungi admin sistem jika ada masalah urgent
@@ -1357,50 +1357,50 @@ WORKFLOW PENGGUNAAN:
 
     private function generateInsightsPerbandinganKelas($perbandinganKelas)
     {
-    if ($perbandinganKelas->isEmpty()) {
-        return ['message' => 'Belum ada data perbandingan kelas'];
-    }
-    
-    $selisihTerbesar = $perbandinganKelas->first()['rata_nilai'] - $perbandinganKelas->last()['rata_nilai'];
-    
-    return [
-        'gap_performa' => round($selisihTerbesar, 2),
-        'status_gap' => $selisihTerbesar > 15 ? 'Tinggi' : ($selisihTerbesar > 8 ? 'Sedang' : 'Rendah'),
-        'rekomendasi' => [
-            'Analisis faktor penyebab perbedaan performa',
-            'Sharing best practice dari kelas terbaik',
-            'Evaluasi kompetensi wali kelas',
-            'Pemerataan distribusi guru berpengalaman'
-        ]
-    ];
+        if ($perbandinganKelas->isEmpty()) {
+            return ['message' => 'Belum ada data perbandingan kelas'];
+        }
+        
+        $selisihTerbesar = $perbandinganKelas->first()['rata_nilai'] - $perbandinganKelas->last()['rata_nilai'];
+        
+        return [
+            'gap_performa' => round($selisihTerbesar, 2),
+            'status_gap' => $selisihTerbesar > 15 ? 'Tinggi' : ($selisihTerbesar > 8 ? 'Sedang' : 'Rendah'),
+            'rekomendasi' => [
+                'Analisis faktor penyebab perbedaan performa',
+                'Sharing best practice dari kelas terbaik',
+                'Evaluasi kompetensi wali kelas',
+                'Pemerataan distribusi guru berpengalaman'
+            ]
+        ];
     }
 
     private function calculateTrendDirection($trendBulanan)
     {
-    if ($trendBulanan->count() < 2) {
-        return 'Belum bisa ditentukan';
-    }
-    
-    $dataPoints = $trendBulanan->values()->all();
-    $firstHalf = array_slice($dataPoints, 0, ceil(count($dataPoints) / 2));
-    $secondHalf = array_slice($dataPoints, ceil(count($dataPoints) / 2));
-    
-    $rataAwal = collect($firstHalf)->avg('rata_nilai');
-    $rataAkhir = collect($secondHalf)->avg('rata_nilai');
-    
-    $selisih = $rataAkhir - $rataAwal;
-    
-    if ($selisih > 2) return 'Meningkat Signifikan';
-    if ($selisih > 0.5) return 'Meningkat';
-    if ($selisih < -2) return 'Menurun Signifikan';
-    if ($selisih < -0.5) return 'Menurun';
-    return 'Stabil';
-    }
+        if ($trendBulanan->count() < 2) {
+            return 'Belum bisa ditentukan';
+        }
+        
+        $dataPoints = $trendBulanan->values()->all();
+        $firstHalf = array_slice($dataPoints, 0, ceil(count($dataPoints) / 2));
+        $secondHalf = array_slice($dataPoints, ceil(count($dataPoints) / 2));
+        
+        $rataAwal = collect($firstHalf)->avg('rata_nilai');
+        $rataAkhir = collect($secondHalf)->avg('rata_nilai');
+        
+        $selisih = $rataAkhir - $rataAwal;
+        
+        if ($selisih > 2) return 'Meningkat Signifikan';
+        if ($selisih > 0.5) return 'Meningkat';
+        if ($selisih < -2) return 'Menurun Signifikan';
+        if ($selisih < -0.5) return 'Menurun';
+        return 'Stabil';
+        }
 
-    private function generatePrioritasInputNilai($siswaBelumDinilai)
-    {
-    if (empty($siswaBelumDinilai)) {
-        return ['status' => 'Semua siswa sudah dinilai', 'aksi' => 'Tidak ada aksi yang diperlukan'];
+        private function generatePrioritasInputNilai($siswaBelumDinilai)
+        {
+        if (empty($siswaBelumDinilai)) {
+            return ['status' => 'Semua siswa sudah dinilai', 'aksi' => 'Tidak ada aksi yang diperlukan'];
     }
     
     // Group by mata pelajaran
