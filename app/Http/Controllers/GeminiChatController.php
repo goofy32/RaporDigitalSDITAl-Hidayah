@@ -132,7 +132,7 @@ class GeminiChatController extends Controller
                         ],
                         'generationConfig' => [
                             'temperature' => 0.3,
-                            'maxOutputTokens' => $model === 'gemini-1.5-pro-latest' ? 2000 : 1000,
+                            'maxOutputTokens' => $model === 'gemini-2.5-flash-lite-preview-06-17' ? 800 : 500,
                             'topP' => 0.8,
                             'topK' => 40,
                         ]
@@ -463,98 +463,63 @@ WORKFLOW PENGGUNAAN:
         Log::error('Could not extract response from: ' . json_encode($data));
         return null;
     }
-
     private function analyzeNilaiIntent($message)
     {
         $message = strtolower(trim($message));
         
         $nilaiPatterns = [
-            'comprehensive_overview' => [
-                'keywords' => ['overview', 'keseluruhan', 'lengkap', 'komprehensif', 'menyeluruh', 'semua'],
-                'patterns' => [
-                    '/overview.*lengkap/', '/analisis.*menyeluruh/', '/gambaran.*keseluruhan/',
-                    '/statistik.*lengkap/', '/data.*lengkap/', '/laporan.*lengkap/'
-                ]
-            ],
             'nilai_overview' => [
-                'keywords' => ['ringkasan', 'gambaran', 'statistik', 'rata.*rata.*keseluruhan'],
+                'keywords' => ['overview', 'ringkasan', 'gambaran', 'statistik'],
                 'patterns' => ['/gambaran.*nilai/', '/overview.*akademik/', '/ringkasan.*performa/', '/statistik.*nilai/']
+            ],
+            'siswa_lemah' => [
+                'keywords' => ['lemah', 'rendah', 'kurang', 'perlu.*perhatian', 'di.*bawah.*kkm'],
+                'patterns' => ['/siswa.*lemah/', '/nilai.*rendah/', '/di bawah.*kkm/', '/perlu.*bantuan/', '/perhatian.*khusus/']
+            ],
+            'siswa_terbaik' => [
+                'keywords' => ['terbaik', 'tinggi', 'unggul', 'prestasi', 'ranking'],
+                'patterns' => ['/siswa.*terbaik/', '/nilai.*tinggi/', '/prestasi.*baik/', '/ranking.*atas/', '/top.*siswa/']
+            ],
+            'mata_pelajaran_analisis' => [
+                'keywords' => ['mapel', 'mata.*pelajaran', 'pelajaran', 'sulit', 'mudah'],
+                'patterns' => ['/mapel.*sulit/', '/mata.*pelajaran.*lemah/', '/pelajaran.*mudah/', '/analisis.*mapel/']
+            ],
+            'kelas_perbandingan' => [
+                'keywords' => ['kelas', 'bandingkan', 'perbandingan', 'vs'],
+                'patterns' => ['/kelas.*vs/', '/bandingkan.*kelas/', '/performa.*kelas/', '/perbandingan.*kelas/']
+            ],
+            'trend_nilai' => [
+                'keywords' => ['trend', 'perkembangan', 'naik', 'turun', 'progress'],
+                'patterns' => ['/trend.*nilai/', '/perkembangan.*akademik/', '/naik.*turun/', '/progress.*nilai/']
             ],
             'siswa_belum_dinilai' => [
                 'keywords' => ['belum', 'kosong', 'missing', 'tidak ada', 'belum diisi'],
                 'patterns' => [
-                    '/siswa.*belum.*nilai/', '/belum.*diisi/', '/nilai.*kosong/', 
-                    '/missing.*nilai/', '/siswa.*tidak.*ada.*nilai/', '/progress.*input/',
+                    '/siswa.*belum.*nilai/', 
+                    '/belum.*diisi/', 
+                    '/nilai.*kosong/', 
+                    '/missing.*nilai/',
+                    '/siswa.*tidak.*ada.*nilai/',
+                    '/progress.*input/',
                     '/kelengkapan.*nilai/'
                 ]
-            ],
-            'mapel_tersulit' => [
-                'keywords' => ['tersulit', 'sulit', 'susah', 'rendah', 'lemah'],
-                'patterns' => [
-                    '/mata.*pelajaran.*sulit/', '/mapel.*tersulit/', '/pelajaran.*susah/',
-                    '/mapel.*lemah/', '/mata.*pelajaran.*rendah/'
-                ]
-            ],
-            'nilai_tertinggi_terendah' => [
-                'keywords' => ['tertinggi', 'terendah', 'maksimal', 'minimal', 'terbaik', 'terburuk'],
-                'patterns' => [
-                    '/nilai.*tertinggi/', '/nilai.*terendah/', '/siswa.*terbaik/',
-                    '/nilai.*maksimal/', '/nilai.*minimal/'
-                ]
-            ],
-            'guru_progress' => [
-                'keywords' => ['guru.*belum', 'guru.*sudah', 'progress.*guru', 'guru.*input'],
-                'patterns' => [
-                    '/guru.*belum.*input/', '/guru.*sudah.*input/', '/progress.*guru/',
-                    '/guru.*selesai/', '/guru.*lambat/'
-                ]
-            ],
-            'kelas_progress' => [
-                'keywords' => ['kelas.*progress', 'kelas.*selesai', 'kelas.*belum', 'progress.*kelas'],
-                'patterns' => [
-                    '/progress.*kelas/', '/kelas.*sudah/', '/kelas.*belum/',
-                    '/performa.*kelas/', '/kelas.*selesai/'
-                ]
-            ],
-            'rapor_progress' => [
-                'keywords' => ['rapor', 'siap.*rapor', 'kesiapan', 'rapor.*progress'],
-                'patterns' => [
-                    '/progress.*rapor/', '/siap.*rapor/', '/kesiapan.*rapor/',
-                    '/rapor.*selesai/', '/rapor.*belum/'
-                ]
-            ],
-            'siswa_lemah' => [
-                'keywords' => ['lemah', 'rendah', 'kurang', 'perlu.*perhatian', 'di.*bawah.*kkm'],
-                'patterns' => ['/siswa.*lemah/', '/nilai.*rendah/', '/di bawah.*kkm/', '/perlu.*bantuan/']
-            ],
-            'siswa_terbaik' => [
-                'keywords' => ['terbaik', 'tinggi', 'unggul', 'prestasi', 'ranking'],
-                'patterns' => ['/siswa.*terbaik/', '/nilai.*tinggi/', '/prestasi.*baik/', '/ranking.*atas/']
-            ],
-            'mata_pelajaran_analisis' => [
-                'keywords' => ['mapel', 'mata.*pelajaran', 'pelajaran', 'sulit', 'mudah'],
-                'patterns' => ['/mapel.*sulit/', '/mata.*pelajaran.*lemah/', '/pelajaran.*mudah/']
-            ],
-            'kelas_perbandingan' => [
-                'keywords' => ['kelas', 'bandingkan', 'perbandingan', 'vs'],
-                'patterns' => ['/kelas.*vs/', '/bandingkan.*kelas/', '/performa.*kelas/']
-            ],
-            'trend_nilai' => [
-                'keywords' => ['trend', 'perkembangan', 'naik', 'turun', 'progress'],
-                'patterns' => ['/trend.*nilai/', '/perkembangan.*akademik/', '/progress.*nilai/']
             ],
             'progress_input_nilai' => [
                 'keywords' => ['progress', 'kelengkapan', 'selesai', 'sudah', 'status', 'persen'],
                 'patterns' => [
-                    '/progress.*input/', '/kelengkapan.*nilai/', '/status.*nilai/',
-                    '/sudah.*selesai/', '/berapa.*persen/'
+                    '/progress.*input/', 
+                    '/kelengkapan.*nilai/', 
+                    '/status.*nilai/',
+                    '/sudah.*selesai/',
+                    '/berapa.*persen/',
+                    '/berapa.*%/'
                 ]
             ]
         ];
         
         foreach ($nilaiPatterns as $intent => $config) {
             foreach ($config['keywords'] as $keyword) {
-                if (preg_match('/' . $keyword . '/', $message)) {
+                if (strpos($message, $keyword) !== false) {
                     foreach ($config['patterns'] as $pattern) {
                         if (preg_match($pattern, $message)) {
                             return $intent;
@@ -576,48 +541,8 @@ WORKFLOW PENGGUNAAN:
         
         try {
             switch ($intent) {
-                case 'comprehensive_overview':
-                    $data = $this->getComprehensiveAcademicOverview($tahunAjaranId, $userRole);
-                    break;
-                    
                 case 'nilai_overview':
                     $data = $this->getNilaiOverview($tahunAjaranId, $userRole);
-                    break;
-                    
-                case 'siswa_belum_dinilai':
-                    $data = $this->getSiswaBelumDinilai($tahunAjaranId, $userRole);
-                    break;
-                    
-                case 'mapel_tersulit':
-                    $data = $this->getMapelDifficultyAnalysis($tahunAjaranId, $userRole);
-                    break;
-
-                case 'mata_pelajaran_analisis':
-                    $data = $this->getMapelDifficultyAnalysis($tahunAjaranId, $userRole);
-                    break;
-                    
-                case 'nilai_tertinggi_terendah':
-                    $overview = $this->getNilaiOverview($tahunAjaranId, $userRole);
-                    $siswaAnalysis = $this->getSiswaAnalysis($tahunAjaranId, $userRole);
-                    $data = [
-                        'nilai_tertinggi' => $overview['nilai_tertinggi'] ?? 0,
-                        'nilai_terendah' => $overview['nilai_terendah'] ?? 0,
-                        'siswa_nilai_tertinggi' => $siswaAnalysis['siswa_terbaik'] ?? [],
-                        'siswa_nilai_terendah' => $siswaAnalysis['siswa_perlu_perhatian'] ?? [],
-                        'context' => 'Analisis nilai tertinggi dan terendah'
-                    ];
-                    break;
-                    
-                case 'guru_progress':
-                    $data = $this->getGuruPerformanceAnalysis($tahunAjaranId, $userRole);
-                    break;
-                    
-                case 'kelas_progress':
-                    $data = $this->getClassComparisonAnalysis($tahunAjaranId, $userRole);
-                    break;
-                    
-                case 'rapor_progress':
-                    $data = $this->getRaporProgressAnalysis($tahunAjaranId, $userRole);
                     break;
                     
                 case 'siswa_lemah':
@@ -628,12 +553,20 @@ WORKFLOW PENGGUNAAN:
                     $data = $this->getSiswaTerbaik($tahunAjaranId, $userRole);
                     break;
                     
+                case 'mata_pelajaran_analisis':
+                    $data = $this->getMataPelajaranAnalisis($tahunAjaranId, $userRole);
+                    break;
+                    
                 case 'kelas_perbandingan':
                     $data = $this->getKelasPerbandingan($tahunAjaranId, $userRole);
                     break;
                     
                 case 'trend_nilai':
                     $data = $this->getTrendNilai($tahunAjaranId, $userRole);
+                    break;
+                    
+                case 'siswa_belum_dinilai':
+                    $data = $this->getSiswaBelumDinilai($tahunAjaranId, $userRole);
                     break;
                     
                 case 'progress_input_nilai':
@@ -645,57 +578,10 @@ WORKFLOW PENGGUNAAN:
             }
         } catch (\Exception $e) {
             Log::error('Error fetching nilai analysis data: ' . $e->getMessage());
-            $data = ['error' => 'Tidak dapat mengambil data nilai: ' . $e->getMessage()];
+            $data = ['error' => 'Tidak dapat mengambil data nilai'];
         }
         
         return $data;
-    }
-
-    private function getMataPelajaranAnalisis($tahunAjaranId, $userRole)
-    {
-        $query = MataPelajaran::with(['nilais' => function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor');
-        }, 'guru', 'kelas'])->where('tahun_ajaran_id', $tahunAjaranId);
-        
-        $query = $this->applyRoleFilterToMapel($query, $userRole);
-        $mataPelajarans = $query->get();
-        
-        $analisisMapel = $mataPelajarans->map(function($mapel) {
-            $nilais = $mapel->nilais->pluck('nilai_akhir_rapor');
-            if ($nilais->isEmpty()) return null;
-            
-            // Hitung siswa total dengan cara yang aman
-            $totalSiswa = 0;
-            if ($mapel->kelas) {
-                $totalSiswa = Siswa::where('kelas_id', $mapel->kelas_id)->count();
-            }
-            
-            $rataRata = $nilais->avg();
-            
-            return [
-                'nama_mapel' => $mapel->nama_pelajaran,
-                'kelas' => $mapel->kelas ? ($mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas) : 'N/A',
-                'guru' => $mapel->guru ? $mapel->guru->nama : 'N/A',
-                'rata_nilai' => round($rataRata, 2),
-                'siswa_count' => $nilais->count(),
-                'total_siswa' => $totalSiswa,
-                'tingkat_kesulitan' => $this->kategorikanTingkatKesulitan($rataRata),
-                'distribusi_nilai' => [
-                    'di_atas_85' => $nilais->filter(fn($n) => $n >= 85)->count(),
-                    'di_bawah_70' => $nilais->filter(fn($n) => $n < 70)->count()
-                ]
-            ];
-        })->filter()->sortBy('rata_nilai');
-        
-        return [
-            'total_mapel' => $analisisMapel->count(),
-            'mapel_tersulit' => $analisisMapel->first(),
-            'mapel_termudah' => $analisisMapel->last(),
-            'detail_analisis' => $analisisMapel->values(),
-            'rekomendasi' => $this->generateRekomendasiMapel($analisisMapel),
-            'context' => 'Analisis tingkat kesulitan mata pelajaran'
-        ];
     }
 
     private function getUserRole()
@@ -846,6 +732,45 @@ WORKFLOW PENGGUNAAN:
             'top_10_siswa' => $analisis->values(),
             'insights' => $this->generateInsightsSiswaTerbaik($analisis),
             'context' => 'Analisis siswa berprestasi tinggi'
+        ];
+    }
+
+    private function getMataPelajaranAnalisis($tahunAjaranId, $userRole)
+    {
+        $query = MataPelajaran::with(['nilais' => function($q) use ($tahunAjaranId) {
+            $q->where('tahun_ajaran_id', $tahunAjaranId)
+            ->whereNotNull('nilai_akhir_rapor');
+        }])->where('tahun_ajaran_id', $tahunAjaranId);
+        
+        $query = $this->applyRoleFilterToMapel($query, $userRole);
+        
+        $mataPelajarans = $query->get();
+        
+        $analisisMapel = $mataPelajarans->map(function($mapel) {
+            $nilais = $mapel->nilais->pluck('nilai_akhir_rapor');
+            if ($nilais->isEmpty()) return null;
+            
+            return [
+                'nama_mapel' => $mapel->nama_pelajaran,
+                'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
+                'guru' => $mapel->guru->nama,
+                'rata_nilai' => round($nilais->avg(), 2),
+                'siswa_count' => $nilais->count(),
+                'tingkat_kesulitan' => $this->kategorikanTingkatKesulitan($nilais->avg()),
+                'distribusi_nilai' => [
+                    'di_atas_85' => $nilais->filter(fn($n) => $n >= 85)->count(),
+                    'di_bawah_70' => $nilais->filter(fn($n) => $n < 70)->count()
+                ]
+            ];
+        })->filter()->sortBy('rata_nilai');
+        
+        return [
+            'total_mapel' => $analisisMapel->count(),
+            'mapel_tersulit' => $analisisMapel->first(),
+            'mapel_termudah' => $analisisMapel->last(),
+            'detail_analisis' => $analisisMapel->values(),
+            'rekomendasi' => $this->generateRekomendasiMapel($analisisMapel),
+            'context' => 'Analisis tingkat kesulitan mata pelajaran'
         ];
     }
 
@@ -1116,48 +1041,8 @@ WORKFLOW PENGGUNAAN:
             return $databaseData;
         }
         
-        // Helper function untuk safely slice data
-        $safeSlice = function($data, $limit = 3) {
-            if (empty($data)) return [];
-            if (is_array($data)) return array_slice($data, 0, $limit);
-            if ($data instanceof \Illuminate\Support\Collection) return $data->take($limit)->toArray();
-            return [];
-        };
-        
         // Ringkas berdasarkan intent
         switch ($intent) {
-            case 'comprehensive_overview':
-                return [
-                    'statistik_umum' => [
-                        'rata_rata_keseluruhan' => $databaseData['statistik_umum']['rata_rata_keseluruhan'] ?? 0,
-                        'nilai_tertinggi' => $databaseData['statistik_umum']['nilai_tertinggi'] ?? 0,
-                        'nilai_terendah' => $databaseData['statistik_umum']['nilai_terendah'] ?? 0,
-                        'distribusi_grade' => $databaseData['statistik_umum']['distribusi_grade'] ?? []
-                    ],
-                    'siswa_analisis' => [
-                        'total_siswa' => $databaseData['siswa_analisis']['total_siswa_aktif'] ?? 0,
-                        'siswa_terbaik_count' => count($databaseData['siswa_analisis']['siswa_terbaik'] ?? []),
-                        'siswa_perlu_perhatian_count' => count($databaseData['siswa_analisis']['siswa_perlu_perhatian'] ?? []),
-                        'siswa_belum_dinilai' => $databaseData['siswa_analisis']['siswa_belum_dinilai'] ?? 0
-                    ],
-                    'mapel_analisis' => [
-                        'mata_pelajaran_tersulit' => $safeSlice($databaseData['mapel_analisis']['mata_pelajaran_tersulit'] ?? [], 3),
-                        'mata_pelajaran_termudah' => $safeSlice($databaseData['mapel_analisis']['mata_pelajaran_termudah'] ?? [], 3)
-                    ],
-                    'guru_performance' => [
-                        'guru_perlu_followup_count' => count($databaseData['guru_performance']['guru_perlu_followup'] ?? []),
-                        'guru_belum_input_count' => count($databaseData['guru_performance']['guru_belum_input'] ?? []),
-                        'guru_sudah_selesai_count' => count($databaseData['guru_performance']['guru_sudah_selesai'] ?? []),
-                        'rata_rata_completion' => $databaseData['guru_performance']['rata_rata_completion'] ?? 0
-                    ],
-                    'rapor_progress' => [
-                        'siap_rapor' => $databaseData['progress_rapor']['siap_rapor'] ?? 0,
-                        'belum_siap_rapor' => $databaseData['progress_rapor']['belum_siap_rapor'] ?? 0,
-                        'persentase_kesiapan' => $databaseData['progress_rapor']['persentase_kesiapan'] ?? 0
-                    ],
-                    'context' => 'Overview komprehensif sistem akademik'
-                ];
-                
             case 'siswa_belum_dinilai':
                 // ULTRA COMPACT untuk admin
                 if (isset($databaseData['total_entries_expected'])) {
@@ -1166,8 +1051,7 @@ WORKFLOW PENGGUNAAN:
                         'total_missing' => $databaseData['total_entries_missing'] ?? 0,
                         'completion_rate' => $databaseData['overall_completion'] ?? 0,
                         'urgent_count' => count($databaseData['urgent_actions'] ?? []),
-                        'guru_slowest' => $safeSlice($databaseData['guru_progress_ranking'] ?? [], 3),
-                        'top_urgent_actions' => $safeSlice($databaseData['urgent_actions'] ?? [], 5),
+                        'guru_slowest' => array_slice($databaseData['guru_progress_ranking'] ?? [], 0, 3), // Hanya 3 teratas
                         'context' => 'Analisis kelengkapan input nilai'
                     ];
                 }
@@ -1175,60 +1059,9 @@ WORKFLOW PENGGUNAAN:
                 // Untuk guru individual
                 return [
                     'total_belum_dinilai' => $databaseData['total_siswa_belum_dinilai'] ?? 0,
-                    'mapel_bermasalah' => count($databaseData['mata_pelajaran_yang_diajar'] ?? []),
-                    'detail_ringkas' => $safeSlice($databaseData['detail_siswa'] ?? [], 5),
-                    'prioritas_aksi' => $databaseData['prioritas_aksi'] ?? [],
+                    'mapel_bermasalah' => $databaseData['total_mapel_bermasalah'] ?? 0,
+                    'detail_ringkas' => array_slice($databaseData['detail_siswa'] ?? [], 0, 5), // Hanya 5 siswa
                     'context' => $databaseData['context'] ?? ''
-                ];
-                
-            case 'mapel_tersulit':
-            case 'mata_pelajaran_analisis':
-                return [
-                    'mapel_tersulit' => $databaseData['mapel_tersulit'] ?? null,
-                    'mapel_termudah' => $databaseData['mapel_termudah'] ?? null,
-                    'total_mapel' => $databaseData['total_mapel'] ?? 0,
-                    'detail_analisis' => $safeSlice($databaseData['detail_analisis'] ?? [], 5),
-                    'rekomendasi' => $databaseData['rekomendasi'] ?? [],
-                    'context' => 'Analisis tingkat kesulitan mata pelajaran'
-                ];
-                
-            case 'guru_progress':
-                return [
-                    'guru_terbaik' => $safeSlice($databaseData['guru_terbaik_completion'] ?? [], 5),
-                    'guru_perlu_followup' => $safeSlice($databaseData['guru_perlu_followup'] ?? [], 5),
-                    'guru_belum_input_count' => count($databaseData['guru_belum_input'] ?? []),
-                    'guru_selesai_count' => count($databaseData['guru_sudah_selesai'] ?? []),
-                    'rata_rata_completion' => $databaseData['rata_rata_completion'] ?? 0,
-                    'context' => 'Analisis progress input nilai guru'
-                ];
-                
-            case 'nilai_tertinggi_terendah':
-                return [
-                    'nilai_tertinggi_global' => $databaseData['nilai_tertinggi'] ?? 0,
-                    'nilai_terendah_global' => $databaseData['nilai_terendah'] ?? 0,
-                    'siswa_terbaik' => $safeSlice($databaseData['siswa_nilai_tertinggi'] ?? [], 3),
-                    'siswa_terlemah' => $safeSlice($databaseData['siswa_nilai_terendah'] ?? [], 3),
-                    'context' => 'Analisis nilai ekstrem (tertinggi-terendah)'
-                ];
-                
-            case 'kelas_progress':
-            case 'kelas_perbandingan':
-                return [
-                    'kelas_terbaik' => $safeSlice($databaseData['kelas_terbaik'] ?? [], 3),
-                    'kelas_perlu_perhatian' => $safeSlice($databaseData['kelas_perlu_perhatian'] ?? [], 3),
-                    'gap_performa' => $databaseData['gap_performa'] ?? 0,
-                    'context' => 'Perbandingan performa antar kelas'
-                ];
-                
-            case 'rapor_progress':
-                return [
-                    'total_siswa' => $databaseData['total_siswa'] ?? 0,
-                    'siap_rapor' => $databaseData['siap_rapor'] ?? 0,
-                    'belum_siap_rapor' => $databaseData['belum_siap_rapor'] ?? 0,
-                    'persentase_kesiapan' => $databaseData['persentase_kesiapan'] ?? 0,
-                    'kelas_siap_terbanyak' => $safeSlice($databaseData['progress_per_kelas'] ?? [], 3),
-                    'masalah_umum' => $safeSlice($databaseData['masalah_umum'] ?? [], 5),
-                    'context' => 'Analisis kesiapan rapor'
                 ];
                 
             case 'progress_input_nilai':
@@ -1236,7 +1069,6 @@ WORKFLOW PENGGUNAAN:
                     'overall_progress' => $databaseData['overall_progress'] ?? 0,
                     'mapel_count' => $databaseData['total_mata_pelajaran'] ?? 0,
                     'next_action' => $databaseData['next_action'] ?? '',
-                    'detail_ringkas' => $safeSlice($databaseData['detail_per_mapel'] ?? [], 5),
                     'context' => 'Progress input nilai'
                 ];
                 
@@ -1244,25 +1076,20 @@ WORKFLOW PENGGUNAAN:
                 return [
                     'total_nilai' => $databaseData['total_nilai'] ?? 0,
                     'rata_rata' => $databaseData['rata_rata'] ?? 0,
-                    'nilai_tertinggi' => $databaseData['nilai_tertinggi'] ?? 0,
-                    'nilai_terendah' => $databaseData['nilai_terendah'] ?? 0,
-                    'distribusi' => $databaseData['distribusi'] ?? [],
                     'context' => 'Overview nilai akademik'
                 ];
                 
             case 'siswa_lemah':
                 return [
                     'total_lemah' => $databaseData['total_siswa_lemah'] ?? 0,
-                    'sample_siswa' => $safeSlice($databaseData['detail_siswa'] ?? [], 5),
-                    'rekomendasi' => $databaseData['rekomendasi'] ?? [],
+                    'sample_siswa' => array_slice($databaseData['detail_siswa'] ?? [], 0, 3), // Hanya 3 siswa
                     'context' => 'Siswa yang perlu perhatian'
                 ];
                 
             case 'siswa_terbaik':
                 return [
                     'total_berprestasi' => $databaseData['total_siswa_berprestasi'] ?? 0,
-                    'top_5' => $safeSlice($databaseData['top_10_siswa'] ?? [], 5),
-                    'insights' => $databaseData['insights'] ?? [],
+                    'top_3' => array_slice($databaseData['top_10_siswa'] ?? [], 0, 3), // Hanya 3 siswa
                     'context' => 'Siswa berprestasi'
                 ];
                 
@@ -1688,484 +1515,65 @@ WORKFLOW PENGGUNAAN:
             ->all();
     }
 
-    private function getComprehensiveAcademicOverview($tahunAjaranId, $userRole)
-    {
-        $data = [
-            'statistik_umum' => $this->getGeneralAcademicStats($tahunAjaranId, $userRole),
-            'siswa_analisis' => $this->getSiswaAnalysis($tahunAjaranId, $userRole),
-            'mapel_analisis' => $this->getMapelDifficultyAnalysis($tahunAjaranId, $userRole),
-            'guru_performance' => $this->getGuruPerformanceAnalysis($tahunAjaranId, $userRole),
-            'kelas_comparison' => $this->getClassComparisonAnalysis($tahunAjaranId, $userRole),
-            'progress_rapor' => $this->getRaporProgressAnalysis($tahunAjaranId, $userRole)
-        ];
-        
-        return $data;
-    }
-
-    private function getRaporProgressAnalysis($tahunAjaranId, $userRole)
-    {
-        $query = Siswa::with(['kelas', 'nilais', 'absensi']);
-        $query = $this->applyRoleFilterToSiswa($query, $userRole);
-        $siswas = $query->get();
-        
-        $raporStats = [
-            'siap_rapor' => 0,
-            'belum_siap' => 0,
-            'progress_per_kelas' => [],
-            'masalah_umum' => []
-        ];
-        
-        $kelasProgress = [];
-        
-        foreach ($siswas as $siswa) {
-            $kelasName = $siswa->kelas->nomor_kelas . $siswa->kelas->nama_kelas;
-            
-            if (!isset($kelasProgress[$kelasName])) {
-                $kelasProgress[$kelasName] = [
-                    'total' => 0,
-                    'siap' => 0,
-                    'belum_siap' => 0
-                ];
-            }
-            
-            $kelasProgress[$kelasName]['total']++;
-            
-            $diagnosis = $siswa->diagnoseDataCompleteness();
-            if ($diagnosis['complete']) {
-                $raporStats['siap_rapor']++;
-                $kelasProgress[$kelasName]['siap']++;
-            } else {
-                $raporStats['belum_siap']++;
-                $kelasProgress[$kelasName]['belum_siap']++;
-                
-                if (!$diagnosis['nilai_status']) {
-                    $raporStats['masalah_umum'][] = $diagnosis['nilai_message'];
-                }
-                if (!$diagnosis['absensi_status']) {
-                    $raporStats['masalah_umum'][] = $diagnosis['absensi_message'];
-                }
-            }
-        }
-        
-        foreach ($kelasProgress as $kelas => $data) {
-            $raporStats['progress_per_kelas'][] = [
-                'kelas' => $kelas,
-                'total_siswa' => $data['total'],
-                'siap_rapor' => $data['siap'],
-                'persentase' => $data['total'] > 0 ? round(($data['siap'] / $data['total']) * 100, 2) : 0
-            ];
-        }
-        
-        return [
-            'total_siswa' => $siswas->count(),
-            'siap_rapor' => $raporStats['siap_rapor'],
-            'belum_siap_rapor' => $raporStats['belum_siap'],
-            'persentase_kesiapan' => $siswas->count() > 0 ? 
-                round(($raporStats['siap_rapor'] / $siswas->count()) * 100, 2) : 0,
-            'progress_per_kelas' => collect($raporStats['progress_per_kelas'])
-                ->sortByDesc('persentase')->values()->toArray(),
-            'masalah_umum' => array_unique($raporStats['masalah_umum']),
-            'context' => 'Analisis kesiapan rapor'
-        ];
-    }
-
-    private function calculateStandardDeviation($numbers)
-    {
-        if ($numbers->isEmpty()) return 0;
-        
-        $mean = $numbers->avg();
-        $variance = $numbers->map(function($num) use ($mean) {
-            return pow($num - $mean, 2);
-        })->avg();
-        
-        return sqrt($variance);
-    }
-
-    private function calculateAboveKkmPercentage($nilais)
-    {
-        if ($nilais->isEmpty()) return 0;
-        
-        $aboveKkm = $nilais->where('nilai_akhir_rapor', '>=', 70)->count();
-        return round(($aboveKkm / $nilais->count()) * 100, 2);
-    }
-
-    private function getSiswaBelumDinilaiCount($tahunAjaranId, $userRole)
-    {
-        // Implementasi sederhana untuk menghitung siswa yang belum dinilai
-        $query = Siswa::whereDoesntHave('nilais', function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor');
-        });
-        
-        $query = $this->applyRoleFilterToSiswa($query, $userRole);
-        return $query->count();
-    }
-
-    private function generateMapelRecommendations($mapelStats)
-    {
-        $sulit = $mapelStats->where('tingkat_kesulitan', 'Sangat Sulit')->count();
-        $mudah = $mapelStats->where('tingkat_kesulitan', 'Mudah')->count();
-        
-        $recommendations = [];
-        
-        if ($sulit > 0) {
-            $recommendations[] = "Review metode pembelajaran untuk {$sulit} mata pelajaran kategori sangat sulit";
-        }
-        
-        if ($mudah > 3) {
-            $recommendations[] = "Pertimbangkan peningkatan standar untuk mata pelajaran yang terlalu mudah";
-        }
-        
-        return $recommendations;
-    }
-
-    private function getInputStatus($completed, $expected)
-    {
-        if ($expected == 0) return 'Tidak ada siswa';
-        
-        $percentage = ($completed / $expected) * 100;
-        
-        if ($percentage == 100) return 'Selesai';
-        if ($percentage >= 75) return 'Hampir Selesai';
-        if ($percentage >= 50) return 'Dalam Progress';
-        if ($percentage > 0) return 'Baru Dimulai';
-        return 'Belum Dimulai';
-    }
-
-    private function getKelasCompletionRate($kelas)
-    {
-        $totalExpected = 0;
-        $totalCompleted = 0;
-        
-        foreach ($kelas->mataPelajarans as $mapel) {
-            $siswaCount = $kelas->siswas->count();
-            $nilaiCount = Nilai::where('mata_pelajaran_id', $mapel->id)
-                ->whereNotNull('nilai_akhir_rapor')
-                ->count();
-            
-            $totalExpected += $siswaCount;
-            $totalCompleted += $nilaiCount;
-        }
-        
-        return $totalExpected > 0 ? round(($totalCompleted / $totalExpected) * 100, 2) : 0;
-    }
-
-    private function getMapelDifficultyAnalysis($tahunAjaranId, $userRole)
-    {
-        $query = MataPelajaran::with(['nilais' => function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor');
-        }, 'guru', 'kelas'])->where('tahun_ajaran_id', $tahunAjaranId);
-        
-        $query = $this->applyRoleFilterToMapel($query, $userRole);
-        $mataPelajarans = $query->get();
-        
-        $mapelStats = $mataPelajarans->map(function($mapel) {
-            $nilais = $mapel->nilais->pluck('nilai_akhir_rapor');
-            if ($nilais->isEmpty()) return null;
-            
-            $rataRata = $nilais->avg();
-            $tingkatKesulitan = $this->kategorikanTingkatKesulitan($rataRata);
-            
-            return [
-                'nama_mapel' => $mapel->nama_pelajaran,
-                'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
-                'guru' => $mapel->guru->nama,
-                'rata_rata' => round($rataRata, 2),
-                'tingkat_kesulitan' => $tingkatKesulitan,
-                'total_siswa' => $nilais->count(),
-                'siswa_di_atas_80' => $nilais->where('>=', 80)->count(),
-                'siswa_di_bawah_70' => $nilais->where('<', 70)->count(),
-                'standar_deviasi' => round($this->calculateStandardDeviation($nilais), 2)
-            ];
-        })->filter()->sortBy('rata_rata');
-        
-        return [
-            'mata_pelajaran_tersulit' => $mapelStats->take(5)->values()->toArray(),
-            'mata_pelajaran_termudah' => $mapelStats->sortByDesc('rata_rata')->take(5)->values()->toArray(),
-            'distribusi_kesulitan' => [
-                'sangat_sulit' => $mapelStats->where('tingkat_kesulitan', 'Sangat Sulit')->count(),
-                'sulit' => $mapelStats->where('tingkat_kesulitan', 'Sulit')->count(),
-                'sedang' => $mapelStats->where('tingkat_kesulitan', 'Sedang')->count(),
-                'mudah' => $mapelStats->where('tingkat_kesulitan', 'Mudah')->count()
-            ],
-            'rekomendasi' => $this->generateMapelRecommendations($mapelStats),
-            'context' => 'Analisis tingkat kesulitan mata pelajaran'
-        ];
-    }
-
-    private function getClassComparisonAnalysis($tahunAjaranId, $userRole)
-    {
-        $query = Kelas::with(['siswas.nilais' => function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor');
-        }, 'mataPelajarans.guru'])->where('tahun_ajaran_id', $tahunAjaranId);
-        
-        if ($userRole === 'wali_kelas') {
-            $guru = Auth::guard('guru')->user();
-            $kelasId = $guru->getWaliKelasId();
-            $query->where('id', $kelasId);
-        }
-        
-        $kelasList = $query->get();
-        
-        $kelasStats = $kelasList->map(function($kelas) {
-            $allNilai = $kelas->siswas->flatMap->nilais->pluck('nilai_akhir_rapor');
-            $waliKelas = $kelas->getWaliKelas();
-            
-            return [
-                'kelas' => $kelas->nomor_kelas . $kelas->nama_kelas,
-                'wali_kelas' => $waliKelas ? $waliKelas->nama : 'Belum ditentukan',
-                'jumlah_siswa' => $kelas->siswas->count(),
-                'rata_rata' => $allNilai->isNotEmpty() ? round($allNilai->avg(), 2) : 0,
-                'nilai_tertinggi' => $allNilai->max() ?? 0,
-                'nilai_terendah' => $allNilai->min() ?? 0,
-                'siswa_di_atas_kkm' => $allNilai->where('>=', 70)->count(),
-                'completion_rate' => $this->getKelasCompletionRate($kelas)
-            ];
-        })->sortByDesc('rata_rata');
-        
-        return [
-            'kelas_terbaik' => $kelasStats->take(3)->values()->toArray(),
-            'kelas_perlu_perhatian' => $kelasStats->sortBy('rata_rata')->take(3)->values()->toArray(),
-            'perbandingan_lengkap' => $kelasStats->values()->toArray(),
-            'gap_performa' => $kelasStats->isNotEmpty() ? 
-                round($kelasStats->first()['rata_rata'] - $kelasStats->last()['rata_rata'], 2) : 0,
-            'context' => 'Perbandingan performa antar kelas'
-        ];
-    }
-
-    private function getGuruPerformanceAnalysis($tahunAjaranId, $userRole)
-    {
-        if ($userRole !== 'admin') {
-            return ['message' => 'Analisis performa guru hanya tersedia untuk admin'];
-        }
-        
-        $gurus = Guru::whereHas('mataPelajarans', function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId);
-        })->with(['mataPelajarans' => function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->with(['kelas.siswas', 'nilais' => function($nq) use ($tahunAjaranId) {
-                $nq->where('tahun_ajaran_id', $tahunAjaranId);
-            }]);
-        }])->get();
-        
-        $guruStats = $gurus->map(function($guru) {
-            $totalExpected = 0;
-            $totalCompleted = 0;
-            $allNilai = collect();
-            
-            foreach ($guru->mataPelajarans as $mapel) {
-                $siswaCount = $mapel->kelas->siswas->count();
-                $nilaiCount = $mapel->nilais->whereNotNull('nilai_akhir_rapor')->count();
-                
-                $totalExpected += $siswaCount;
-                $totalCompleted += $nilaiCount;
-                $allNilai = $allNilai->merge($mapel->nilais->pluck('nilai_akhir_rapor')->filter());
-            }
-            
-            return [
-                'nama_guru' => $guru->nama,
-                'completion_rate' => $totalExpected > 0 ? round(($totalCompleted / $totalExpected) * 100, 2) : 0,
-                'rata_rata_nilai' => $allNilai->isNotEmpty() ? round($allNilai->avg(), 2) : 0,
-                'jumlah_mapel' => $guru->mataPelajarans->count(),
-                'total_siswa_diajar' => $totalExpected,
-                'status_input' => $this->getInputStatus($totalCompleted, $totalExpected),
-                'mata_pelajaran' => $guru->mataPelajarans->map(function($mapel) {
-                    return [
-                        'nama' => $mapel->nama_pelajaran,
-                        'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas
-                    ];
-                })
-            ];
-        });
-        
-        return [
-            'guru_terbaik_completion' => $guruStats->sortByDesc('completion_rate')->take(5)->values(),
-            'guru_perlu_followup' => $guruStats->where('completion_rate', '<', 75)->sortBy('completion_rate')->values(),
-            'guru_belum_input' => $guruStats->where('completion_rate', 0)->values(),
-            'guru_sudah_selesai' => $guruStats->where('completion_rate', 100)->values(),
-            'rata_rata_completion' => round($guruStats->avg('completion_rate'), 2),
-            'context' => 'Analisis performa input nilai guru'
-        ];
-    }
-    
-    private function getSiswaAnalysis($tahunAjaranId, $userRole)
-    {
-        $query = Siswa::whereHas('nilais', function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor');
-        });
-        
-        $query = $this->applyRoleFilterToSiswa($query, $userRole);
-        
-        $siswas = $query->with(['kelas', 'nilais' => function($q) use ($tahunAjaranId) {
-            $q->where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor')
-            ->with('mataPelajaran');
-        }])->get();
-        
-        $siswaStats = $siswas->map(function($siswa) {
-            $nilaiSiswa = $siswa->nilais;
-            $rataRata = $nilaiSiswa->avg('nilai_akhir_rapor');
-            
-            return [
-                'nama' => $siswa->nama,
-                'kelas' => $siswa->kelas->nomor_kelas . $siswa->kelas->nama_kelas,
-                'rata_rata' => round($rataRata, 2),
-                'jumlah_mapel' => $nilaiSiswa->count(),
-                'nilai_tertinggi' => $nilaiSiswa->max('nilai_akhir_rapor'),
-                'nilai_terendah' => $nilaiSiswa->min('nilai_akhir_rapor'),
-                'mapel_lemah' => $nilaiSiswa->where('nilai_akhir_rapor', '<', 70)->count(),
-                'mapel_unggul' => $nilaiSiswa->where('nilai_akhir_rapor', '>=', 85)->count()
-            ];
-        });
-        
-        return [
-            'total_siswa_aktif' => $siswas->count(),
-            'siswa_terbaik' => $siswaStats->sortByDesc('rata_rata')->take(5)->values()->toArray(),
-            'siswa_perlu_perhatian' => $siswaStats->where('rata_rata', '<', 75)->sortBy('rata_rata')->take(10)->values()->toArray(),
-            'siswa_belum_dinilai' => $this->getSiswaBelumDinilaiCount($tahunAjaranId, $userRole),
-            'distribusi_performa' => [
-                'sangat_baik' => $siswaStats->where('rata_rata', '>=', 85)->count(),
-                'baik' => $siswaStats->whereBetween('rata_rata', [75, 84])->count(),
-                'cukup' => $siswaStats->whereBetween('rata_rata', [65, 74])->count(),
-                'perlu_bimbingan' => $siswaStats->where('rata_rata', '<', 65)->count()
-            ],
-            'context' => 'Analisis komprehensif siswa'
-        ];
-    }
-    private function getGeneralAcademicStats($tahunAjaranId, $userRole)
-    {
-        $query = Nilai::where('tahun_ajaran_id', $tahunAjaranId)
-            ->whereNotNull('nilai_akhir_rapor');
-        
-        $query = $this->applyRoleFilterToNilai($query, $userRole);
-        $nilais = $query->get();
-        
-        if ($nilais->isEmpty()) {
-            return ['message' => 'Belum ada data nilai'];
-        }
-        
-        $rataKeseluruhan = $nilais->avg('nilai_akhir_rapor');
-        
-        return [
-            'total_nilai_entries' => $nilais->count(),
-            'rata_rata_keseluruhan' => round($rataKeseluruhan, 2),
-            'nilai_tertinggi' => $nilais->max('nilai_akhir_rapor'),
-            'nilai_terendah' => $nilais->min('nilai_akhir_rapor'),
-            'standar_deviasi' => round($this->calculateStandardDeviation($nilais->pluck('nilai_akhir_rapor')), 2),
-            'distribusi_grade' => [
-                'A' => $nilais->where('nilai_akhir_rapor', '>=', 90)->count(),
-                'B' => $nilais->whereBetween('nilai_akhir_rapor', [80, 89])->count(),
-                'C' => $nilais->whereBetween('nilai_akhir_rapor', [70, 79])->count(),
-                'D' => $nilais->where('nilai_akhir_rapor', '<', 70)->count()
-            ],
-            'persentase_di_atas_kkm' => $this->calculateAboveKkmPercentage($nilais),
-            'context' => 'Statistik akademik keseluruhan'
-        ];
-    }
-
     private function getOverviewSiswaBelumDinilaiAdmin($tahunAjaranId)
     {
-        // Ambil semua mata pelajaran di tahun ajaran ini
-        $allMataPelajaran = MataPelajaran::where('tahun_ajaran_id', $tahunAjaranId)
-            ->with(['kelas.siswas', 'guru'])
+        // Ambil semua kelas di tahun ajaran ini
+        $allKelas = Kelas::where('tahun_ajaran_id', $tahunAjaranId)
+            ->with(['siswas', 'mataPelajarans.guru'])
             ->get();
         
-        $totalEntriesExpected = 0;
-        $totalEntriesMissing = 0;
-        $guruProgressData = [];
-        $kelasProgressData = [];
-        $urgentActions = [];
+        $overviewData = [];
+        $totalSiswa = 0;
+        $totalSiswaBelumDinilai = 0;
         
-        foreach ($allMataPelajaran as $mapel) {
-            $siswaCount = $mapel->kelas->siswas->count();
-            $nilaiCount = Nilai::where('mata_pelajaran_id', $mapel->id)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->whereNotNull('nilai_akhir_rapor')
-                ->count();
-            
-            $missingCount = $siswaCount - $nilaiCount;
-            $totalEntriesExpected += $siswaCount;
-            $totalEntriesMissing += $missingCount;
-            
-            // Progress per guru
-            $guruId = $mapel->guru_id;
-            if (!isset($guruProgressData[$guruId])) {
-                $guruProgressData[$guruId] = [
-                    'nama_guru' => $mapel->guru->nama,
-                    'total_expected' => 0,
-                    'total_completed' => 0,
-                    'mata_pelajaran' => []
-                ];
-            }
-            
-            $guruProgressData[$guruId]['total_expected'] += $siswaCount;
-            $guruProgressData[$guruId]['total_completed'] += $nilaiCount;
-            $guruProgressData[$guruId]['mata_pelajaran'][] = [
-                'nama' => $mapel->nama_pelajaran,
-                'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
-                'progress' => $siswaCount > 0 ? round(($nilaiCount / $siswaCount) * 100, 2) : 0
+        foreach ($allKelas as $kelas) {
+            $kelasData = [
+                'kelas' => $kelas->nomor_kelas . $kelas->nama_kelas,
+                'total_siswa' => $kelas->siswas->count(),
+                'mata_pelajaran_analysis' => []
             ];
             
-            // Progress per kelas
-            $kelasId = $mapel->kelas_id;
-            if (!isset($kelasProgressData[$kelasId])) {
-                $kelasProgressData[$kelasId] = [
-                    'nama_kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
-                    'total_expected' => 0,
-                    'total_completed' => 0,
-                    'mata_pelajaran_count' => 0
-                ];
-            }
-            
-            $kelasProgressData[$kelasId]['total_expected'] += $siswaCount;
-            $kelasProgressData[$kelasId]['total_completed'] += $nilaiCount;
-            $kelasProgressData[$kelasId]['mata_pelajaran_count']++;
-            
-            // Urgent actions
-            if ($missingCount > 0) {
-                $progressPercent = $siswaCount > 0 ? round(($nilaiCount / $siswaCount) * 100, 2) : 0;
-                if ($progressPercent < 50) {
-                    $urgentActions[] = [
-                        'mata_pelajaran' => $mapel->nama_pelajaran,
-                        'kelas' => $mapel->kelas->nomor_kelas . $mapel->kelas->nama_kelas,
-                        'guru' => $mapel->guru->nama,
-                        'siswa_belum_dinilai' => $missingCount,
-                        'progress_percent' => $progressPercent,
-                        'priority' => $progressPercent < 25 ? 'URGENT' : 'HIGH'
-                    ];
+            foreach ($kelas->mataPelajarans as $mapel) {
+                $siswaBelumDinilai = 0;
+                
+                foreach ($kelas->siswas as $siswa) {
+                    $hasNilai = Nilai::where('siswa_id', $siswa->id)
+                        ->where('mata_pelajaran_id', $mapel->id)
+                        ->where('tahun_ajaran_id', $tahunAjaranId)
+                        ->whereNotNull('nilai_akhir_rapor')
+                        ->exists();
+                    
+                    if (!$hasNilai) {
+                        $siswaBelumDinilai++;
+                    }
                 }
+                
+                $kelasData['mata_pelajaran_analysis'][] = [
+                    'mata_pelajaran' => $mapel->nama_pelajaran,
+                    'guru' => $mapel->guru->nama,
+                    'siswa_belum_dinilai' => $siswaBelumDinilai,
+                    'persentase_selesai' => $kelas->siswas->count() > 0 ? 
+                        round((($kelas->siswas->count() - $siswaBelumDinilai) / $kelas->siswas->count()) * 100, 2) : 0
+                ];
+                
+                $totalSiswaBelumDinilai += $siswaBelumDinilai;
             }
+            
+            $totalSiswa += $kelas->siswas->count() * $kelas->mataPelajarans->count();
+            $overviewData[] = $kelasData;
         }
         
-        // Hitung completion rate per guru
-        foreach ($guruProgressData as &$guru) {
-            $guru['completion_rate'] = $guru['total_expected'] > 0 ? 
-                round(($guru['total_completed'] / $guru['total_expected']) * 100, 2) : 0;
-        }
-        
-        // Hitung completion rate per kelas
-        foreach ($kelasProgressData as &$kelas) {
-            $kelas['completion_rate'] = $kelas['total_expected'] > 0 ? 
-                round(($kelas['total_completed'] / $kelas['total_expected']) * 100, 2) : 0;
-        }
-        
-        // Sort dan ambil yang terburuk
-        $guruProgressSorted = collect($guruProgressData)->sortBy('completion_rate')->values();
-        $kelasProgressSorted = collect($kelasProgressData)->sortBy('completion_rate')->values();
+        // Analisis guru yang paling lambat
+        $guruProgress = $this->analyzeGuruProgress($tahunAjaranId);
         
         return [
-            'total_entries_expected' => $totalEntriesExpected,
-            'total_entries_missing' => $totalEntriesMissing,
-            'overall_completion' => $totalEntriesExpected > 0 ? 
-                round((($totalEntriesExpected - $totalEntriesMissing) / $totalEntriesExpected) * 100, 2) : 0,
-            'guru_progress_ranking' => $guruProgressSorted->take(10)->toArray(),
-            'kelas_progress_ranking' => $kelasProgressSorted->take(10)->toArray(),
-            'urgent_actions' => collect($urgentActions)->sortBy('progress_percent')->take(15)->values()->toArray(),
-            'top_urgent_gurus' => $guruProgressSorted->where('completion_rate', '<', 75)->take(5)->toArray(),
-            'context' => 'Overview lengkap kelengkapan input nilai seluruh sekolah'
+            'total_entries_expected' => $totalSiswa,
+            'total_entries_missing' => $totalSiswaBelumDinilai,
+            'overall_completion' => $totalSiswa > 0 ? round((($totalSiswa - $totalSiswaBelumDinilai) / $totalSiswa) * 100, 2) : 0,
+            'kelas_analysis' => $overviewData,
+            'guru_progress_ranking' => $guruProgress,
+            'urgent_actions' => $this->getUrgentActionsAdmin($overviewData),
+            'context' => 'Overview kelengkapan input nilai seluruh sekolah'
         ];
     }
 
@@ -2230,65 +1638,58 @@ WORKFLOW PENGGUNAAN:
         $userRole = $this->getUserRole();
         $roleContext = $this->getRoleContext($userRole);
         
-        // Compact data untuk mencegah prompt terlalu panjang
-        $compactData = $this->compactDatabaseData($databaseData, $intent);
-        
-        $systemPrompt = "Anda adalah AI Assistant untuk SISTEM RAPOR SDIT AL-HIDAYAH yang mengkhususkan diri dalam analisis data akademik real-time.
+        $systemPrompt = "Anda adalah AI Assistant untuk SISTEM RAPOR SDIT AL-HIDAYAH dengan dua kemampuan utama:
+    1. ANALISIS NILAI AKADEMIK (Data Real-time)
+    2. PANDUAN SISTEM (Knowledge Base)
 
     === KONTEKS PENGGUNA ===
     Role: {$roleContext['role']}
     Akses: {$roleContext['akses']}
     Fokus: {$roleContext['fokus']}
 
-    === DATA ANALISIS AKADEMIK REAL-TIME ===
+    === DATA NILAI AKADEMIK REAL-TIME ===
     Intent: {$intent}
-    " . json_encode($compactData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "
-    === END DATA ANALISIS ===
+    " . json_encode($databaseData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "
+    === END DATA NILAI ===
 
-    === KNOWLEDGE BASE SISTEM (UNTUK PANDUAN TEKNIS) ===
+    === KNOWLEDGE BASE SISTEM ===
     {$this->systemContext}
     === END KNOWLEDGE BASE ===
 
-    === KEMAMPUAN ANALISIS UTAMA ===
-    1. **STATISTIK AKADEMIK**: Analisis nilai, rata-rata, distribusi, standar deviasi
-    2. **IDENTIFIKASI SISWA**: 
-    - Siswa berprestasi tinggi dan yang memerlukan perhatian
-    - Siswa yang belum dinilai atau data tidak lengkap
-    3. **ANALISIS MATA PELAJARAN**: 
-    - Mata pelajaran tersulit dan termudah berdasarkan rata-rata nilai
-    - Tingkat kesulitan dan rekomendasi pembelajaran
-    4. **PERFORMA GURU**: 
-    - Progress input nilai per guru
-    - Guru yang sudah selesai vs yang belum
-    - Completion rate dan efisiensi
-    5. **PERBANDINGAN KELAS**: 
-    - Ranking kelas berdasarkan performa
-    - Gap performa antar kelas
-    6. **PROGRESS RAPOR**: 
-    - Kesiapan data untuk generate rapor
-    - Siswa siap vs belum siap rapor
-    7. **TREND & PERKEMBANGAN**: 
-    - Pola perkembangan nilai dari waktu ke waktu
+    === KEMAMPUAN ANALISIS NILAI ===
+    1. ANALISIS PERFORMA: Menganalisis tingkat pencapaian siswa berdasarkan nilai aktual
+    2. IDENTIFIKASI MASALAH: Mendeteksi siswa atau mata pelajaran yang memerlukan perhatian
+    3. REKOMENDASI TINDAKAN: Memberikan saran konkret untuk peningkatan nilai
+    4. TREND MONITORING: Menganalisis pola perkembangan nilai dari waktu ke waktu
+    5. KOMPARASI KELAS: Membandingkan performa antar kelas atau mata pelajaran
+    6. TRACKING INPUT: Memantau progress input nilai dan kelengkapan data
 
-    === INSTRUKSI RESPONSE ===
-    1. **FOKUS PADA DATA KONKRET**: Selalu sertakan angka, persentase, dan statistik spesifik
-    2. **ACTIONABLE INSIGHTS**: Berikan rekomendasi yang dapat ditindaklanjuti
-    3. **PRIORITAS BERDASARKAN URGENSI**: Identifikasi hal yang perlu perhatian segera
-    4. **KONTEKSTUAL UNTUK ROLE**: Sesuaikan analisis dengan peran pengguna
-    5. **BAHASA PROFESIONAL**: Gunakan bahasa yang mudah dipahami namun tetap profesional
+    === KEMAMPUAN PANDUAN SISTEM ===
+    1. TROUBLESHOOTING: Membantu mengatasi error dan masalah sistem
+    2. WORKFLOW GUIDANCE: Panduan langkah-langkah penggunaan sistem
+    3. SETUP BANTUAN: Membantu konfigurasi dan setup awal
+    4. LOGIN ASSISTANCE: Bantuan masalah login dan akses
+    5. TEMPLATE GUIDANCE: Panduan penggunaan template rapor
 
-    === FORMAT RESPONSE YANG DIHARAPKAN ===
-    - **RINGKASAN EKSEKUTIF**: 2-3 kalimat key findings
-    - **DETAIL ANALISIS**: Data spesifik dengan interpretasi
-    - **REKOMENDASI TINDAKAN**: Action items yang spesifik dan dapat dilakukan
-    - **PRIORITAS**: Urutkan berdasarkan urgensi dan dampak
+    === PRIORITAS RESPONSE ===
+    1. Jika pertanyaan tentang NILAI/ANALISIS/PROGRESS → Gunakan DATA REAL-TIME
+    2. Jika pertanyaan tentang CARA PAKAI/ERROR/SETUP → Gunakan KNOWLEDGE BASE  
+    3. Kombinasikan keduanya jika relevan
+    4. Selalu berikan response yang actionable dan spesifik
 
-    === CONTOH ANALISIS YANG BAIK ===
-    \"Berdasarkan data real-time, rata-rata nilai keseluruhan adalah 78.5 dengan 15% siswa memerlukan perhatian khusus. Mata pelajaran Matematika menunjukkan tingkat kesulitan tertinggi (rata-rata 72.1). Untuk tindakan segera: 1) Follow up dengan 3 guru yang completion rate <50%, 2) Program remedial untuk 12 siswa dengan nilai <70, 3) Review metode pembelajaran Matematika.\"
+    === INSTRUKSI KHUSUS ===
+    1. Fokus pada EFISIENSI PENGELOLAAN NILAI - berikan insights yang actionable
+    2. Gunakan data real-time untuk memberikan analisis yang akurat dan spesifik
+    3. Berikan rekomendasi yang sesuai dengan role pengguna ({$userRole})
+    4. Sertakan angka dan statistik konkret dari data
+    5. Prioritaskan siswa atau mata pelajaran yang memerlukan intervensi
+    6. Gunakan bahasa Indonesia yang profesional namun mudah dipahami
+    7. Berikan action items yang spesifik dan dapat dilakukan segera
+    8. Untuk masalah teknis, rujuk ke knowledge base dan berikan solusi step-by-step
 
     PERTANYAAN USER: {$userMessage}
 
-    ";
+    JAWABAN:";
 
         return $systemPrompt;
     }

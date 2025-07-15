@@ -104,6 +104,7 @@
             "Password length: " . strlen($guru->password);
     })->middleware(['auth:web']);
 
+    
     // Admin Routes - Guard: web, Role: admin only
     Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admin')->group(function () {
 
@@ -116,7 +117,70 @@
             Route::get('/test-direct', [GeminiChatController::class, 'testGeminiDirectly'])->name('test-direct');
             Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
             Route::delete('/chat/{id}', [GeminiChatController::class, 'deleteChat'])->name('delete-chat');
+            Route::get('/test-db', [GeminiChatController::class, 'testDatabaseConnection'])->name('test-db');
+            Route::get('/test-intent', [GeminiChatController::class, 'testIntentAnalysis'])->name('test-intent');
+            Route::get('/test-data', [GeminiChatController::class, 'testDataFetching'])->name('test-data');
+            Route::get('/debug-nilai', [GeminiChatController::class, 'debugNilaiData'])->name('gemini.debug-nilai');
+            Route::get('/auto-switch-tahun', [GeminiChatController::class, 'autoSwitchTahunAjaran'])->name('gemini.auto-switch');
         });
+
+        Route::get('/admin/gemini/test-database', function() {
+            try {
+                $tahunAjaranId = session('tahun_ajaran_id');
+                
+                // Test basic data
+                $nilaiCount = \App\Models\Nilai::where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereNotNull('nilai_akhir_rapor')
+                    ->count();
+                    
+                $siswaCount = \App\Models\Siswa::whereHas('kelas', function($q) use ($tahunAjaranId) {
+                    $q->where('tahun_ajaran_id', $tahunAjaranId);
+                })->count();
+                
+                $kelasCount = \App\Models\Kelas::where('tahun_ajaran_id', $tahunAjaranId)->count();
+                
+                $mataPelajaranCount = \App\Models\MataPelajaran::where('tahun_ajaran_id', $tahunAjaranId)->count();
+                
+                // Test user role
+                $userRole = 'unknown';
+                if (Auth::guard('web')->check()) {
+                    $userRole = 'admin';
+                } elseif (Auth::guard('guru')->check()) {
+                    $userRole = session('selected_role') === 'wali_kelas' ? 'wali_kelas' : 'guru';
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'tahun_ajaran_id' => $tahunAjaranId,
+                    'user_role' => $userRole,
+                    'data_counts' => [
+                        'nilai' => $nilaiCount,
+                        'siswa' => $siswaCount,
+                        'kelas' => $kelasCount,
+                        'mata_pelajaran' => $mataPelajaranCount
+                    ],
+                    'sample_nilai' => \App\Models\Nilai::where('tahun_ajaran_id', $tahunAjaranId)
+                        ->with(['siswa', 'mataPelajaran'])
+                        ->whereNotNull('nilai_akhir_rapor')
+                        ->limit(3)
+                        ->get()
+                        ->map(function($nilai) {
+                            return [
+                                'siswa' => $nilai->siswa->nama ?? 'N/A',
+                                'mata_pelajaran' => $nilai->mataPelajaran->nama_pelajaran ?? 'N/A',
+                                'nilai' => $nilai->nilai_akhir_rapor
+                            ];
+                        })
+                ]);
+                
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        })->middleware(['auth:web']);
 
         Route::prefix('kkm')->name('admin.kkm.')->group(function() {
             Route::get('/', [KkmController::class, 'index'])->name('index');
