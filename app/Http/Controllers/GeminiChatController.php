@@ -43,7 +43,6 @@ class GeminiChatController extends Controller
         $userMessage = $request->message;
         
         Log::info('User message received: ' . $userMessage);
-        Log::info('Knowledge base length: ' . strlen($this->systemContext));
         
         $apiKey = env('GEMINI_API_KEY');
         
@@ -64,14 +63,22 @@ class GeminiChatController extends Controller
             $databaseData = $this->fetchNilaiAnalysisData($intent, $userMessage);
         }
 
-        // Buat contextual prompt
-        $contextualPrompt = $this->buildNilaiAnalysisPrompt($userMessage, $databaseData, $intent);
+        // **BARU: Ambil chat history untuk konteks**
+        $chatHistory = $this->getChatHistoryForContext();
+
+        // Buat contextual prompt dengan history
+        $contextualPrompt = $this->buildNilaiAnalysisPromptWithHistory(
+            $userMessage, 
+            $databaseData, 
+            $intent, 
+            $chatHistory
+        );
         
-        // Log prompt yang dikirim
-        Log::info('Contextual prompt: ' . substr($contextualPrompt, 0, 500) . '...');
+        // **BARU: Siapkan conversation contents dengan history**
+        $conversationContents = $this->buildConversationContents($chatHistory, $userMessage, $contextualPrompt);
         
-        // HANYA SATU KALI: Panggil sendWithRetry (sudah include retry logic)
-        $apiResponse = $this->sendWithRetry($contextualPrompt, $userMessage);
+        // Panggil API dengan conversation context
+        $apiResponse = $this->sendWithRetryAndHistory($conversationContents, $userMessage);
         
         if (!$apiResponse['success']) {
             return response()->json([
@@ -79,9 +86,6 @@ class GeminiChatController extends Controller
                 'message' => $apiResponse['message'] ?? 'Terjadi kesalahan saat memproses permintaan'
             ], $apiResponse['status'] ?? 500);
         }
-
-        // Log final response
-        Log::info('Final AI response: ' . $apiResponse['data']);
 
         // Simpan chat ke database
         $chat = GeminiChat::create([
@@ -97,6 +101,294 @@ class GeminiChatController extends Controller
             'model_used' => $apiResponse['model_used'] ?? 'unknown',
             'fallback' => $apiResponse['fallback'] ?? false
         ]);
+    }
+
+        /**
+     * BARU: Ambil chat history untuk konteks AI
+     */
+    private function getChatHistoryForContext($limit = 5)
+    {
+        $userId = $this->getUserId();
+        
+        if (!$userId) {
+            return [];
+        }
+
+        // Ambil chat history terbaru (batasi untuk efisiensi)
+        return GeminiChat::where('user_id', $userId)
+                        ->orderBy('created_at', 'desc')
+                        ->take($limit)
+                        ->get()
+                        ->reverse() // Urutkan dari lama ke baru
+                        ->values()
+                        ->toArray();
+    }
+
+    /**
+     * BARU: Build conversation contents dengan history untuk Gemini API
+     */
+    private function buildConversationContents($chatHistory, $currentMessage, $systemPrompt)
+    {
+        $contents = [];
+        
+        // Tambahkan system prompt sebagai pesan pertama
+        $contents[] = [
+            'role' => 'user',
+            'parts' => [
+                ['text' => $systemPrompt]
+            ]
+        ];
+        
+        $contents[] = [
+            'role' => 'model',
+            'parts' => [
+                ['text' => 'Saya siap membantu dengan analisis nilai akademik dan panduan sistem RAPOR SDIT Al-Hidayah. Silakan tanyakan apa yang Anda butuhkan.']
+            ]
+        ];
+
+        // Tambahkan chat history (jika ada)
+        foreach ($chatHistory as $chat) {
+            // User message
+            $contents[] = [
+                'role' => 'user',
+                'parts' => [
+                    ['text' => $chat['message']]
+                ]
+            ];
+            
+            // AI response
+            $contents[] = [
+                'role' => 'model',
+                'parts' => [
+                    ['text' => $chat['response']]
+                ]
+            ];
+        }
+
+        // Tambahkan pesan saat ini
+        $contents[] = [
+            'role' => 'user',
+            'parts' => [
+                ['text' => $currentMessage]
+            ]
+        ];
+
+        return $contents;
+    }
+
+    /**
+     * BARU: Enhanced sendWithRetry dengan support untuk conversation history
+     */
+    private function sendWithRetryAndHistory($conversationContents, $userMessage)
+    {
+        $apiKey = env('GEMINI_API_KEY');
+        
+        $models = [
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-flash-8b-latest',
+            'gemini-1.5-pro-latest'
+        ];
+        
+        $maxRetries = 3;
+        $baseDelay = 2;
+        
+        foreach ($models as $modelIndex => $model) {
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    Log::info("Attempt {$attempt} with model: {$model}");
+                    
+                    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+                    
+                    // **PERBAIKAN: Gunakan conversation contents dengan history**
+                    $requestBody = [
+                        'contents' => $conversationContents,
+                        'generationConfig' => [
+                            'temperature' => 0.3,
+                            'maxOutputTokens' => $model === 'gemini-2.5-flash-lite-preview-06-17' ? 800 : 500,
+                            'topP' => 0.8,
+                            'topK' => 40,
+                        ]
+                    ];
+
+                    // Log untuk debugging (tanpa API key)
+                    Log::info("Request body structure: " . json_encode([
+                        'contents_count' => count($conversationContents),
+                        'last_user_message' => end($conversationContents)['parts'][0]['text'] ?? 'N/A'
+                    ]));
+                    
+                    $response = Http::timeout(30)->post($url, $requestBody);
+
+                    Log::info("Response status: {$response->status()} for model: {$model}");
+                    
+                    // SUCCESS CASE
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $aiResponse = $this->extractResponse($data);
+                        
+                        if ($aiResponse) {
+                            $cleanResponse = $this->cleanResponse($aiResponse);
+                            Log::info("Success with model {$model} on attempt {$attempt}");
+                            
+                            return [
+                                'success' => true,
+                                'data' => $cleanResponse,
+                                'model_used' => $model,
+                                'attempt' => $attempt
+                            ];
+                        }
+                    }
+                    
+                    // Error handling tetap sama...
+                    $errorData = $response->json();
+                    $errorCode = $response->status();
+                    $errorMessage = $errorData['error']['message'] ?? 'Unknown error';
+                    
+                    Log::warning("Error {$errorCode} with {$model}: {$errorMessage}");
+                    
+                    // Handle specific errors (sama seperti sebelumnya)
+                    if ($errorCode === 503) {
+                        if ($attempt < $maxRetries) {
+                            $delay = $baseDelay * pow(2, $attempt - 1);
+                            Log::info("Model {$model} overloaded, retrying in {$delay}s...");
+                            sleep($delay);
+                            continue;
+                        }
+                        break;
+                    }
+                    
+                    if ($errorCode === 429) {
+                        if ($attempt < $maxRetries) {
+                            $delay = 10 * $attempt;
+                            Log::info("Rate limited, waiting {$delay}s...");
+                            sleep($delay);
+                            continue;
+                        }
+                        break;
+                    }
+                    
+                    if ($errorCode === 400) {
+                        Log::warning("Bad request for {$model}, trying next model");
+                        break;
+                    }
+                    
+                    if ($attempt < $maxRetries) {
+                        sleep($baseDelay);
+                        continue;
+                    }
+                    
+                } catch (\Exception $e) {
+                    Log::error("Exception with {$model} attempt {$attempt}: " . $e->getMessage());
+                    
+                    if ($attempt < $maxRetries) {
+                        sleep($baseDelay);
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // Fallback jika semua model gagal
+        return $this->getFallbackResponse($userMessage);
+    }
+
+    /**
+     * BARU: Enhanced prompt builder dengan chat history context
+     */
+    private function buildNilaiAnalysisPromptWithHistory($userMessage, $databaseData, $intent, $chatHistory)
+    {
+        $userRole = $this->getUserRole();
+        $roleContext = $this->getRoleContext($userRole);
+        
+        // Buat ringkasan history jika ada
+        $historyContext = '';
+        if (!empty($chatHistory)) {
+            $historyContext = "\n=== KONTEKS PERCAKAPAN SEBELUMNYA ===\n";
+            $historyContext .= "Ringkasan topik yang sudah dibahas:\n";
+            
+            $recentTopics = [];
+            foreach (array_slice($chatHistory, -3) as $chat) { // Ambil 3 chat terakhir
+                if (strlen($chat['message']) < 100) {
+                    $recentTopics[] = "- " . $chat['message'];
+                } else {
+                    $recentTopics[] = "- " . substr($chat['message'], 0, 80) . "...";
+                }
+            }
+            
+            $historyContext .= implode("\n", $recentTopics);
+            $historyContext .= "\n=== END KONTEKS PERCAKAPAN ===\n";
+        }
+
+        $systemPrompt = "Anda adalah AI Assistant untuk SISTEM RAPOR SDIT AL-HIDAYAH dengan kemampuan:
+1. ANALISIS NILAI AKADEMIK (Data Real-time)
+2. PANDUAN SISTEM (Knowledge Base)
+
+=== KONTEKS PENGGUNA ===
+Role: {$roleContext['role']}
+Akses: {$roleContext['akses']}
+Fokus: {$roleContext['fokus']}
+
+{$historyContext}
+
+=== DATA NILAI AKADEMIK REAL-TIME ===
+Intent: {$intent}
+" . json_encode($databaseData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "
+=== END DATA NILAI ===
+
+=== KNOWLEDGE BASE SISTEM ===
+{$this->systemContext}
+=== END KNOWLEDGE BASE ===
+
+=== INSTRUKSI KHUSUS ===
+1. **INGAT KONTEKS PERCAKAPAN**: Rujuk ke topik yang sudah dibahas sebelumnya jika relevan
+2. **KONSISTENSI**: Jaga konsistensi dengan jawaban sebelumnya
+3. **FOLLOW UP**: Tawarkan follow-up berdasarkan percakapan sebelumnya
+4. Fokus pada EFISIENSI PENGELOLAAN NILAI - berikan insights yang actionable
+5. Gunakan data real-time untuk memberikan analisis yang akurat dan spesifik
+6. Berikan rekomendasi yang sesuai dengan role pengguna ({$userRole})
+7. Sertakan angka dan statistik konkret dari data
+8. Prioritaskan siswa atau mata pelajaran yang memerlukan intervensi
+9. Gunakan bahasa Indonesia yang profesional namun mudah dipahami
+10. Jangan ada tabel (karena tabel membuat jawaban tidak rapih)
+11. Jawaban berikan kesimpulan saja bukan detail, kecuali mereka ingin detail dan rekomendasi 
+
+PERTANYAAN USER SAAT INI: {$userMessage}
+
+JAWABAN:";
+
+        return $systemPrompt;
+    }
+
+    /**
+     * BARU: Method untuk reset conversation context
+     */
+    public function resetConversation()
+    {
+        try {
+            $userId = $this->getUserId();
+            
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+            
+            // Hapus semua chat history untuk reset context
+            GeminiChat::where('user_id', $userId)->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Konteks percakapan berhasil direset'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error resetting conversation: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mereset percakapan'
+            ], 500);
+        }
     }
 
     private function sendWithRetry($contextualPrompt, $userMessage)
@@ -329,6 +621,9 @@ INSTRUKSI PENTING:
 5. Jika ada langkah-langkah, berikan dalam format yang terstruktur
 6. Jika ada error atau masalah, berikan solusi yang jelas
 7. Jangan jawab terlalu panjang jawab sekesimpulannnya saja
+8. Jangan ada tabel (karena tabel membuat jawaban tidak rapih)
+9. Jawaban berikan kesimpulan saja bukan detail kecuali terkait KNOWLEDGE BASE, kecuali mereka ingin detail dan rekomendasi 
+
 PERTANYAAN USER: {$userMessage}
 
 JAWABAN:";

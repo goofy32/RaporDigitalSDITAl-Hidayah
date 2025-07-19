@@ -40,9 +40,10 @@
                 <!-- History Menu Button -->
                 <div class="relative" x-data="{ showMenu: false }">
                     <button @click="showMenu = !showMenu" 
-                            class="text-white hover:text-green-200 transition-colors p-1 rounded-full hover:bg-white hover:bg-opacity-10">
+                            class="text-white hover:text-green-200 transition-colors p-1 rounded-full hover:bg-white hover:bg-opacity-10"
+                            title="Menu">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
                         </svg>
                     </button>
                     
@@ -55,8 +56,21 @@
                         x-transition:leave-start="transform opacity-100 scale-100"
                         x-transition:leave-end="transform opacity-0 scale-95"
                         @click.away="showMenu = false"
-                        class="absolute right-0 top-8 w-48 bg-white rounded-lg shadow-xl z-10 py-2">
+                        class="absolute right-0 top-8 w-56 bg-white rounded-lg shadow-xl z-10 py-2">
                         
+                        <!-- Reset Conversation Button -->
+                        <button @click="handleResetConversation(); showMenu = false" 
+                                class="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Reset Konteks Percakapan
+                        </button>
+                        
+                        <!-- Divider -->
+                        <div class="border-t border-gray-100 my-1"></div>
+                        
+                        <!-- Clear History Button -->
                         <button @click="handleClearHistory(); showMenu = false" 
                                 class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +112,11 @@
                     <!-- AI Response -->
                     <div class="flex justify-start">
                         <div class="bg-gray-100 text-gray-800 px-4 py-2 rounded-xl rounded-bl-md max-w-xs lg:max-w-sm shadow-sm"
-                            :class="{ 'text-red-600 bg-red-50': chat.is_error, 'italic text-gray-500': chat.is_sending }">
+                            :class="{ 
+                                'text-red-600 bg-red-50': chat.is_error, 
+                                'italic text-gray-500': chat.is_sending,
+                                'system-message': chat.is_system 
+                            }">
                             <p class="text-sm" x-html="formatResponse(chat.response)"></p>
                         </div>
                     </div>
@@ -285,6 +303,16 @@
     50% { transform: scaleY(1); }
     100% { transform: scaleY(0.3); }
 }
+
+.system-message {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-left: 3px solid #3b82f6;
+    font-style: italic;
+}
+
+.system-message .text-sm {
+    color: #1e40af !important;
+}
 </style>
 
 <script>
@@ -441,6 +469,11 @@ document.addEventListener('alpine:init', () => {
             this.deleteSpecificChat(index);
         },
         
+        handleResetConversation() {
+            console.log('Reset conversation called');
+            this.resetConversation();
+        },
+
         async clearAllHistory() {
             console.log('clearAllHistory method called');
             
@@ -621,6 +654,130 @@ document.addEventListener('alpine:init', () => {
         
         toggleHistoryMenu() {
             this.showHistoryMenu = !this.showHistoryMenu;
+        },
+
+        async resetConversation() {
+            if (!confirm('Reset seluruh konteks percakapan? AI akan kehilangan memori tentang percakapan sebelumnya dan memulai dari awal.')) {
+                return;
+            }
+            
+            try {
+                const apiEndpoint = this.getApiEndpoint().replace('/send-message', '/clear-history'); // Gunakan clear-history untuk sementara
+                
+                const response = await fetch(apiEndpoint, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.chats = [];
+                    this.showSuggestions = true;
+                    this.showHistoryMenu = false;
+                    
+                    // Tampilkan pesan sistem bahwa konteks telah direset
+                    setTimeout(() => {
+                        this.chats.push({
+                            message: '🔄 Konteks percakapan direset',
+                            response: 'Konteks percakapan telah direset. Saya siap memulai percakapan baru dengan konteks yang segar. Silakan tanyakan apa yang Anda butuhkan!',
+                            created_at: new Date().toISOString(),
+                            is_system: true,
+                            id: 'system_' + Date.now()
+                        });
+                        this.scrollToBottom();
+                    }, 300);
+                    
+                    console.log('Conversation context reset successfully');
+                } else {
+                    alert('Gagal mereset konteks: ' + data.message);
+                }
+                
+            } catch (error) {
+                console.error('Error resetting conversation:', error);
+                alert('Terjadi kesalahan saat mereset konteks percakapan');
+            }
+        },
+
+        getQuickSuggestions() {
+            const currentPath = window.location.pathname;
+            
+            // Jika ada chat history, berikan suggestions yang berbeda
+            if (this.chats.length > 0) {
+                const lastChat = this.chats[this.chats.length - 1];
+                
+                // Suggestions berdasarkan chat terakhir
+                if (lastChat.message.toLowerCase().includes('nilai')) {
+                    return [
+                        'Lanjutkan analisis yang lebih detail',
+                        'Bagaimana cara meningkatkan nilai tersebut?',
+                        'Bandingkan dengan periode sebelumnya'
+                    ];
+                } else if (lastChat.message.toLowerCase().includes('siswa')) {
+                    return [
+                        'Analisis siswa lainnya yang serupa',
+                        'Rekomendasi tindak lanjut untuk siswa ini',
+                        'Perbandingan dengan siswa terbaik'
+                    ];
+                } else if (lastChat.message.toLowerCase().includes('guru')) {
+                    return [
+                        'Progress guru lainnya',
+                        'Analisis efektivitas mengajar',
+                        'Rekomendasi improvement untuk guru'
+                    ];
+                }
+            }
+            
+            // Default suggestions berdasarkan role
+            if (currentPath.startsWith('/admin')) {
+                return [
+                    'Berikan overview lengkap sistem akademik',
+                    'Siswa mana yang belum diisi nilainya?',
+                    'Mata pelajaran apa yang paling sulit bagi siswa?',
+                    'Guru mana yang belum menyelesaikan input nilai?',
+                    'Berapa rata-rata nilai akademik keseluruhan?',
+                    'Bagaimana progress kesiapan rapor seluruh sekolah?',
+                    'Kelas mana yang performanya paling baik?',
+                    'Analisis nilai tertinggi dan terendah',
+                    'Guru mana yang sudah selesai input nilai?',
+                    'Berapa persen kelengkapan data akademik?'
+                ];
+            } else if (currentPath.startsWith('/pengajar')) {
+                return [
+                    'Analisis mata pelajaran yang saya ajar',
+                    'Siswa mana yang nilainya masih di bawah KKM?',
+                    'Progress input nilai saya berapa persen?',
+                    'Siswa mana yang belum saya isi nilainya?',
+                    'Bagaimana performa kelas yang saya ajar?',
+                    'Mata pelajaran mana yang paling sulit untuk siswa?',
+                    'Siapa siswa terbaik di mata pelajaran saya?',
+                    'Berapa rata-rata nilai mata pelajaran saya?',
+                    'Trend perkembangan nilai siswa',
+                    'Rekomendasi untuk meningkatkan hasil belajar'
+                ];
+            } else if (currentPath.startsWith('/wali-kelas')) {
+                return [
+                    'Overview lengkap performa kelas saya',
+                    'Siswa mana yang perlu bimbingan khusus?',
+                    'Progress kelengkapan nilai di kelas saya',
+                    'Guru mana yang belum input nilai di kelas saya?',
+                    'Berapa siswa yang sudah siap rapor?',
+                    'Mata pelajaran apa yang perlu fokus tambahan?',
+                    'Perbandingan kelas saya dengan kelas lain',
+                    'Siswa mana yang paling berprestasi di kelas?',
+                    'Analisis kesiapan data rapor kelas saya',
+                    'Rekomendasi untuk meningkatkan performa kelas'
+                ];
+            }
+            
+            return [
+                'Bagaimana cara menggunakan sistem ini?',
+                'Apa yang bisa saya tanyakan tentang nilai?',
+                'Panduan lengkap sistem rapor'
+            ];
         }
     }))
 });

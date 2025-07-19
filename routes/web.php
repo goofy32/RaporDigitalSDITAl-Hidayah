@@ -122,6 +122,7 @@
             Route::get('/test-data', [GeminiChatController::class, 'testDataFetching'])->name('test-data');
             Route::get('/debug-nilai', [GeminiChatController::class, 'debugNilaiData'])->name('gemini.debug-nilai');
             Route::get('/auto-switch-tahun', [GeminiChatController::class, 'autoSwitchTahunAjaran'])->name('gemini.auto-switch');
+            Route::delete('/clear-conversation', [GeminiChatController::class, 'resetConversation'])->name('reset-conversation');
         });
 
         Route::get('/admin/gemini/test-database', function() {
