@@ -496,6 +496,23 @@
         ->prefix('wali-kelas')
         ->name('wali_kelas.')
         ->group(function () {
+        
+        
+        // Cetak Rapor HTML Routes
+        Route::prefix('rapor-html')->name('rapor_html.')->group(function () {
+            // Halaman index untuk daftar siswa yang akan dicetak
+            Route::get('/', [ReportController::class, 'indexPrintRapor'])->name('index');
+            
+            // Halaman cetak rapor HTML untuk siswa tertentu
+            Route::get('/print/{siswa}', [ReportController::class, 'printRaporHtml'])->name('print');
+            
+            // Route alternatif dengan nama yang lebih jelas
+            Route::get('/cetak/{siswa}', [ReportController::class, 'printRaporHtml'])->name('cetak');
+        });
+
+        // Atau jika ingin menggunakan nama route yang lebih sederhana:
+        Route::get('/cetak-rapor', [ReportController::class, 'indexPrintRapor'])->name('rapor.print_index');
+        Route::get('/cetak-rapor/{siswa}', [ReportController::class, 'printRaporHtml'])->name('rapor.print_html');
 
         Route::prefix('gemini')->name('gemini.')->group(function () {
             Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');

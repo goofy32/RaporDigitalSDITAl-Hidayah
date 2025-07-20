@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB; 
 use Barryvdh\DomPDF\Facade\PDF;
 use App\Models\ReportGeneration;
+use App\Models\TahunAjaran;
 
 class ReportController extends Controller
 {
@@ -133,6 +134,120 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Tampilkan halaman cetak rapor HTML untuk wali kelas
+     * 
+     * @param Siswa $siswa
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
+    public function printRaporHtml(Siswa $siswa, Request $request)
+    {
+        $guru = auth()->guard('guru')->user();
+        
+        if (!$guru || !$guru->isWaliKelas()) {
+            abort(403, 'Hanya wali kelas yang dapat mencetak rapor');
+        }
+        
+        if (!$siswa->isInKelasWali($guru->id)) {
+            abort(403, 'Anda hanya dapat mencetak rapor siswa di kelas yang Anda walikan');
+        }
+        
+        $tahunAjaranId = session('tahun_ajaran_id');
+        $tahunAjaran = TahunAjaran::find($tahunAjaranId);
+        $semester = $tahunAjaran ? $tahunAjaran->semester : 1;
+        
+        $siswa->load([
+            'kelas',
+            'nilais' => function($query) use ($tahunAjaranId, $semester) {
+                $query->where('tahun_ajaran_id', $tahunAjaranId)
+                    ->whereHas('mataPelajaran', function($q) use ($semester) {
+                        $q->where('semester', $semester);
+                    })
+                    ->whereNotNull('nilai_akhir_rapor');
+            },
+            'nilais.mataPelajaran',
+            'nilaiEkstrakurikuler' => function($query) use ($tahunAjaranId) {
+                $query->where('tahun_ajaran_id', $tahunAjaranId);
+            },
+            'nilaiEkstrakurikuler.ekstrakurikuler',
+            'absensi' => function($query) use ($tahunAjaranId, $semester) {
+                $query->where('semester', $semester)
+                    ->where('tahun_ajaran_id', $tahunAjaranId);
+            }
+        ]);
+        
+        $profilSekolah = ProfilSekolah::first();
+        $waliKelas = $guru;
+        
+        if ($siswa->nilais->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Data nilai siswa belum lengkap. Pastikan semua nilai sudah diinput untuk semester ' . $semester);
+        }
+        
+        if (!$siswa->absensi) {
+            return redirect()->back()
+                ->with('error', 'Data absensi siswa belum diinput untuk semester ' . $semester);
+        }
+        
+        return view('wali_kelas.rapor.print_html', compact(
+            'siswa',
+            'tahunAjaran', 
+            'profilSekolah',
+            'waliKelas',
+            'semester'
+        ));
+    }
+
+    /**
+     * Tampilkan daftar siswa untuk cetak rapor HTML
+     * 
+     * @return \Illuminate\View\View
+     */
+    public function indexPrintRapor()
+    {
+        $guru = auth()->guard('guru')->user();
+        $tahunAjaranId = session('tahun_ajaran_id');
+        
+        if (!$guru || !$guru->isWaliKelas()) {
+            abort(403, 'Hanya wali kelas yang dapat mengakses halaman ini');
+        }
+        
+        $kelas = DB::table('guru_kelas')
+            ->join('kelas', 'guru_kelas.kelas_id', '=', 'kelas.id')
+            ->where('guru_kelas.guru_id', $guru->id)
+            ->where('guru_kelas.is_wali_kelas', true)
+            ->where('guru_kelas.role', 'wali_kelas')
+            ->where('kelas.tahun_ajaran_id', $tahunAjaranId)
+            ->select('kelas.*')
+            ->first();
+        
+        if (!$kelas) {
+            return redirect()->back()
+                ->with('error', 'Anda tidak menjadi wali kelas untuk tahun ajaran yang dipilih.');
+        }
+        
+        $siswa = Siswa::with(['nilais.mataPelajaran', 'absensi'])
+            ->where('kelas_id', $kelas->id)
+            ->orderBy('nama')
+            ->get();
+        
+        $diagnosisResults = [];
+        foreach ($siswa as $s) {
+            $diagnosisResults[$s->id] = $s->diagnoseDataCompleteness('UTS');
+        }
+        
+        $tahunAjaran = TahunAjaran::find($tahunAjaranId);
+        
+        return view('wali_kelas.rapor.index_print', compact(
+            'siswa',
+            'kelas', 
+            'diagnosisResults',
+            'tahunAjaran'
+        ));
+    }
+
+    
     public function archiveByTahunAjaran(Request $request)
     {
         $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
