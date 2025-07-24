@@ -493,7 +493,7 @@ document.addEventListener('alpine:init', function() {
                 } finally {
                     this.loading = false;
                 }
-            },
+            }
 
             /**
              * Batch PDF Download

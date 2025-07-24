@@ -13,365 +13,41 @@
 
         body {
             font-family: Arial, sans-serif;
-            font-size: 10px;
+            font-size: 11px;
             line-height: 1.2;
             background: white;
             color: black;
-            padding: 15px;
         }
 
         @page {
             size: A4;
-            margin: 1cm;
+            margin: 2cm 1.5cm;
         }
 
         @media print {
             body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                margin: 0;
                 padding: 0;
             }
             
             .no-print {
                 display: none !important;
             }
+
+            .container {
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+            }
         }
 
         .container {
-            max-width: 100%;
+            max-width: 210mm;
             margin: 0 auto;
             background: white;
-        }
-
-        /* Header with Logo */
-        .header {
-            position: relative;
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 3px solid #000;
-            padding-bottom: 8px;
-        }
-
-        .header .logo {
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 80px;
-            height: 80px;
-            border: 2px solid #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-        }
-
-        .header .logo img {
-            max-width: 70px;
-            max-height: 70px;
-            object-fit: contain;
-        }
-
-        .header .logo-placeholder {
-            font-size: 8px;
-            text-align: center;
-            font-weight: bold;
-            color: #666;
-        }
-
-        .header .school-info {
-            margin-right: 90px;
-        }
-
-        .header h1 {
-            font-size: 11px;
-            font-weight: bold;
-            margin-bottom: 1px;
-            text-transform: uppercase;
-        }
-
-        .header h2 {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-        }
-
-        .header p {
-            font-size: 9px;
-            margin-bottom: 1px;
-        }
-
-        /* Title */
-        .title {
-            text-align: center;
-            margin: 15px 0 20px 0;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Student Info */
-        .student-info {
-            margin-bottom: 15px;
-        }
-
-        .student-info table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-        }
-
-        .student-info td {
-            padding: 4px 8px;
-            border: 1px solid #000;
-            font-size: 10px;
-            vertical-align: middle;
-        }
-
-        .student-info .label {
-            width: 15%;
-            font-weight: bold;
-            background: #f5f5f5;
-        }
-
-        .student-info .colon {
-            width: 2%;
-            text-align: center;
-            background: #f5f5f5;
-        }
-
-        .student-info .value {
-            width: 33%;
-            font-weight: bold;
-        }
-
-        /* Main Table */
-        .main-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            margin-bottom: 15px;
-        }
-
-        .main-table th {
-            background-color: #f0f0f0;
-            border: 1px solid #000;
-            padding: 6px 4px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 9px;
-            vertical-align: middle;
-        }
-
-        .main-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            font-size: 9px;
-            vertical-align: top;
-        }
-
-        .main-table .col-no {
-            width: 3%;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .main-table .col-subject {
-            width: 22%;
-            font-weight: bold;
-        }
-
-        .main-table .col-grade {
-            width: 6%;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .main-table .col-achievement {
-            width: 69%;
-            text-align: justify;
-            line-height: 1.3;
-        }
-
-        /* Section Headers */
-        .section-header {
-            text-align: center;
-            font-weight: bold;
-            font-size: 10px;
-            margin: 15px 0 8px 0;
-            text-transform: uppercase;
-        }
-
-        /* Muatan Lokal Table */
-        .muatan-lokal-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            margin-bottom: 15px;
-        }
-
-        .muatan-lokal-table th {
-            background-color: #f0f0f0;
-            border: 1px solid #000;
-            padding: 6px 4px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 9px;
-            vertical-align: middle;
-        }
-
-        .muatan-lokal-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            font-size: 9px;
-            vertical-align: top;
-        }
-
-        .muatan-lokal-table .col-no {
-            width: 3%;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .muatan-lokal-table .col-subject {
-            width: 22%;
-            font-weight: bold;
-        }
-
-        .muatan-lokal-table .col-grade {
-            width: 6%;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .muatan-lokal-table .col-achievement {
-            width: 69%;
-            text-align: justify;
-            line-height: 1.3;
-        }
-
-        /* Ekstrakurikuler Table */
-        .ekstrakurikuler-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-            margin-bottom: 15px;
-        }
-
-        .ekstrakurikuler-table th {
-            background-color: #f0f0f0;
-            border: 1px solid #000;
-            padding: 6px 4px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 9px;
-            vertical-align: middle;
-        }
-
-        .ekstrakurikuler-table td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            font-size: 9px;
-            vertical-align: top;
-        }
-
-        .ekstrakurikuler-table .col-no {
-            width: 3%;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .ekstrakurikuler-table .col-activity {
-            width: 35%;
-            font-weight: bold;
-        }
-
-        .ekstrakurikuler-table .col-description {
-            width: 62%;
-        }
-
-        /* Catatan Guru */
-        .catatan-section {
-            margin-bottom: 15px;
-        }
-
-        .catatan-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-        }
-
-        .catatan-table td {
-            border: 1px solid #000;
-            padding: 8px;
-            font-size: 9px;
-            line-height: 1.4;
-            text-align: justify;
-            min-height: 50px;
-            vertical-align: top;
-        }
-
-        /* Ketidakhadiran */
-        .ketidakhadiran-section {
-            margin-bottom: 20px;
-        }
-
-        .ketidakhadiran-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 1px solid #000;
-        }
-
-        .ketidakhadiran-table td {
-            border: 1px solid #000;
-            padding: 4px 8px;
-            font-size: 9px;
-            font-weight: normal;
-        }
-
-        /* Signatures */
-        .signatures {
-            margin-top: 20px;
-        }
-
-        .signatures table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .signatures td {
-            width: 33.33%;
-            text-align: center;
-            vertical-align: top;
-            padding: 0 5px;
-            font-size: 9px;
-        }
-
-        .signatures .sig-title {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .signatures .sig-location {
-            font-weight: bold;
-            text-align: right;
-            margin-bottom: 10px;
-        }
-
-        .signatures .sig-space {
-            height: 50px;
-            margin: 10px 0;
-        }
-
-        .signatures .sig-name {
-            font-weight: bold;
-            text-decoration: underline;
-            margin-bottom: 3px;
-        }
-
-        .signatures .sig-nip {
-            font-size: 8px;
+            padding: 20px;
         }
 
         /* Print Button */
@@ -395,22 +71,374 @@
             background: #0056b3;
         }
 
-        /* Empty rows */
-        .empty-row td {
-            height: 18px;
+        /* Header Section */
+        .header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #000;
         }
 
-        /* Date location */
+        .header-logos {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 120px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .logo-top, .logo-bottom {
+            width: 80px;
+            height: 45px;
+            border: 2px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+        }
+
+        .logo-top img, .logo-bottom img {
+            max-width: 70px;
+            max-height: 40px;
+            object-fit: contain;
+        }
+
+        .logo-placeholder {
+            font-size: 8px;
+            text-align: center;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .school-info {
+            margin-right: 130px;
+            padding-top: 5px;
+        }
+
+        .school-info h1 {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .school-info h2 {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .school-info p {
+            font-size: 10px;
+            margin-bottom: 1px;
+        }
+
+        /* Title */
+        .title {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Student Info */
+        .student-info {
+            margin-bottom: 20px;
+        }
+
+        .student-info table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+        }
+
+        .student-info td {
+            padding: 8px 12px;
+            border: 1px solid #000;
+            font-size: 11px;
+            vertical-align: middle;
+        }
+
+        .student-info .label {
+            width: 20%;
+            font-weight: bold;
+            background: #f8f8f8;
+        }
+
+        .student-info .colon {
+            width: 2%;
+            text-align: center;
+            background: #f8f8f8;
+        }
+
+        .student-info .value {
+            width: 28%;
+            font-weight: bold;
+        }
+
+        /* Main Table */
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 20px;
+        }
+
+        .main-table th {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8px 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10px;
+            vertical-align: middle;
+        }
+
+        .main-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 10px;
+            vertical-align: top;
+        }
+
+        .main-table .col-no {
+            width: 4%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .main-table .col-subject {
+            width: 25%;
+            font-weight: bold;
+        }
+
+        .main-table .col-grade {
+            width: 8%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .main-table .col-achievement {
+            width: 63%;
+            text-align: justify;
+            line-height: 1.4;
+        }
+
+        /* Muatan Lokal Section */
+        .section-header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+        }
+
+        .muatan-lokal-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 20px;
+        }
+
+        .muatan-lokal-table th {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8px 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10px;
+            vertical-align: middle;
+        }
+
+        .muatan-lokal-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 10px;
+            vertical-align: top;
+        }
+
+        .muatan-lokal-table .col-no {
+            width: 4%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .muatan-lokal-table .col-subject {
+            width: 25%;
+            font-weight: bold;
+        }
+
+        .muatan-lokal-table .col-grade {
+            width: 8%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .muatan-lokal-table .col-achievement {
+            width: 63%;
+            text-align: justify;
+            line-height: 1.4;
+        }
+
+        /* Ekstrakurikuler Table */
+        .ekstrakurikuler-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 20px;
+        }
+
+        .ekstrakurikuler-table th {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8px 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10px;
+            vertical-align: middle;
+        }
+
+        .ekstrakurikuler-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            font-size: 10px;
+            vertical-align: top;
+        }
+
+        .ekstrakurikuler-table .col-no {
+            width: 4%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .ekstrakurikuler-table .col-activity {
+            width: 40%;
+            font-weight: bold;
+        }
+
+        .ekstrakurikuler-table .col-description {
+            width: 56%;
+        }
+
+        /* Catatan Guru */
+        .catatan-section {
+            margin-bottom: 20px;
+        }
+
+        .catatan-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+        }
+
+        .catatan-table th {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .catatan-table td {
+            border: 1px solid #000;
+            padding: 12px;
+            font-size: 10px;
+            line-height: 1.5;
+            text-align: justify;
+            min-height: 80px;
+            vertical-align: top;
+        }
+
+        /* Ketidakhadiran */
+        .ketidakhadiran-section {
+            margin-bottom: 25px;
+        }
+
+        .ketidakhadiran-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+        }
+
+        .ketidakhadiran-table th {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .ketidakhadiran-table td {
+            border: 1px solid #000;
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: normal;
+        }
+
+        /* Signatures */
+        .signatures {
+            margin-top: 30px;
+        }
+
         .date-location {
             text-align: right;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 15px;
         }
 
+        .signatures table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .signatures td {
+            width: 50%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 10px;
+            font-size: 10px;
+        }
+
+        .signatures .sig-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .signatures .sig-space {
+            height: 60px;
+            margin: 15px 0;
+        }
+
+        .signatures .sig-name {
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 3px;
+        }
+
+        .signatures .sig-nip {
+            font-size: 9px;
+        }
+
+        /* Empty rows */
+        .empty-row td {
+            height: 20px;
+        }
+
+        /* Responsive adjustments */
         @media print {
             body {
-                font-size: 9px;
+                font-size: 10px;
             }
             
             .container {
@@ -418,16 +446,16 @@
             }
             
             .header {
-                margin-bottom: 10px;
-                padding-bottom: 5px;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
             }
             
             .title {
-                margin: 10px 0 15px 0;
+                margin: 15px 0;
             }
             
             .signatures {
-                margin-top: 15px;
+                margin-top: 20px;
             }
         }
     </style>
@@ -441,14 +469,21 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <div class="logo">
-                @if(isset($profilSekolah) && $profilSekolah->logo)
-                    <img src="{{ asset('storage/' . $profilSekolah->logo) }}" alt="Logo Sekolah">
-                @else
-                    <div class="logo-placeholder">
-                        LOGO<br>SEKOLAH
-                    </div>
-                @endif
+            <div class="header-logos">
+                <div class="logo-top">
+                    @if(file_exists(public_path('images/icons/sdit-logo.png')))
+                        <img src="{{ asset('images/icons/sdit-logo.png') }}" alt="Logo SDIT">
+                    @else
+                        <div class="logo-placeholder">LOGO<br>SDIT</div>
+                    @endif
+                </div>
+                <div class="logo-bottom">
+                    @if(file_exists(public_path('images/icons/sdit-logo.png')))
+                        <img src="{{ asset('images/icons/sdit-logo.png') }}" alt="Logo Sekolah">
+                    @else
+                        <div class="logo-placeholder">LOGO<br>SEKOLAH</div>
+                    @endif
+                </div>
             </div>
             
             <div class="school-info">
@@ -474,7 +509,7 @@
                     <td class="value">{{ strtoupper($siswa->nama) }}</td>
                     <td class="label">Kelas</td>
                     <td class="colon">:</td>
-                    <td class="value">{{ $siswa->kelas->nomor_kelas }} {{ $siswa->kelas->nama_kelas }}</td>
+                    <td class="value">{{ $siswa->kelas->nomor_kelas }}{{ $siswa->kelas->nama_kelas }}</td>
                 </tr>
                 <tr>
                     <td class="label">NISN/NIS</td>
@@ -500,9 +535,10 @@
             <tbody>
                 @php 
                     $no = 1; 
-                    $mainSubjects = $siswa->nilais->filter(function($nilai) {
+                    $mainSubjects = $siswa->nilais->filter(function($nilai) use ($semester) {
                         return $nilai->mataPelajaran && 
                                !$nilai->mataPelajaran->is_muatan_lokal && 
+                               $nilai->mataPelajaran->semester == $semester &&
                                $nilai->nilai_akhir_rapor !== null;
                     });
                 @endphp
@@ -511,29 +547,29 @@
                     <tr>
                         <td class="col-no">{{ $no++ }}</td>
                         <td class="col-subject">{{ $nilai->mataPelajaran->nama_pelajaran }}</td>
-                        <td class="col-grade">{{ $nilai->nilai_akhir_rapor }}</td>
+                        <td class="col-grade">{{ number_format($nilai->nilai_akhir_rapor, 0) }}</td>
                         <td class="col-achievement">
                             @php
-                                $customCatatan = $nilai->mataPelajaran->getCatatanForSiswa($siswa->id, 'umum');
-                                if ($customCatatan && $customCatatan->catatan) {
-                                    echo $customCatatan->catatan;
-                                } else {
-                                    // Auto generate based on grade
-                                    $nilaiAngka = $nilai->nilai_akhir_rapor;
-                                    if ($nilaiAngka >= 88) {
-                                        echo $siswa->nama . " menunjukkan pemahaman yang sangat baik dalam " . $nilai->mataPelajaran->nama_pelajaran . ". " . $siswa->nama . " mampu memahami konsep, menerapkan, dan menganalisis dengan sangat baik.";
-                                    } elseif ($nilaiAngka >= 74) {
-                                        echo $siswa->nama . " menunjukkan pemahaman yang baik dalam " . $nilai->mataPelajaran->nama_pelajaran . ". " . $siswa->nama . " mampu memahami konsep dan menerapkannya dengan baik.";
-                                    } elseif ($nilaiAngka >= 60) {
-                                        echo $siswa->nama . " menunjukkan pemahaman yang cukup dalam " . $nilai->mataPelajaran->nama_pelajaran . ". " . $siswa->nama . " sudah mampu memahami konsep dasar dengan baik.";
-                                    } else {
-                                        echo $siswa->nama . " perlu bimbingan dalam " . $nilai->mataPelajaran->nama_pelajaran . ". " . $siswa->nama . " disarankan untuk mengulang pembelajaran materi dasar dengan bimbingan guru.";
-                                    }
-                                }
+                                // Generate capaian kompetensi using the service
+                                echo \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                                    $siswa->id,
+                                    $nilai->mata_pelajaran_id,
+                                    $tahunAjaranId ?? session('tahun_ajaran_id')
+                                );
                             @endphp
                         </td>
                     </tr>
                 @endforeach
+
+                {{-- Fill empty rows to maintain layout --}}
+                @for($i = $no; $i <= 8; $i++)
+                <tr class="empty-row">
+                    <td class="col-no">{{ $i }}</td>
+                    <td class="col-subject"></td>
+                    <td class="col-grade"></td>
+                    <td class="col-achievement"></td>
+                </tr>
+                @endfor
             </tbody>
         </table>
 
@@ -551,9 +587,10 @@
             <tbody>
                 @php 
                     $no = 1; 
-                    $muatanLokal = $siswa->nilais->filter(function($nilai) {
+                    $muatanLokal = $siswa->nilais->filter(function($nilai) use ($semester) {
                         return $nilai->mataPelajaran && 
                                $nilai->mataPelajaran->is_muatan_lokal && 
+                               $nilai->mataPelajaran->semester == $semester &&
                                $nilai->nilai_akhir_rapor !== null;
                     });
                 @endphp
@@ -562,31 +599,20 @@
                     <tr>
                         <td class="col-no">{{ $no++ }}</td>
                         <td class="col-subject">{{ $nilai->mataPelajaran->nama_pelajaran }}</td>
-                        <td class="col-grade">{{ $nilai->nilai_akhir_rapor }}</td>
+                        <td class="col-grade">{{ number_format($nilai->nilai_akhir_rapor, 0) }}</td>
                         <td class="col-achievement">
                             @php
-                                $customCatatan = $nilai->mataPelajaran->getCatatanForSiswa($siswa->id, 'umum');
-                                if ($customCatatan && $customCatatan->catatan) {
-                                    echo $customCatatan->catatan;
-                                } else {
-                                    // Simple auto generate for muatan lokal
-                                    $nilaiAngka = $nilai->nilai_akhir_rapor;
-                                    if ($nilaiAngka >= 88) {
-                                        echo $siswa->nama . " menunjukkan pemahaman yang sangat baik dalam " . $nilai->mataPelajaran->nama_pelajaran . ".";
-                                    } elseif ($nilaiAngka >= 74) {
-                                        echo $siswa->nama . " menunjukkan pemahaman yang baik dalam " . $nilai->mataPelajaran->nama_pelajaran . ".";
-                                    } elseif ($nilaiAngka >= 60) {
-                                        echo $siswa->nama . " menunjukkan pemahaman yang cukup dalam " . $nilai->mataPelajaran->nama_pelajaran . ".";
-                                    } else {
-                                        echo $siswa->nama . " perlu bimbingan dalam " . $nilai->mataPelajaran->nama_pelajaran . ".";
-                                    }
-                                }
+                                echo \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                                    $siswa->id,
+                                    $nilai->mata_pelajaran_id,
+                                    $tahunAjaranId ?? session('tahun_ajaran_id')
+                                );
                             @endphp
                         </td>
                     </tr>
                 @endforeach
                 
-                {{-- Fill empty rows if needed --}}
+                {{-- Fill empty rows --}}
                 @for($i = $no; $i <= 5; $i++)
                 <tr class="empty-row">
                     <td class="col-no">{{ $i }}</td>
@@ -610,7 +636,7 @@
             </thead>
             <tbody>
                 @php $no = 1; @endphp
-                @foreach($siswa->nilaiEkstrakurikuler as $nilaiEkskul)
+                @foreach($siswa->nilaiEkstrakurikuler->where('tahun_ajaran_id', $tahunAjaranId ?? session('tahun_ajaran_id')) as $nilaiEkskul)
                 <tr>
                     <td class="col-no">{{ $no++ }}</td>
                     <td class="col-activity">{{ $nilaiEkskul->ekstrakurikuler->nama_ekstrakurikuler }}</td>
@@ -630,37 +656,55 @@
         </table>
 
         <!-- Catatan Guru Section -->
-        <div class="section-header">Catatan Guru</div>
         <div class="catatan-section">
             <table class="catatan-table">
-                <tr>
-                    <td>
-                        @php
-                            $catatanGuru = $siswa->getCatatanForCurrentSemester('umum');
-                            if ($catatanGuru && $catatanGuru->catatan) {
-                                echo $catatanGuru->catatan;
-                            } else {
-                                echo 'Alhamdulillah ananda ' . $siswa->nama . ' dalam semester ' . ($semester ?? 1) . ' ini sudah mengikuti pembelajaran dengan baik secara keseluruhan, untuk ananda ' . $siswa->nama . ' lebih percaya diri lagi dalam segala hal ya, ibu yakin ' . $siswa->nama . ' bisa dan banyak belajar di rumah ya, kemudian tingkatkan lagi prestasinya di semester berikutnya ya, tidak lupa untuk sholat lima waktunya.';
-                            }
-                        @endphp
-                    </td>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>Catatan Guru</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            @php
+                                $catatanGuru = $siswa->getCatatanForCurrentSemester('umum');
+                                if ($catatanGuru && $catatanGuru->catatan) {
+                                    echo $catatanGuru->catatan;
+                                } else {
+                                    echo 'Alhamdulillah ananda ' . $siswa->nama . ' dalam semester ' . ($semester ?? 1) . ' ini sudah mengikuti pembelajaran dengan baik secara keseluruhan, untuk ananda ' . $siswa->nama . ' lebih percaya diri lagi dalam segala hal ya, ibu yakin ' . $siswa->nama . ' bisa dan banyak belajar di rumah ya, kemudian tingkatkan lagi prestasinya di semester berikutnya ya, tidak lupa untuk sholat lima waktunya.';
+                                }
+                            @endphp
+                        </td>
+                    </tr>
+                </tbody>
             </table>
         </div>
 
         <!-- Ketidakhadiran Section -->
-        <div class="section-header">Ketidakhadiran</div>
         <div class="ketidakhadiran-section">
             <table class="ketidakhadiran-table">
-                <tr>
-                    <td>Sakit : {{ $siswa->absensi->sakit ?? 0 }} Hari</td>
-                </tr>
-                <tr>
-                    <td>Izin : {{ $siswa->absensi->izin ?? 0 }} Hari</td>
-                </tr>
-                <tr>
-                    <td>Tanpa Keterangan : {{ $siswa->absensi->tanpa_keterangan ?? 0 }} Hari</td>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>Ketidakhadiran</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php
+                        $absensi = $siswa->absensi()
+                            ->where('semester', $semester ?? 1)
+                            ->where('tahun_ajaran_id', $tahunAjaranId ?? session('tahun_ajaran_id'))
+                            ->first();
+                    @endphp
+                    <tr>
+                        <td>Sakit : {{ $absensi->sakit ?? 0 }} Hari</td>
+                    </tr>
+                    <tr>
+                        <td>Izin : {{ $absensi->izin ?? 0 }} Hari</td>
+                    </tr>
+                    <tr>
+                        <td>Tanpa Keterangan : {{ $absensi->tanpa_keterangan ?? 0 }} Hari</td>
+                    </tr>
+                </tbody>
             </table>
         </div>
 
@@ -674,11 +718,6 @@
                 <tr>
                     <td>
                         <div class="sig-title">Mengetahui :</div>
-                        <div class="sig-title">Orang Tua/Wali,</div>
-                        <div class="sig-space"></div>
-                        <div class="sig-name">____________________</div>
-                    </td>
-                    <td>
                         <div class="sig-title">Kepala Sekolah</div>
                         <div class="sig-space"></div>
                         <div class="sig-name">{{ $profilSekolah->kepala_sekolah ?? 'M. Tsabit Mujahid, M.Pd.I.' }}</div>
@@ -688,7 +727,7 @@
                         <div class="sig-title">Guru Kelas,</div>
                         <div class="sig-space"></div>
                         <div class="sig-name">{{ $waliKelas->nama }}</div>
-                        <div class="sig-nip">NUPTK {{ $profilSekolah->nip_wali_kelas ?? $waliKelas->nuptk ?? '3438761662220002' }}</div>
+                        <div class="sig-nip">NUPTK {{ $waliKelas->nuptk ?? '3438761662220002' }}</div>
                     </td>
                 </tr>
             </table>
@@ -698,7 +737,6 @@
     <script>
         // Auto print when page loads
         window.addEventListener('load', function() {
-            // Small delay to ensure page is fully rendered
             setTimeout(function() {
                 window.print();
             }, 1000);
@@ -706,10 +744,8 @@
 
         // Handle print dialog close
         window.addEventListener('afterprint', function() {
-            // Optional: redirect back to rapor index after printing
             if (confirm('Tutup halaman ini dan kembali ke daftar siswa?')) {
                 window.close();
-                // If window.close() doesn't work (some browsers block it), redirect
                 setTimeout(function() {
                     window.location.href = '{{ route("wali_kelas.rapor.print_index") }}';
                 }, 100);
@@ -729,4 +765,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

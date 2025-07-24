@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tahun.ajaran' => TahunAjaranMiddleware::class,
             'check.basic.setup' => \App\Http\Middleware\CheckBasicSetup::class,
             'handle.validation.errors' => \App\Http\Middleware\HandleValidationErrors::class,
+            'check.libreoffice' => \App\Http\Middleware\CheckLibreOfficeAvailability::class,
         ]);
 
         // Konfigurasi CSRF

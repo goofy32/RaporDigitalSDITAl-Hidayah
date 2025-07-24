@@ -669,10 +669,77 @@ class ReportController extends Controller
         return response()->download($filePath, $downloadFilename);
     }
 
-    public function downloadPdf(Siswa $siswa) 
+    /**
+     * Generate and download a PDF version of the report
+     *
+     * @param Request $request
+     * @param Siswa $siswa
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPdf(Siswa $siswa, Request $request)
     {
-        $pdf = PDF::loadView('rapor.pdf', compact('siswa'));
-        return $pdf->download("rapor_{$siswa->nis}.pdf");
+        try {
+            // 1. First generate the DOCX file
+            $type = $request->query('type', 'UTS');
+            $tahunAjaranId = $request->query('tahun_ajaran_id', session('tahun_ajaran_id'));
+            
+            Log::info('Starting PDF generation process', [
+                'siswa_id' => $siswa->id,
+                'type' => $type,
+                'tahun_ajaran_id' => $tahunAjaranId
+            ]);
+            
+            // Get the template based on the report type requested
+            $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId);
+            
+            if (!$template) {
+                throw new \Exception('Template rapor tidak ditemukan.');
+            }
+            
+            // Generate the DOCX report
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
+            $result = $processor->generate(true); // true to bypass validation
+            
+            if (!isset($result['path'])) {
+                throw new \Exception('Gagal generate file DOCX: ' . ($result['message'] ?? 'Unknown error'));
+            }
+            
+            $docxPath = $result['path'];
+            $fullDocxPath = storage_path('app/public/' . $docxPath);
+            
+            // 2. Convert DOCX to PDF
+            $conversionService = new \App\Services\DocumentConversionService();
+            $pdfResult = $conversionService->convertStorageDocxToPdf($docxPath, 'pdf_reports');
+            
+            if (!$pdfResult['success']) {
+                throw new \Exception('Konversi ke PDF gagal: ' . $pdfResult['message']);
+            }
+            
+            // 3. Return the PDF file for download
+            $pdfPath = $pdfResult['path'];
+            $filename = 'Rapor_' . $type . '_' . $siswa->nis . '_' . str_replace(' ', '_', $siswa->nama) . '.pdf';
+            
+            Log::info('PDF generation successful', [
+                'siswa_id' => $siswa->id,
+                'pdf_path' => $pdfPath
+            ]);
+            
+            return response()->download($pdfPath, $filename, [
+                'Content-Type' => 'application/pdf'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error generating PDF report', [
+                'siswa_id' => $siswa->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghasilkan PDF: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     public function previewRapor($siswa_id) {
@@ -779,6 +846,147 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function testPdfConversion()
+    {
+        try {
+            // Create a simple test document
+            $phpWord = new \PhpOffice\PhpWord\PhpWord();
+            $section = $phpWord->addSection();
+            $section->addText('This is a test document for PDF conversion');
+            $section->addText('Generated on ' . date('Y-m-d H:i:s'));
+            
+            // Save the test document
+            $testDir = storage_path('app/public/test');
+            if (!file_exists($testDir)) {
+                mkdir($testDir, 0755, true);
+            }
+            
+            $docxPath = $testDir . '/test_document.docx';
+            $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save($docxPath);
+            
+            // Test the conversion
+            $conversionService = new \App\Services\DocumentConversionService();
+            $result = $conversionService->convertDocxToPdf($docxPath, $testDir);
+            
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'PDF conversion is working correctly',
+                    'details' => $result
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PDF conversion failed: ' . $result['message'],
+                    'command_output' => $result['output'] ?? null
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error testing PDF conversion: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+
+    /**
+     * Check if LibreOffice is installed and get version information
+     * 
+     * @return \Illuminate\Http\Response
+     */
+    public function getConversionStatus()
+    {
+        try {
+            $process = new \Symfony\Component\Process\Process(['soffice', '--version']);
+            $process->run();
+            
+            if ($process->isSuccessful()) {
+                $versionInfo = trim($process->getOutput());
+                
+                return response()->json([
+                    'success' => true,
+                    'libreoffice_installed' => true,
+                    'version_info' => $versionInfo,
+                    'environment' => [
+                        'os' => php_uname(),
+                        'php_version' => PHP_VERSION,
+                        'server' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'libreoffice_installed' => false,
+                    'error' => 'LibreOffice not found or not accessible: ' . $process->getErrorOutput()
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking LibreOffice: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * Preview the PDF version of the report in browser
+     *
+     * @param Request $request
+     * @param Siswa $siswa
+     * @return \Illuminate\Http\Response
+     */
+    public function previewPdf(Siswa $siswa, Request $request)
+    {
+        try {
+            // Similar to downloadPdf but returns the file for viewing
+            $type = $request->query('type', 'UTS');
+            $tahunAjaranId = $request->query('tahun_ajaran_id', session('tahun_ajaran_id'));
+            
+            // Get the template
+            $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId);
+            
+            if (!$template) {
+                throw new \Exception('Template rapor tidak ditemukan.');
+            }
+            
+            // Generate the DOCX report
+            $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
+            $result = $processor->generate(true);
+            
+            $docxPath = $result['path'];
+            
+            // Convert DOCX to PDF
+            $conversionService = new \App\Services\DocumentConversionService();
+            $pdfResult = $conversionService->convertStorageDocxToPdf($docxPath, 'pdf_reports');
+            
+            if (!$pdfResult['success']) {
+                throw new \Exception('Konversi ke PDF gagal: ' . $pdfResult['message']);
+            }
+            
+            // Return the PDF file for inline viewing
+            $pdfPath = $pdfResult['path'];
+            
+            return response()->file($pdfPath, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="rapor_preview.pdf"'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error previewing PDF report', [
+                'siswa_id' => $siswa->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal preview PDF: ' . $e->getMessage()
             ], 500);
         }
     }
