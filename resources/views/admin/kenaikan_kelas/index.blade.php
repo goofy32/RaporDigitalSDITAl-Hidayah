@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Kenaikan Kelas dan Kelulusan')
@@ -21,7 +20,7 @@
         
         @if(isset($error) && str_contains($error, 'Tidak ada tahun ajaran yang aktif'))
         <div class="mt-4">
-            <a href="{{ route('tahun.ajaran.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-blue active:bg-green-700 transition duration-150 ease-in-out">
+            <a href="{{ route('tahun.ajaran.index') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-green active:bg-green-700 transition duration-150 ease-in-out">
                 <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -49,16 +48,27 @@
                 <p>Semester {{ $tahunAjaranBaru->semester }} ({{ $tahunAjaranBaru->semester == 1 ? 'Ganjil' : 'Genap' }})</p>
             </div>
             @else
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4 flex-1">
-                <h4 class="font-medium text-green-800">Tahun Ajaran Tujuan</h4>
-                <p class="text-gray-600 mb-2">Silakan buat tahun ajaran baru terlebih dahulu</p>
-                <a href="{{ route('tahun.ajaran.copy', $tahunAjaranAktif->id) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-green active:bg-green-700 transition duration-150 ease-in-out">
-                    <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Buat Tahun Ajaran Baru dari {{ $tahunAjaranAktif->tahun_ajaran }}
-                </a>
-            </div>
+            {{-- Box Tahun Ajaran Tujuan - Logika berdasarkan semester --}}
+            @if($tahunAjaranAktif->semester == 1)
+                {{-- Semester Ganjil: Warna kuning dengan pesan --}}
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex-1">
+                    <h4 class="font-medium text-yellow-800">Tahun Ajaran Tujuan</h4>
+                    <p class="text-yellow-700 mb-2">Anda berada di semester ganjil</p>
+                    <p class="text-yellow-600 text-sm">Untuk membuat tahun ajaran berikutnya, lanjutkan ke semester genap terlebih dahulu.</p>
+                </div>
+            @else
+                {{-- Semester Genap: Hijau dengan tombol ke copy --}}
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 flex-1">
+                    <h4 class="font-medium text-green-800">Tahun Ajaran Tujuan</h4>
+                    <p class="text-gray-600 mb-2">Silakan buat tahun ajaran baru terlebih dahulu</p>
+                    <a href="{{ route('tahun.ajaran.copy', $tahunAjaranAktif->id) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 focus:outline-none focus:border-green-700 focus:shadow-outline-green active:bg-green-700 transition duration-150 ease-in-out">
+                        <svg class="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Buat Tahun Ajaran Baru dari {{ $tahunAjaranAktif->tahun_ajaran }}
+                    </a>
+                </div>
+            @endif
             @endif
         </div>
     </div>
@@ -125,12 +135,25 @@
         <p class="text-yellow-700 mb-2">Belum ada kelas yang dibuat di tahun ajaran {{ $tahunAjaranBaru->tahun_ajaran }}.</p>
         <p class="text-yellow-700 mb-4">Untuk melakukan kenaikan kelas, Anda perlu membuat kelas-kelas terlebih dahulu di tahun ajaran baru.</p>
         
+        {{-- Tambahan rekomendasi untuk semester genap --}}
+        @if($tahunAjaranAktif->semester == 2)
+        <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <p class="text-green-800 text-sm font-medium mb-1">💡 Rekomendasi:</p>
+            <p class="text-green-700 text-sm mb-2">
+                Gunakan fitur <strong>"Buat Tahun Ajaran Berikutnya"</strong> untuk setup otomatis yang lengkap.
+            </p>
+            <a href="{{ route('tahun.ajaran.copy', $tahunAjaranAktif->id) }}" class="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded text-white bg-green-600 hover:bg-green-500">
+                Gunakan Fitur Otomatis
+            </a>
+        </div>
+        @endif
+        
         <div class="flex flex-col space-y-2">
             <div class="bg-white p-3 rounded-lg shadow-sm">
                 <h4 class="font-medium text-gray-800 mb-2">Langkah-langkah membuat kelas di tahun ajaran baru:</h4>
                 <ol class="list-decimal pl-5 text-sm space-y-1">
-                    <li>Klik pada <a href="{{ route('tahun.ajaran.set-session', $tahunAjaranBaru->id) }}" class="text-blue-600 hover:underline">tahun ajaran {{ $tahunAjaranBaru->tahun_ajaran }}</a> di menu dropdown tahun ajaran</li>
-                    <li>Setelah itu, buat kelas baru di menu <a href="{{ route('kelas.index') }}" class="text-blue-600 hover:underline">Manajemen Kelas</a></li>
+                    <li>Klik pada <a href="{{ route('tahun.ajaran.set-session', $tahunAjaranBaru->id) }}" class="text-green-600 hover:underline">tahun ajaran {{ $tahunAjaranBaru->tahun_ajaran }}</a> di menu dropdown tahun ajaran</li>
+                    <li>Setelah itu, buat kelas baru di menu <a href="{{ route('kelas.index') }}" class="text-green-600 hover:underline">Manajemen Kelas</a></li>
                     <li>Kemudian kembali ke halaman ini untuk melanjutkan proses kenaikan kelas</li>
                 </ol>
             </div>
@@ -195,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let detailHtml = '<div class="text-center mb-4">';
     detailHtml += '<div class="grid grid-cols-3 gap-4 mb-4">';
     detailHtml += '<div class="bg-green-100 p-3 rounded-lg"><div class="text-green-700 text-lg font-bold">' + stats.promoted + '</div><div class="text-green-600 text-sm">Naik Kelas</div></div>';
-    detailHtml += '<div class="bg-blue-100 p-3 rounded-lg"><div class="text-blue-700 text-lg font-bold">' + stats.graduated + '</div><div class="text-blue-600 text-sm">Lulus</div></div>';
+    detailHtml += '<div class="bg-green-100 p-3 rounded-lg"><div class="text-green-700 text-lg font-bold">' + stats.graduated + '</div><div class="text-green-600 text-sm">Lulus</div></div>';
     detailHtml += '<div class="bg-red-100 p-3 rounded-lg"><div class="text-red-700 text-lg font-bold">' + stats.notProcessed + '</div><div class="text-red-600 text-sm">Tidak Diproses</div></div>';
     detailHtml += '</div>';
     
@@ -211,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (stats.graduated > 0) {
         detailHtml += '<li class="mr-2" role="presentation">';
-        detailHtml += '<button class="inline-block p-2 border-b-2 border-transparent rounded-t-lg hover:bg-blue-50 tablinks" id="graduated-tab" data-target="graduated" type="button">Lulus (' + stats.graduated + ')</button>';
+        detailHtml += '<button class="inline-block p-2 border-b-2 border-transparent rounded-t-lg hover:bg-green-50 tablinks" id="graduated-tab" data-target="graduated" type="button">Lulus (' + stats.graduated + ')</button>';
         detailHtml += '</li>';
     }
     
@@ -253,10 +276,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         @foreach(session('details.graduated') as $detail)
             detailHtml += '<li class="mb-2 flex items-start">' + 
-                        '<span class="text-blue-600 mr-1">🎓</span> ' +
+                        '<span class="text-green-600 mr-1">🎓</span> ' +
                         '<div><strong>{{ $detail['nama'] }}</strong><br>' + 
                         'Dari {{ $detail['kelas_asal'] }} → Lulus</div></li>';
-                        @endforeach
+        @endforeach
         
         detailHtml += '</ul>';
         detailHtml += '</div>';
@@ -306,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Remove active class from tabs
                 document.querySelectorAll('.tablinks').forEach(tab => {
-                    tab.classList.remove('active', 'border-green-500', 'border-blue-500', 'border-red-500');
+                    tab.classList.remove('active', 'border-green-500', 'border-green-500', 'border-red-500');
                     tab.classList.add('border-transparent');
                 });
                 
@@ -321,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (target === 'promoted') {
                     this.classList.add('border-green-500');
                 } else if (target === 'graduated') {
-                    this.classList.add('border-blue-500');
+                    this.classList.add('border-green-500');
                 } else if (target === 'notProcessed') {
                     this.classList.add('border-red-500');
                 }

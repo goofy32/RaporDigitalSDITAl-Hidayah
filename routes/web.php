@@ -492,145 +492,156 @@
     });
 
     // Wali Kelas Routes - Guard: guru, Role: wali_kelas
-    Route::middleware(['auth:guru', 'role:wali_kelas'])
-        ->prefix('wali-kelas')
-        ->name('wali_kelas.')
-        ->group(function () {
+Route::middleware(['auth:guru', 'role:wali_kelas'])
+    ->prefix('wali-kelas')
+    ->name('wali_kelas.')
+    ->group(function () {
+    
+    // Cetak Rapor HTML Routes
+    Route::prefix('rapor-html')->name('rapor_html.')->group(function () {
+        // Halaman index untuk daftar siswa yang akan dicetak
+        Route::get('/', [ReportController::class, 'indexPrintRapor'])->name('index');
         
+        // Halaman cetak rapor HTML untuk siswa tertentu
+        Route::get('/print/{siswa}', [ReportController::class, 'printRaporHtml'])->name('print');
         
-        // Cetak Rapor HTML Routes
-        Route::prefix('rapor-html')->name('rapor_html.')->group(function () {
-            // Halaman index untuk daftar siswa yang akan dicetak
-            Route::get('/', [ReportController::class, 'indexPrintRapor'])->name('index');
-            
-            // Halaman cetak rapor HTML untuk siswa tertentu
-            Route::get('/print/{siswa}', [ReportController::class, 'printRaporHtml'])->name('print');
-            
-            // Route alternatif dengan nama yang lebih jelas
-            Route::get('/cetak/{siswa}', [ReportController::class, 'printRaporHtml'])->name('cetak');
-        });
+        // Route alternatif dengan nama yang lebih jelas
+        Route::get('/cetak/{siswa}', [ReportController::class, 'printRaporHtml'])->name('cetak');
+    });
 
-        // Atau jika ingin menggunakan nama route yang lebih sederhana:
-        Route::get('/cetak-rapor', [ReportController::class, 'indexPrintRapor'])->name('rapor.print_index');
-        Route::get('/cetak-rapor/{siswa}', [ReportController::class, 'printRaporHtml'])->name('rapor.print_html');
+    // Alternative routes for rapor HTML
+    Route::get('/cetak-rapor', [ReportController::class, 'indexPrintRapor'])->name('rapor.print_index');
+    Route::get('/cetak-rapor/{siswa}', [ReportController::class, 'printRaporHtml'])->name('rapor.print_html');
 
-        Route::prefix('gemini')->name('gemini.')->group(function () {
-            Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');
-            Route::get('/history', [GeminiChatController::class, 'getHistory'])->name('history');
-
-            Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
-            Route::delete('/chat/{id}', [GeminiChatController::class, 'deleteChat'])->name('delete-chat');
+    Route::prefix('gemini')->name('gemini.')->group(function () {
+        Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');
+        Route::get('/history', [GeminiChatController::class, 'getHistory'])->name('history');
+        Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
+        Route::delete('/chat/{id}', [GeminiChatController::class, 'deleteChat'])->name('delete-chat');
+    });
+    
+    Route::prefix('capaian-kompetensi')->name('capaian_kompetensi.')->group(function () {
+        Route::get('/', [CapaianKompetensiController::class, 'waliKelasIndex'])->name('index');
+        Route::get('/{mataPelajaran}/edit', [CapaianKompetensiController::class, 'waliKelasEdit'])->name('edit');
+        Route::put('/{mataPelajaran}', [CapaianKompetensiController::class, 'waliKelasUpdate'])->name('update');
+        
+        // Route baru untuk range templates
+        Route::get('/range-templates', [CapaianKompetensiController::class, 'rangeTemplates'])->name('range_templates');
+        Route::put('/range-templates', [CapaianRangeTemplateController::class, 'update'])->name('range_templates.update');
+        Route::post('/range-templates', [CapaianRangeTemplateController::class, 'store'])->name('range_templates.store');
+        Route::delete('/range-templates/{id}', [CapaianRangeTemplateController::class, 'destroy'])->name('range_templates.destroy');
+        Route::post('/range-templates/reset', [CapaianRangeTemplateController::class, 'resetToDefault'])->name('range_templates.reset');
+    });
+    
+    Route::prefix('catatan')->name('catatan.')->group(function () {
+        // Catatan Siswa
+        Route::prefix('siswa')->name('siswa.')->group(function () {
+            Route::get('/{siswa}', [CatatanController::class, 'showCatatanSiswa'])->name('show');
+            Route::post('/{siswa}', [CatatanController::class, 'storeCatatanSiswa'])->name('store');
         });
         
-        Route::prefix('capaian-kompetensi')->name('capaian_kompetensi.')->group(function () {
-            Route::get('/', [CapaianKompetensiController::class, 'waliKelasIndex'])->name('index');
-            Route::get('/{mataPelajaran}/edit', [CapaianKompetensiController::class, 'waliKelasEdit'])->name('edit');
-            Route::put('/{mataPelajaran}', [CapaianKompetensiController::class, 'waliKelasUpdate'])->name('update');
-            
-            // Route baru untuk range templates
-            Route::get('/range-templates', [CapaianKompetensiController::class, 'rangeTemplates'])->name('range_templates');
-            Route::put('/range-templates', [CapaianRangeTemplateController::class, 'update'])->name('range_templates.update');
-            Route::post('/range-templates', [CapaianRangeTemplateController::class, 'store'])->name('range_templates.store');
-            Route::delete('/range-templates/{id}', [CapaianRangeTemplateController::class, 'destroy'])->name('range_templates.destroy');
-            Route::post('/range-templates/reset', [CapaianRangeTemplateController::class, 'resetToDefault'])->name('range_templates.reset');
+        // Catatan Mata Pelajaran
+        Route::prefix('mata-pelajaran')->name('mata_pelajaran.')->group(function () {
+            Route::get('/', [CatatanController::class, 'indexCatatanMataPelajaran'])->name('index');
+            Route::get('/{mataPelajaran}', [CatatanController::class, 'showCatatanMataPelajaran'])->name('show');
+            Route::post('/{mataPelajaran}', [CatatanController::class, 'storeCatatanMataPelajaran'])->name('store');
+            Route::get('/ajax/get-catatan', [CatatanController::class, 'getCatatanForSiswa'])->name('get-catatan');
         });
-        Route::prefix('catatan')->name('catatan.')->group(function () {
-            // Catatan Siswa
-            Route::prefix('siswa')->name('siswa.')->group(function () {
-                Route::get('/{siswa}', [CatatanController::class, 'showCatatanSiswa'])->name('show');
-                Route::post('/{siswa}', [CatatanController::class, 'storeCatatanSiswa'])->name('store');
-            });
-            
-            // Catatan Mata Pelajaran
-            Route::prefix('mata-pelajaran')->name('mata_pelajaran.')->group(function () {
-                Route::get('/', [CatatanController::class, 'indexCatatanMataPelajaran'])->name('index');
-                Route::get('/{mataPelajaran}', [CatatanController::class, 'showCatatanMataPelajaran'])->name('show');
-                Route::post('/{mataPelajaran}', [CatatanController::class, 'storeCatatanMataPelajaran'])->name('store');
-                Route::get('/ajax/get-catatan', [CatatanController::class, 'getCatatanForSiswa'])->name('get-catatan');
-            });
-        });
-        
-        Route::prefix('notifications')->name('notifications.')->group(function () {
-            Route::get('/', [NotificationController::class, 'index'])->name('index');
-            Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
-            Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
-        });
-        
-        Route::get('/rapor/diagnose/{siswa}', [ReportController::class, 'diagnoseSiswaData'])->name('diagnose');
+    });
+    
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('read');
+        Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
+    });
+    
+    // Diagnose route
+    Route::get('/rapor/diagnose/{siswa}', [ReportController::class, 'diagnoseSiswaData'])->name('diagnose');
 
-        Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])
-        ->middleware('check.wali.kelas')  // Tambah middleware baru
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'waliKelasDashboard'])
+        ->middleware('check.wali.kelas')
         ->name('dashboard');
-        Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])->name('profile');
-        Route::get('/overall-progress', [DashboardController::class, 'getOverallProgressWaliKelas'])
-            ->name('overall.progress');
-            
-        Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgressWaliKelas'])
-            ->name('kelas.progress');
+        
+    Route::get('/profile', [TeacherController::class, 'showWaliKelasProfile'])->name('profile');
+    Route::get('/overall-progress', [DashboardController::class, 'getOverallProgressWaliKelas'])
+        ->name('overall.progress');
+        
+    Route::get('/kelas-progress', [DashboardController::class, 'getKelasProgressWaliKelas'])
+        ->name('kelas.progress');
 
-        Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgressWaliKelas'])
-             ->name('mata_pelajaran.progress');
-        // Student Management
-        Route::prefix('siswa')->name('student.')->group(function () {
-            Route::get('/', [StudentController::class, 'waliKelasIndex'])->name('index');
-            Route::get('/create', [StudentController::class, 'waliKelasCreate'])->name('create'); 
-            Route::post('/', [StudentController::class, 'waliKelasStore'])->name('store');
-            Route::get('/{id}', [StudentController::class, 'waliKelasShow'])->name('show');
-            Route::get('/{id}/edit', [StudentController::class, 'waliKelasEdit'])->name('edit');
-            Route::put('/{id}', [StudentController::class, 'waliKelasUpdate'])->name('update');
-            Route::delete('/{id}', [StudentController::class, 'waliKelasDestroy'])->name('destroy');
-        });
+    Route::get('/mata-pelajaran-progress/{mataPelajaranId}', [DashboardController::class, 'getMataPelajaranProgressWaliKelas'])
+         ->name('mata_pelajaran.progress');
+         
+    // Student Management
+    Route::prefix('siswa')->name('student.')->group(function () {
+        Route::get('/', [StudentController::class, 'waliKelasIndex'])->name('index');
+        Route::get('/create', [StudentController::class, 'waliKelasCreate'])->name('create'); 
+        Route::post('/', [StudentController::class, 'waliKelasStore'])->name('store');
+        Route::get('/{id}', [StudentController::class, 'waliKelasShow'])->name('show');
+        Route::get('/{id}/edit', [StudentController::class, 'waliKelasEdit'])->name('edit');
+        Route::put('/{id}', [StudentController::class, 'waliKelasUpdate'])->name('update');
+        Route::delete('/{id}', [StudentController::class, 'waliKelasDestroy'])->name('destroy');
+    });
 
-        // Extracurricular
-        Route::prefix('ekstrakurikuler')->name('ekstrakurikuler.')->group(function () {
-            Route::get('/', [EkstrakurikulerController::class, 'waliKelasIndex'])->name('index');
-            Route::get('/create', [EkstrakurikulerController::class, 'waliKelasCreate'])->name('create');
-            Route::post('/', [EkstrakurikulerController::class, 'waliKelasStore'])->name('store');
-            Route::get('/{id}/edit', [EkstrakurikulerController::class, 'waliKelasEdit'])->name('edit');
-            Route::put('/{id}', [EkstrakurikulerController::class, 'waliKelasUpdate'])->name('update');
-            Route::delete('/{id}', [EkstrakurikulerController::class, 'waliKelasDestroy'])->name('destroy');
-        });
+    // Extracurricular
+    Route::prefix('ekstrakurikuler')->name('ekstrakurikuler.')->group(function () {
+        Route::get('/', [EkstrakurikulerController::class, 'waliKelasIndex'])->name('index');
+        Route::get('/create', [EkstrakurikulerController::class, 'waliKelasCreate'])->name('create');
+        Route::post('/', [EkstrakurikulerController::class, 'waliKelasStore'])->name('store');
+        Route::get('/{id}/edit', [EkstrakurikulerController::class, 'waliKelasEdit'])->name('edit');
+        Route::put('/{id}', [EkstrakurikulerController::class, 'waliKelasUpdate'])->name('update');
+        Route::delete('/{id}', [EkstrakurikulerController::class, 'waliKelasDestroy'])->name('destroy');
+    });
 
-        // Absence Management
-        Route::resource('absensi', AbsensiController::class)->names([
-            'index' => 'absence.index',
-            'create' => 'absence.create', 
-            'store' => 'absence.store',
-            'edit' => 'absence.edit',
-            'update' => 'absence.update',
-            'destroy' => 'absence.destroy',
-        ]);
+    // Absence Management
+    Route::resource('absensi', AbsensiController::class)->names([
+        'index' => 'absence.index',
+        'create' => 'absence.create', 
+        'store' => 'absence.store',
+        'edit' => 'absence.edit',
+        'update' => 'absence.update',
+        'destroy' => 'absence.destroy',
+    ]);
 
-
-        Route::get('/lingkup-materi/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkLingkupMateriDependencies'])
+    // Learning objectives routes
+    Route::get('/lingkup-materi/{id}/check-dependencies', [TujuanPembelajaranController::class, 'checkLingkupMateriDependencies'])
         ->name('lingkup_materi.check_dependencies');
+    
+    // Add route for updating lingkup materi (if needed)
+    Route::post('/lingkup-materi/{id}/update', [SubjectController::class, 'updateLingkupMateri'])
+        ->name('lingkup_materi.update');
         
-        // Add route for updating lingkup materi (if needed)
-        Route::post('/lingkup-materi/{id}/update', [SubjectController::class, 'updateLingkupMateri'])
-            ->name('lingkup_materi.update');
-            
-        // Ensure this route exists for tujuan pembelajaran view
-        Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}/view', [TujuanPembelajaranController::class, 'teacherView'])
-            ->name('tujuan_pembelajaran.view');
-        
-        Route::prefix('rapor')->name('rapor.')->group(function () {
+    // Ensure this route exists for tujuan pembelajaran view
+    Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}/view', [TujuanPembelajaranController::class, 'teacherView'])
+        ->name('tujuan_pembelajaran.view');
+    
+    // RAPOR ROUTES - Consolidated and organized
+    Route::prefix('rapor')->name('rapor.')->group(function () {
         Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
         
-        // Gunakan model binding dan middleware
+        // Basic rapor routes with middleware
         Route::middleware('check.rapor.access')->group(function () {
             Route::post('/generate/{siswa}', [ReportController::class, 'generateReport'])->name('generate');
             Route::get('/download/{siswa}/{type}', [ReportController::class, 'downloadReport'])->name('download');
         });
 
         Route::get('/preview/{siswa}', [ReportController::class, 'previewRapor'])->name('preview');
-
-
-        Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])
-        ->name('check-templates');
-        
+        Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])->name('check-templates');
         Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
-        Route::get('download-pdf/{siswa}', [ReportController::class, 'downloadPdf']) ->name('rapor.download-pdf');
-        Route::get('/preview-pdf/{siswa}', [ReportController::class, 'previewPdf'])->name('preview-pdf');
-        Route::get('/download-pdf/{siswa}', [ReportController::class, 'downloadPdf'])->name('download-pdf');
+        
+        // PDF Routes with middleware
+        Route::middleware('check.rapor.access')->group(function () {
+            Route::get('/preview-pdf/{siswa}', [ReportController::class, 'previewPdf'])->name('preview-pdf');
+            Route::get('/download-pdf/{siswa}', [ReportController::class, 'downloadPdf'])->name('download-pdf');
+            Route::post('/generate-pdf/{siswa}', [ReportController::class, 'generatePdfDirect'])->name('generate-pdf');
+        });
+        
+        // Batch PDF Route
+        Route::post('/batch-generate-pdf', [ReportController::class, 'generateBatchPdf'])->name('batch.generate-pdf');
+        
+        // Testing routes (remove in production)
+        Route::get('/test-pdf-conversion', [ReportController::class, 'testPdfConversion'])->name('test.pdf');
+        Route::get('/conversion-status', [ReportController::class, 'getConversionStatus'])->name('conversion.status');
     });
 });

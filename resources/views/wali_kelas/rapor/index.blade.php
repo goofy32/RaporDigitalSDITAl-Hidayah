@@ -53,20 +53,6 @@
     </div>
     <!-- Bulk Actions -->
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-        <div class="flex gap-2">
-            <button @click="generateBatchReport()"
-                    :disabled="loading || selectedSiswa.length === 0"
-                    class="flex items-center justify-center text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                <template x-if="loading">
-                    <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                </template>
-                <span x-text="loading ? 'Memproses...' : 'Cetak Semua Rapor'"></span>
-            </button>
-        </div>
-        
         <!-- Search Box -->
         <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -87,14 +73,14 @@
         <table class="w-full text-sm text-left text-gray-500">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                 <tr>
-                    <th scope="col" class="p-4">
+                    <!-- <th scope="col" class="p-4">
                         <div class="flex items-center">
                             <input id="checkbox-all" 
                                   type="checkbox"
                                   @change="handleCheckAll($event)"
                                   class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
                         </div>
-                    </th>
+                    </th> -->
                     <th class="px-6 py-3">No</th>
                     <th class="px-6 py-3">NIS</th>
                     <th class="px-6 py-3">Nama Siswa</th>
@@ -105,16 +91,7 @@
             </thead>
             <tbody>
                 @forelse($siswa as $index => $s)
-                <tr class="bg-white border-b hover:bg-gray-50">
-                    <td class="w-4 p-4">
-                        <div class="flex items-center">
-                            <input type="checkbox" 
-                                  value="{{ $s->id }}"
-                                  @change="handleCheckSingle($event)"
-                                  class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500">
-                        </div>
-                    </td>
-                    
+                <tr class="bg-white border-b hover:bg-gray-50">                    
                     <td class="px-6 py-4">{{ $index + 1 }}</td>
                     <td class="px-6 py-4">{{ $s->nis }}</td>
                     <td class="px-6 py-4 font-medium text-gray-900">{{ $s->nama }}</td>
@@ -199,6 +176,33 @@
                                 title="Unduh Rapor">
                                 <img src="{{ asset('images/icons/download.png') }}" alt="Preview" class="action-icon">
                             </button>
+                            <!-- NEW: Download PDF Button -->
+                            <button @click="handleDownloadPdf({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }}, '{{ $s->nama }}')"
+                                    :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading"
+                                    :class="{ 'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading, 'text-red-600 hover:text-red-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} && !loading }"
+                                    title="Unduh Rapor PDF">
+                                <template x-if="loadingPdf === {{ $s->id }}">
+                                    <svg class="action-icon animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                </template>
+                                <template x-if="loadingPdf !== {{ $s->id }}">
+                                    <svg class="action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </template>
+                            </button>
+                            
+                            <!-- NEW: Preview PDF Button -->
+                            <button @click="handlePreviewPdf({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
+                                    :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading"
+                                    :class="{ 'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading, 'text-purple-600 hover:text-purple-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} && !loading }"
+                                    title="Preview PDF">
+                                <svg class="action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -274,12 +278,12 @@ document.addEventListener('alpine:init', function() {
         activeTab: '{{ $type }}', // Use type from controller
         loading: false,
         initialized: false,
-        selectedSiswa: [],
         searchQuery: '',
         showPreview: false,
         previewContent: '',
         templateUTSActive: false,
         templateUASActive: false,
+        loadingPdf: null,
         tahunAjaranId: "{{ session('tahun_ajaran_id') }}",
         semester: {{ $semester }}, // Get semester from controller
             
@@ -330,6 +334,295 @@ document.addEventListener('alpine:init', function() {
                     this.templateUTSActive = true; // Default nilai jika terjadi error
                     this.templateUASActive = false;
                     return { UTS_active: true, UAS_active: false };
+                }
+            },
+
+            /**
+             * Handle PDF Download
+             */
+            async handleDownloadPdf(siswaId, nilaiCount, hasAbsensi, namaSiswa) {
+                if (!this.validateData(nilaiCount, hasAbsensi)) return;
+                
+                try {
+                    this.loadingPdf = siswaId; // Set loading state for this specific student
+                    
+                    // Show loading indicator
+                    Swal.fire({
+                        title: 'Memproses PDF',
+                        html: `
+                            <div class="flex flex-col items-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
+                                <p>Sedang generate dan convert ke PDF...</p>
+                                <p class="text-sm text-gray-500 mt-2">Mohon tunggu sebentar</p>
+                            </div>
+                        `,
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    const type = this.activeTab;
+                    const url = `/wali-kelas/rapor/download-pdf/${siswaId}?type=${type}&tahun_ajaran_id=${this.tahunAjaranId}`;
+                    
+                    console.log('Downloading PDF from:', url);
+                    
+                    // Use fetch to handle the download
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/pdf',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+
+                    // Close loading indicator
+                    Swal.close();
+
+                    if (!response.ok) {
+                        // Handle error response
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.includes("application/json")) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || 'Gagal download PDF');
+                        } else {
+                            throw new Error(`Server error: ${response.status}`);
+                        }
+                    }
+
+                    // Handle successful PDF download
+                    const blob = await response.blob();
+                    
+                    // Create download link
+                    const url_download = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url_download;
+                    
+                    // Generate clean filename
+                    const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
+                    const fileName = `Rapor_${this.activeTab}_${cleanName}.pdf`;
+                    a.download = fileName;
+                    
+                    // Trigger download
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url_download);
+                    document.body.removeChild(a);
+                    
+                    // Show success message
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: 'Rapor PDF berhasil diunduh',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    
+                } catch (error) {
+                    console.error('Error downloading PDF:', error);
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Download PDF',
+                        html: `
+                            <p>${error.message}</p>
+                            <div class="mt-4 text-left">
+                                <p class="text-sm font-semibold">Kemungkinan penyebab:</p>
+                                <ul class="text-sm list-disc pl-5 mt-2">
+                                    <li>Template rapor tidak ditemukan</li>
+                                    <li>Data siswa belum lengkap</li>
+                                    <li>Error saat convert DOCX ke PDF</li>
+                                    <li>Server sedang sibuk</li>
+                                </ul>
+                            </div>
+                        `,
+                        confirmButtonText: 'Mengerti'
+                    });
+                } finally {
+                    this.loadingPdf = null; // Reset loading state
+                }
+            },
+
+            /**
+             * Handle PDF Preview in new tab
+             */
+            async handlePreviewPdf(siswaId, nilaiCount, hasAbsensi) {
+                if (!this.validateData(nilaiCount, hasAbsensi)) return;
+                
+                try {
+                    this.loading = true;
+                    
+                    const type = this.activeTab;
+                    const url = `/wali-kelas/rapor/preview-pdf/${siswaId}?type=${type}&tahun_ajaran_id=${this.tahunAjaranId}`;
+                    
+                    console.log('Previewing PDF from:', url);
+                    
+                    // Open PDF in new tab
+                    const newWindow = window.open(url, '_blank');
+                    
+                    if (!newWindow) {
+                        // If popup blocked, show manual link
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Popup Diblokir',
+                            html: `
+                                <p>Browser memblokir popup. Klik link di bawah untuk membuka PDF:</p>
+                                <a href="${url}" target="_blank" class="text-blue-600 underline">Buka PDF Preview</a>
+                            `,
+                            confirmButtonText: 'Mengerti'
+                        });
+                    } else {
+                        // Check if window loaded successfully
+                        setTimeout(() => {
+                            if (newWindow.closed) {
+                                console.log('PDF preview window was closed');
+                            }
+                        }, 1000);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error previewing PDF:', error);
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Preview PDF',
+                        text: error.message || 'Terjadi kesalahan saat membuka preview PDF',
+                        confirmButtonText: 'Mengerti'
+                    });
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            /**
+             * Batch PDF Download
+             */
+            async generateBatchPdf() {
+                if (this.loading || this.selectedSiswa.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Pilih siswa terlebih dahulu'
+                    });
+                    return;
+                }
+
+                // Validation before sending request
+                const invalidSiswa = [];
+                document.querySelectorAll('tbody tr').forEach(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    if (checkbox && checkbox.checked) {
+                        const hasNilai = row.querySelector('.bg-green-100.text-green-800') !== null;
+                        const hasAbsensi = row.querySelector('td:nth-child(6) .bg-green-100') !== null;
+                        
+                        if (!hasNilai || !hasAbsensi) {
+                            const namaSiswa = row.querySelector('td:nth-child(4)').textContent.trim();
+                            invalidSiswa.push(namaSiswa);
+                        }
+                    }
+                });
+
+                if (invalidSiswa.length > 0) {
+                    const result = await Swal.fire({
+                        icon: 'warning',
+                        title: 'Data Tidak Lengkap',
+                        html: `
+                            <p>Beberapa siswa belum memiliki data lengkap:</p>
+                            <ul class="text-left mt-2 text-sm">
+                                ${invalidSiswa.map(nama => `<li>- ${nama}</li>`).join('')}
+                            </ul>
+                            <p class="mt-2">Lanjutkan cetak PDF hanya untuk siswa dengan data lengkap?</p>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, Lanjutkan',
+                        cancelButtonText: 'Batal'
+                    });
+                    
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                }
+
+                try {
+                    this.loading = true;
+                    
+                    // Show loading with different message for PDF
+                    const loadingAlert = Swal.fire({
+                        title: 'Memproses Batch PDF',
+                        html: `
+                            <div class="flex flex-col items-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
+                                <p>Sedang generate dan convert ${this.selectedSiswa.length} rapor ke PDF...</p>
+                                <p class="text-sm text-gray-500 mt-2">Proses ini mungkin memakan waktu lebih lama</p>
+                            </div>
+                        `,
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Send batch PDF request (you'll need to implement this endpoint)
+                    const response = await fetch('/wali-kelas/rapor/batch-generate-pdf', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            siswa_ids: this.selectedSiswa,
+                            type: this.activeTab,
+                            tahun_ajaran_id: this.tahunAjaranId,
+                            format: 'pdf'
+                        })
+                    });
+
+                    loadingAlert.close();
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Gagal generate batch PDF');
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.success && data.download_url) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil Generate Batch PDF',
+                            html: `
+                                <p>${data.message}</p>
+                                <p class="mt-4">Klik tombol di bawah untuk mengunduh ZIP berisi PDF:</p>
+                            `,
+                            confirmButtonText: 'Download ZIP',
+                            showCancelButton: true,
+                            cancelButtonText: 'Tutup'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = data.download_url;
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Terjadi kesalahan saat memproses batch PDF'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Batch PDF Gagal',
+                        html: `
+                            <p>${error.message}</p>
+                            <p class="mt-2 text-sm text-gray-600">Coba download satu per satu jika masalah berlanjut</p>
+                        `
+                    });
+                } finally {
+                    this.loading = false;
                 }
             },
             setActiveTab(tab) {

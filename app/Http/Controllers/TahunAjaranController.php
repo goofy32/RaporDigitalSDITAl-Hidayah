@@ -839,10 +839,16 @@ class TahunAjaranController extends Controller
 
     /**
      * Generate tahun ajaran baru berdasarkan tahun ajaran yang sudah ada.
+     * Hanya bisa dilakukan dari semester genap (semester 2)
      */
     public function copy($id)
     {
         $sourceTahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
+        
+        // Validasi: hanya bisa copy dari semester genap
+        if ($sourceTahunAjaran->semester != 2) {
+            return redirect()->back()->with('error', 'Pembuatan tahun ajaran berikutnya hanya dapat dilakukan dari semester genap (semester 2). Saat ini semester: ' . ($sourceTahunAjaran->semester == 1 ? 'ganjil' : 'genap'));
+        }
         
         // Generate tahun ajaran baru
         $tahunParts = explode('/', $sourceTahunAjaran->tahun_ajaran);
@@ -857,8 +863,10 @@ class TahunAjaranController extends Controller
         return view('admin.tahun_ajaran.copy', compact('sourceTahunAjaran', 'newTahunAjaran'));
     }
 
+
     /**
      * Process copying data from one academic year to another.
+     * Updated messages untuk konteks "tahun ajaran berikutnya"
      */
     public function processCopy(Request $request, $id)
     {
@@ -894,30 +902,35 @@ class TahunAjaranController extends Controller
             'is_active' => 'boolean'
         ]);
 
-        \Log::info("Starting academic year copy process", [
+        \Log::info("Starting academic year creation process", [
             'source_id' => $id,
             'increment_kelas' => $request->increment_kelas ? 'yes' : 'no',
             'preserve_teachers' => $request->preserve_teacher_assignments ? 'yes' : 'no',
             'create_kelas_one' => $request->create_kelas_one ? 'yes' : 'no'
         ]);
-    
+
         if ($validator->fails()) {
             return redirect()->back()
-                             ->withErrors($validator)
-                             ->withInput();
+                            ->withErrors($validator)
+                            ->withInput();
         }
-    
+
+        $sourceTahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
+        
+        // Validasi ulang: pastikan source adalah semester genap
+        if ($sourceTahunAjaran->semester != 2) {
+            return redirect()->back()->with('error', 'Pembuatan tahun ajaran berikutnya hanya dapat dilakukan dari semester genap.');
+        }
+
         DB::beginTransaction();
         
         try {
-            $sourceTahunAjaran = TahunAjaran::withTrashed()->findOrFail($id);
-            
             // Jika akan diaktifkan, nonaktifkan yang lain dulu
             if ($request->is_active) {
                 TahunAjaran::where('is_active', true)
-                           ->update(['is_active' => false]);
+                        ->update(['is_active' => false]);
             }
-    
+
             // Buat tahun ajaran baru
             $newTahunAjaran = TahunAjaran::create([
                 'tahun_ajaran' => $request->tahun_ajaran,
@@ -927,7 +940,7 @@ class TahunAjaranController extends Controller
                 'semester' => $request->semester,
                 'deskripsi' => $request->deskripsi ?? ('Tahun Ajaran ' . $request->tahun_ajaran)
             ]);
-    
+
             // Pass preserve_teacher_assignments to copyKelas
             $preserveTeachers = $request->has('preserve_teacher_assignments');
             $incrementKelasNumbers = $request->increment_kelas ?? false;
@@ -967,7 +980,7 @@ class TahunAjaranController extends Controller
                     $incrementKelasNumbers
                 );
             }
-    
+
             // Copy template rapor jika diminta
             if ($request->copy_templates) {
                 $this->copyReportTemplates($sourceTahunAjaran, $newTahunAjaran, $request->semester, $kelasMapping);
@@ -996,10 +1009,10 @@ class TahunAjaranController extends Controller
             DB::commit();
             
             return redirect()->route('tahun.ajaran.index')
-                             ->with('success', 'Tahun ajaran baru berhasil dibuat dan data telah disalin!');
+                            ->with('success', 'Tahun ajaran berikutnya berhasil dibuat! Kelas siswa telah dinaikkan dan pengaturan telah disalin.');
         } catch (\Exception $e) {
             DB::rollback();
-            return redirect()->back()->with('error', 'Gagal menyalin tahun ajaran: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal membuat tahun ajaran berikutnya: ' . $e->getMessage());
         }
     }
 

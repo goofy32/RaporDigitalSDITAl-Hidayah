@@ -96,7 +96,7 @@
             @if(!$tahunAjaran->trashed())
                 <a href="{{ route('tahun.ajaran.edit', $tahunAjaran->id) }}" 
                     class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Edit Tahun Ajaran
+                    <i class="fas fa-edit mr-2"></i>Edit Tahun Ajaran
                 </a>
             @endif
             
@@ -104,9 +104,9 @@
                 <form action="{{ route('tahun.ajaran.restore', $tahunAjaran->id) }}" method="POST" class="inline">
                     @csrf
                     <button type="submit" 
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                         onclick="return confirm('Apakah Anda yakin ingin memulihkan tahun ajaran ini?')">
-                        Pulihkan Tahun Ajaran
+                        <i class="fas fa-undo mr-2"></i>Pulihkan Tahun Ajaran
                     </button>
                 </form>
             @elseif(!$tahunAjaran->is_active)
@@ -115,7 +115,7 @@
                     <button type="submit" 
                         class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                         onclick="return confirm('Apakah Anda yakin ingin mengaktifkan tahun ajaran ini?')">
-                        Aktifkan Tahun Ajaran
+                        <i class="fas fa-power-off mr-2"></i>Aktifkan Tahun Ajaran
                     </button>
                 </form>
             @endif
@@ -134,15 +134,34 @@
                     <button type="submit" 
                         class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                         onclick="return confirm('Apakah Anda yakin ingin melanjutkan ke semester Genap? Tindakan ini akan memperbarui semua data terkait (mata pelajaran, absensi, dll) ke semester 2.')">
-                        Lanjutkan ke Semester Genap
+                        <i class="fas fa-arrow-right mr-2"></i>Lanjutkan ke Semester Genap
                     </button>
                 </form>
             @endif
 
-            <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
-                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                Salin ke Tahun Ajaran Baru
-            </a>
+            <!-- Tombol untuk membuat tahun ajaran baru - HANYA muncul di semester genap -->
+            @if($tahunAjaran->semester == 2)
+                <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center">
+                    <i class="fas fa-graduation-cap mr-2"></i>Buat Tahun Ajaran Berikutnya
+                </a>
+                
+                <!-- Info box untuk menjelaskan fungsi tombol -->
+                <div class="w-full mt-2">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-info-circle text-indigo-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-indigo-700">
+                                    <strong>Buat Tahun Ajaran Berikutnya:</strong> Digunakan untuk membuat tahun ajaran baru dengan menaikkan kelas siswa dan menyalin pengaturan dari tahun ajaran saat ini. Biasanya dilakukan di akhir semester genap.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if(!$tahunAjaran->is_active && !$tahunAjaran->trashed())
                 <form action="{{ route('tahun.ajaran.destroy', $tahunAjaran->id) }}" method="POST" class="inline">
@@ -151,7 +170,7 @@
                     <button type="submit" 
                         class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                         onclick="return confirm('Apakah Anda yakin ingin mengarsipkan tahun ajaran {{ $tahunAjaran->tahun_ajaran }}?\n\nData terkait masih dapat diakses setelah diarsipkan dengan menampilkan tahun ajaran terarsip.')">
-                        Arsipkan Tahun Ajaran
+                        <i class="fas fa-archive mr-2"></i>Arsipkan Tahun Ajaran
                     </button>
                 </form>
             @endif
