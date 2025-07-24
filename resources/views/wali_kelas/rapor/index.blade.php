@@ -344,16 +344,16 @@ document.addEventListener('alpine:init', function() {
                 if (!this.validateData(nilaiCount, hasAbsensi)) return;
                 
                 try {
-                    this.loadingPdf = siswaId; // Set loading state for this specific student
+                    this.loadingPdf = siswaId;
                     
-                    // Show loading indicator
-                    Swal.fire({
+                    // Show loading with different messages
+                    const loadingAlert = Swal.fire({
                         title: 'Memproses PDF',
                         html: `
                             <div class="flex flex-col items-center">
                                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
-                                <p>Sedang generate dan convert ke PDF...</p>
-                                <p class="text-sm text-gray-500 mt-2">Mohon tunggu sebentar</p>
+                                <p>Sedang generate rapor DOCX...</p>
+                                <p class="text-sm text-gray-500 mt-2">Langkah 1/2</p>
                             </div>
                         `,
                         allowOutsideClick: false,
@@ -368,24 +368,64 @@ document.addEventListener('alpine:init', function() {
                     
                     console.log('Downloading PDF from:', url);
                     
-                    // Use fetch to handle the download
+                    // Use fetch with progress updates
                     const response = await fetch(url, {
                         method: 'GET',
                         headers: {
-                            'Accept': 'application/pdf',
+                            'Accept': 'application/pdf,application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         }
                     });
 
-                    // Close loading indicator
-                    Swal.close();
+                    // Update loading message
+                    Swal.update({
+                        html: `
+                            <div class="flex flex-col items-center">
+                                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
+                                <p>Mengkonversi ke PDF...</p>
+                                <p class="text-sm text-gray-500 mt-2">Langkah 2/2</p>
+                            </div>
+                        `
+                    });
+
+                    // Close loading
+                    loadingAlert.close();
 
                     if (!response.ok) {
-                        // Handle error response
+                        // Handle different types of errors
                         const contentType = response.headers.get("content-type");
                         if (contentType && contentType.includes("application/json")) {
                             const errorData = await response.json();
-                            throw new Error(errorData.message || 'Gagal download PDF');
+                            
+                            // Show detailed error based on type
+                            let errorMessage = errorData.message || 'Gagal download PDF';
+                            let troubleshootingSteps = '';
+                            
+                            if (errorMessage.includes('LibreOffice')) {
+                                troubleshootingSteps = `
+                                    <div class="mt-4 text-left">
+                                        <p class="text-sm font-semibold">Solusi:</p>
+                                        <ol class="text-sm list-decimal pl-5 mt-2">
+                                            <li>Install LibreOffice dari <a href="https://www.libreoffice.org/download/download/" target="_blank" class="text-blue-600">sini</a></li>
+                                            <li>Restart server setelah install</li>
+                                            <li>Set LIBREOFFICE_PATH di file .env jika perlu</li>
+                                            <li>Test dengan /wali-kelas/rapor/test-libreoffice</li>
+                                        </ol>
+                                    </div>
+                                `;
+                            } else if (errorMessage.includes('Template')) {
+                                troubleshootingSteps = `
+                                    <div class="mt-4 text-left">
+                                        <p class="text-sm font-semibold">Solusi:</p>
+                                        <ul class="text-sm list-disc pl-5 mt-2">
+                                            <li>Pastikan template ${type} sudah diupload</li>
+                                            <li>Aktifkan template melalui admin panel</li>
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+                            
+                            throw new Error(errorMessage + troubleshootingSteps);
                         } else {
                             throw new Error(`Server error: ${response.status}`);
                         }
@@ -394,23 +434,26 @@ document.addEventListener('alpine:init', function() {
                     // Handle successful PDF download
                     const blob = await response.blob();
                     
-                    // Create download link
+                    // Validate it's actually a PDF
+                    if (blob.type !== 'application/pdf' && !blob.type.includes('pdf')) {
+                        throw new Error('Response bukan file PDF. Kemungkinan ada error di server.');
+                    }
+                    
+                    // Create download
                     const url_download = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url_download;
                     
-                    // Generate clean filename
                     const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
                     const fileName = `Rapor_${this.activeTab}_${cleanName}.pdf`;
                     a.download = fileName;
                     
-                    // Trigger download
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url_download);
                     document.body.removeChild(a);
                     
-                    // Show success message
+                    // Success message
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil!',
@@ -425,25 +468,46 @@ document.addEventListener('alpine:init', function() {
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal Download PDF',
-                        html: `
-                            <p>${error.message}</p>
-                            <div class="mt-4 text-left">
-                                <p class="text-sm font-semibold">Kemungkinan penyebab:</p>
-                                <ul class="text-sm list-disc pl-5 mt-2">
-                                    <li>Template rapor tidak ditemukan</li>
-                                    <li>Data siswa belum lengkap</li>
-                                    <li>Error saat convert DOCX ke PDF</li>
-                                    <li>Server sedang sibuk</li>
-                                </ul>
+                        html: error.message,
+                        confirmButtonText: 'Mengerti',
+                        footer: `
+                            <div class="text-xs text-gray-500 mt-2">
+                                <p>Butuh bantuan? Test konversi PDF di: <code>/wali-kelas/rapor/test-pdf-conversion</code></p>
                             </div>
-                        `,
-                        confirmButtonText: 'Mengerti'
+                        `
                     });
                 } finally {
-                    this.loadingPdf = null; // Reset loading state
+                    this.loadingPdf = null;
                 }
             },
 
+            async testLibreOffice() {
+                try {
+                    const response = await fetch('/wali-kelas/rapor/test-libreoffice');
+                    const data = await response.json();
+                    
+                    Swal.fire({
+                        title: 'LibreOffice Status',
+                        html: `
+                            <div class="text-left">
+                                <h3 class="font-bold mb-2">Installation Status:</h3>
+                                <p>Available: ${data.libreoffice?.success ? '✅ Yes' : '❌ No'}</p>
+                                ${data.libreoffice?.path ? `<p>Path: <code>${data.libreoffice.path}</code></p>` : ''}
+                                ${data.libreoffice?.version ? `<p>Version: <code>${data.libreoffice.version}</code></p>` : ''}
+                                ${data.libreoffice?.platform ? `<p>Platform: ${data.libreoffice.platform}</p>` : ''}
+                                ${data.libreoffice?.message ? `<p class="text-red-600 mt-2">${data.libreoffice.message}</p>` : ''}
+                            </div>
+                        `,
+                        icon: data.libreoffice?.success ? 'success' : 'error'
+                    });
+                } catch (error) {
+                    Swal.fire({
+                        title: 'Error Testing LibreOffice',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                }
+            },
             /**
              * Handle PDF Preview in new tab
              */
