@@ -9,7 +9,7 @@
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-green-700">Buat Tahun Ajaran Berikutnya</h2>
-                <p class="text-gray-600">Buat tahun ajaran baru dengan kenaikan kelas dan pengaturan dari tahun ajaran saat ini</p>
+                <p class="text-gray-600">Buat tahun ajaran baru dengan struktur kelas dan pengaturan yang sama dari tahun ajaran saat ini</p>
             </div>
             
             <div class="flex gap-2">
@@ -31,13 +31,13 @@
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-green-800">Informasi Pembuatan Tahun Ajaran Berikutnya</h3>
                     <p class="mt-1 text-sm text-green-700">
-                        Fitur ini digunakan untuk membuat tahun ajaran baru di akhir semester genap. Sistem akan:
+                        Fitur ini digunakan untuk membuat tahun ajaran baru dengan struktur yang sama. Sistem akan:
                     </p>
                     <ul class="mt-2 text-sm text-green-700 list-disc list-inside">
-                        <li>Menaikkan nomor kelas siswa (Kelas 1 → Kelas 2, dst.)</li>
-                        <li>Mempertahankan struktur kelas dan pengaturan guru</li>
+                        <li>Mempertahankan struktur kelas yang sama (Kelas 1A → Kelas 1A, dst.)</li>
+                        <li>Menyalin pengaturan guru dan wali kelas</li>
                         <li>Menyalin pengaturan mata pelajaran, KKM, dan template rapor</li>
-                        <li>Membuat kelas 1 baru untuk siswa baru</li>
+                        <li>Siswa dapat diatur kenaikan kelasnya secara manual nanti</li>
                     </ul>
                 </div>
             </div>
@@ -100,82 +100,36 @@
                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 p-2">{{ old('deskripsi', 'Tahun Ajaran ' . $newTahunAjaran) }}</textarea>
             </div>
 
-            <!-- Data yang akan disalin section - dalam satu box besar -->
+            <!-- Data yang akan disalin section -->
             <div class="mt-8">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Pengaturan Kenaikan Kelas dan Data</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Data yang Akan Disalin</h3>
                 
-                <!-- Seluruh konten dalam satu box hijau muda -->
                 <div class="bg-green-50 border border-green-100 rounded-md p-4">
-                    <!-- Pengaturan Khusus Kelas -->
-                    <h4 class="font-medium text-green-800 mb-3">Pengaturan Kenaikan Kelas</h4>
-                    
-                    <!-- Pengaturan Opsional -->
-                    <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                        <div class="flex items-center mb-2">
-                            <i class="fas fa-cog text-green-600 mr-2"></i>
-                            <span class="text-green-800 font-medium text-sm">Pengaturan Opsional</span>
-                        </div>
-                        <div class="mb-1">
-                            <div class="flex items-center">
-                                <input type="checkbox" name="increment_kelas" id="increment_kelas" value="1" checked
-                                      class="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
-                                <label for="increment_kelas" class="ml-2 text-gray-700">Naikkan kelas siswa (+1 tingkat).</label>
-                            </div>
-                            <div class="ml-7 text-gray-500 text-sm">Contoh: Kelas 1A → Kelas 2A, Kelas 3B → Kelas 4B (Kelas 6 akan lulus)</div>
-                        </div>
-                    </div>
-
-                    <!-- Pengaturan Wajib (tidak bisa diubah) -->
+                    <!-- Pengaturan Wajib -->
                     <div class="mb-4 p-3 bg-green-100 border border-green-300 rounded-md">
                         <div class="flex items-center mb-2">
                             <i class="fas fa-lock text-green-600 mr-2"></i>
                             <span class="text-green-800 font-medium text-sm">Pengaturan Wajib (Tidak Dapat Diubah)</span>
                         </div>
-                        <div class="mb-1">
-                            <div class="flex items-center">
-                                <input type="checkbox" name="preserve_teacher_assignments_display" id="preserve_teacher_assignments_display" 
-                                       value="1" checked disabled
-                                       class="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 opacity-75 cursor-not-allowed">
-                                <label for="preserve_teacher_assignments_display" class="ml-2 text-gray-700">
-                                    Pertahankan guru untuk tingkat kelas yang sama. 
-                                    <span class="text-green-600 font-medium text-xs">(WAJIB)</span>
-                                </label>
-                            </div>
-                            <div class="ml-7 text-gray-500 text-sm">Contoh: Guru kelas 1 akan tetap mengajar kelas 1 di tahun ajaran baru</div>
-                            <!-- Hidden input untuk memastikan nilai tetap terkirim -->
-                            <input type="hidden" name="preserve_teacher_assignments" value="1">
-                        </div>
                         
                         <div class="mb-1">
                             <div class="flex items-center">
-                                <input type="checkbox" name="create_kelas_one_display" id="create_kelas_one_display" 
+                                <input type="checkbox" name="copy_kelas_display" id="copy_kelas_display" 
                                        value="1" checked disabled
                                        class="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 opacity-75 cursor-not-allowed">
-                                <label for="create_kelas_one_display" class="ml-2 text-gray-700">
-                                    Buat kelas 1 baru untuk siswa baru.
-                                    <span class="text-green-600 font-medium text-xs">(WAJIB)</span>
+                                <label for="copy_kelas_display" class="ml-2 text-gray-700">
+                                    Struktur Kelas dan Guru <span class="text-green-600 font-medium text-xs">(WAJIB)</span>
                                 </label>
                             </div>
-                            <div class="ml-7 text-gray-500 text-sm">Untuk menampung siswa baru yang akan masuk</div>
+                            <div class="ml-7 text-gray-500 text-sm">Kelas akan disalin dengan struktur yang sama persis (1A → 1A, 2B → 2B, dst.)</div>
                             <!-- Hidden input untuk memastikan nilai tetap terkirim -->
-                            <input type="hidden" name="create_kelas_one" value="1">
+                            <input type="hidden" name="copy_kelas" value="1">
                         </div>
                     </div>
                     
                     <!-- Pilihan data yang ingin disalin -->
-                    <h4 class="font-medium text-green-800 mb-3 mt-6">Data yang Akan Disalin</h4>
+                    <h4 class="font-medium text-green-800 mb-3 mt-6">Data Opsional</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 mb-5">
-                        <!-- Kelas wajib disalin untuk kenaikan kelas -->
-                        <div class="flex items-center opacity-75">
-                            <input type="checkbox" name="copy_kelas_display" id="copy_kelas_display" value="1" checked disabled
-                                   class="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-not-allowed">
-                            <label for="copy_kelas_display" class="ml-2 text-gray-700">
-                                Struktur Kelas <span class="text-green-600 font-medium text-xs">(WAJIB)</span>
-                            </label>
-                            <!-- Hidden input untuk memastikan nilai tetap terkirim -->
-                            <input type="hidden" name="copy_kelas" value="1">
-                        </div>
-                        
                         <div class="flex items-center">
                             <input type="checkbox" name="copy_mata_pelajaran" id="copy_mata_pelajaran" value="1" checked
                                    class="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -212,27 +166,27 @@
                         <p class="text-gray-700 text-sm"><strong>Catatan Penting:</strong></p>
                         <div class="mt-1 space-y-1">
                             <div class="flex items-start">
-                                <i class="fas fa-lock text-green-600 mr-2 mt-0.5 text-xs"></i>
+                                <i class="fas fa-copy text-green-600 mr-2 mt-0.5 text-xs"></i>
                                 <span class="text-gray-700 text-sm">
-                                    <span class="text-green-600 font-medium">Pengaturan WAJIB:</span> Diperlukan untuk kenaikan kelas yang benar dan kontinuitas pembelajaran
+                                    Struktur kelas akan disalin dengan nama dan guru yang sama persis
                                 </span>
                             </div>
                             <div class="flex items-start">
-                                <i class="fas fa-cog text-green-600 mr-2 mt-0.5 text-xs"></i>
+                                <i class="fas fa-user-friends text-gray-600 mr-2 mt-0.5 text-xs"></i>
                                 <span class="text-gray-700 text-sm">
-                                    <span class="text-green-600 font-medium">Pengaturan Opsional:</span> Dapat disesuaikan dengan kebutuhan sekolah
-                                </span>
-                            </div>
-                            <div class="flex items-start">
-                                <i class="fas fa-info-circle text-gray-600 mr-2 mt-0.5 text-xs"></i>
-                                <span class="text-gray-700 text-sm">
-                                    Siswa akan naik kelas secara otomatis kecuali kelas 6 (akan lulus)
+                                    Siswa tidak akan otomatis dipindahkan - dapat diatur manual nanti
                                 </span>
                             </div>
                             <div class="flex items-start">
                                 <i class="fas fa-refresh text-gray-600 mr-2 mt-0.5 text-xs"></i>
                                 <span class="text-gray-700 text-sm">
                                     Data nilai dan absensi akan dimulai dari kosong untuk tahun ajaran baru
+                                </span>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fas fa-cog text-gray-600 mr-2 mt-0.5 text-xs"></i>
+                                <span class="text-gray-700 text-sm">
+                                    Kenaikan kelas siswa dapat diatur menggunakan fitur Kenaikan Kelas secara terpisah
                                 </span>
                             </div>
                         </div>
@@ -246,25 +200,21 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Fix submit button
         const form = document.getElementById('formCopyTahunAjaran');
         const submitButton = document.querySelector('button[type="submit"]');
         
-        // Flag untuk mencegah multiple submissions
         let isSubmitting = false;
         
         if (form && submitButton) {
             form.addEventListener('submit', function(e) {
-                // Jika sedang submit, hentikan
                 if (isSubmitting) {
                     e.preventDefault();
                     return false;
                 }
                 
-                // Validasi form before submitting
+                // Validasi form
                 const tahunAjaranInput = document.getElementById('tahun_ajaran');
                 const tahunAjaranPattern = /^\d{4}\/\d{4}$/;
-                const incrementKelas = document.getElementById('increment_kelas');
                 
                 if (!tahunAjaranPattern.test(tahunAjaranInput.value)) {
                     e.preventDefault();
@@ -273,14 +223,15 @@
                     return false;
                 }
                 
-                // Konfirmasi sebelum membuat tahun ajaran baru
+                // Konfirmasi yang lebih sederhana
                 const confirmed = confirm(`Apakah Anda yakin ingin membuat tahun ajaran berikutnya?
 
 Tindakan ini akan:
-• Menaikkan kelas siswa (${incrementKelas.checked ? 'AKTIF' : 'TIDAK AKTIF'})
-• Mempertahankan guru pada tingkat kelas yang sama (WAJIB)
-• Membuat kelas 1 baru untuk siswa baru (WAJIB)
+• Menyalin struktur kelas dengan nama dan guru yang sama
 • Menyalin pengaturan yang dipilih dari tahun ajaran saat ini
+• Memulai tahun ajaran baru dengan data nilai kosong
+
+Siswa dapat diatur kenaikan kelasnya secara manual menggunakan fitur Kenaikan Kelas.
 
 Proses ini tidak dapat dibatalkan setelah dimulai.`);
                 
@@ -289,13 +240,9 @@ Proses ini tidak dapat dibatalkan setelah dimulai.`);
                     return false;
                 }
                 
-                // Set flag untuk mencegah multiple submissions
                 isSubmitting = true;
-                
-                // Disable button to prevent double submission
                 submitButton.disabled = true;
                 
-                // Add loading state
                 submitButton.innerHTML = `
                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -306,7 +253,6 @@ Proses ini tidak dapat dibatalkan setelah dimulai.`);
             });
         }
         
-        // Initialize Flowbite components if needed
         if (typeof initFlowbite === 'function') {
             initFlowbite();
         }
@@ -314,7 +260,7 @@ Proses ini tidak dapat dibatalkan setelah dimulai.`);
         // Add tooltips for disabled checkboxes
         const disabledCheckboxes = document.querySelectorAll('input[disabled]');
         disabledCheckboxes.forEach(checkbox => {
-            checkbox.parentElement.title = 'Pengaturan ini wajib untuk kenaikan kelas yang benar';
+            checkbox.parentElement.title = 'Pengaturan ini wajib untuk menjaga konsistensi struktur kelas';
         });
     });
 </script>
@@ -323,12 +269,11 @@ Proses ini tidak dapat dibatalkan setelah dimulai.`);
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <style>
-.fa-lock, .fa-cog, .fa-info-circle, .fa-refresh {
+.fa-lock, .fa-copy, .fa-user-friends, .fa-refresh, .fa-cog {
     width: 12px;
     text-align: center;
 }
 
-/* Style untuk checkbox yang disabled */
 input[type="checkbox"]:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -339,7 +284,6 @@ input[type="checkbox"]:disabled + label {
     cursor: not-allowed;
 }
 
-/* Highlight untuk pengaturan wajib */
 .bg-green-100 {
     background-color: rgba(34, 197, 94, 0.1);
 }

@@ -299,126 +299,143 @@ document.addEventListener('DOMContentLoaded', function() {
         const kelasForMengajarCount = {{ isset($kelasForMengajar) ? $kelasForMengajar->count() : 0 }};
         
         if (jabatan === 'guru_wali') {
-            // Tampilkan kedua section
+            // Tampilkan section wali kelas
             waliKelasSection.style.display = 'block';
             kelasMengajarSection.style.display = 'block';
             
-            // Jika tidak ada kelas yang tersedia untuk wali kelas, tampilkan pemberitahuan
+            // BARU: Auto-sync kelas mengajar dengan kelas wali
+            syncKelasWaliToKelasAjar();
+            
+            // Tambahkan event listener untuk auto-sync
+            if (waliKelasSelect && !waliKelasSelect.hasAttribute('data-listener-added')) {
+                waliKelasSelect.addEventListener('change', syncKelasWaliToKelasAjar);
+                waliKelasSelect.setAttribute('data-listener-added', 'true');
+            }
+            
             if (kelasForWaliCount === 0) {
-                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.title = 'Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk wali kelas';
-                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-                
-                // Tambahkan peringatan di bagian atas form
-                const formHeader = document.querySelector('.flex.justify-between.items-center.mb-6');
-                if (formHeader && !document.getElementById('no-kelas-alert')) {
-                    const alertDiv = document.createElement('div');
-                    alertDiv.id = 'no-kelas-alert';
-                    alertDiv.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4';
-                    alertDiv.innerHTML = `
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm"><strong>Error:</strong> Tidak dapat membuat guru wali kelas karena tidak ada kelas yang tersedia. Harap buat kelas terlebih dahulu.</p>
-                            </div>
-                        </div>
-                    `;
-                    formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
-                }
+                disableFormSubmission('Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk wali kelas');
             } else {
-                // Hapus peringatan jika ada
-                const alertDiv = document.getElementById('no-kelas-alert');
-                if (alertDiv) alertDiv.remove();
-                
-                // Enable tombol submit
-                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.title = '';
-                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
+                enableFormSubmission();
             }
             
             if(waliKelasSelect) waliKelasSelect.required = kelasForWaliCount > 0;
-            if(kelasMengajarSelect) kelasMengajarSelect.required = kelasForMengajarCount > 0;
+            if(kelasMengajarSelect) {
+                kelasMengajarSelect.required = false; // Tidak required karena auto-sync
+            }
+            
         } else if (jabatan === 'guru') {
-            // Tampilkan hanya kelas mengajar
+            // Sembunyikan wali kelas, tampilkan kelas mengajar
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'block';
             
-            // Jika tidak ada kelas yang tersedia untuk mengajar, tampilkan pemberitahuan
+            // Reset dan enable semua opsi kelas mengajar
+            enableAllKelasMengajarOptions();
+            removeAutoSyncInfo();
+            
             if (kelasForMengajarCount === 0) {
-                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.title = 'Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk diampu';
-                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-                
-                // Tambahkan peringatan di bagian atas form
-                const formHeader = document.querySelector('.flex.justify-between.items-center.mb-6');
-                if (formHeader && !document.getElementById('no-kelas-alert')) {
-                    const alertDiv = document.createElement('div');
-                    alertDiv.id = 'no-kelas-alert';
-                    alertDiv.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 my-4';
-                    alertDiv.innerHTML = `
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm"><strong>Error:</strong> Tidak dapat membuat guru karena tidak ada kelas yang tersedia untuk diampu. Harap buat kelas terlebih dahulu.</p>
-                            </div>
-                        </div>
-                    `;
-                    formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
-                }
+                disableFormSubmission('Tidak dapat menyimpan karena tidak ada kelas yang tersedia untuk diampu');
             } else {
-                // Hapus peringatan jika ada
-                const alertDiv = document.getElementById('no-kelas-alert');
-                if (alertDiv) alertDiv.remove();
-                
-                // Enable tombol submit
-                const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.title = '';
-                    submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
+                enableFormSubmission();
             }
             
             if(waliKelasSelect) waliKelasSelect.required = false;
             if(kelasMengajarSelect) kelasMengajarSelect.required = kelasForMengajarCount > 0;
+            
         } else {
             // Sembunyikan keduanya jika belum pilih jabatan
             waliKelasSection.style.display = 'none';
             kelasMengajarSection.style.display = 'none';
+            enableFormSubmission();
+            removeAutoSyncInfo();
+            
             if(waliKelasSelect) waliKelasSelect.required = false;
             if(kelasMengajarSelect) kelasMengajarSelect.required = false;
-            
-            // Hapus peringatan jika ada
-            const alertDiv = document.getElementById('no-kelas-alert');
-            if (alertDiv) alertDiv.remove();
-            
-            // Enable tombol submit
-            const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.title = '';
-                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
         }
     };
+
+    function enableFormSubmission() {
+        const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.title = '';
+            submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        
+        removeErrorAlert();
+    }
+
+    function disableFormSubmission(message) {
+        const submitButton = document.querySelector('button[form="createTeacherForm"][type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.title = message;
+            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        
+        showErrorAlert(message);
+    }
     
+    function syncKelasWaliToKelasAjar() {
+        const waliKelasId = document.querySelector('[name="wali_kelas_id"]').value;
+        const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
+        
+        if (!kelasMengajarSelect) return;
+        
+        if (waliKelasId) {
+            // Disable semua opsi dan unselect
+            Array.from(kelasMengajarSelect.options).forEach(option => {
+                option.disabled = true;
+                option.selected = false;
+            });
+            
+            // Enable dan select hanya kelas wali
+            Array.from(kelasMengajarSelect.options).forEach(option => {
+                if (option.value === waliKelasId) {
+                    option.disabled = false;
+                    option.selected = true;
+                }
+            });
+            
+            // Tambahkan info message
+            showAutoSyncInfo();
+        } else {
+            // Jika tidak ada kelas wali dipilih, enable semua opsi
+            enableAllKelasMengajarOptions();
+            removeAutoSyncInfo();
+        }
+    }
+
+    function removeAutoSyncInfo() {
+        const infoText = document.getElementById('kelas_mengajar_auto_info');
+        if (infoText) {
+            infoText.remove();
+        }
+    }
+
+    function showAutoSyncInfo() {
+        const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
+        let infoText = document.getElementById('kelas_mengajar_auto_info');
+        
+        if (!infoText) {
+            infoText = document.createElement('div');
+            infoText.id = 'kelas_mengajar_auto_info';
+            infoText.className = 'mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800';
+            kelasMengajarSelect.parentElement.appendChild(infoText);
+        }
+        
+        infoText.innerHTML = `
+            <div class="flex items-start">
+                <svg class="w-4 h-4 mr-2 mt-0.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div>
+                    <span class="font-medium">Otomatis Disinkronkan:</span> 
+                    Sebagai wali kelas, Anda hanya dapat mengajar di kelas yang Anda walikan. 
+                    Kelas mengajar otomatis disesuaikan dengan kelas wali yang dipilih.
+                </div>
+            </div>
+        `;
+    }
     // Function untuk update kelas mengajar berdasarkan kelas wali
     function updateKelasMengajarForWali() {
         const waliKelasId = document.querySelector('[name="wali_kelas_id"]').value;
@@ -454,16 +471,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function untuk enable semua opsi kelas mengajar
     function enableAllKelasMengajarOptions() {
         const kelasMengajarSelect = document.querySelector('[name="kelas_ids[]"]');
-        if(kelasMengajarSelect) {
+        if (kelasMengajarSelect) {
             Array.from(kelasMengajarSelect.options).forEach(option => {
                 option.disabled = false;
             });
-            
-            // Hapus pesan informasi jika ada
-            const infoText = document.getElementById('kelas_mengajar_info');
-            if(infoText) {
-                infoText.remove();
-            }
         }
     }
 

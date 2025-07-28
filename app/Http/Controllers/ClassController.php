@@ -109,15 +109,18 @@ class ClassController extends Controller
             'nama_kelas.max' => 'Nama kelas maksimal 255 karakter'
         ]);
     
+        $tahunAjaranId = session('tahun_ajaran_id');
+
         // Check for existing class with the same name
         $existingClass = Kelas::where('nomor_kelas', $request->nomor_kelas)
                             ->where('nama_kelas', $request->nama_kelas)
+                            ->where('tahun_ajaran_id', $tahunAjaranId) // ← Pastikan ada ini
                             ->first();
                             
         if ($existingClass) {
             return back()
                 ->withInput()
-                ->withErrors(['nama_kelas' => 'Kelas ' . $request->nomor_kelas . ' ' . $request->nama_kelas . ' sudah ada. Gunakan nama kelas yang berbeda.']);
+                ->withErrors(['nama_kelas' => 'Kelas ' . $request->nomor_kelas . ' ' . $request->nama_kelas . ' sudah ada di tahun ajaran ini. Gunakan nama kelas yang berbeda.']);
         }
     
         DB::beginTransaction();
@@ -166,7 +169,7 @@ class ClassController extends Controller
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
-        
+
     public function edit($id)
     {
         $tahunAjaranId = session('tahun_ajaran_id');
@@ -193,8 +196,7 @@ class ClassController extends Controller
         
         return view('data.edit_class', compact('kelas', 'waliKelas', 'availableGuruList'));
     }
-
-    // Mengupdate data kelas
+        
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -214,31 +216,36 @@ class ClassController extends Controller
             'current_wali_kelas_id.exists' => 'Wali kelas saat ini tidak valid'
         ]);
 
+        // Ambil tahun ajaran dari kelas yang sedang diedit
+        $kelas = Kelas::findOrFail($id);
+        $tahunAjaranId = $kelas->tahun_ajaran_id;
+
+        // PERBAIKAN: Tambahkan filter tahun_ajaran_id pada validasi
         $existingClass = Kelas::where('id', '!=', $id)
             ->where('nomor_kelas', $request->nomor_kelas)
             ->where('nama_kelas', $request->nama_kelas)
+            ->where('tahun_ajaran_id', $tahunAjaranId) // ← Tambahkan ini
             ->first();
-        
+            
         if ($existingClass) {
             return back()
-            ->withInput()
-            ->withErrors(['nama_kelas' => 'Kelas ' . $request->nomor_kelas . ' ' . $request->nama_kelas . ' sudah ada. Gunakan nama kelas yang berbeda.']);
-            }
+                ->withInput()
+                ->withErrors(['nama_kelas' => 'Kelas ' . $request->nomor_kelas . ' ' . $request->nama_kelas . ' sudah ada di tahun ajaran ini. Gunakan nama kelas yang berbeda.']);
+        }
 
         DB::beginTransaction();
         try {
-            $kelas = Kelas::findOrFail($id);
-            
-            // Cek apakah kombinasi nomor_kelas dan nama_kelas sudah ada di kelas lain
+            // PERBAIKAN: Update validasi dalam transaction juga
             $existingClass = Kelas::where('id', '!=', $id)
                                 ->where('nomor_kelas', $validated['nomor_kelas'])
                                 ->where('nama_kelas', $validated['nama_kelas'])
+                                ->where('tahun_ajaran_id', $tahunAjaranId) // ← Tambahkan ini
                                 ->first();
             
             if ($existingClass) {
                 return back()
                     ->withInput()
-                    ->with('error', 'Kelas ' . $validated['nomor_kelas'] . ' ' . $validated['nama_kelas'] . ' sudah ada. Silakan gunakan nama kelas yang berbeda.');
+                    ->with('error', 'Kelas ' . $validated['nomor_kelas'] . ' ' . $validated['nama_kelas'] . ' sudah ada di tahun ajaran ini. Silakan gunakan nama kelas yang berbeda.');
             }
             
             // Update data kelas
@@ -247,7 +254,7 @@ class ClassController extends Controller
                 'nama_kelas' => $validated['nama_kelas']
             ]);
             
-            // Menangani perubahan wali kelas
+                        // Menangani perubahan wali kelas
             $currentWaliKelas = $kelas->guru()
                                 ->wherePivot('is_wali_kelas', true)
                                 ->wherePivot('role', 'wali_kelas')
@@ -371,6 +378,7 @@ class ClassController extends Controller
                 ]);
             }
 
+            
             DB::commit();
             return redirect()->route('kelas.index')
                 ->with('success', 'Data kelas berhasil diperbarui');
