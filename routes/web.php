@@ -66,6 +66,29 @@
         
         return redirect()->route('login');
     });
+
+    Route::get('/api/session-config', function () {
+        // Manual check both guards
+        $isAuthenticated = Auth::guard('web')->check() || Auth::guard('guru')->check();
+        
+        if (!$isAuthenticated) {
+            return response()->json([
+                'lifetime' => 7200000, // 2 hours default
+                'debug' => false,
+                'guest' => true
+            ]);
+        }
+        
+        return response()->json([
+            'lifetime' => config('session.lifetime') * 60 * 1000,
+            'lifetimeMinutes' => config('session.lifetime'),
+            'debug' => config('app.debug'),
+            'checkInterval' => 30000,
+            'timestamp' => time(),
+            'authenticated' => true
+        ]);
+    })->middleware(['web']);
+
     // Login Routes
     Route::middleware(['web', 'guest'])->group(function () {
         Route::get('login', function () {

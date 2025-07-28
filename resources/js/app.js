@@ -111,8 +111,6 @@ document.addEventListener('turbo:before-render', () => {
 });
 
 
-// HAPUS komponen geminiChat yang lama dan ganti dengan ini:
-
 Alpine.data('geminiChat', () => ({
     isOpen: false,
     message: '',
@@ -123,7 +121,7 @@ Alpine.data('geminiChat', () => ({
     showSuggestions: true,
     
     init() {
-        console.log('Gemini Chat initialized');
+        //console.log('Gemini Chat initialized');
         this.loadHistory();
         this.showWelcomeMessage();
     },
@@ -150,7 +148,7 @@ Alpine.data('geminiChat', () => ({
     
     toggleChat() {
         this.isOpen = !this.isOpen;
-        console.log('Chat toggled:', this.isOpen);
+        //console.log('Chat toggled:', this.isOpen);
         
         if (this.isOpen) {
             this.loadHistory();
@@ -161,7 +159,7 @@ Alpine.data('geminiChat', () => ({
     },
     
     async loadHistory() {
-        console.log('Loading chat history...');
+        //console.log('Loading chat history...');
         try {
             const response = await fetch('/admin/gemini/history', {
                 headers: {
@@ -170,14 +168,14 @@ Alpine.data('geminiChat', () => ({
                 }
             });
             
-            console.log('History response status:', response.status);
+            //console.log('History response status:', response.status);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
-            console.log('History data received:', data);
+            //console.log('History data received:', data);
             
             if (data.success) {
                 const historyChats = data.chats.filter(chat => !chat.is_welcome);
@@ -205,11 +203,11 @@ Alpine.data('geminiChat', () => ({
         finalMessage = String(finalMessage || '');
         
         if (!finalMessage.trim()) {
-            console.log('Empty message, not sending');
+            //console.log('Empty message, not sending');
             return;
         }
         
-        console.log('Sending message:', finalMessage);
+        //console.log('Sending message:', finalMessage);
         
         // Reset form
         this.message = '';
@@ -239,14 +237,14 @@ Alpine.data('geminiChat', () => ({
                 body: JSON.stringify({ message: finalMessage })
             });
             
-            console.log('Send message response status:', response.status);
+            //console.log('Send message response status:', response.status);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
-            console.log('Send message data received:', data);
+            //console.log('Send message data received:', data);
             
             // Update last chat with response
             const lastChatIndex = this.chats.length - 1;
@@ -291,7 +289,7 @@ Alpine.data('geminiChat', () => ({
 
     // Method untuk suggestion yang aman
     useSuggestion(suggestion) {
-        console.log('Using suggestion:', suggestion);
+        //console.log('Using suggestion:', suggestion);
         
         // Pastikan suggestion adalah string
         const safeMessage = String(suggestion || '');
@@ -306,7 +304,7 @@ Alpine.data('geminiChat', () => ({
             this.showWelcomeMessage();
             this.showSuggestions = true;
             this.error = null;
-            console.log('Chat cleared');
+            //('Chat cleared');
         }
     },
     
@@ -447,16 +445,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const studentForm = document.querySelector('form[action*="student.store"]');
     
     if (studentForm) {
-        console.log('Student form detected, adding monitoring');
+        //console.log('Student form detected, adding monitoring');
         
         studentForm.addEventListener('submit', function(e) {
-            console.log('Form submission detected');
+            //console.log('Form submission detected');
             
             // Log form data for debugging
             const formData = new FormData(this);
-            console.log('Form data:');
+            //console.log('Form data:');
             for (let [key, value] of formData.entries()) {
-                console.log(`${key}: ${value}`);
+                //console.log(`${key}: ${value}`);
             }
             
             // Check if tahun_ajaran_id is present
@@ -465,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Optional: Add the value if missing
                 const tahunAjaranId = document.querySelector('meta[name="tahun-ajaran-id"]')?.content;
                 if (tahunAjaranId) {
-                    console.log(`Adding tahun_ajaran_id: ${tahunAjaranId}`);
+                    //console.log(`Adding tahun_ajaran_id: ${tahunAjaranId}`);
                     
                     // Create hidden input if it doesn't exist
                     if (!document.querySelector('input[name="tahun_ajaran_id"]')) {
@@ -483,26 +481,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check for Alpine.js formProtection
     const formProtectionEl = document.querySelector('[x-data="formProtection"]');
     if (formProtectionEl) {
-        console.log('Form protection detected');
+        //console.log('Form protection detected');
     } else {
-        console.warn('Form protection not found on the page');
+        //console.warn('Form protection not found on the page');
     }
     
     // Check for Turbo navigation issues
     document.addEventListener('turbo:before-visit', () => {
-        console.log('Turbo navigation started');
+        //console.log('Turbo navigation started');
     });
     
     document.addEventListener('turbo:before-cache', () => {
-        console.log('Page being cached by Turbo');
+        //console.log('Page being cached by Turbo');
     });
     
     document.addEventListener('turbo:submit-start', (event) => {
-        console.log('Form submission via Turbo:', event.detail.formSubmission);
+        //console.log('Form submission via Turbo:', event.detail.formSubmission);
     });
     
     document.addEventListener('turbo:submit-end', (event) => {
-        console.log('Form submission completed:', event.detail.success ? 'success' : 'failure');
+        //console.log('Form submission completed:', event.detail.success ? 'success' : 'failure');
         if (!event.detail.success) {
             console.error('Form submission failed');
         }
@@ -597,8 +595,8 @@ function preloadAndCacheSidebarIcons() {
     });
     
     // Log state to console for debugging
-    console.log('Sidebar image cache state:', 
-        [...sidebarImageCache.keys()].map(key => key.split('/').pop()));
+    // console.log('Sidebar image cache state:', 
+    //     [...sidebarImageCache.keys()].map(key => key.split('/').pop()));
 }
 
 // Call this function at key points
@@ -627,10 +625,10 @@ document.addEventListener('alpine:init', () => {
                     this.knowledgeBaseLoaded = data.file_exists || false;
                     this.apiKeyExists = data.api_key_exists || false;
                     this.connectionTested = true;
-                    console.log('Gemini status checked:', { 
-                        knowledgeBaseLoaded: this.knowledgeBaseLoaded, 
-                        apiKeyExists: this.apiKeyExists 
-                    });
+                    // console.log('Gemini status checked:', { 
+                    //     knowledgeBaseLoaded: this.knowledgeBaseLoaded, 
+                    //     apiKeyExists: this.apiKeyExists 
+                    // });
                 }
             } catch (error) {
                 console.error('Failed to check Gemini status:', error);
@@ -1008,11 +1006,11 @@ Alpine.data('reportTemplateManager', (config) => ({
     },
 
     init() {
-        console.log('Initializing with:', {
-            type: this.type,
-            templatesCount: this.templates.length,
-            templates: this.templates
-        });
+        // console.log('Initializing with:', {
+        //     type: this.type,
+        //     templatesCount: this.templates.length,
+        //     templates: this.templates
+        // });
     },
 
     async handleFileUpload(event) {
@@ -1279,7 +1277,7 @@ Alpine.store('notification', {
             this.items = data.items || [];
             
             // Log for debugging
-            console.log('Fetched notifications:', this.items);
+            //console.log('Fetched notifications:', this.items);
         } catch (error) {
             console.error('Error fetching notifications:', error);
         } finally {
@@ -1436,23 +1434,59 @@ Alpine.store('notification', {
 });
 
 // Alpine Components
+// Update bagian sessionTimeout di resources/js/app.js
 Alpine.data('sessionTimeout', () => ({
     isExpired: false,
-    timeoutDuration: 7200000, // 2 jam dalam milidetik
+    timeoutDuration: 7200000, // 2 hours
     checkInterval: null,
+    isLoggingOut: false,
+    configLoaded: false,
 
-    init() {
+    async init() {
+        if (this.isLoginPage()) return;
+        await this.loadSessionConfig();
         this.setupActivityTracking();
         this.setupSessionCheck();
+        this.setupLogoutHandlers();
         this.setupTurboListeners();
+    },
+
+    async loadSessionConfig() {
+        try {
+            const response = await fetch('/api/session-config', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            });
+
+            if (response.ok) {
+                const config = await response.json();
+                this.timeoutDuration = config.lifetime;
+                this.configLoaded = true;
+            } else {
+                throw new Error('Config load failed');
+            }
+        } catch (error) {
+            // Silent fallback
+            this.timeoutDuration = 7200000;
+            this.configLoaded = true;
+        }
+    },
+
+    isLoginPage() {
+        return window.location.pathname === '/login';
     },
 
     setupActivityTracking() {
         const resetActivity = () => {
+            if (this.isLoggingOut) return;
             sessionStorage.setItem('lastActivityTime', Date.now().toString());
         };
 
-        ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(event => {
+        ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(event => {
             document.addEventListener(event, resetActivity, { passive: true });
         });
 
@@ -1463,47 +1497,91 @@ Alpine.data('sessionTimeout', () => ({
         if (this.checkInterval) clearInterval(this.checkInterval);
 
         const checkSession = () => {
-            const lastActivity = parseInt(sessionStorage.getItem('lastActivityTime') || Date.now());
-            const inactive = Date.now() - lastActivity;
+            if (!this.configLoaded || this.isLoggingOut) return;
 
-            if (inactive > this.timeoutDuration) {
-                this.isExpired = true;
-                clearInterval(this.checkInterval);
+            const lastActivity = parseInt(sessionStorage.getItem('lastActivityTime') || Date.now());
+            const inactiveTime = Date.now() - lastActivity;
+
+            if (inactiveTime > this.timeoutDuration) {
+                this.triggerExpiration();
             }
         };
 
         this.checkInterval = setInterval(checkSession, 30000);
-        checkSession();
+        setTimeout(checkSession, 2000);
+    },
+
+    triggerExpiration() {
+        if (this.isExpired || this.isLoggingOut) return;
+        
+        this.isExpired = true;
+        if (this.checkInterval) {
+            clearInterval(this.checkInterval);
+            this.checkInterval = null;
+        }
+        
+        this.$nextTick(() => {
+            const alert = document.getElementById('session-alert');
+            if (alert) alert.style.display = 'block';
+        });
+    },
+
+    setupLogoutHandlers() {
+        document.addEventListener('submit', (e) => {
+            if (e.target.action?.includes('logout')) {
+                this.isLoggingOut = true;
+                if (this.checkInterval) clearInterval(this.checkInterval);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a, button');
+            if (link && (link.href?.includes('logout') || 
+                        link.textContent?.toLowerCase().includes('logout'))) {
+                this.isLoggingOut = true;
+                if (this.checkInterval) clearInterval(this.checkInterval);
+            }
+        });
     },
 
     setupTurboListeners() {
-        document.addEventListener('turbo:load', () => {
-            sessionStorage.setItem('lastActivityTime', Date.now().toString());
-            this.setupSessionCheck();
-        });
-    
-        document.addEventListener('turbo:before-cache', () => {
-            if (this.checkInterval) {
-                clearInterval(this.checkInterval);
+        document.addEventListener('turbo:before-visit', (event) => {
+            if (event.detail.url.includes('/login') || event.detail.url.includes('/logout')) {
+                this.isLoggingOut = true;
+                if (this.checkInterval) clearInterval(this.checkInterval);
+                return;
+            }
+            if (!this.isLoggingOut) {
+                sessionStorage.setItem('lastActivityTime', Date.now().toString());
             }
         });
-    
-        if (typeof initFlowbite === 'function') {
-            initFlowbite();
-        }
-    
-        // Perbaiki bagian ini
-        const handler = debounce(updateSidebarActiveState, 100);
-        document.addEventListener('turbo:render', handler);
-        cleanupHandlers.add(() => {
-            document.removeEventListener('turbo:render', handler);
+
+        document.addEventListener('turbo:load', () => {
+            if (this.isLoginPage() || this.isLoggingOut) {
+                if (this.checkInterval) clearInterval(this.checkInterval);
+                return;
+            }
+            sessionStorage.setItem('lastActivityTime', Date.now().toString());
+            this.loadSessionConfig().then(() => this.setupSessionCheck());
         });
-    
-        // Restore dropdown state
-        const savedState = localStorage.getItem('formatRaporDropdown');
-        if (savedState) {
-            Alpine.store('sidebar').dropdownState.formatRapor = savedState === 'true';
-        }
+    },
+
+    handleLogout() {
+        this.isLoggingOut = true;
+        if (this.checkInterval) clearInterval(this.checkInterval);
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/logout';
+        
+        const token = document.createElement('input');
+        token.type = 'hidden';
+        token.name = '_token';
+        token.value = document.querySelector('meta[name="csrf-token"]').content;
+        
+        form.appendChild(token);
+        document.body.appendChild(form);
+        form.submit();
     }
 }));
 

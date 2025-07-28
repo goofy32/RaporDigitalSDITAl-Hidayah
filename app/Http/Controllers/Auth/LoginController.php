@@ -25,6 +25,9 @@ class LoginController extends Controller
                 'username' => $credentials['username'],
                 'password' => $credentials['password']
             ])) {
+                // Set initial session activity
+                session(['last_activity' => time()]);
+                
                 // Log successful admin login
                 AuditService::logLogin('success', $credentials['username']);
                 
@@ -67,6 +70,9 @@ class LoginController extends Controller
                 Auth::guard('guru')->login($guru);
                 session(['selected_role' => $credentials['role']]);
                 
+                // Set initial session activity
+                session(['last_activity' => time()]);
+                
                 // Log successful guru/wali_kelas login
                 AuditService::logLogin('success', $credentials['username']);
                 
@@ -90,13 +96,31 @@ class LoginController extends Controller
         // Log logout event before actually logging out
         AuditService::logLogout();
         
+        // Clear all possible auth guards
         Auth::guard('web')->logout();
         Auth::guard('guru')->logout();
     
+        // Completely invalidate and regenerate session
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        
+        // Clear all session data
+        $request->session()->flush();
+        
+        // If it's an AJAX request (like from session timeout)
+        if ($request->wantsJson() || $request->hasHeader('Turbo-Frame')) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'redirect' => route('login')
+            ]);
+        }
     
-        return redirect('/login')->with('success', $message);
+        return redirect('/login')
+            ->with('success', $message)
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     protected function authenticated(Request $request, $user)
