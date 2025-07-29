@@ -3,7 +3,7 @@
 @section('title', 'Detail Tahun Ajaran')
 
 @section('content')
-<div class="p-4 bg-white rounded-lg shadow-md">
+<div class="p-4 bg-white">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 class="text-2xl font-bold text-green-700">Detail Tahun Ajaran</h2>
         <div class="flex flex-wrap gap-2">
@@ -142,19 +142,19 @@
             <!-- Tombol untuk membuat tahun ajaran baru - HANYA muncul di semester genap -->
             @if($tahunAjaran->semester == 2)
                 <a href="{{ route('tahun.ajaran.copy', $tahunAjaran->id) }}" 
-                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center">
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
                     <i class="fas fa-graduation-cap mr-2"></i>Buat Tahun Ajaran Berikutnya
                 </a>
                 
                 <!-- Info box untuk menjelaskan fungsi tombol -->
                 <div class="w-full mt-2">
-                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
                         <div class="flex">
                             <div class="flex-shrink-0">
                                 <i class="fas fa-info-circle text-indigo-400"></i>
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm text-indigo-700">
+                                <p class="text-sm text-green-800">
                                     <strong>Buat Tahun Ajaran Berikutnya:</strong> Digunakan untuk membuat tahun ajaran baru dengan menaikkan kelas siswa dan menyalin pengaturan dari tahun ajaran saat ini. Biasanya dilakukan di akhir semester genap.
                                 </p>
                             </div>

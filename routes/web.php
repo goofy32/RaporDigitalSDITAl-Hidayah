@@ -322,7 +322,7 @@
             Route::post('/{id}/copy', [TahunAjaranController::class, 'processCopy'])->name('process-copy');
             Route::delete('/{id}', [TahunAjaranController::class, 'destroy'])->name('destroy');
             Route::delete('/{id}/force-delete', [TahunAjaranController::class, 'forceDelete'])->name('force-delete');
-            
+            Route::get('tahun-ajaran/check-semester-genap', [TahunAjaranController::class, 'checkSemesterGenap'])->name('tahun.ajaran.check.semester.genap');
             // Route baru untuk sistem semester dengan snapshot
             Route::post('/{id}/advance-semester', [TahunAjaranController::class, 'advanceToNextSemester'])
                 ->name('advance-semester');
@@ -332,6 +332,7 @@
                 ->name('get-snapshots');
             Route::post('/{id}/create-snapshot', [TahunAjaranController::class, 'createManualSnapshot'])
                 ->name('create-snapshot');
+
         });
         
         // Teacher Management

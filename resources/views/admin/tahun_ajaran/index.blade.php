@@ -3,7 +3,7 @@
 @section('title', 'Manajemen Tahun Ajaran')
 
 @section('content')
-<div class="p-4 bg-white rounded-lg shadow-md">
+<div class="p-4 bg-white">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">Manajemen Tahun Ajaran</h2>
         <div class="flex gap-2">

@@ -455,6 +455,38 @@ class TahunAjaranController extends Controller
         }
     }
 
+
+    public function checkSemesterGenap()
+    {
+        try {
+            // Cari tahun ajaran dengan semester genap (semester 2)
+            $semesterGenap = TahunAjaran::where('semester', 2)
+                                    ->orderBy('tanggal_mulai', 'desc')
+                                    ->first();
+            
+            if ($semesterGenap) {
+                return response()->json([
+                    'hasSemseterGenap' => true,
+                    'tahunAjaran' => $semesterGenap->tahun_ajaran,
+                    'tahunAjaranId' => $semesterGenap->id,
+                    'copyUrl' => route('tahun.ajaran.copy', $semesterGenap->id),
+                    'message' => "Ditemukan tahun ajaran {$semesterGenap->tahun_ajaran} semester genap. Disarankan menggunakan fitur copy untuk melanjutkan ke tahun ajaran berikutnya."
+                ]);
+            }
+            
+            return response()->json([
+                'hasSemseterGenap' => false,
+                'message' => 'Tidak ada tahun ajaran semester genap. Anda dapat membuat tahun ajaran baru.'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'hasSemseterGenap' => false,
+                'error' => 'Terjadi kesalahan saat mengecek status tahun ajaran',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     /**
      * Copy struktur dasar dari tahun ajaran sebelumnya
      * HANYA: Kelas + Assignment Guru
