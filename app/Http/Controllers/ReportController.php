@@ -641,32 +641,174 @@ class ReportController extends Controller
             $type = 'UTS';
         }
         
-        // Use your pre-made templates
-        $sampleFileName = $type === 'UTS' 
-            ? 'Template_UTS_New.docx'
-            : 'Template_UAS_New.docx';
-            
-        $filePath = storage_path('app/public/templates/' . $sampleFileName);
+        // Lokasi file template
+        $templatePaths = [
+            'UTS' => [
+                storage_path('app/public/templates/Template_UTS_New.docx'),
+                storage_path('app/public/templates/RAPOR_UTS.docx'),
+                storage_path('app/public/templates/RAPOR TENGAH SEMESTER I.docx'),
+                storage_path('app/public/RAPOR TENGAH SEMESTER I.docx'),
+                base_path('RAPOR TENGAH SEMESTER I.docx'),
+            ],
+            'UAS' => [
+                storage_path('app/public/templates/Template_UAS_New.docx'),
+                storage_path('app/public/templates/RAPOR_UAS.docx'),
+                storage_path('app/public/templates/RAPOR AKHIR SEMESTER.docx'),
+            ]
+        ];
         
-        // If the file doesn't exist, fallback to the original dynamic method
-        if (!file_exists($filePath)) {
-            $sampleFileName = $type === 'UTS' 
-                ? 'dynamic_template_uts.docx'
-                : 'dynamic_template_uas.docx';
-                
-            $filePath = storage_path('app/public/samples/' . $sampleFileName);
-            
-            // If the fallback file also doesn't exist, create it
-            if (!file_exists($filePath)) {
-                $this->createDynamicSampleTemplate($filePath, $type);
+        $filePath = null;
+        
+        // Cari file yang ada
+        foreach ($templatePaths[$type] as $path) {
+            if (file_exists($path) && is_readable($path) && filesize($path) > 0) {
+                $filePath = $path;
+                break;
             }
         }
         
-        // Generate a filename for download
-        $downloadFilename = "template_{$type}_sample.docx";
+        if (!$filePath) {
+            return response()->json([
+                'success' => false,
+                'message' => "Template file untuk {$type} tidak ditemukan"
+            ], 404);
+        }
         
-        // Return the file for download
-        return response()->download($filePath, $downloadFilename);
+        // **CRITICAL: Clean all output buffers untuk mencegah corruption**
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // Dapatkan file info
+        $fileSize = filesize($filePath);
+        $fileName = "Template_Rapor_{$type}_" . date('Y-m-d') . ".docx";
+        
+        // **CRITICAL: Set headers yang benar untuk DOCX**
+        $headers = [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Length' => $fileSize,
+            'Content-Transfer-Encoding' => 'binary',
+            'Cache-Control' => 'private, no-transform, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'Accept-Ranges' => 'bytes',
+        ];
+        
+        // Log untuk debugging
+        Log::info('Downloading template file', [
+            'file_path' => $filePath,
+            'file_size' => $fileSize,
+            'download_name' => $fileName,
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ]);
+        
+        // **METHOD 1: Laravel Response Download (Recommended)**
+        try {
+            return response()->download($filePath, $fileName, $headers);
+        } catch (\Exception $e) {
+            Log::error('Laravel download failed, trying manual method', [
+                'error' => $e->getMessage()
+            ]);
+            
+            // **METHOD 2: Manual Binary Stream (Fallback)**
+            return $this->streamBinaryFile($filePath, $fileName, $headers);
+        }
+    }
+
+    /**
+     * Manual binary file streaming - sebagai fallback
+     * Metode ini memastikan file di-stream secara binary tanpa corruption
+     */
+    private function streamBinaryFile($filePath, $fileName, $headers)
+    {
+        // **CRITICAL: Bersihkan semua output buffer**
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // Set all headers
+        foreach ($headers as $key => $value) {
+            header("{$key}: {$value}");
+        }
+        
+        // **CRITICAL: Set binary mode untuk file reading**
+        $handle = fopen($filePath, 'rb'); // 'rb' = read binary
+        
+        if (!$handle) {
+            abort(500, 'Cannot open template file');
+        }
+        
+        // **CRITICAL: Stream file dalam chunks untuk avoid memory issues**
+        $chunkSize = 8192; // 8KB chunks
+        
+        while (!feof($handle)) {
+            $chunk = fread($handle, $chunkSize);
+            if ($chunk === false) {
+                break;
+            }
+            echo $chunk;
+            
+            // **CRITICAL: Flush output untuk memastikan chunk dikirim**
+            if (ob_get_level()) {
+                ob_flush();
+            }
+            flush();
+        }
+        
+        fclose($handle);
+        exit; // **CRITICAL: Exit untuk mencegah output tambahan**
+    }
+
+    /**
+     * Alternative method menggunakan StreamedResponse
+     * Untuk kasus yang sangat sulit
+     */
+    public function downloadTemplateStreamed(Request $request)
+    {
+        $type = $request->input('type', 'UTS');
+        
+        // Find file (sama seperti method sebelumnya)
+        $templatePaths = [
+            'UTS' => [
+                storage_path('app/public/templates/Template_UTS_New.docx'),
+                storage_path('app/public/RAPOR TENGAH SEMESTER I.docx'),
+                base_path('RAPOR TENGAH SEMESTER I.docx'),
+            ],
+            'UAS' => [
+                storage_path('app/public/templates/Template_UAS_New.docx'),
+            ]
+        ];
+        
+        $filePath = null;
+        foreach ($templatePaths[$type] as $path) {
+            if (file_exists($path) && filesize($path) > 0) {
+                $filePath = $path;
+                break;
+            }
+        }
+        
+        if (!$filePath) {
+            abort(404, 'Template not found');
+        }
+        
+        $fileName = "Template_Rapor_{$type}_" . date('Y-m-d') . ".docx";
+        $fileSize = filesize($filePath);
+        
+        // **StreamedResponse - paling clean untuk binary files**
+        return response()->streamDownload(function () use ($filePath) {
+            // **CRITICAL: Binary file reading**
+            $handle = fopen($filePath, 'rb');
+            
+            while (!feof($handle)) {
+                echo fread($handle, 8192); // 8KB chunks
+            }
+            
+            fclose($handle);
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Length' => $fileSize,
+        ]);
     }
 
     /**
@@ -1187,16 +1329,7 @@ class ReportController extends Controller
             // Save history
             $this->saveGenerationHistory($siswa, $template, $type, $tahunAjaranId, $result['path']);
             
-            // Handle preview vs download
-            if ($action == 'preview') {
-                return response()->json([
-                    'success' => true,
-                    'file_url' => asset('storage/' . $result['path']),
-                    'filename' => $result['filename']
-                ]);
-            }
-            
-            // Download file
+            // **CRITICAL: Get full path dan verify file**
             $fullPath = storage_path('app/public/' . $result['path']);
             
             if (!file_exists($fullPath)) {
@@ -1207,7 +1340,43 @@ class ReportController extends Controller
                 ], 404);
             }
             
-            return response()->download($fullPath, $result['filename']);
+            // **CRITICAL: Verify file integrity**
+            $fileSize = filesize($fullPath);
+            if ($fileSize == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File rapor kosong. Terjadi kesalahan dalam pemrosesan.',
+                    'error_type' => 'file_empty'
+                ], 500);
+            }
+            
+            // **CRITICAL: Verify DOCX format**
+            if (!$this->isValidDocxFile($fullPath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File rapor tidak valid. Format file rusak.',
+                    'error_type' => 'file_corrupt'
+                ], 500);
+            }
+            
+            \Log::info('Report generated successfully', [
+                'file_path' => $fullPath,
+                'file_size' => $fileSize,
+                'action' => $action
+            ]);
+            
+            // Handle preview vs download
+            if ($action == 'preview') {
+                return response()->json([
+                    'success' => true,
+                    'file_url' => asset('storage/' . $result['path']),
+                    'filename' => $result['filename']
+                ]);
+            }
+            
+            // **SOLUTION: Download dengan headers yang BENAR untuk DOCX**
+            return $this->downloadDocxFile($fullPath, $result['filename']);
+            
         } 
         catch (\App\Exceptions\RaporException $e) {
             \Log::error('RaporException in generateReport: ' . $e->getMessage(), [
@@ -1234,6 +1403,94 @@ class ReportController extends Controller
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat generate rapor: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function isValidDocxFile($filePath)
+    {
+        if (!file_exists($filePath) || !is_readable($filePath)) {
+            return false;
+        }
+        
+        if (filesize($filePath) == 0) {
+            return false;
+        }
+        
+        // DOCX files are ZIP files, should start with 'PK'
+        $handle = fopen($filePath, 'rb');
+        if (!$handle) {
+            return false;
+        }
+        
+        $firstBytes = fread($handle, 2);
+        fclose($handle);
+        
+        $isValid = $firstBytes === 'PK';
+        
+        if (!$isValid) {
+            \Log::error('Invalid DOCX file detected', [
+                'file_path' => $filePath,
+                'first_bytes' => bin2hex($firstBytes),
+                'expected' => 'PK (504B in hex)'
+            ]);
+        }
+        
+        return $isValid;
+    }
+
+    private function downloadDocxFile($filePath, $filename)
+    {
+        // **CRITICAL: Bersihkan semua output buffer**
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // **CRITICAL: Headers yang PROPER untuk DOCX**
+        $headers = [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Length' => filesize($filePath),
+            'Content-Transfer-Encoding' => 'binary',
+            'Cache-Control' => 'private, no-transform, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'Accept-Ranges' => 'bytes',
+        ];
+        
+        \Log::info('Downloading DOCX file', [
+            'file_path' => $filePath,
+            'filename' => $filename,
+            'file_size' => filesize($filePath)
+        ]);
+        
+        // **METHOD 1: Try Laravel's download response first**
+        try {
+            return response()->download($filePath, $filename, $headers);
+        } catch (\Exception $e) {
+            \Log::warning('Laravel download failed, using streamed response', [
+                'error' => $e->getMessage()
+            ]);
+            
+            // **METHOD 2: Fallback ke StreamedResponse**
+            return response()->streamDownload(function() use ($filePath) {
+                $handle = fopen($filePath, 'rb'); // Binary mode!
+                
+                if ($handle) {
+                    while (!feof($handle)) {
+                        $chunk = fread($handle, 8192); // 8KB chunks
+                        if ($chunk !== false) {
+                            echo $chunk;
+                            
+                            // Flush output buffer
+                            if (ob_get_level()) {
+                                ob_flush();
+                            }
+                            flush();
+                        }
+                    }
+                    fclose($handle);
+                }
+            }, $filename, $headers);
         }
     }
 
