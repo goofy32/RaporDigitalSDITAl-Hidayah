@@ -386,6 +386,7 @@ class TahunAjaranController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -394,7 +395,6 @@ class TahunAjaranController extends Controller
                 'string',
                 'regex:/^\d{4}\/\d{4}$/',
                 function ($attribute, $value, $fail) {
-                    // Cek keunikan termasuk dengan yang diarsipkan
                     $exists = TahunAjaran::withTrashed()
                                 ->where('tahun_ajaran', $value)
                                 ->exists();
@@ -413,26 +413,121 @@ class TahunAjaranController extends Controller
 
         if ($validator->fails()) {
             return redirect()->back()
-                         ->withErrors($validator)
-                         ->withInput();
+                        ->withErrors($validator)
+                        ->withInput();
         }
 
-        // Jika menandai sebagai aktif, nonaktifkan tahun ajaran lain
-        if ($request->has('is_active') && $request->is_active) {
-            TahunAjaran::where('is_active', true)
-                   ->update(['is_active' => false]);
+        DB::beginTransaction();
+        
+        try {
+            // Jika menandai sebagai aktif, nonaktifkan tahun ajaran lain
+            if ($request->has('is_active') && $request->is_active) {
+                TahunAjaran::where('is_active', true)
+                    ->update(['is_active' => false]);
+            }
+
+            // Buat tahun ajaran baru
+            $tahunAjaran = TahunAjaran::create($request->all());
+
+            // TAMBAHAN: Auto-copy struktur dari tahun ajaran sebelumnya
+            $previousTahunAjaran = TahunAjaran::where('id', '!=', $tahunAjaran->id)
+                                            ->orderBy('tanggal_mulai', 'desc')
+                                            ->first();
+            
+            if ($previousTahunAjaran) {
+                $this->copyBasicStructureFromPrevious($previousTahunAjaran, $tahunAjaran);
+            }
+
+            // Jika aktif, update profil sekolah
+            if ($request->has('is_active') && $request->is_active) {
+                $this->updateProfilSekolah($tahunAjaran);
+            }
+            
+            DB::commit();
+
+            return redirect()->route('tahun.ajaran.index')
+                        ->with('success', 'Tahun ajaran berhasil dibuat dengan struktur dasar!');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                    ->with('error', 'Gagal membuat tahun ajaran: ' . $e->getMessage())
+                    ->withInput();
         }
+    }
 
-        // Buat tahun ajaran baru
-        $tahunAjaran = TahunAjaran::create($request->all());
-
-        // Jika aktif, update profil sekolah
-        if ($request->has('is_active') && $request->is_active) {
-            $this->updateProfilSekolah($tahunAjaran);
+    /**
+     * Copy struktur dasar dari tahun ajaran sebelumnya
+     * HANYA: Kelas + Assignment Guru
+     */
+    private function copyBasicStructureFromPrevious($sourceTahunAjaran, $newTahunAjaran)
+    {
+        \Log::info("Copying basic structure (classes + guru assignments) from {$sourceTahunAjaran->tahun_ajaran} to {$newTahunAjaran->tahun_ajaran}");
+        
+        // 1. Copy kelas dengan struktur yang sama
+        $sourceKelas = Kelas::where('tahun_ajaran_id', $sourceTahunAjaran->id)
+                            ->orderBy('nomor_kelas')
+                            ->orderBy('nama_kelas')
+                            ->get();
+        
+        $kelasMapping = [];
+        $assignmentCount = 0;
+        
+        foreach ($sourceKelas as $kelas) {
+            // Copy kelas
+            $newKelas = $kelas->replicate();
+            $newKelas->tahun_ajaran_id = $newTahunAjaran->id;
+            $newKelas->save();
+            
+            $kelasMapping[$kelas->id] = $newKelas->id;
+            
+            \Log::info("Created class: {$kelas->nomor_kelas}{$kelas->nama_kelas} (ID: {$newKelas->id})");
+            
+            // 2. Copy assignment guru untuk kelas ini
+            $guruRelations = DB::table('guru_kelas')
+                ->where('kelas_id', $kelas->id)
+                ->get();
+                
+            foreach ($guruRelations as $relation) {
+                // Cek apakah assignment sudah ada (prevent duplicate)
+                $exists = DB::table('guru_kelas')
+                    ->where('guru_id', $relation->guru_id)
+                    ->where('kelas_id', $newKelas->id)
+                    ->where('role', $relation->role)
+                    ->exists();
+                
+                if (!$exists) {
+                    DB::table('guru_kelas')->insert([
+                        'guru_id' => $relation->guru_id,
+                        'kelas_id' => $newKelas->id,
+                        'is_wali_kelas' => $relation->is_wali_kelas,
+                        'role' => $relation->role,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    $assignmentCount++;
+                    
+                    // Log assignment untuk debugging
+                    $guru = \App\Models\Guru::find($relation->guru_id);
+                    $roleText = $relation->is_wali_kelas ? 'Wali Kelas' : 'Pengajar';
+                    \Log::info("Assigned: {$guru->nama} → {$kelas->nomor_kelas}{$kelas->nama_kelas} ({$roleText})");
+                }
+            }
         }
-
-        return redirect()->route('tahun.ajaran.index')
-                     ->with('success', 'Tahun ajaran berhasil dibuat!');
+        
+        // ❌ TIDAK copy mata pelajaran - biar admin setup manual
+        // Admin bisa create mata pelajaran sesuai kebutuhan kurikulum tahun ini
+        
+        \Log::info("Structure copy completed", [
+            'classes_created' => count($kelasMapping),
+            'guru_assignments' => $assignmentCount,
+            'note' => 'Mata pelajaran tidak di-copy, silakan setup manual'
+        ]);
+        
+        return [
+            'classes_created' => count($kelasMapping),
+            'assignments_created' => $assignmentCount
+        ];
     }
 
     /**

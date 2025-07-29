@@ -135,7 +135,6 @@
             Route::post('/send-message', [GeminiChatController::class, 'sendMessage'])->name('send');
             Route::get('/history', [GeminiChatController::class, 'getHistory'])->name('history');
             Route::post('/update-knowledge', [GeminiChatController::class, 'updateKnowledgeBase'])->name('update-knowledge');
-            Route::get('/test-knowledge', [GeminiChatController::class, 'testKnowledgeBase'])->name('test-knowledge');
             Route::get('/debug-test', [GeminiChatController::class, 'debugTest'])->name('debug-test');
             Route::get('/test-direct', [GeminiChatController::class, 'testGeminiDirectly'])->name('test-direct');
             Route::delete('/clear-history', [GeminiChatController::class, 'clearHistory'])->name('clear-history');
