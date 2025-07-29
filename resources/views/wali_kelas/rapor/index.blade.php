@@ -199,15 +199,7 @@
 
                         <!-- Actions -->
                         <td class="px-6 py-4">
-                            <div class="flex items-center space-x-3">
-                                <!-- Preview Button -->
-                                <button @click="handlePreview({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
-                                    :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
-                                    class="text-green-600 hover:text-green-900 disabled:opacity-50 transition-colors" 
-                                    title="Lihat Rapor">
-                                    <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="action-icon">
-                                </button>
-                                
+                            <div class="flex items-center space-x-3">                                
                                 <!-- Download DOCX Button -->
                                 <button @click="handleGenerate({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }}, '{{ $s->nama }}')"
                                     :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }}"
@@ -220,7 +212,18 @@
                                     <img src="{{ asset('images/icons/download.png') }}" alt="Download" class="action-icon">
                                 </button>
                                 
-                                <!-- Download PDF Button -->
+                                <!-- Preview PDF Button -->
+                                <button @click="handlePreviewPdf({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
+                                        :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading"
+                                        :class="{ 
+                                            'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading, 
+                                            'text-purple-600 hover:text-purple-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} && !loading 
+                                        }"
+                                        class="transition-colors"
+                                        title="Preview PDF">
+                                    <img src="{{ asset('images/icons/detail.png') }}" alt="Preview" class="action-icon">
+                                </button>
+
                                 <button @click="handleDownloadPdf({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }}, '{{ $s->nama }}')"
                                         :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading"
                                         :class="{ 
@@ -239,22 +242,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
                                     </template>
-                                </button>
-                                
-                                <!-- Preview PDF Button -->
-                                <button @click="handlePreviewPdf({{ $s->id }}, {{ $nilaiCounts[$s->id] ?? 0 }}, {{ $s->absensi ? 'true' : 'false' }})"
-                                        :disabled="!{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading"
-                                        :class="{ 
-                                            'opacity-50 cursor-not-allowed': !{{ $nilaiCounts[$s->id] ?? 0 }} || !{{ $s->absensi ? 'true' : 'false' }} || loading, 
-                                            'text-purple-600 hover:text-purple-900': {{ $nilaiCounts[$s->id] ?? 0 }} && {{ $s->absensi ? 'true' : 'false' }} && !loading 
-                                        }"
-                                        class="transition-colors"
-                                        title="Preview PDF">
-                                    <svg class="action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                    </svg>
-                                </button>
+                                </button>                                
                             </div>
                         </td>
                     </tr>

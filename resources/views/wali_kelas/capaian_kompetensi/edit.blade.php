@@ -1,4 +1,3 @@
-{{-- resources/views/wali_kelas/capaian_kompetensi/edit.blade.php --}}
 @extends('layouts.wali_kelas.app')
 
 @section('content')
@@ -41,9 +40,9 @@
         @csrf
         @method('PUT')
 
-        <!-- Filter dan Info -->
+        <!-- Filter dan Info dengan Tombol Simpan -->
         <div class="bg-gray-50 p-4 rounded-lg mb-6">
-            <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center justify-between flex-wrap gap-4 mb-4">
                 <div class="flex items-center space-x-4">
                     <div class="text-sm text-gray-600">
                         <strong>Total Siswa:</strong> {{ $siswaList->count() }}
@@ -65,6 +64,37 @@
                         </svg>
                     </div>
                 </div>
+            </div>
+
+            <!-- Tombol Simpan di Atas -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div class="text-sm text-gray-600">
+                    <span x-show="hasChanges" x-transition class="text-orange-600 font-medium">
+                        ⚠ Ada perubahan yang belum disimpan
+                    </span>
+                    <span x-show="!hasChanges" class="text-gray-500">
+                        Lakukan perubahan pada form di bawah, lalu klik tombol simpan
+                    </span>
+                </div>
+                
+                <button type="submit" 
+                        x-bind:disabled="isSubmitting"
+                        x-bind:class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''"
+                        class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2">
+                    <span x-show="!isSubmitting">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Simpan Semua Perubahan
+                    </span>
+                    <span x-show="isSubmitting" class="flex items-center">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Menyimpan...
+                    </span>
+                </button>
             </div>
         </div>
 
@@ -151,7 +181,7 @@
                                   rows="3"
                                   class="w-full px-3 py-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500"
                                   placeholder="Tambahkan catatan khusus untuk {{ $siswa->nama }}..."
-                                  x-on:input="updateCustomizedCount()"
+                                  x-on:input="updateCustomizedCount(); checkForChanges()"
                                   >{{ $existingCapaianText }}</textarea>
                         <p class="mt-1 text-xs text-gray-500">
                             Teks ini akan ditambahkan setelah capaian otomatis. Kosongkan jika hanya ingin menggunakan capaian otomatis.
@@ -161,35 +191,22 @@
             @endforeach
         </div>
 
-        <!-- Submit Section -->
-        <div class="mt-6 flex items-center justify-between">
-            <div class="text-sm text-gray-600">
-                <span x-show="hasChanges" x-transition class="text-orange-600 font-medium">
-                    ⚠ Ada perubahan yang belum disimpan
-                </span>
-            </div>
-            
-            <div class="flex space-x-3">
-                <button type="button" 
-                        onclick="if(confirm('Yakin ingin membatalkan? Perubahan akan hilang.')) window.location.href='{{ route('wali_kelas.capaian_kompetensi.index') }}'"
-                        class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                    Batal
-                </button>
-                
-                <button type="submit" 
-                        x-bind:disabled="isSubmitting"
-                        x-bind:class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''"
-                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    <span x-show="!isSubmitting">Simpan Perubahan</span>
-                    <span x-show="isSubmitting" class="flex items-center">
-                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                        </svg>
-                        Menyimpan...
-                    </span>
-                </button>
-            </div>
+        <!-- Floating Save Button (Optional - muncul saat scroll) -->
+        <div class="fixed bottom-6 right-6 z-50" 
+             x-show="hasChanges && !isSubmitting" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform translate-y-2">
+            <button type="submit" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-full shadow-lg flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>Simpan</span>
+            </button>
         </div>
     </form>
 </div>
@@ -202,15 +219,13 @@ function capaianKompetensiForm() {
         isSubmitting: false,
         hasChanges: false,
         customizedCount: {{ $existingCapaian->count() }},
+        originalValues: {},
         
         init() {
-            // Monitor form changes
+            // Store original values
             this.$nextTick(() => {
-                this.$el.querySelectorAll('textarea').forEach(textarea => {
-                    const originalValue = textarea.value;
-                    textarea.addEventListener('input', () => {
-                        this.hasChanges = textarea.value !== originalValue;
-                    });
+                this.$el.querySelectorAll('textarea[name^="capaian"]').forEach(textarea => {
+                    this.originalValues[textarea.name] = textarea.value;
                 });
             });
         },
@@ -223,6 +238,16 @@ function capaianKompetensiForm() {
                 }
             });
             this.customizedCount = count;
+        },
+        
+        checkForChanges() {
+            let hasChanges = false;
+            this.$el.querySelectorAll('textarea[name^="capaian"]').forEach(textarea => {
+                if (textarea.value !== this.originalValues[textarea.name]) {
+                    hasChanges = true;
+                }
+            });
+            this.hasChanges = hasChanges;
         },
         
         async submitForm(event) {
@@ -240,6 +265,16 @@ function capaianKompetensiForm() {
         }
     }
 }
+
+// Warning before leaving page if there are unsaved changes
+window.addEventListener('beforeunload', function(e) {
+    const form = document.querySelector('[x-data*="capaianKompetensiForm"]');
+    if (form && form.__x.$data.hasChanges && !form.__x.$data.isSubmitting) {
+        e.preventDefault();
+        e.returnValue = 'Ada perubahan yang belum disimpan. Yakin ingin meninggalkan halaman?';
+        return e.returnValue;
+    }
+});
 </script>
 @endpush
 @endsection

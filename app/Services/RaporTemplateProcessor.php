@@ -537,11 +537,13 @@ class RaporTemplateProcessor
                 if ($nilaiAkhir) {
                     $nilaiValue = $nilaiAkhir->nilai_akhir_rapor;
                     $data["nilai_mulok$mulokCount"] = number_format($nilaiValue, 1);
-                    $data["capaian_kompetensi_mulok$mulokCount"] = \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
+                    
+                    // PERBAIKAN: Ubah dari capaian_kompetensi_mulok menjadi capaian_mulok
+                    $data["capaian_mulok$mulokCount"] = \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
                         $this->siswa->id,
                         $mataPelajaranId,
                         $tahunAjaranId
-                    ); // BARU
+                    );
                 } else {
                     // Jika tidak ada nilai_akhir_rapor, cari alternatif dengan filter tahun ajaran
                     $avgNilai = $nilaiMulok
@@ -551,12 +553,14 @@ class RaporTemplateProcessor
                         ->avg('nilai_tp');
                         
                     $data["nilai_mulok$mulokCount"] = $avgNilai ? number_format($avgNilai, 1) : '-';
-                    $data["capaian_kompetensi_mulok$mulokCount"] = $avgNilai ? 
+                    
+                    // PERBAIKAN: Ubah dari capaian_kompetensi_mulok menjadi capaian_mulok
+                    $data["capaian_mulok$mulokCount"] = $avgNilai ? 
                         \App\Http\Controllers\CapaianKompetensiController::generateCapaianForRapor(
                             $this->siswa->id,
                             $mataPelajaranId,
                             $tahunAjaranId
-                        ) : '-'; // BARU
+                        ) : '-';
                 }
                 
                 // KKM untuk muatan lokal
@@ -570,7 +574,7 @@ class RaporTemplateProcessor
         for ($i = $mulokCount; $i <= 5; $i++) {
             $data["nama_mulok$i"] = '-';
             $data["nilai_mulok$i"] = '-';
-            $data["capaian_kompetensi_mulok$i"] = '-'; // BARU
+            $data["capaian_mulok$i"] = '-';
             $data["kkm_mulok$i"] = '70';
         }
 
@@ -617,9 +621,19 @@ class RaporTemplateProcessor
             $data['kepala_sekolah'] = $this->schoolProfile->kepala_sekolah ?: '-';
             $data['wali_kelas'] = $this->siswa->kelas->waliKelasName ?: '-';
             $data['nip_kepala_sekolah'] = $this->schoolProfile->nip_kepala_sekolah ?? '-';
-            $data['nip_wali_kelas'] = '-';
+            
+            // PERBAIKAN: Ambil NUPTK wali kelas dari database
+            $waliKelas = $this->siswa->kelas->getWaliKelas();
+            $data['nip_wali_kelas'] = $waliKelas ? $waliKelas->nuptk : '-';
+            $data['nuptk_wali_kelas'] = $waliKelas ? $waliKelas->nuptk : '-'; // Alias untuk NUPTK
+            
+            // TAMBAHAN: Tanggal otomatis
             $data['tanggal_terbit'] = date('d-m-Y');
-            $data['tempat_terbit'] = $this->schoolProfile->tempat_terbit ?: '-';
+            $data['tanggal_lengkap'] = $this->getFormattedDate(); // Format: "15 Januari 2025"
+            $data['tanggal_rapor'] = $this->getFormattedDate(); // Alias untuk tanggal
+            
+            $data['tempat_terbit'] = $this->schoolProfile->tempat_terbit ?: 'Bandung';
+            $data['tempat_tanggal'] = ($this->schoolProfile->tempat_terbit ?: 'Bandung') . ', ' . $this->getFormattedDate();
             
             // Data profil sekolah untuk template UAS
             $data['nama_sekolah'] = $this->schoolProfile->nama_sekolah ?: '-';
@@ -636,8 +650,15 @@ class RaporTemplateProcessor
             $data['nomor_telepon'] = '-';
             $data['kepala_sekolah'] = '-';
             $data['wali_kelas'] = '-';
+            $data['nip_wali_kelas'] = '-';
+            $data['nuptk_wali_kelas'] = '-';
+            
+            // Default tanggal
             $data['tanggal_terbit'] = date('d-m-Y');
-            $data['tempat_terbit'] = '-';
+            $data['tanggal_lengkap'] = $this->getFormattedDate();
+            $data['tanggal_rapor'] = $this->getFormattedDate();
+            $data['tempat_terbit'] = 'Bandung';
+            $data['tempat_tanggal'] = 'Bandung, ' . $this->getFormattedDate();
             
             // Default untuk data profil sekolah jika tidak ada
             $data['nama_sekolah'] = '-';
@@ -651,6 +672,7 @@ class RaporTemplateProcessor
             $data['email_sekolah'] = '-';
             $data['npsn'] = '-';
         }
+
 
         // Log data akhir yang akan diisi ke template
         Log::info('Data placeholder yang telah disiapkan:', [
@@ -701,6 +723,8 @@ class RaporTemplateProcessor
         
         return $kkmData;
     }
+
+    
     /**
      * Cari mata pelajaran yang cocok berdasarkan nama
      * 
@@ -764,6 +788,22 @@ class RaporTemplateProcessor
         Log::info('Tidak ada kecocokan untuk mata pelajaran', ['mapel' => $mapelName]);
         return null;
     }
+
+    protected function getFormattedDate()
+    {
+        $bulan = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        
+        $tanggal = date('j');
+        $bulanNama = $bulan[date('n')];
+        $tahun = date('Y');
+        
+        return "{$tanggal} {$bulanNama} {$tahun}";
+    }
+    
     /**
      * Tentukan fase berdasarkan kelas
      * 

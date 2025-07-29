@@ -46,8 +46,17 @@ class ReportPlaceholdersSeeder extends Seeder
             ['placeholder_key' => 'wali_kelas', 'description' => 'Nama wali kelas', 'category' => 'sekolah', 'is_required' => false],
             ['placeholder_key' => 'nip_kepala_sekolah', 'description' => 'NIP kepala sekolah', 'category' => 'sekolah', 'is_required' => false],
             ['placeholder_key' => 'nip_wali_kelas', 'description' => 'NIP wali kelas', 'category' => 'sekolah', 'is_required' => false],
-            ['placeholder_key' => 'tanggal_terbit', 'description' => 'Tanggal terbit rapor', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'nuptk_wali_kelas', 'description' => 'NUPTK wali kelas', 'category' => 'sekolah', 'is_required' => false],
+
+            // TAMBAHAN BARU: Placeholder Tanggal
+            ['placeholder_key' => 'tanggal_terbit', 'description' => 'Tanggal terbit rapor (format: dd-mm-yyyy)', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'tanggal_lengkap', 'description' => 'Tanggal lengkap (format: 15 Januari 2025)', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'tanggal_rapor', 'description' => 'Tanggal rapor (alias untuk tanggal_lengkap)', 'category' => 'sekolah', 'is_required' => false],
             ['placeholder_key' => 'tempat_terbit', 'description' => 'Tempat terbit rapor', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'tempat_tanggal', 'description' => 'Tempat dan tanggal (format: Bandung, 15 Januari 2025)', 'category' => 'sekolah', 'is_required' => false],
+
+            ['placeholder_key' => 'nama_sekolah', 'description' => 'Nama sekolah', 'category' => 'sekolah', 'is_required' => false],
+            ['placeholder_key' => 'alamat_sekolah', 'description' => 'Alamat sekolah', 'category' => 'sekolah', 'is_required' => false],
             
             // Data profil sekolah untuk template UAS
             ['placeholder_key' => 'nama_sekolah', 'description' => 'Nama sekolah', 'category' => 'sekolah', 'is_required' => false],
@@ -126,15 +135,14 @@ class ReportPlaceholdersSeeder extends Seeder
                 'is_required' => false
             ];
             
-            // UBAH: Ganti dari capaian_mulok menjadi capaian_kompetensi_mulok
+            // PERBAIKAN: Ubah dari capaian_kompetensi_mulok menjadi capaian_mulok untuk konsistensi dengan template DOCX
             $mulokPlaceholders[] = [
-                'placeholder_key' => "capaian_kompetensi_mulok{$i}",
+                'placeholder_key' => "capaian_mulok{$i}",
                 'description' => "Capaian kompetensi muatan lokal {$i} (otomatis berdasarkan nilai + kustomisasi)",
                 'category' => 'mulok',
                 'is_required' => false
             ];
             
-            // HAPUS: catatan_mulok
             // KKM tetap ada
             $mulokPlaceholders[] = [
                 'placeholder_key' => "kkm_mulok{$i}",
