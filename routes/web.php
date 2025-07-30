@@ -408,7 +408,9 @@ Route::middleware(['auth:web', 'role:admin', 'check.basic.setup'])->prefix('admi
             ->name('current');
         Route::post('/upload', [ReportController::class, 'upload'])
             ->name('upload');
-        // Route yang sudah ada - kita akan memodifikasi controller method-nya
+        
+        Route::get('/{template}/download', [ReportController::class, 'downloadTemplate'])
+        ->name('download');
         Route::get('/{template}/preview', [ReportController::class, 'preview'])
             ->name('preview');
         // Tambahkan route baru untuk preview dengan docx.js

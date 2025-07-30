@@ -131,7 +131,7 @@
                 </a>
             </li>
 
-            <li>
+            <!-- <li>
                 <a href="{{ route('wali_kelas.rapor.print_index') }}" 
                 data-turbo-action="replace"
                 data-path="cetak-rapor"
@@ -144,7 +144,7 @@
                     </div>
                     <span class="ml-3">Cetak Rapor HTML</span>
                 </a>
-            </li>
+            </li> -->
         </ul>
     </div>
 </aside>

@@ -166,9 +166,16 @@
                         </td>
                         <td class="px-6 py-4 text-center whitespace-nowrap">
                             <!-- Preview Button -->
-                            <a href="#" onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}'); return false;" class="inline-block align-middle mr-2" title="Ubah Data">
+                            <!-- <a href="#" onclick="previewDocument('{{ route('report.template.preview', $template->id) }}', '{{ $template->filename }}'); return false;" class="inline-block align-middle mr-2" title="Ubah Data">
                                 <img src="{{ asset('images/icons/detail.png') }}" alt="Detail" class="w-5 h-5">
-                            </a>
+                            </a> -->
+
+                            <a href="{{ route('report.template.download', $template->id) }}" 
+                                class="inline-block align-middle mr-2" 
+                                title="Download Template DOCX"
+                                download>
+                                    <img src="{{ asset('images/icons/detail.png') }}" alt="Download" class="w-5 h-5">
+                            </a>                            
                             
                             <!-- Aktivasi Checkbox dengan margin kanan kecil -->
                             <form action="{{ route('report.template.activate', $template->id) }}" 

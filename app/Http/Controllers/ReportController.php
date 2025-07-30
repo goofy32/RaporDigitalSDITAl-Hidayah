@@ -760,6 +760,7 @@ class ReportController extends Controller
         exit; // **CRITICAL: Exit untuk mencegah output tambahan**
     }
 
+    
     /**
      * Alternative method menggunakan StreamedResponse
      * Untuk kasus yang sangat sulit
@@ -927,6 +928,63 @@ class ReportController extends Controller
         }
     }
     
+    /**
+     * Download template DOCX file directly in admin Report page
+     * 
+     * @param ReportTemplate $template
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadTemplate(ReportTemplate $template)
+    {
+        try {
+            $filePath = storage_path('app/public/' . $template->path);
+            
+            if (!file_exists($filePath)) {
+                return redirect()->back()->with('error', 'File template tidak ditemukan');
+            }
+            
+            // **CRITICAL: Clean all output buffers**
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            // Generate clean filename
+            $cleanFilename = preg_replace('/^\d+_/', '', $template->filename);
+            $downloadFilename = 'Template_' . $template->type . '_' . $cleanFilename;
+            
+            // **CRITICAL: Set proper headers for DOCX**
+            $headers = [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Disposition' => 'attachment; filename="' . $downloadFilename . '"',
+                'Content-Length' => filesize($filePath),
+                'Content-Transfer-Encoding' => 'binary',
+                'Cache-Control' => 'private, no-transform, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+                'Accept-Ranges' => 'bytes',
+            ];
+            
+            // Log for debugging
+            Log::info('Downloading template file', [
+                'template_id' => $template->id,
+                'file_path' => $filePath,
+                'file_size' => filesize($filePath),
+                'download_name' => $downloadFilename
+            ]);
+            
+            // Use Laravel's download response
+            return response()->download($filePath, $downloadFilename, $headers);
+            
+        } catch (\Exception $e) {
+            Log::error('Error downloading template: ' . $e->getMessage(), [
+                'template_id' => $template->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()->with('error', 'Gagal mendownload template: ' . $e->getMessage());
+        }
+    }
+
     public function previewRapor($siswa_id) {
         try {
             // Ambil tipe rapor dari query param
@@ -1234,32 +1292,48 @@ class ReportController extends Controller
             $filePath = storage_path('app/public/' . $template->path);
             
             if (!file_exists($filePath)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File template tidak ditemukan'
-                ], 404);
+                return redirect()->back()->with('error', 'File template tidak ditemukan');
             }
-    
-            // Create a temporary public URL that Office Viewer can access
-            $tempPublicPath = 'temp_previews/' . $template->id . '_' . time() . '_' . basename($template->path);
-            Storage::disk('public')->put($tempPublicPath, file_get_contents($filePath));
             
-            // Return the temporary public URL for the docx file
-            $publicUrl = Storage::disk('public')->url($tempPublicPath);
+            // **CRITICAL: Clean all output buffers**
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
             
-            return response()->file(storage_path('app/public/' . $tempPublicPath), [
+            // Generate clean filename
+            $cleanFilename = preg_replace('/^\d+_/', '', $template->filename);
+            $downloadFilename = 'Template_' . $template->type . '_' . $cleanFilename;
+            
+            // **CRITICAL: Set proper headers for DOCX**
+            $headers = [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'Content-Disposition' => 'inline; filename="' . $template->filename . '"'
+                'Content-Disposition' => 'attachment; filename="' . $downloadFilename . '"',
+                'Content-Length' => filesize($filePath),
+                'Content-Transfer-Encoding' => 'binary',
+                'Cache-Control' => 'private, no-transform, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+                'Accept-Ranges' => 'bytes',
+            ];
+            
+            // Log for debugging
+            Log::info('Downloading template file', [
+                'template_id' => $template->id,
+                'file_path' => $filePath,
+                'file_size' => filesize($filePath),
+                'download_name' => $downloadFilename
             ]);
             
-            // Optional: Schedule cleanup of temp file
-            // You might want to add a job to clean up these temporary files
-    
+            // Use Laravel's download response
+            return response()->download($filePath, $downloadFilename, $headers);
+            
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal membuat preview: ' . $e->getMessage()
-            ], 500);
+            Log::error('Error downloading template: ' . $e->getMessage(), [
+                'template_id' => $template->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()->with('error', 'Gagal mendownload template: ' . $e->getMessage());
         }
     }
 
