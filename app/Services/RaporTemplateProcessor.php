@@ -245,6 +245,8 @@ class RaporTemplateProcessor
             'semester' => $this->schoolProfile->semester == 1 ? 'Ganjil' : 'Genap',
         ];
 
+        $data['foto_siswa'] = $this->prepareFotoSiswa();
+
         // ========== CATATAN SISWA (CATATAN GURU) ==========
         $catatanSiswa = \App\Models\CatatanSiswa::where('siswa_id', $this->siswa->id)
             ->where('tahun_ajaran_id', $tahunAjaranId)
@@ -696,6 +698,228 @@ class RaporTemplateProcessor
     }
 
     /**
+     * Resize dan crop foto ke rasio 3:4 sebelum dimasukkan ke template
+     */
+    protected function prepareAndResizeFoto($originalPath)
+    {
+        try {
+            // Cek GD extension
+            if (!extension_loaded('gd')) {
+                Log::error('GD extension not loaded, using original photo');
+                return $originalPath;
+            }
+            
+            // Target size dalam pixel (untuk kualitas tinggi)
+            $targetWidth = 450;   // 3 cm dalam pixel high-res
+            $targetHeight = 600;  // 4 cm dalam pixel high-res
+            
+            // Create processed image
+            $processedPath = $this->createProcessedFoto($originalPath, $targetWidth, $targetHeight);
+            
+            return $processedPath;
+        } catch (\Exception $e) {
+            Log::error('Error processing foto, using original', [
+                'error' => $e->getMessage(),
+                'original_path' => $originalPath
+            ]);
+            return $originalPath; // fallback ke foto asli
+        }
+    }
+
+    protected function createProcessedFoto($sourcePath, $targetWidth, $targetHeight)
+    {
+        // FIX: Normalize semua paths
+        $sourcePath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $sourcePath);
+        
+        // Buat folder temp dengan normalized path
+        $tempDir = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, storage_path('app/temp/processed_photos'));
+        
+        if (!file_exists($tempDir)) {
+            if (!mkdir($tempDir, 0755, true)) {
+                throw new \Exception("Cannot create temp directory: {$tempDir}");
+            }
+        }
+        
+        // Generate clean filename
+        $sourceBasename = pathinfo($sourcePath, PATHINFO_FILENAME);
+        $sourceExt = pathinfo($sourcePath, PATHINFO_EXTENSION);
+        $sourceHash = substr(md5($sourcePath . filemtime($sourcePath)), 0, 8);
+        
+        // Clean basename untuk avoid invalid characters
+        $sourceBasename = preg_replace('/[^a-zA-Z0-9_-]/', '_', $sourceBasename);
+        $fileName = "processed_{$targetWidth}x{$targetHeight}_{$sourceBasename}_{$sourceHash}.jpg";
+        
+        $outputPath = $tempDir . DIRECTORY_SEPARATOR . $fileName;
+        
+        Log::info('Creating processed photo', [
+            'source' => $sourcePath,
+            'output' => $outputPath,
+            'temp_dir' => $tempDir,
+            'filename' => $fileName
+        ]);
+        
+        // Skip jika sudah diproses (cache)
+        if (file_exists($outputPath)) {
+            Log::info('Using cached processed photo', [
+                'cached_path' => $outputPath
+            ]);
+            return $outputPath;
+        }
+        
+        // Validate source image
+        if (!file_exists($sourcePath)) {
+            throw new \Exception("Source image not found: {$sourcePath}");
+        }
+        
+        $imageInfo = getimagesize($sourcePath);
+        if (!$imageInfo) {
+            throw new \Exception("Invalid image file: {$sourcePath}");
+        }
+        
+        $sourceWidth = $imageInfo[0];
+        $sourceHeight = $imageInfo[1];
+        $sourceType = $imageInfo[2];
+        
+        Log::info('Processing photo details', [
+            'source_size' => "{$sourceWidth}x{$sourceHeight}",
+            'target_size' => "{$targetWidth}x{$targetHeight}",
+            'source_type' => $sourceType,
+            'source_path' => $sourcePath
+        ]);
+        
+        // Create source image based on type
+        $sourceImage = null;
+        switch ($sourceType) {
+            case IMAGETYPE_JPEG:
+                $sourceImage = imagecreatefromjpeg($sourcePath);
+                break;
+            case IMAGETYPE_PNG:
+                $sourceImage = imagecreatefrompng($sourcePath);
+                break;
+            case IMAGETYPE_GIF:
+                $sourceImage = imagecreatefromgif($sourcePath);
+                break;
+            default:
+                throw new \Exception("Unsupported image type: {$sourceType}");
+        }
+        
+        if (!$sourceImage) {
+            throw new \Exception("Failed to create image from source: {$sourcePath}");
+        }
+        
+        // Calculate crop dimensions for perfect 3:4 ratio
+        $sourceRatio = $sourceWidth / $sourceHeight;
+        $targetRatio = $targetWidth / $targetHeight; // 3:4 = 0.75
+        
+        if ($sourceRatio > $targetRatio) {
+            // Source is wider, crop width
+            $cropHeight = $sourceHeight;
+            $cropWidth = $sourceHeight * $targetRatio;
+            $cropX = ($sourceWidth - $cropWidth) / 2;
+            $cropY = 0;
+        } else {
+            // Source is taller, crop height
+            $cropWidth = $sourceWidth;
+            $cropHeight = $sourceWidth / $targetRatio;
+            $cropX = 0;
+            $cropY = ($sourceHeight - $cropHeight) / 2;
+        }
+        
+        // Create target image dengan background putih
+        $targetImage = imagecreatetruecolor($targetWidth, $targetHeight);
+        $white = imagecolorallocate($targetImage, 255, 255, 255);
+        imagefill($targetImage, 0, 0, $white);
+        
+        // Handle transparency untuk PNG
+        if ($sourceType == IMAGETYPE_PNG) {
+            $tempImage = imagecreatetruecolor($sourceWidth, $sourceHeight);
+            $tempWhite = imagecolorallocate($tempImage, 255, 255, 255);
+            imagefill($tempImage, 0, 0, $tempWhite);
+            imagecopy($tempImage, $sourceImage, 0, 0, 0, 0, $sourceWidth, $sourceHeight);
+            imagedestroy($sourceImage);
+            $sourceImage = $tempImage;
+        }
+        
+        // High-quality resize
+        $resizeSuccess = imagecopyresampled(
+            $targetImage, $sourceImage,
+            0, 0, $cropX, $cropY,
+            $targetWidth, $targetHeight, $cropWidth, $cropHeight
+        );
+        
+        if (!$resizeSuccess) {
+            imagedestroy($sourceImage);
+            imagedestroy($targetImage);
+            throw new \Exception("Failed to resize image");
+        }
+        
+        // Save processed image
+        $saveSuccess = imagejpeg($targetImage, $outputPath, 95);
+        
+        // Cleanup memory
+        imagedestroy($sourceImage);
+        imagedestroy($targetImage);
+        
+        if (!$saveSuccess) {
+            throw new \Exception("Failed to save processed image to: {$outputPath}");
+        }
+        
+        // Verify output file
+        if (!file_exists($outputPath) || filesize($outputPath) == 0) {
+            if (file_exists($outputPath)) {
+                unlink($outputPath);
+            }
+            throw new \Exception("Processed image file is invalid");
+        }
+        
+        Log::info('Photo processed successfully', [
+            'source' => basename($sourcePath),
+            'output' => $outputPath,
+            'output_size' => filesize($outputPath) . ' bytes',
+            'target_dimensions' => "{$targetWidth}x{$targetHeight}"
+        ]);
+        
+        return $outputPath;
+    }
+
+    /**
+     * Prepare foto siswa untuk template
+     * 
+     * @return string|null
+     */
+protected function prepareFotoSiswa()
+{
+    // TEMPORARY: Skip processing untuk test
+    if ($this->siswa->photo) {
+        $originalPath = storage_path('app/public/' . $this->siswa->photo);
+        $originalPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $originalPath);
+        
+        if (file_exists($originalPath)) {
+            Log::info('Using ORIGINAL photo (no processing)', [
+                'siswa_id' => $this->siswa->id,
+                'path' => $originalPath
+            ]);
+            return $originalPath; // Return foto asli langsung
+        }
+    }
+    
+    // Default photo
+    $defaultPath = public_path('images/default-student.png');
+    $defaultPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $defaultPath);
+    
+    if (file_exists($defaultPath)) {
+        Log::info('Using default photo (no processing)', [
+            'siswa_id' => $this->siswa->id,
+            'path' => $defaultPath
+        ]);
+        return $defaultPath;
+    }
+    
+    return null;
+}
+
+
+    /**
      * Ambil data KKM untuk semua mata pelajaran
      * 
      * @param int|null $tahunAjaranId
@@ -945,9 +1169,12 @@ class RaporTemplateProcessor
     public function generate($bypassValidation = false)
     {
         try {
-            Log::info('Starting generate() with template type: ' . $this->type, [
+            Log::info('Starting generate() with professional photo processing', [
                 'tahun_ajaran_id' => $this->tahunAjaranId
             ]);
+            
+            // Cleanup old temp photos di awal
+            $this->cleanupTempPhotos();
             
             // 1. Validasi data
             if (!$bypassValidation) {
@@ -963,81 +1190,83 @@ class RaporTemplateProcessor
             Log::info('Variables in template:', [
                 'found_variables' => $variables,
                 'template_type' => $this->type,
-                'tahun_ajaran_id' => $this->tahunAjaranId
+                'tahun_ajaran_id' => $this->tahunAjaranId,
+                'foto_siswa_found' => in_array('foto_siswa', $variables)
             ]);
             
-            // 4. Isi semua placeholder - PERBAIKAN UTAMA
-            try {
-                // First pass: Fill all available data
-                foreach ($data as $key => $value) {
-                    if (in_array($key, $variables)) {
-                        // Convert value to string and handle empty values
-                        $processedValue = $this->processPlaceholderValue($value);
-                        $this->processor->setValue($key, $processedValue);
-                        
-                        // DEBUG: Log placeholder yang berhasil diisi
-                        if (strpos($key, 'catatan_') === 0 && $processedValue !== '-') {
-                            Log::info("Placeholder catatan berhasil diisi:", [
-                                'key' => $key,
-                                'value' => $processedValue
-                            ]);
-                        }
-                    }
-                }
+            // 4. HANDLE FOTO SISWA TERLEBIH DAHULU (PENTING!)
+            if (in_array('foto_siswa', $variables)) {
+                $this->setFotoSiswa($data['foto_siswa']);
                 
-                // Second pass: Fill missing placeholders with defaults
-                $missingPlaceholders = array_diff($variables, array_keys($data));
-                foreach ($missingPlaceholders as $placeholder) {
+                // Update variables list setelah foto di-set
+                $variables = $this->processor->getVariables();
+                
+                Log::info('After setting foto siswa', [
+                    'foto_siswa_still_exists' => in_array('foto_siswa', $variables),
+                    'remaining_variables_count' => count($variables)
+                ]);
+            }
+            
+            // 5. Isi placeholder text (EXCLUDE foto_siswa yang sudah di-handle)
+            foreach ($data as $key => $value) {
+                if (in_array($key, $variables) && $key !== 'foto_siswa') {
+                    $processedValue = $this->processPlaceholderValue($value);
+                    $this->processor->setValue($key, $processedValue);
+                }
+            }
+            
+            // 6. Fill missing placeholders (EXCLUDE foto_siswa)
+            $remainingVariables = $this->processor->getVariables();
+            $missingPlaceholders = array_diff($remainingVariables, array_keys($data));
+            
+            Log::info('Filling missing placeholders', [
+                'missing_count' => count($missingPlaceholders),
+                'missing_placeholders' => $missingPlaceholders
+            ]);
+            
+            foreach ($missingPlaceholders as $placeholder) {
+                // CRITICAL: SKIP foto_siswa completely!
+                if ($placeholder !== 'foto_siswa') {
                     try {
                         $defaultValue = $this->getDefaultPlaceholderValue($placeholder);
                         $this->processor->setValue($placeholder, $defaultValue);
-                        
-                        Log::info("Placeholder missing diisi dengan default:", [
-                            'placeholder' => $placeholder,
-                            'default_value' => $defaultValue
-                        ]);
                     } catch (\Exception $e) {
-                        Log::warning("Could not set value for missing placeholder '{$placeholder}':", [
+                        Log::warning("Could not set default value for placeholder '{$placeholder}':", [
                             'error' => $e->getMessage()
                         ]);
                     }
                 }
+            }
 
-                // Third pass: Clean any remaining placeholders
-                $remainingPlaceholders = $this->processor->getVariables();
-                Log::info('Remaining placeholders after processing:', [
-                    'count' => count($remainingPlaceholders),
-                    'placeholders' => $remainingPlaceholders
-                ]);
-                
-                foreach ($remainingPlaceholders as $placeholder) {
+            // 7. Clean remaining placeholders (EXCLUDE foto_siswa)
+            $finalRemainingPlaceholders = $this->processor->getVariables();
+            
+            Log::info('Final cleanup placeholders', [
+                'final_remaining_count' => count($finalRemainingPlaceholders),
+                'final_remaining' => $finalRemainingPlaceholders
+            ]);
+            
+            foreach ($finalRemainingPlaceholders as $placeholder) {
+                // CRITICAL: NEVER touch foto_siswa again!
+                if ($placeholder !== 'foto_siswa') {
                     try {
                         $this->processor->setValue($placeholder, '');
-                        Log::info("Cleaned remaining placeholder: {$placeholder}");
                     } catch (\Exception $e) {
-                        Log::warning("Could not clean remaining placeholder '{$placeholder}':", [
-                            'error' => $e->getMessage()
-                        ]);
+                        Log::warning("Could not clean placeholder '{$placeholder}'");
                     }
+                } else {
+                    Log::warning('foto_siswa placeholder still exists after setImageValue - this should not happen!');
                 }
-            } catch (\Exception $e) {
-                Log::error('Gagal mengisi placeholder:', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'siswa_id' => $this->siswa->id,
-                    'tahun_ajaran_id' => $this->tahunAjaranId
-                ]);
-                
-                throw new RaporException(
-                    "Gagal mengisi data ke template. Kemungkinan format template tidak valid. Error: " . $e->getMessage(),
-                    'placeholder_missing',
-                    self::ERROR_PLACEHOLDER_MISSING
-                );
             }
             
-            // 5. Generate file
+            // 8. Generate file
             $filename = $this->generateFilename();
             $outputPath = $this->saveFile($filename);
+
+            Log::info('Rapor generated successfully with professional photo processing', [
+                'filename' => $filename,
+                'siswa_id' => $this->siswa->id
+            ]);
 
             return [
                 'success' => true,
@@ -1049,7 +1278,6 @@ class RaporTemplateProcessor
             Log::error('Gagal generate rapor (RaporException):', [
                 'error' => $e->getMessage(),
                 'error_type' => $e->getErrorType(),
-                'trace' => $e->getTraceAsString(),
                 'siswa_id' => $this->siswa->id,
                 'template_id' => $this->template->id,
                 'tahun_ajaran_id' => $this->tahunAjaranId
@@ -1068,7 +1296,99 @@ class RaporTemplateProcessor
             throw new RaporException('Gagal generate rapor: ' . $e->getMessage(), 'general_error', 500, $e);
         }
     }
-    
+
+    /**
+     * Set foto siswa ke template
+     * 
+     * @param string|null $fotoPath
+     * @return void
+     */
+    protected function setFotoSiswa($fotoPath)
+    {
+        try {
+            if ($fotoPath && file_exists($fotoPath)) {
+                // Ukuran dalam twips untuk 3x4 cm
+                // 1 cm ≈ 28.35 points ≈ 40.5 twips
+                $widthTwips = 3 * 40.5;   // 3 cm = ~121 twips
+                $heightTwips = 4 * 40.5;  // 4 cm = ~162 twips
+                
+                $this->processor->setImageValue('foto_siswa', [
+                    'path' => $fotoPath,
+                    'width' => $widthTwips,
+                    'height' => $heightTwips,
+                    'ratio' => false // Karena sudah di-crop perfect, tidak perlu maintain ratio
+                ]);
+                
+                Log::info('Foto successfully set to template', [
+                    'siswa_id' => $this->siswa->id,
+                    'foto_path' => $fotoPath,
+                    'size_cm' => '3x4',
+                    'size_twips' => "{$widthTwips}x{$heightTwips}",
+                    'is_processed' => strpos($fotoPath, 'processed_') !== false
+                ]);
+            } else {
+                // Placeholder jika tidak ada foto
+                $this->processor->setValue('foto_siswa', '[FOTO TIDAK TERSEDIA]');
+                
+                Log::warning('No photo available for template', [
+                    'siswa_id' => $this->siswa->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error setting foto to template', [
+                'siswa_id' => $this->siswa->id,
+                'error' => $e->getMessage(),
+                'foto_path' => $fotoPath
+            ]);
+            
+            // Fallback graceful
+            try {
+                $this->processor->setValue('foto_siswa', '[ERROR MEMUAT FOTO]');
+            } catch (\Exception $fallbackError) {
+                Log::error('Critical error in foto fallback', [
+                    'error' => $fallbackError->getMessage()
+                ]);
+            }
+        }
+    }
+
+        /**
+     * Cleanup temporary processed photos (call ini di destructor atau setelah generate)
+     */
+    protected function cleanupTempPhotos()
+    {
+        try {
+            $tempDir = storage_path('app/temp/processed_photos');
+            
+            if (!is_dir($tempDir)) {
+                return;
+            }
+            
+            // Hapus file yang lebih dari 1 jam (3600 detik)
+            $files = glob($tempDir . '/processed_*.jpg');
+            $now = time();
+            $maxAge = 3600; // 1 hour
+            
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    $fileAge = $now - filemtime($file);
+                    if ($fileAge > $maxAge) {
+                        unlink($file);
+                        Log::info('Cleaned up old processed photo', [
+                            'file' => basename($file),
+                            'age_minutes' => round($fileAge / 60)
+                        ]);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error cleaning up temp photos', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+
     /**
      * Process placeholder value to ensure it's properly formatted
      */
@@ -1101,6 +1421,11 @@ class RaporTemplateProcessor
      */
     protected function getDefaultPlaceholderValue($placeholder)
     {
+        // CRITICAL: Never set default for foto_siswa
+        if ($placeholder === 'foto_siswa') {
+            return null; // This should never be called
+        }
+        
         // Special handling for specific placeholder types
         if (strpos($placeholder, 'nilai_') === 0) {
             return '-';

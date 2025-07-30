@@ -38,7 +38,8 @@ class ReportPlaceholdersSeeder extends Seeder
             ['placeholder_key' => 'alamat_wali', 'description' => 'Alamat wali siswa', 'category' => 'siswa', 'is_required' => false],
             ['placeholder_key' => 'fase', 'description' => 'Fase pembelajaran siswa', 'category' => 'siswa', 'is_required' => false],
             ['placeholder_key' => 'semester', 'description' => 'Semester (Ganjil/Genap)', 'category' => 'siswa', 'is_required' => false],
-            
+            ['placeholder_key' => 'foto_siswa', 'description' => 'Foto siswa', 'category' => 'siswa', 'is_required' => false],
+
             // Data Sekolah
             ['placeholder_key' => 'tahun_ajaran', 'description' => 'Tahun ajaran', 'category' => 'sekolah', 'is_required' => true],
             ['placeholder_key' => 'nomor_telepon', 'description' => 'Nomor telepon sekolah', 'category' => 'sekolah', 'is_required' => false],
