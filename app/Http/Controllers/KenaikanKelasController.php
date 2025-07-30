@@ -235,9 +235,10 @@ class KenaikanKelasController extends Controller
         
         DB::beginTransaction();
         try {
-            // Ambil semua kelas dari tahun ajaran aktif (diurutkan dari tinggi ke rendah untuk menghindari konflik)
+            // Ambil semua kelas dari tahun ajaran aktif yang bukan kelas 6
             $kelasAktif = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
-                        ->orderBy('nomor_kelas', 'desc')
+                        ->where('nomor_kelas', '<', 6) // Exclude kelas 6
+                        ->orderBy('nomor_kelas')
                         ->get();
             
             // Siapkan penghitung untuk statistik
@@ -250,75 +251,110 @@ class KenaikanKelasController extends Controller
             $graduatedDetails = [];
             $notProcessedDetails = [];
             
-            foreach ($kelasAktif as $kelas) {
-                // Ambil siswa-siswa dari kelas saat ini
+            // Group kelas berdasarkan tingkat (nomor_kelas)
+            $kelasByTingkat = $kelasAktif->groupBy('nomor_kelas');
+            
+            // Proses setiap tingkat
+            foreach ($kelasByTingkat as $nomorKelas => $kelasGroup) {
+                // Kumpulkan semua siswa dari semua kelas di tingkat ini
+                $allSiswaInTingkat = collect();
+                
+                foreach ($kelasGroup as $kelas) {
+                    $siswaList = Siswa::where('kelas_id', $kelas->id)
+                                ->where('status', 'aktif')
+                                ->get();
+                    $allSiswaInTingkat = $allSiswaInTingkat->merge($siswaList);
+                }
+                
+                if ($allSiswaInTingkat->isEmpty()) {
+                    continue;
+                }
+                
+                // Cari semua kelas tujuan di tingkat berikutnya
+                $kelasTujuanList = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
+                            ->where('nomor_kelas', $nomorKelas + 1)
+                            ->orderBy('nama_kelas')
+                            ->get();
+                
+                if ($kelasTujuanList->isEmpty()) {
+                    // Tidak ada kelas tujuan
+                    $notProcessed += $allSiswaInTingkat->count();
+                    
+                    foreach ($allSiswaInTingkat as $siswa) {
+                        $notProcessedDetails[] = [
+                            'id' => $siswa->id,
+                            'nama' => $siswa->nama,
+                            'kelas_asal' => "Kelas {$nomorKelas} {$siswa->kelas->nama_kelas}",
+                            'alasan' => "Tidak ada kelas tujuan untuk tingkat " . ($nomorKelas + 1)
+                        ];
+                    }
+                    continue;
+                }
+                
+                // Randomkan urutan siswa
+                $shuffledSiswa = $allSiswaInTingkat->shuffle();
+                
+                // Distribusikan siswa secara merata ke kelas-kelas tujuan
+                $jumlahKelasTujuan = $kelasTujuanList->count();
+                $siswaPerKelas = [];
+                
+                // Inisialisasi array untuk setiap kelas tujuan
+                foreach ($kelasTujuanList as $index => $kelasTujuan) {
+                    $siswaPerKelas[$index] = [];
+                }
+                
+                // Distribusikan siswa secara round-robin
+                foreach ($shuffledSiswa as $index => $siswa) {
+                    $kelasIndex = $index % $jumlahKelasTujuan;
+                    $siswaPerKelas[$kelasIndex][] = $siswa;
+                }
+                
+                // Pindahkan siswa ke kelas tujuan masing-masing
+                foreach ($siswaPerKelas as $kelasIndex => $siswaArray) {
+                    $kelasTujuan = $kelasTujuanList[$kelasIndex];
+                    
+                    foreach ($siswaArray as $siswa) {
+                        $kelasAsal = $siswa->kelas;
+                        
+                        $siswa->kelas_id = $kelasTujuan->id;
+                        $siswa->is_naik_kelas = true;
+                        $siswa->kelas_tujuan_id = null;
+                        $siswa->save();
+                        $promoted++;
+                        
+                        // Tambahkan detail
+                        $promotedDetails[] = [
+                            'id' => $siswa->id,
+                            'nama' => $siswa->nama,
+                            'kelas_asal' => "Kelas {$kelasAsal->nomor_kelas} {$kelasAsal->nama_kelas}",
+                            'kelas_tujuan' => "Kelas {$kelasTujuan->nomor_kelas} {$kelasTujuan->nama_kelas}"
+                        ];
+                    }
+                }
+            }
+            
+            // Proses khusus untuk kelas 6 (kelulusan)
+            $kelas6List = Kelas::where('tahun_ajaran_id', $tahunAjaranAktif->id)
+                        ->where('nomor_kelas', 6)
+                        ->get();
+            
+            foreach ($kelas6List as $kelas) {
                 $siswaList = Siswa::where('kelas_id', $kelas->id)
                             ->where('status', 'aktif')
                             ->get();
                 
-                // Jika ini kelas 6 (kelas akhir)
-                if ($kelas->nomor_kelas == 6) {
-                    // Tandai semua siswa kelas 6 sebagai lulus
-                    foreach ($siswaList as $siswa) {
-                        $siswa->status = 'lulus';
-                        $siswa->is_naik_kelas = true;
-                        $siswa->kelas_tujuan_id = null;
-                        $siswa->save();
-                        $graduated++;
-                        
-                        // Tambahkan detail
-                        $graduatedDetails[] = [
-                            'id' => $siswa->id,
-                            'nama' => $siswa->nama,
-                            'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}"
-                        ];
-                    }
-                    continue;
-                }
-                
-                // Untuk kelas 1-5, cari kelas tujuan di tahun ajaran baru
-                $kelasTujuan = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
-                            ->where('nomor_kelas', $kelas->nomor_kelas + 1)
-                            ->where('nama_kelas', $kelas->nama_kelas)
-                            ->first();
-                
-                // Jika tidak ada kelas dengan nama yang sama, cari kelas lain dengan tingkat yang sama
-                if (!$kelasTujuan) {
-                    $kelasTujuan = Kelas::where('tahun_ajaran_id', $tahunAjaranBaru->id)
-                                ->where('nomor_kelas', $kelas->nomor_kelas + 1)
-                                ->first();
-                }
-                
-                // Jika masih tidak menemukan kelas tujuan
-                if (!$kelasTujuan) {
-                    $notProcessed += $siswaList->count();
-                    
-                    // Tambahkan detail siswa yang tidak diproses
-                    foreach ($siswaList as $siswa) {
-                        $notProcessedDetails[] = [
-                            'id' => $siswa->id,
-                            'nama' => $siswa->nama,
-                            'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}",
-                            'alasan' => "Tidak ada kelas tujuan untuk tingkat berikutnya"
-                        ];
-                    }
-                    continue;
-                }
-                
-                // Pindahkan siswa ke kelas tujuan
                 foreach ($siswaList as $siswa) {
-                    $siswa->kelas_id = $kelasTujuan->id;
+                    $siswa->status = 'lulus';
                     $siswa->is_naik_kelas = true;
                     $siswa->kelas_tujuan_id = null;
                     $siswa->save();
-                    $promoted++;
+                    $graduated++;
                     
                     // Tambahkan detail
-                    $promotedDetails[] = [
+                    $graduatedDetails[] = [
                         'id' => $siswa->id,
                         'nama' => $siswa->nama,
-                        'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}",
-                        'kelas_tujuan' => "Kelas {$kelasTujuan->nomor_kelas} {$kelasTujuan->nama_kelas}"
+                        'kelas_asal' => "Kelas {$kelas->nomor_kelas} {$kelas->nama_kelas}"
                     ];
                 }
             }
@@ -350,7 +386,6 @@ class KenaikanKelasController extends Controller
             return redirect()->back()->with('error', 'Gagal memproses kenaikan kelas: ' . $e->getMessage());
         }
     }
-
 
     /**
      * Proses kelulusan untuk sekelompok siswa
