@@ -32,7 +32,6 @@
   - Melihat dan memverifikasi rapor siswa di kelas yang diampu.
 
 ### Fitur Tambahan
-- **Tampilan Responsif**: Optimasi untuk PC, tablet, dan mobile.
 - **Cetak Rapor**: Format Word yang dapat diunduh dan dicetak.
 - **Integrasi Komponen Modern**: Memanfaatkan TurboHotwire, Flowbite, dan Tailwind CSS.
 
