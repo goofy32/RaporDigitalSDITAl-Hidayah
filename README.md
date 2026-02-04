@@ -66,7 +66,7 @@ cd C:\laragon\www
 git clone https://github.com/username-anda/RaporDigitalSDITAl-Hidayah.git
 
 # Masuk ke folder proyek
-cd RaporDigitalSDITAl-Hidayah
+cd RaporDigitalSDITALHIDAYAH0
 ```
 
 ---
