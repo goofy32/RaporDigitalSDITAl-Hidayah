@@ -127,6 +127,34 @@
             </div>
         </div>
 
+        <!-- <div x-show="true" class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 class="font-bold text-yellow-800 mb-2">Load Testing Panel</h3>
+            <div class="flex flex-wrap gap-2">
+                <button @click="simulateSimultaneousDownloads({{ $siswa->first()->id ?? 1 }}, 5, true, 'Test User', 'docx')"
+                        class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
+                    Test 10x DOCX Bersamaan
+                </button>
+                
+                <button @click="simulateSequentialDownloads({{ $siswa->first()->id ?? 1 }}, 5, true, 'Test User', 'docx')"
+                        class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
+                    Test 10x DOCX (1s interval)
+                </button>
+                
+                <button @click="simulateSimultaneousDownloads({{ $siswa->first()->id ?? 1 }}, 5, true, 'Test User', 'pdf')"
+                        class="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">
+                    Test 10x PDF Bersamaan
+                </button>
+                
+                <button @click="simulateSequentialDownloads({{ $siswa->first()->id ?? 1 }}, 5, true, 'Test User', 'pdf')"
+                        class="px-3 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600">
+                    Test 10x PDF (1s interval)
+                </button>
+            </div>
+            <p class="text-xs text-yellow-700 mt-2">
+                ⚠️ Testing Panel - Akan mengirim 10 request sekaligus. Check console untuk detail logs.
+            </p>
+        </div> -->
+        
         <!-- Data Table -->
         <div class="overflow-x-auto shadow-md rounded-lg">
             <table class="w-full text-sm text-left text-gray-500">
@@ -565,101 +593,377 @@ document.addEventListener('alpine:init', function() {
             try {
                 this.loadingPdf = siswaId;
                 
-                const loadingAlert = Swal.fire({
-                    title: 'Memproses PDF',
-                    html: `
-                        <div class="flex flex-col items-center">
-                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mb-4"></div>
-                            <p>Sedang generate rapor PDF...</p>
-                            <p class="text-sm text-gray-500 mt-2">Proses ini membutuhkan waktu</p>
-                        </div>
-                    `,
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                console.log('🚀 Starting PDF download request', {
+                    siswaId,
+                    type: this.activeTab,
+                    tahunAjaranId: this.tahunAjaranId
                 });
                 
-                const type = this.activeTab;
-                const url = `/wali-kelas/rapor/download-pdf/${siswaId}?type=${type}&tahun_ajaran_id=${this.tahunAjaranId}`;
-                
-                const response = await fetch(url, {
-                    method: 'GET',
+                // Step 1: Request PDF generation
+                const response = await fetch(`/wali-kelas/rapor/request-pdf/${siswaId}`, {
+                    method: 'POST',
                     headers: {
-                        'Accept': 'application/pdf,application/json',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
+                    },
+                    body: JSON.stringify({
+                        type: this.activeTab,
+                        tahun_ajaran_id: this.tahunAjaranId
+                    })
                 });
-
-                loadingAlert.close();
-
+                
                 if (!response.ok) {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        const errorData = await response.json();
-                        let errorMessage = errorData.message || 'Gagal download PDF';
-                        
-                        if (errorMessage.includes('LibreOffice')) {
-                            errorMessage += `
-                                <div class="mt-4 text-left">
-                                    <p class="text-sm font-semibold">Solusi:</p>
-                                    <ol class="text-sm list-decimal pl-5 mt-2">
-                                        <li>Pastikan LibreOffice sudah terinstall</li>
-                                        <li>Test dengan route: /wali-kelas/rapor/test-libreoffice</li>
-                                        <li>Hubungi admin jika masalah berlanjut</li>
-                                    </ol>
-                                </div>
-                            `;
-                        }
-                        
-                        throw new Error(errorMessage);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📨 PDF request response:', data);
+                
+                if (data.success) {
+                    if (data.ready) {
+                        // PDF ready (from cache), download immediately
+                        console.log('⚡ PDF ready from cache');
+                        this.downloadPdfFile(data.download_url, data.filename, namaSiswa, data.cached);
                     } else {
-                        throw new Error(`Server error: ${response.status}`);
+                        // PDF being generated, show progress
+                        console.log('🔄 PDF generating, starting progress tracking');
+                        this.showPdfProgressEnhanced(data.request_id, namaSiswa, data.estimated_time);
                     }
+                } else {
+                    throw new Error(data.message || 'Gagal memproses PDF');
                 }
-
-                const blob = await response.blob();
-                
-                if (blob.type !== 'application/pdf' && !blob.type.includes('pdf')) {
-                    throw new Error('Response bukan file PDF');
-                }
-                
-                const url_download = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url_download;
-                
-                const cleanName = namaSiswa.replace(/[^\w\s]/gi, '').replace(/\s+/g, '_');
-                const fileName = `Rapor_${this.activeTab}_${cleanName}.pdf`;
-                a.download = fileName;
-                
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url_download);
-                document.body.removeChild(a);
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: 'Rapor PDF berhasil diunduh',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
                 
             } catch (error) {
-                console.error('Error downloading PDF:', error);
-                
+                console.error('❌ Error in handleDownloadPdf:', error);
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal Download PDF',
-                    html: error.message,
-                    confirmButtonText: 'Mengerti'
+                    title: 'Gagal Generate PDF',
+                    html: `
+                        <p>${error.message}</p>
+                        <div class="mt-4 text-xs text-gray-500">
+                            <p>Kemungkinan penyebab:</p>
+                            <ul class="text-left list-disc list-inside">
+                                <li>Koneksi internet tidak stabil</li>
+                                <li>Server sedang sibuk</li>
+                                <li>Queue worker tidak berjalan</li>
+                            </ul>
+                            <p class="mt-2">Coba lagi dalam beberapa saat.</p>
+                        </div>
+                    `
                 });
             } finally {
                 this.loadingPdf = null;
             }
         },
 
+        showPdfProgressEnhanced(requestId, namaSiswa, estimatedTime) {
+            let checkCount = 0;
+            const maxChecks = 30; // 1 minute max (30 * 2s)
+            let consecutiveErrors = 0;
+            const maxConsecutiveErrors = 3;
+            
+            console.log('📊 Starting progress tracking', {
+                requestId,
+                maxChecks,
+                estimatedTime
+            });
+            
+            const progressInterval = setInterval(async () => {
+                try {
+                    checkCount++;
+                    console.log(`📈 Progress check ${checkCount}/${maxChecks} for ${requestId}`);
+                    
+                    const response = await fetch(`/wali-kelas/rapor/pdf-progress/${requestId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('📊 Progress response:', data);
+                    
+                    // Reset consecutive errors on successful response
+                    consecutiveErrors = 0;
+                    
+                    if (data.success && data.progress) {
+                        const progressData = data.progress;
+                        
+                        if (progressData.completed) {
+                            console.log('✅ PDF generation completed');
+                            clearInterval(progressInterval);
+                            Swal.close();
+                            
+                            if (progressData.error) {
+                                console.log('❌ PDF generation failed');
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'PDF Generation Failed',
+                                    html: `
+                                        <p>${progressData.message}</p>
+                                        <p class="text-sm text-gray-600 mt-2">Request ID: ${requestId}</p>
+                                        <p class="text-xs text-gray-500 mt-2">Coba download lagi, mungkin sudah siap.</p>
+                                    `
+                                });
+                            } else {
+                                console.log('🎉 PDF ready for download');
+                                this.downloadPdfFile(
+                                    progressData.download_url, 
+                                    progressData.filename, 
+                                    namaSiswa,
+                                    progressData.cached || false
+                                );
+                            }
+                        } else {
+                            // Update progress
+                            const progress = Math.max(0, Math.min(100, progressData.percentage || 0));
+                            console.log(`📊 Progress update: ${progress}%`);
+                            
+                            Swal.update({
+                                html: `
+                                    <div class="text-center">
+                                        <div class="mb-4">${progressData.message || 'Processing...'}</div>
+                                        <div class="w-full bg-gray-200 rounded-full h-3">
+                                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" 
+                                                style="width: ${progress}%"></div>
+                                        </div>
+                                        <div class="mt-2 text-sm text-gray-600">${progress}%</div>
+                                        <div class="mt-2 text-xs text-gray-500">Est. ${estimatedTime}</div>
+                                        <div class="mt-3 text-xs text-gray-400">Check ${checkCount}/${maxChecks}</div>
+                                    </div>
+                                `
+                            });
+                        }
+                    } else {
+                        console.log('⚠️ Invalid progress response:', data);
+                        consecutiveErrors++;
+                        
+                        if (consecutiveErrors >= maxConsecutiveErrors) {
+                            throw new Error(data.message || 'Invalid progress response');
+                        }
+                    }
+                    
+                    // Timeout check
+                    if (checkCount >= maxChecks) {
+                        console.log('⏰ Progress tracking timeout');
+                        clearInterval(progressInterval);
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Progress Timeout',
+                            html: `
+                                <p>Proses terlalu lama atau tidak dapat dilacak.</p>
+                                <p class="text-sm text-gray-600 mt-2">PDF mungkin masih sedang diproses di background.</p>
+                                <p class="text-sm text-blue-600 mt-2">Coba download lagi dalam 1-2 menit.</p>
+                            `
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Progress check error:', error);
+                    consecutiveErrors++;
+                    
+                    if (consecutiveErrors >= maxConsecutiveErrors || checkCount >= maxChecks) {
+                        clearInterval(progressInterval);
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Connection Error',
+                            html: `
+                                <p>Tidak dapat memeriksa progress.</p>
+                                <p class="text-sm text-gray-600 mt-2">Error: ${error.message}</p>
+                                <p class="text-sm text-blue-600 mt-3">
+                                    💡 <strong>Tip:</strong> PDF mungkin masih diproses. 
+                                    Coba klik download lagi dalam 30-60 detik.
+                                </p>
+                            `
+                        });
+                    }
+                }
+            }, 2000); // Check every 2 seconds
+            
+            // Initial progress dialog
+            Swal.fire({
+                title: 'Generating PDF',
+                html: `
+                    <div class="text-center">
+                        <div class="mb-4">Memulai generate PDF untuk ${namaSiswa}...</div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" style="width: 5%"></div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-600">5%</div>
+                        <div class="mt-2 text-xs text-gray-500">Est. ${estimatedTime}</div>
+                        <div class="mt-3 text-xs text-gray-400">Request ID: ${requestId}</div>
+                    </div>
+                `,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'Batal',
+                didOpen: () => {
+                    const cancelBtn = Swal.getCancelButton();
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            console.log('🚫 User cancelled progress tracking');
+                            clearInterval(progressInterval);
+                        });
+                    }
+                }
+            });
+        },
+        showPdfProgress(requestId, namaSiswa, estimatedTime) {
+            let progress = 0;
+            let checkCount = 0;
+            const maxChecks = 60; // 2 minutes max
+            
+            const progressInterval = setInterval(async () => {
+                try {
+                    checkCount++;
+                    
+                    const response = await fetch(`/wali-kelas/rapor/pdf-progress/${requestId}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.progress) {
+                        const progressData = data.progress;
+                        
+                        if (progressData.completed) {
+                            clearInterval(progressInterval);
+                            Swal.close();
+                            
+                            if (progressData.error) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'PDF Generation Failed',
+                                    html: `
+                                        <p>${progressData.message}</p>
+                                        <p class="text-sm text-gray-600 mt-2">Request ID: ${requestId}</p>
+                                    `
+                                });
+                            } else {
+                                this.downloadPdfFile(
+                                    progressData.download_url, 
+                                    progressData.filename, 
+                                    namaSiswa,
+                                    progressData.cached
+                                );
+                            }
+                        } else {
+                            // Update progress
+                            progress = progressData.percentage;
+                            Swal.update({
+                                html: `
+                                    <div class="text-center">
+                                        <div class="mb-4">${progressData.message}</div>
+                                        <div class="w-full bg-gray-200 rounded-full h-3">
+                                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" 
+                                                style="width: ${progress}%"></div>
+                                        </div>
+                                        <div class="mt-2 text-sm text-gray-600">${progress}%</div>
+                                        <div class="mt-2 text-xs text-gray-500">Est. ${estimatedTime}</div>
+                                    </div>
+                                `
+                            });
+                        }
+                    } else {
+                        // Progress not found or error
+                        if (checkCount > 3) { // Give it a few tries
+                            clearInterval(progressInterval);
+                            Swal.close();
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'PDF Generation Error',
+                                text: 'Tidak dapat melacak progress. Silakan coba lagi.'
+                            });
+                        }
+                    }
+                    
+                    // Timeout after max checks
+                    if (checkCount >= maxChecks) {
+                        clearInterval(progressInterval);
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'PDF Generation Timeout',
+                            text: 'Proses terlalu lama. Silakan coba lagi nanti.'
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('Progress check error:', error);
+                    checkCount++;
+                    
+                    if (checkCount >= 5) {
+                        clearInterval(progressInterval);
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Connection Error',
+                            text: 'Tidak dapat memeriksa progress. Silakan coba lagi.'
+                        });
+                    }
+                }
+            }, 2000); // Check every 2 seconds
+            
+            // Initial progress dialog
+            Swal.fire({
+                title: 'Generating PDF',
+                html: `
+                    <div class="text-center">
+                        <div class="mb-4">Memulai generate PDF untuk ${namaSiswa}...</div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" style="width: 10%"></div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-600">10%</div>
+                        <div class="mt-2 text-xs text-gray-500">Est. ${estimatedTime}</div>
+                        <div class="mt-3 text-xs text-gray-400">Request ID: ${requestId}</div>
+                    </div>
+                `,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'Batal',
+                didOpen: () => {
+                    // Handle cancel
+                    const cancelBtn = Swal.getCancelButton();
+                    cancelBtn.addEventListener('click', () => {
+                        clearInterval(progressInterval);
+                        // Optionally cancel the job here
+                    });
+                }
+            });
+        },
+
+        // Enhanced download with cache info
+        downloadPdfFile(downloadUrl, filename, namaSiswa, isCached = false) {
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'PDF Ready!',
+                html: `
+                    <div>
+                        <p>Rapor PDF untuk <strong>${namaSiswa}</strong> berhasil diunduh</p>
+                        ${isCached ? 
+                            '<p class="text-sm text-blue-600 mt-2">⚡ Dari cache (instan)</p>' : 
+                            '<p class="text-sm text-green-600 mt-2">✨ Freshly generated</p>'
+                        }
+                    </div>
+                `,
+                timer: 3000,
+                showConfirmButton: false
+            });
+        },
         // Preview PDF
         async handlePreviewPdf(siswaId, nilaiCount, hasAbsensi) {
             if (!this.validateData(nilaiCount, hasAbsensi)) return;
@@ -753,6 +1057,268 @@ document.addEventListener('alpine:init', function() {
                     text: error.message
                 });
             }
+        },
+        
+        async simulateSimultaneousDownloads(siswaId, nilaiCount, hasAbsensi, namaSiswa, testType = 'docx') {
+            console.log(`🚀 Starting simultaneous test for ${testType.toUpperCase()}`);
+            
+            const startTime = Date.now();
+            const promises = [];
+            const results = [];
+            
+            // Simulate 10 concurrent users
+            for (let i = 0; i < 10; i++) {
+                const promise = this.performDownloadTest(siswaId, nilaiCount, hasAbsensi, namaSiswa, testType, i + 1)
+                    .then(result => {
+                        results.push(result);
+                        console.log(`✅ User ${i + 1} completed:`, result);
+                        return result;
+                    })
+                    .catch(error => {
+                        const errorResult = { 
+                            userId: i + 1, 
+                            success: false, 
+                            error: error.message,
+                            duration: Date.now() - startTime
+                        };
+                        results.push(errorResult);
+                        console.error(`❌ User ${i + 1} failed:`, error);
+                        return errorResult;
+                    });
+                
+                promises.push(promise);
+            }
+            
+            try {
+                await Promise.all(promises);
+                
+                const endTime = Date.now();
+                const totalDuration = endTime - startTime;
+                
+                const successCount = results.filter(r => r.success).length;
+                const failCount = results.filter(r => !r.success).length;
+                
+                const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
+                
+                const summary = {
+                    totalRequests: 10,
+                    successCount,
+                    failCount,
+                    totalDuration,
+                    avgDuration: Math.round(avgDuration),
+                    results
+                };
+                
+                console.log('📊 Load Test Summary:', summary);
+                this.showLoadTestResults(summary, testType);
+                
+            } catch (error) {
+                console.error('Load test failed:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Load Test Failed',
+                    text: error.message
+                });
+            }
+        },
+
+        // Metode 2: Sequential Testing (1 detik interval)
+        async simulateSequentialDownloads(siswaId, nilaiCount, hasAbsensi, namaSiswa, testType = 'docx') {
+            console.log(`🚀 Starting sequential test for ${testType.toUpperCase()} (1s interval)`);
+            
+            const results = [];
+            const startTime = Date.now();
+            
+            for (let i = 0; i < 10; i++) {
+                try {
+                    console.log(`⏱️ Starting request ${i + 1}/10`);
+                    
+                    const result = await this.performDownloadTest(siswaId, nilaiCount, hasAbsensi, namaSiswa, testType, i + 1);
+                    results.push(result);
+                    
+                    console.log(`✅ User ${i + 1} completed:`, result);
+                    
+                    // Wait 1 second before next request (except for last one)
+                    if (i < 9) {
+                        console.log(`⏳ Waiting 1 second...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                } catch (error) {
+                    const errorResult = { 
+                        userId: i + 1, 
+                        success: false, 
+                        error: error.message,
+                        duration: Date.now() - startTime
+                    };
+                    results.push(errorResult);
+                    console.error(`❌ User ${i + 1} failed:`, error);
+                }
+            }
+            
+            const endTime = Date.now();
+            const totalDuration = endTime - startTime;
+            
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.filter(r => !r.success).length;
+            const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
+            
+            const summary = {
+                totalRequests: 10,
+                successCount,
+                failCount,
+                totalDuration,
+                avgDuration: Math.round(avgDuration),
+                results
+            };
+            
+            console.log('📊 Sequential Test Summary:', summary);
+            this.showLoadTestResults(summary, testType);
+        },
+
+        // Helper method untuk perform individual test
+        async performDownloadTest(siswaId, nilaiCount, hasAbsensi, namaSiswa, testType, userId) {
+            const startTime = Date.now();
+            
+            try {
+                if (testType === 'docx') {
+                    // Test DOCX download
+                    const response = await fetch(`/wali-kelas/rapor/generate/${siswaId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            type: this.activeTab,
+                            tahun_ajaran_id: this.tahunAjaranId,
+                            action: 'download'
+                        })
+                    });
+                    
+                    const duration = Date.now() - startTime;
+                    
+                    if (response.ok) {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.includes("application/json")) {
+                            const data = await response.json();
+                            return {
+                                userId,
+                                success: data.success || false,
+                                duration,
+                                responseSize: JSON.stringify(data).length,
+                                statusCode: response.status
+                            };
+                        } else {
+                            // Binary response (actual file)
+                            const blob = await response.blob();
+                            return {
+                                userId,
+                                success: true,
+                                duration,
+                                responseSize: blob.size,
+                                statusCode: response.status
+                            };
+                        }
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                } else if (testType === 'pdf') {
+                    // Test PDF download
+                    const url = `/wali-kelas/rapor/download-pdf/${siswaId}?type=${this.activeTab}&tahun_ajaran_id=${this.tahunAjaranId}`;
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/pdf,application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
+                    const duration = Date.now() - startTime;
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        return {
+                            userId,
+                            success: true,
+                            duration,
+                            responseSize: blob.size,
+                            statusCode: response.status
+                        };
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `HTTP ${response.status}`);
+                    }
+                }
+                
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                return {
+                    userId,
+                    success: false,
+                    duration,
+                    error: error.message,
+                    statusCode: 0
+                };
+            }
+        },
+
+        // Method untuk show results
+        showLoadTestResults(summary, testType) {
+            const successRate = (summary.successCount / summary.totalRequests * 100).toFixed(1);
+            
+            let statusColor = 'success';
+            if (successRate < 70) statusColor = 'error';
+            else if (successRate < 90) statusColor = 'warning';
+            
+            Swal.fire({
+                icon: statusColor,
+                title: `Load Test Results - ${testType.toUpperCase()}`,
+                html: `
+                    <div class="text-left space-y-2">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <strong>Total Requests:</strong> ${summary.totalRequests}
+                            </div>
+                            <div>
+                                <strong>Success Rate:</strong> 
+                                <span class="text-green-600">${successRate}%</span>
+                            </div>
+                            <div>
+                                <strong>Successful:</strong> 
+                                <span class="text-green-600">${summary.successCount}</span>
+                            </div>
+                            <div>
+                                <strong>Failed:</strong> 
+                                <span class="text-red-600">${summary.failCount}</span>
+                            </div>
+                            <div>
+                                <strong>Total Duration:</strong> ${summary.totalDuration}ms
+                            </div>
+                            <div>
+                                <strong>Avg Duration:</strong> ${summary.avgDuration}ms
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <strong>Individual Results:</strong>
+                            <div class="max-h-40 overflow-y-auto mt-2 text-xs">
+                                ${summary.results.map(r => `
+                                    <div class="flex justify-between ${r.success ? 'text-green-600' : 'text-red-600'}">
+                                        <span>User ${r.userId}:</span>
+                                        <span>${r.success ? '✅' : '❌'} ${r.duration}ms</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `,
+                width: 600,
+                confirmButtonText: 'Close'
+            });
         }
     }));
 });

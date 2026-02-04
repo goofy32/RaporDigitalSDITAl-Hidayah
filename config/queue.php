@@ -34,6 +34,14 @@ return [
             'driver' => 'sync',
         ],
 
+        'pdf_generation' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'pdf',
+            'retry_after' => 300,
+            'after_commit' => false,
+        ],
+        
         'database' => [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),

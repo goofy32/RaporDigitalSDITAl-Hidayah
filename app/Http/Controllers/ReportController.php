@@ -11,10 +11,13 @@ use App\Services\RaporTemplateProcessor;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ProfilSekolah;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Barryvdh\DomPDF\Facade\PDF;
 use App\Models\ReportGeneration;
 use App\Models\TahunAjaran;
+use App\Jobs\GeneratePdfReportJob;
+use App\Services\PdfCacheService;
 
 class ReportController extends Controller
 {
@@ -821,63 +824,133 @@ class ReportController extends Controller
      */
     public function downloadPdf(Siswa $siswa, Request $request)
     {
+        // ===== OPTIMIZATION 1: Resource Limits =====
+        $originalTimeLimit = ini_get('max_execution_time');
+        $originalMemoryLimit = ini_get('memory_limit');
+        
+        set_time_limit(300); // 5 minutes
+        ini_set('memory_limit', '1024M'); // Increase to 1GB
+        
+        // ===== OPTIMIZATION 2: Request Tracking =====
+        $requestId = uniqid('pdf_', true);
+        $startTime = microtime(true);
+        $memoryStart = memory_get_usage(true);
+        
+        Log::info("=== PDF REQUEST STARTED ===", [
+            'request_id' => $requestId,
+            'siswa_id' => $siswa->id,
+            'siswa_name' => $siswa->nama,
+            'type' => $request->query('type', 'UTS'),
+            'tahun_ajaran_id' => $request->query('tahun_ajaran_id', session('tahun_ajaran_id')),
+            'memory_start' => round($memoryStart / 1024 / 1024, 2) . 'MB',
+            'timestamp' => now()->toISOString(),
+            'user_agent' => $request->userAgent(),
+            'ip_address' => $request->ip()
+        ]);
+
         try {
-            // 1. Validate LibreOffice first
+            // ===== OPTIMIZATION 3: LibreOffice Check with Performance =====
+            $libreOfficeCheckStart = microtime(true);
+            
             $conversionService = new \App\Services\DocumentConversionService();
             if (!$conversionService->isLibreOfficeAvailable()) {
+                $this->logPerformanceMetrics($requestId, 'libreoffice_check_failed', $startTime, $memoryStart);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'LibreOffice tidak tersedia. Pastikan LibreOffice sudah terinstall dan path sudah benar di .env file.'
+                    'message' => 'LibreOffice tidak tersedia. Pastikan LibreOffice sudah terinstall dan path sudah benar di .env file.',
+                    'request_id' => $requestId
                 ], 500);
             }
+            
+            $libreOfficeCheckTime = (microtime(true) - $libreOfficeCheckStart) * 1000;
+            Log::info("LibreOffice check completed", [
+                'request_id' => $requestId,
+                'check_time_ms' => round($libreOfficeCheckTime, 2)
+            ]);
 
-            // 2. Generate DOCX first
+            // ===== OPTIMIZATION 4: Enhanced Data Validation =====
+            $validationStart = microtime(true);
+            
             $type = $request->query('type', 'UTS');
             $tahunAjaranId = $request->query('tahun_ajaran_id', session('tahun_ajaran_id'));
             
-            Log::info('Starting PDF generation process', [
+            Log::info("PDF generation process started", [
+                'request_id' => $requestId,
                 'siswa_id' => $siswa->id,
                 'siswa_name' => $siswa->nama,
                 'type' => $type,
                 'tahun_ajaran_id' => $tahunAjaranId
             ]);
             
+            $validationTime = (microtime(true) - $validationStart) * 1000;
+
+            // ===== OPTIMIZATION 5: Template Processing with Monitoring =====
+            $templateStart = microtime(true);
+            
             // Get the template
             $template = $this->getTemplateForSiswa($siswa, $type, $tahunAjaranId);
             
             if (!$template) {
+                $this->logPerformanceMetrics($requestId, 'template_not_found', $startTime, $memoryStart);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Template rapor tidak ditemukan untuk tipe ' . $type
+                    'message' => 'Template rapor tidak ditemukan untuk tipe ' . $type,
+                    'request_id' => $requestId
                 ], 404);
             }
+            
+            $templateTime = (microtime(true) - $templateStart) * 1000;
+            Log::info("Template found", [
+                'request_id' => $requestId,
+                'template_id' => $template->id,
+                'template_time_ms' => round($templateTime, 2)
+            ]);
+
+            // ===== OPTIMIZATION 6: DOCX Generation with Monitoring =====
+            $docxStart = microtime(true);
             
             // Generate the DOCX report
             $processor = new \App\Services\RaporTemplateProcessor($template, $siswa, $type, $tahunAjaranId);
             $result = $processor->generate(true); // bypass validation for now
             
             if (!$result['success'] || !isset($result['path'])) {
+                $this->logPerformanceMetrics($requestId, 'docx_generation_failed', $startTime, $memoryStart);
                 throw new \Exception('Gagal generate file DOCX: ' . ($result['message'] ?? 'Unknown error'));
             }
+            
+            $docxTime = (microtime(true) - $docxStart) * 1000;
             
             $docxPath = $result['path'];
             $fullDocxPath = storage_path('app/public/' . $docxPath);
             
             // Validate DOCX file exists
             if (!file_exists($fullDocxPath)) {
+                $this->logPerformanceMetrics($requestId, 'docx_file_missing', $startTime, $memoryStart);
                 throw new \Exception("DOCX file tidak ditemukan: $fullDocxPath");
             }
             
+            $docxSize = filesize($fullDocxPath);
             Log::info('DOCX generated successfully', [
+                'request_id' => $requestId,
                 'docx_path' => $fullDocxPath,
-                'file_size' => filesize($fullDocxPath)
+                'docx_size_mb' => round($docxSize / 1024 / 1024, 2),
+                'docx_time_ms' => round($docxTime, 2)
             ]);
+
+            // ===== OPTIMIZATION 7: PDF Conversion with Monitoring =====
+            $pdfStart = microtime(true);
             
-            // 3. Convert DOCX to PDF
             $pdfResult = $conversionService->convertStorageDocxToPdf($docxPath, 'pdf_reports');
             
             if (!$pdfResult['success']) {
+                $this->logPerformanceMetrics($requestId, 'pdf_conversion_failed', $startTime, $memoryStart, [
+                    'conversion_error' => $pdfResult['message']
+                ]);
+                
                 Log::error('PDF conversion failed', [
+                    'request_id' => $requestId,
                     'error' => $pdfResult['message'],
                     'docx_path' => $fullDocxPath
                 ]);
@@ -885,23 +958,40 @@ class ReportController extends Controller
                 throw new \Exception('Konversi ke PDF gagal: ' . $pdfResult['message']);
             }
             
-            // 4. Return the PDF file for download
+            $pdfTime = (microtime(true) - $pdfStart) * 1000;
+
+            // ===== OPTIMIZATION 8: File Validation and Response =====
+            $responseStart = microtime(true);
+            
             $pdfPath = storage_path('app/public/' . $pdfResult['storage_path']);
             
             if (!file_exists($pdfPath)) {
+                $this->logPerformanceMetrics($requestId, 'pdf_file_missing', $startTime, $memoryStart);
                 throw new \Exception("PDF file tidak ditemukan: $pdfPath");
             }
+            
+            $pdfSize = filesize($pdfPath);
             
             // Generate clean filename
             $cleanName = preg_replace('/[^\w\s-]/', '', $siswa->nama);
             $cleanName = preg_replace('/\s+/', '_', $cleanName);
             $filename = "Rapor_{$type}_{$cleanName}_{$siswa->nis}.pdf";
             
-            Log::info('PDF generation successful', [
-                'siswa_id' => $siswa->id,
-                'pdf_path' => $pdfPath,
-                'pdf_size' => filesize($pdfPath),
-                'filename' => $filename
+            $responseTime = (microtime(true) - $responseStart) * 1000;
+
+            // ===== OPTIMIZATION 9: Success Logging =====
+            $this->logPerformanceMetrics($requestId, 'success', $startTime, $memoryStart, [
+                'docx_size_mb' => round($docxSize / 1024 / 1024, 2),
+                'pdf_size_mb' => round($pdfSize / 1024 / 1024, 2),
+                'filename' => $filename,
+                'breakdown_ms' => [
+                    'libreoffice_check' => round($libreOfficeCheckTime, 2),
+                    'validation' => round($validationTime, 2),
+                    'template_lookup' => round($templateTime, 2),
+                    'docx_generation' => round($docxTime, 2),
+                    'pdf_conversion' => round($pdfTime, 2),
+                    'response_prep' => round($responseTime, 2)
+                ]
             ]);
             
             // Return file download response
@@ -910,7 +1000,14 @@ class ReportController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            $this->logPerformanceMetrics($requestId, 'error', $startTime, $memoryStart, [
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine()
+            ]);
+            
             Log::error('Error generating PDF report', [
+                'request_id' => $requestId,
                 'siswa_id' => $siswa->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -919,12 +1016,31 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menghasilkan PDF: ' . $e->getMessage(),
+                'request_id' => $requestId,
                 'debug_info' => env('APP_DEBUG') ? [
                     'libreoffice_available' => app(\App\Services\DocumentConversionService::class)->isLibreOfficeAvailable(),
                     'php_os' => PHP_OS,
                     'storage_path' => storage_path('app/public/'),
                 ] : null
             ], 500);
+            
+        } finally {
+            // ===== OPTIMIZATION 10: Cleanup =====
+            // Restore original settings
+            set_time_limit($originalTimeLimit);
+            ini_set('memory_limit', $originalMemoryLimit);
+            
+            // Final log
+            $finalTime = microtime(true);
+            $totalDuration = ($finalTime - $startTime) * 1000;
+            
+            Log::info("=== PDF REQUEST COMPLETED ===", [
+                'request_id' => $requestId,
+                'total_duration_ms' => round($totalDuration, 2),
+                'total_duration_seconds' => round($totalDuration / 1000, 2),
+                'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+                'timestamp' => now()->toISOString()
+            ]);
         }
     }
     
@@ -983,6 +1099,34 @@ class ReportController extends Controller
             
             return redirect()->back()->with('error', 'Gagal mendownload template: ' . $e->getMessage());
         }
+    }
+
+    
+    /**
+     * Helper method untuk logging performance metrics
+     */
+    private function logPerformanceMetrics($requestId, $status, $startTime, $memoryStart, $additionalData = [])
+    {
+        $currentTime = microtime(true);
+        $currentMemory = memory_get_usage(true);
+        $peakMemory = memory_get_peak_usage(true);
+        
+        $metrics = [
+            'request_id' => $requestId,
+            'status' => $status,
+            'duration_ms' => round(($currentTime - $startTime) * 1000, 2),
+            'duration_seconds' => round($currentTime - $startTime, 2),
+            'memory_used_mb' => round(($currentMemory - $memoryStart) / 1024 / 1024, 2),
+            'memory_current_mb' => round($currentMemory / 1024 / 1024, 2),
+            'memory_peak_mb' => round($peakMemory / 1024 / 1024, 2),
+            'timestamp' => now()->toISOString()
+        ];
+        
+        if (!empty($additionalData)) {
+            $metrics = array_merge($metrics, $additionalData);
+        }
+        
+        Log::info("Performance Metrics - {$status}", $metrics);
     }
 
     public function previewRapor($siswa_id) {
@@ -1285,7 +1429,188 @@ class ReportController extends Controller
         }
     }
 
+    public function requestPdf(Siswa $siswa, Request $request)
+    {
+        $type = $request->input('type', 'UTS');
+        $tahunAjaranId = $request->input('tahun_ajaran_id', session('tahun_ajaran_id'));
+        $requestId = uniqid('pdf_', true);
 
+        Log::info("=== PDF REQUEST RECEIVED ===", [
+            'request_id' => $requestId,
+            'siswa_id' => $siswa->id,
+            'siswa_name' => $siswa->nama,
+            'type' => $type,
+            'tahun_ajaran_id' => $tahunAjaranId,
+            'user_agent' => $request->userAgent(),
+            'ip' => $request->ip()
+        ]);
+
+        try {
+            // Initialize progress immediately
+            $progressKey = "pdf_progress_{$requestId}";
+            Cache::put($progressKey, [
+                'percentage' => 0,
+                'message' => 'Permintaan diterima...',
+                'completed' => false,
+                'error' => false,
+                'timestamp' => now()->toISOString(),
+                'request_id' => $requestId,
+                'initiated' => true
+            ], now()->addMinutes(30));
+
+            // Check cache first
+            $cachedPdf = PdfCacheService::getCachedPdf($siswa, $type, $tahunAjaranId);
+            
+            if ($cachedPdf) {
+                Log::info("PDF found in cache, returning immediately", [
+                    'request_id' => $requestId,
+                    'cache_path' => $cachedPdf['path']
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'ready' => true,
+                    'cached' => true,
+                    'download_url' => asset('storage/' . $cachedPdf['path']),
+                    'filename' => $cachedPdf['filename'],
+                    'file_size' => $cachedPdf['file_size'],
+                    'request_id' => $requestId
+                ]);
+            }
+
+            // Update progress: Dispatching job
+            Cache::put($progressKey, [
+                'percentage' => 5,
+                'message' => 'Memulai generate PDF...',
+                'completed' => false,
+                'error' => false,
+                'timestamp' => now()->toISOString(),
+                'request_id' => $requestId,
+                'dispatching' => true
+            ], now()->addMinutes(30));
+
+            // Dispatch job
+            $userId = auth()->guard('guru')->id();
+            GeneratePdfReportJob::dispatch($siswa, $type, $tahunAjaranId, $requestId, $userId);
+
+            Log::info("PDF job dispatched successfully", [
+                'request_id' => $requestId,
+                'job_dispatched' => true
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'ready' => false,
+                'cached' => false,
+                'request_id' => $requestId,
+                'estimated_time' => '30-60 seconds',
+                'message' => 'PDF sedang diproses. Mohon tunggu...',
+                'progress_url' => route('wali_kelas.rapor.pdf-progress', $requestId)
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error in requestPdf", [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Update progress with error
+            Cache::put($progressKey, [
+                'percentage' => -1,
+                'message' => 'Error: ' . $e->getMessage(),
+                'completed' => true,
+                'error' => true,
+                'timestamp' => now()->toISOString(),
+                'request_id' => $requestId
+            ], now()->addMinutes(30));
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses permintaan PDF: ' . $e->getMessage(),
+                'request_id' => $requestId
+            ], 500);
+        }
+    }
+
+
+    /**
+     * Check PDF generation progress
+     */
+    public function checkPdfProgress($requestId)
+    {
+        Log::info("Progress check requested", [
+            'request_id' => $requestId,
+            'timestamp' => now()->toISOString()
+        ]);
+
+        try {
+            $progressKey = "pdf_progress_{$requestId}";
+            $progress = Cache::get($progressKey);
+
+            if (!$progress) {
+                Log::warning("Progress not found", [
+                    'request_id' => $requestId,
+                    'progress_key' => $progressKey,
+                    'all_keys' => Cache::get('all_progress_keys', [])
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Progress tidak ditemukan. Request mungkin sudah kadaluarsa.',
+                    'request_id' => $requestId,
+                    'debug_info' => [
+                        'progress_key' => $progressKey,
+                        'cache_available' => Cache::getStore() !== null
+                    ]
+                ], 404);
+            }
+
+            Log::info("Progress found", [
+                'request_id' => $requestId,
+                'progress' => $progress
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'progress' => $progress,
+                'request_id' => $requestId,
+                'timestamp' => now()->toISOString()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error checking progress", [
+                'request_id' => $requestId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking progress: ' . $e->getMessage(),
+                'request_id' => $requestId
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear PDF cache for student
+     */
+    public function clearPdfCache(Siswa $siswa)
+    {
+        try {
+            PdfCacheService::clearStudentCache($siswa);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Cache PDF siswa berhasil dibersihkan'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membersihkan cache: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     public function preview(ReportTemplate $template)
     {
         try {

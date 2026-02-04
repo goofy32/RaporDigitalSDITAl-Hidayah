@@ -24,6 +24,7 @@ use App\Http\Controllers\BobotNilaiController;
 use App\Http\Controllers\KenaikanKelasController;
 use App\Http\Controllers\CatatanController;
 use App\Http\Controllers\CapaianKompetensiController;
+use App\Http\Controllers\CapaianRangeTemplateController;
 use App\Models\Siswa;
 use App\Models\FormatRapor;
 use Illuminate\Support\Facades\Auth;
@@ -642,7 +643,29 @@ Route::post('/lingkup-materi/{id}/update', [SubjectController::class, 'updateLin
 // Ensure this route exists for tujuan pembelajaran view
 Route::get('/tujuan-pembelajaran/{mata_pelajaran_id}/view', [TujuanPembelajaranController::class, 'teacherView'])
     ->name('tujuan_pembelajaran.view');
-
+Route::get('/test-pdf-request', function() {
+    try {
+        $siswa = \App\Models\Siswa::first();
+        if (!$siswa) {
+            return "No student found";
+        }
+        
+        $controller = new \App\Http\Controllers\ReportController();
+        $request = new \Illuminate\Http\Request();
+        $request->merge([
+            'type' => 'UTS',
+            'tahun_ajaran_id' => session('tahun_ajaran_id', 1)
+        ]);
+        
+        return $controller->requestPdf($siswa, $request);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+});
 // RAPOR ROUTES - Consolidated and organized
 Route::prefix('rapor')->name('rapor.')->group(function () {
     Route::get('/', [ReportController::class, 'indexWaliKelas'])->name('index');
@@ -657,6 +680,15 @@ Route::prefix('rapor')->name('rapor.')->group(function () {
     Route::get('/check-templates', [ReportController::class, 'checkActiveTemplates'])->name('check-templates');
     Route::post('/batch-generate', [ReportController::class, 'generateBatchReport'])->name('batch.generate');
     
+    Route::delete('/clear-cache/{siswa}', [ReportController::class, 'clearPdfCache'])->name('clear-cache');
+    Route::post('/request-pdf/{siswa}', [ReportController::class, 'requestPdf'])->name('request-pdf');
+    Route::get('/pdf-progress/{requestId}', [ReportController::class, 'checkPdfProgress'])->name('pdf-progress');
+
+    // Cache management routes
+    Route::get('/cache-stats', function() {
+        return response()->json(PdfCacheService::getCacheStats());
+    })->name('cache-stats');
+
     // PDF Routes with middleware
     Route::middleware('check.rapor.access')->group(function () {
         Route::get('/preview-pdf/{siswa}', [ReportController::class, 'previewPdf'])->name('preview-pdf');
