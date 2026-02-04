@@ -64,6 +64,9 @@ composer install
 # 2. Install library JavaScript (Vite/Tailwind)
 # Jika ada error rollup di Windows, gunakan --force
 npm install --force 
+# 3. Opsional (bila error masih ada untuk rollup-win32-x64-msvc)
+# Jika ada error rollup di Windows, gunakan --force
+npm install --force --no-save @rollup/rollup-win32-x64-msvc
 ```
 
 
