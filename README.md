@@ -63,7 +63,7 @@ Buka terminal (Git Bash / PowerShell / Terminal VS Code), lalu arahkan ke folder
 cd C:\laragon\www
 
 # Clone repository
-git clone https://github.com/username-anda/RaporDigitalSDITAl-Hidayah.git
+git clone https://github.com/username-anda/RaporDigitalSDITALHIDAYAH0.git
 
 # Masuk ke folder proyek
 cd RaporDigitalSDITALHIDAYAH0
