@@ -8,7 +8,7 @@ Panduan ini ditujukan untuk developer baru yang ingin menjalankan proyek ini dar
 Pastikan komputer Anda sudah terinstall software berikut:
 
 1.  **XAMPP** atau **Laragon**:
-    *   **Laragon (Rekomendasi)**: Download versi "Full" yang sudah mencakup PHP, MySQL, Apache/Nginx.
+    *   **Laragon (sangat di Rekomendasi)**: Download versi "Full" yang sudah mencakup PHP, MySQL, Apache/Nginx.
     *   **XAMPP**: Jika pakai XAMPP, pastikan PHP versi **8.2** atau lebih baru.
 2.  **Composer**: Download di [getcomposer.org](https://getcomposer.org/).
 3.  **Node.js**: Download versi LTS (v20 atau v22) di [nodejs.org](https://nodejs.org/).
@@ -65,7 +65,6 @@ composer install
 # Jika ada error rollup di Windows, gunakan --force
 npm install --force 
 # 3. Opsional (bila error masih ada untuk rollup-win32-x64-msvc)
-# Jika ada error rollup di Windows, gunakan --force
 npm install --force --no-save @rollup/rollup-win32-x64-msvc
 ```
 
